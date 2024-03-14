@@ -1,4 +1,5 @@
 pub mod model;
+pub mod activitystream;
 
 use axum::{
 	routing::get,
