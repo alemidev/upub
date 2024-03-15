@@ -1,0 +1,68 @@
+pub enum Type {
+	Object,
+	ObjectType(ObjectType),
+	Link,
+	Mention, // TODO what about this???
+	Activity,
+	IntransitiveActivity,
+	ActivityType(ActivityType),
+	Collection,
+	OrderedCollection,
+	CollectionPage,
+	OrderedCollectionPage,
+	ActorType(ActorType),
+}
+
+pub enum ActivityType {
+	Accept,
+	Add,
+	Announce,
+	Arrive,
+	Block,
+	Create,
+	Delete,
+	Dislike,
+	Flag,
+	Follow,
+	Ignore,
+	Invite,
+	Join,
+	Leave,
+	Like,
+	Listen,
+	Move,
+	Offer,
+	Question,
+	Reject,
+	Read,
+	Remove,
+	TentativeReject,
+	TentativeAccept,
+	Travel,
+	Undo,
+	Update,
+	View,
+}
+
+pub enum ActorType {
+	Application,
+	Group,
+	Organization,
+	Person,
+	Service,
+}
+
+pub enum ObjectType {
+	Article,
+	Audio,
+	Document,
+	Event,
+	Image,
+	Note,
+	Page,
+	Place,
+	Profile,
+	Relationship,
+	Tombstone,
+	Video,
+}

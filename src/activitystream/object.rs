@@ -27,7 +27,7 @@ pub trait Link {
 
 pub trait Object {
 	fn id(&self) -> Option<&str> { None }
-	fn object_type(&self) -> Option<&str> { None }
+	fn object_type(&self) -> Option<super::Type> { None }
 	fn attachment (&self) -> Option<&str> { None }
 	fn attributed_to (&self) -> Option<&str> { None }
 	fn audience (&self) -> Option<&str> { None }
@@ -66,8 +66,8 @@ impl Object for serde_json::Value {
 		self.get("id")?.as_str()
 	}
 
-	fn object_type(&self) -> Option<&str> {
-		self.get("type")?.as_str()
+	fn object_type(&self) -> Option<super::Type> {
+		todo!()
 	}
 
 	// ...
