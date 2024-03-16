@@ -2,6 +2,10 @@ pub mod user;
 pub mod object;
 pub mod activity;
 
+#[derive(Debug, Clone, thiserror::Error)]
+#[error("missing required field: '{0}'")]
+pub struct FieldError(&'static str);
+
 pub async fn faker(db: &sea_orm::DatabaseConnection) -> Result<(), sea_orm::DbErr> {
 	use sea_orm::EntityTrait;
 

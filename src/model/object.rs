@@ -1,6 +1,6 @@
 use sea_orm::entity::prelude::*;
 
-use crate::activitystream::types::ObjectType;
+use crate::activitystream::{self, types::ObjectType};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "objects")]
@@ -48,5 +48,22 @@ impl crate::activitystream::Object for Model {
 
 	fn published (&self) -> Option<chrono::DateTime<chrono::Utc>> {
 		Some(self.published)
+	}
+}
+
+impl Model {
+	pub fn new(object: &impl activitystream::Object) -> Result<Self, super::FieldError> {
+		let Some(activitystream::Type::ObjectType(t)) = object.full_type() else {
+			return Err(super::FieldError("type")); // TODO maybe just wrong? better errors!
+		};
+		Ok(Model {
+			id: object.id().ok_or(super::FieldError("id"))?.to_string(),
+			object_type: t,
+			attributed_to: object.attributed_to().map(|x| x.to_string()),
+			name: object.name().map(|x| x.to_string()),
+			summary: object.summary().map(|x| x.to_string()),
+			content: object.content().map(|x| x.to_string()),
+			published: object.published().ok_or(super::FieldError("published"))?,
+		})
 	}
 }

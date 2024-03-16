@@ -54,3 +54,16 @@ impl activitystream::Activity for Model {
 		self.target.as_deref()
 	}
 }
+
+impl Model {
+	pub fn new(activity: &impl activitystream::Activity) -> Result<Self, super::FieldError> {
+		Ok(Model {
+			id: activity.id().ok_or(super::FieldError("id"))?.to_string(),
+			activity_type: activity.activity_type().ok_or(super::FieldError("type"))?,
+			actor: activity.actor_id().ok_or(super::FieldError("actor"))?.to_string(),
+			object: activity.object_id().map(|x| x.to_string()),
+			target: activity.target().map(|x| x.to_string()),
+			published: activity.published().ok_or(super::FieldError("published"))?,
+		})
+	}
+}
