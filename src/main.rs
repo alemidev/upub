@@ -1,46 +1,58 @@
 pub mod model;
+pub mod migrations;
 pub mod activitystream;
 pub mod activitypub;
 pub mod server;
-pub mod storage;
 
-use activitystream::{types::{ActivityType, ObjectType}, Object, Type};
-use axum::{extract::{Path, State}, http::StatusCode, response::IntoResponse, routing::{get, post}, Json, Router};
+use clap::{Parser, Subcommand};
+use sea_orm::Database;
+use sea_orm_migration::MigratorTrait;
+
+#[derive(Parser)]
+/// all names were taken
+struct CliArgs {
+	#[clap(subcommand)]
+	/// command to run
+	command: CliCommand,
+
+	#[arg(short, long, default_value = "sqlite://./anwt.db")]
+	/// database connection uri
+	database: String,
+
+	#[arg(long, default_value_t=false)]
+	/// run with debug level tracing
+	debug: bool,
+}
+
+#[derive(Clone, Subcommand)]
+enum CliCommand {
+	/// run fediverse server
+	Serve ,
+
+	/// apply database migrations
+	Migrate,
+}
 
 #[tokio::main]
 async fn main() {
-	// build our application with a single route
-	let app = Router::new()
-		.with_state(())
-		.route("/inbox", post(inbox))
-		.route("/outbox", get(|| async { todo!() }))
-		.route("/users/:id", get(user))
-		.route("/objects/:id", get(object));
 
-	// run our app with hyper, listening globally on port 3000
-	let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+	let args = CliArgs::parse();
 
-	axum::serve(listener, app)
-		.await
-		.unwrap();
-}
+	tracing_subscriber::fmt()
+		.compact()
+		.with_max_level(if args.debug { tracing::Level::DEBUG } else { tracing::Level::INFO })
+		.init();
 
-async fn inbox(State(ctx) : State<()>, Json(object): Json<serde_json::Value>) -> Result<Json<serde_json::Value>, StatusCode> {
-	match object.object_type() {
-		None => { Err(StatusCode::BAD_REQUEST) },
-		Some(Type::Activity) => { Err(StatusCode::UNPROCESSABLE_ENTITY) },
-		Some(Type::ActivityType(ActivityType::Follow)) => { todo!() },
-		Some(Type::ActivityType(ActivityType::Create)) => { todo!() },
-		Some(Type::ActivityType(ActivityType::Like)) => { todo!() },
-		Some(Type::ActivityType(x)) => { Err(StatusCode::NOT_IMPLEMENTED) },
-		Some(x) => { Err(StatusCode::UNPROCESSABLE_ENTITY) }
+	let db = Database::connect(&args.database)
+		.await.expect("error connecting to db");
+
+	match args.command {
+		CliCommand::Serve => server::serve(db)
+			.await,
+
+		CliCommand::Migrate => migrations::Migrator::up(&db, None)
+			.await.expect("error applying migrations"),
 	}
 }
 
-async fn user(State(ctx) : State<()>, Path(id): Path<String>) -> Result<Json<serde_json::Value>, StatusCode> {
-	todo!()
-}
 
-async fn object(State(ctx) : State<()>, Path(id): Path<String>) -> Result<Json<serde_json::Value>, StatusCode> {
-	todo!()
-}
