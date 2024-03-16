@@ -1,4 +1,11 @@
 pub trait Activity : super::Object {
-	fn actor(&self) -> Option<&super::ObjectOrLink> { None }
-	fn object(&self) -> Option<&super::ObjectOrLink> { None }
+	fn activity_type(&self) -> Option<super::types::ActivityType> { None }
+
+	fn actor_id(&self) -> Option<&str> { None }
+	fn actor(&self) -> Option<&impl super::Object> { None::<&()> }
+
+	fn object_id(&self) -> Option<&str> { None }
+	fn object(&self) -> Option<&impl super::Object> { None::<&()> }
+
+	fn target(&self) -> Option<&str> { None }
 }

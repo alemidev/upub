@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use crate::activitystream::object::ToJson;
 use crate::activitystream::{types::ActivityType, Object, Type};
-use crate::model::user;
+use crate::model::{activity, object, user};
 use axum::{extract::{Path, State}, http::StatusCode, routing::{get, post}, Json, Router};
 use sea_orm::{DatabaseConnection, EntityTrait};
 
@@ -13,6 +13,7 @@ pub async fn serve(db: DatabaseConnection) {
 		.route("/inbox", post(inbox))
 		.route("/outbox", get(|| async { todo!() }))
 		.route("/users/:id", get(user))
+		.route("/activities/:id", get(activity))
 		.route("/objects/:id", get(object))
 		.with_state(Arc::new(db));
 
@@ -25,7 +26,7 @@ pub async fn serve(db: DatabaseConnection) {
 }
 
 async fn inbox(State(_db) : State<Arc<DatabaseConnection>>, Json(object): Json<serde_json::Value>) -> Result<Json<serde_json::Value>, StatusCode> {
-	match object.object_type() {
+	match object.full_type() {
 		None => { Err(StatusCode::BAD_REQUEST) },
 		Some(Type::Activity) => { Err(StatusCode::UNPROCESSABLE_ENTITY) },
 		Some(Type::ActivityType(ActivityType::Follow)) => { todo!() },
@@ -37,7 +38,8 @@ async fn inbox(State(_db) : State<Arc<DatabaseConnection>>, Json(object): Json<s
 }
 
 async fn user(State(db) : State<Arc<DatabaseConnection>>, Path(id): Path<String>) -> Result<Json<serde_json::Value>, StatusCode> {
-	match user::Entity::find_by_id(id).one(db.deref()).await {
+	let uri = format!("http://localhost:3000/users/{id}");
+	match user::Entity::find_by_id(uri).one(db.deref()).await {
 		Ok(Some(user)) => Ok(Json(user.json())),
 		Ok(None) => Err(StatusCode::NOT_FOUND),
 		Err(e) => {
@@ -47,6 +49,26 @@ async fn user(State(db) : State<Arc<DatabaseConnection>>, Path(id): Path<String>
 	}
 }
 
-async fn object(State(_db) : State<Arc<DatabaseConnection>>, Path(_id): Path<String>) -> Result<Json<serde_json::Value>, StatusCode> {
-	todo!()
+async fn activity(State(db) : State<Arc<DatabaseConnection>>, Path(id): Path<String>) -> Result<Json<serde_json::Value>, StatusCode> {
+	let uri = format!("http://localhost:3000/activities/{id}");
+	match activity::Entity::find_by_id(uri).one(db.deref()).await {
+		Ok(Some(activity)) => Ok(Json(activity.json())),
+		Ok(None) => Err(StatusCode::NOT_FOUND),
+		Err(e) => {
+			tracing::error!("error querying for activity: {e}");
+			Err(StatusCode::INTERNAL_SERVER_ERROR)
+		},
+	}
+}
+
+async fn object(State(db) : State<Arc<DatabaseConnection>>, Path(id): Path<String>) -> Result<Json<serde_json::Value>, StatusCode> {
+	let uri = format!("http://localhost:3000/objects/{id}");
+	match object::Entity::find_by_id(uri).one(db.deref()).await {
+		Ok(Some(object)) => Ok(Json(object.json())),
+		Ok(None) => Err(StatusCode::NOT_FOUND),
+		Err(e) => {
+			tracing::error!("error querying for object: {e}");
+			Err(StatusCode::INTERNAL_SERVER_ERROR)
+		},
+	}
 }

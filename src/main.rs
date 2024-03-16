@@ -1,11 +1,10 @@
 pub mod model;
 pub mod migrations;
 pub mod activitystream;
-pub mod activitypub;
 pub mod server;
 
 use clap::{Parser, Subcommand};
-use sea_orm::Database;
+use sea_orm::{ConnectOptions, Database};
 use sea_orm_migration::MigratorTrait;
 
 #[derive(Parser)]
@@ -43,7 +42,11 @@ async fn main() {
 		.with_max_level(if args.debug { tracing::Level::DEBUG } else { tracing::Level::INFO })
 		.init();
 
-	let db = Database::connect(&args.database)
+	let mut opts = ConnectOptions::new(&args.database);
+	opts
+		.max_connections(1);
+
+	let db = Database::connect(opts)
 		.await.expect("error connecting to db");
 
 	match args.command {

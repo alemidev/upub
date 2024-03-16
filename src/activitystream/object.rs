@@ -27,7 +27,7 @@ pub trait Link {
 
 pub trait Object {
 	fn id(&self) -> Option<&str> { None }
-	fn object_type(&self) -> Option<super::Type> { None }
+	fn full_type(&self) -> Option<super::Type> { None }
 	fn attachment (&self) -> Option<&str> { None }
 	fn attributed_to (&self) -> Option<&str> { None }
 	fn audience (&self) -> Option<&str> { None }
@@ -41,7 +41,7 @@ pub trait Object {
 	fn in_reply_to (&self) -> Option<&str> { None }
 	fn location (&self) -> Option<&str> { None }
 	fn preview (&self) -> Option<&str> { None }
-	fn published (&self) -> Option<&str> { None }
+	fn published (&self) -> Option<chrono::DateTime<chrono::Utc>> { None }
 	fn replies (&self) -> Option<&str> { None }
 	fn start_time (&self) -> Option<&str> { None }
 	fn summary (&self) -> Option<&str> { None }
@@ -66,7 +66,7 @@ impl Object for serde_json::Value {
 		self.get("id")?.as_str()
 	}
 
-	fn object_type(&self) -> Option<super::Type> {
+	fn full_type(&self) -> Option<super::Type> {
 		todo!()
 	}
 
@@ -88,16 +88,39 @@ pub trait ToJson : Object {
 impl<T> ToJson for T where T : Object {
 	fn json(&self) -> serde_json::Value {
 		let mut map = serde_json::Map::new();
+		let mp = &mut map;
 
-		if let Some(id) = self.id() {
+		put_str(mp, "id", self.id());
+		put_str(mp, "attributedTo", self.attributed_to());
+		put_str(mp, "name", self.name());
+		put_str(mp, "summary", self.summary());
+		put_str(mp, "content", self.content());
+
+		if let Some(t) = self.full_type() {
 			map.insert(
-				"id".to_string(),
-				serde_json::Value::String(id.to_string())
+				"type".to_string(),
+				serde_json::Value::String(format!("{t}")),
+			);
+		}
+
+		if let Some(published) = self.published() {
+			map.insert(
+				"published".to_string(),
+				serde_json::Value::String(published.to_rfc3339()),
 			);
 		}
 
 		// ... TODO!
 
 		serde_json::Value::Object(map)
+	}
+}
+
+fn put_str(map: &mut serde_json::Map<String, serde_json::Value>, k: &str, v: Option<&str>) {
+	if let Some(v) = v {
+		map.insert(
+			k.to_string(),
+			serde_json::Value::String(v.to_string()),
+		);
 	}
 }
