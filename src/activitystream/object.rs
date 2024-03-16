@@ -70,7 +70,7 @@ impl Object for serde_json::Value {
 		todo!()
 	}
 
-	// ...
+	// ... TODO!
 }
 
 impl Link for serde_json::Value {
@@ -78,5 +78,26 @@ impl Link for serde_json::Value {
 		self.get("href")?.as_str()
 	}
 
-	// ...
+	// ... TODO!
+}
+
+pub trait ToJson : Object {
+	fn json(&self) -> serde_json::Value;
+}
+
+impl<T> ToJson for T where T : Object {
+	fn json(&self) -> serde_json::Value {
+		let mut map = serde_json::Map::new();
+
+		if let Some(id) = self.id() {
+			map.insert(
+				"id".to_string(),
+				serde_json::Value::String(id.to_string())
+			);
+		}
+
+		// ... TODO!
+
+		serde_json::Value::Object(map)
+	}
 }
