@@ -14,7 +14,7 @@ struct CliArgs {
 	/// command to run
 	command: CliCommand,
 
-	#[arg(short, long, default_value = "sqlite://./anwt.db")]
+	#[arg(short, long, default_value = "sqlite://./upub.db")]
 	/// database connection uri
 	database: String,
 
