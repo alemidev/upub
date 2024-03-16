@@ -1,4 +1,6 @@
+
+pub mod user;
+pub mod status;
 pub mod activity;
-pub mod actor;
-pub mod webfinger;
-pub mod object;
+pub mod like;
+pub mod relation;
