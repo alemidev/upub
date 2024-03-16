@@ -30,6 +30,9 @@ enum CliCommand {
 
 	/// apply database migrations
 	Migrate,
+
+	/// generate fake user, note and activity
+	Faker,
 }
 
 #[tokio::main]
@@ -55,6 +58,9 @@ async fn main() {
 
 		CliCommand::Migrate => migrations::Migrator::up(&db, None)
 			.await.expect("error applying migrations"),
+
+		CliCommand::Faker => model::faker(&db)
+			.await.expect("error creating fake entities"),
 	}
 }
 
