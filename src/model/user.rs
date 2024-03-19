@@ -24,8 +24,8 @@ impl activitystream::Object for Model {
 		Some(&self.id)
 	}
 
-	fn full_type(&self) -> Option<activitystream::Type> {
-		Some(activitystream::Type::ActorType(self.actor_type))
+	fn full_type(&self) -> Option<activitystream::BaseType> {
+		Some(activitystream::BaseType::Object(activitystream::ObjectType::Actor(self.actor_type)))
 	}
 
 	fn name (&self) -> Option<&str> {
@@ -35,7 +35,7 @@ impl activitystream::Object for Model {
 
 impl Model {
 	pub fn new(object: &impl activitystream::Object) -> Result<Self, super::FieldError> {
-		let Some(activitystream::Type::ActorType(t)) = object.full_type() else {
+		let Some(activitystream::BaseType::Object(activitystream::ObjectType::Actor(t))) = object.full_type() else {
 			return Err(super::FieldError("type")); // TODO maybe just wrong? better errors!
 		};
 		Ok(Model {

@@ -1,6 +1,6 @@
 use sea_orm::entity::prelude::*;
 
-use crate::activitystream;
+use crate::activitystream::{self, ObjectType, BaseType};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "activities")]
@@ -28,8 +28,8 @@ impl activitystream::Object for Model {
 		Some(&self.id)
 	}
 
-	fn full_type(&self) -> Option<activitystream::Type> {
-		Some(activitystream::Type::ActivityType(self.activity_type))
+	fn full_type(&self) -> Option<activitystream::BaseType> {
+		Some(BaseType::Object(ObjectType::Activity(self.activity_type)))
 	}
 
 	fn published(&self) -> Option<chrono::DateTime<chrono::Utc>> {

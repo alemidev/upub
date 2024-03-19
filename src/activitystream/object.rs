@@ -1,33 +1,6 @@
-pub enum ObjectOrLink {
-	Object(Box<dyn Object>),
-	Link(Box<dyn Link>),
-}
-
-impl From<serde_json::Value> for ObjectOrLink {
-	fn from(value: serde_json::Value) -> Self {
-		if value.get("href").is_some() {
-			Self::Link(Box::new(value))
-		} else {
-			Self::Object(Box::new(value))
-		}
-	}
-}
-
-pub trait Link {
-	fn href(&self) -> Option<&str> { None }
-	fn rel(&self) -> Option<&str> { None }
-	fn media_type(&self) -> Option<&str> { None } // also in obj
-	fn name(&self) -> Option<&str> { None }       // also in obj
-	fn hreflang(&self) -> Option<&str> { None }
-	fn height(&self) -> Option<&str> { None }
-	fn width(&self) -> Option<&str> { None }
-	fn preview(&self) -> Option<&str> { None }    // also in obj
-}
-
-
 pub trait Object {
 	fn id(&self) -> Option<&str> { None }
-	fn full_type(&self) -> Option<super::Type> { None }
+	fn full_type(&self) -> Option<super::BaseType> { None }
 	fn attachment (&self) -> Option<&str> { None }
 	fn attributed_to (&self) -> Option<&str> { None }
 	fn audience (&self) -> Option<&str> { None }
@@ -66,61 +39,9 @@ impl Object for serde_json::Value {
 		self.get("id")?.as_str()
 	}
 
-	fn full_type(&self) -> Option<super::Type> {
-		todo!()
+	fn full_type(&self) -> Option<super::BaseType> {
+		self.get("type")?.as_str()?.try_into().ok()
 	}
 
 	// ... TODO!
-}
-
-impl Link for serde_json::Value {
-	fn href(&self) -> Option<&str> {
-		self.get("href")?.as_str()
-	}
-
-	// ... TODO!
-}
-
-pub trait ToJson : Object {
-	fn json(&self) -> serde_json::Value;
-}
-
-impl<T> ToJson for T where T : Object {
-	fn json(&self) -> serde_json::Value {
-		let mut map = serde_json::Map::new();
-		let mp = &mut map;
-
-		put_str(mp, "id", self.id());
-		put_str(mp, "attributedTo", self.attributed_to());
-		put_str(mp, "name", self.name());
-		put_str(mp, "summary", self.summary());
-		put_str(mp, "content", self.content());
-
-		if let Some(t) = self.full_type() {
-			map.insert(
-				"type".to_string(),
-				serde_json::Value::String(format!("{t}")),
-			);
-		}
-
-		if let Some(published) = self.published() {
-			map.insert(
-				"published".to_string(),
-				serde_json::Value::String(published.to_rfc3339()),
-			);
-		}
-
-		// ... TODO!
-
-		serde_json::Value::Object(map)
-	}
-}
-
-fn put_str(map: &mut serde_json::Map<String, serde_json::Value>, k: &str, v: Option<&str>) {
-	if let Some(v) = v {
-		map.insert(
-			k.to_string(),
-			serde_json::Value::String(v.to_string()),
-		);
-	}
 }

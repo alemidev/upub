@@ -1,6 +1,6 @@
 use sea_orm::entity::prelude::*;
 
-use crate::activitystream::{self, types::ObjectType};
+use crate::activitystream::{Object, types::{BaseType, ObjectType, StatusType}};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "objects")]
@@ -8,7 +8,7 @@ pub struct Model {
 	#[sea_orm(primary_key)]
 	/// must be full uri!!! maybe not great?
 	pub id: String,
-	pub object_type: ObjectType,
+	pub object_type: StatusType,
 	pub attributed_to: Option<String>,
 	pub name: Option<String>,
 	pub summary: Option<String>,
@@ -26,8 +26,8 @@ impl crate::activitystream::Object for Model {
 		Some(&self.id)
 	}
 
-	fn full_type(&self) -> Option<crate::activitystream::Type> {
-		Some(crate::activitystream::Type::ObjectType(self.object_type))
+	fn full_type(&self) -> Option<crate::activitystream::BaseType> {
+		Some(BaseType::Object(ObjectType::Status(self.object_type)))
 	}
 
 	fn attributed_to (&self) -> Option<&str> {
@@ -52,8 +52,8 @@ impl crate::activitystream::Object for Model {
 }
 
 impl Model {
-	pub fn new(object: &impl activitystream::Object) -> Result<Self, super::FieldError> {
-		let Some(activitystream::Type::ObjectType(t)) = object.full_type() else {
+	pub fn new(object: &impl Object) -> Result<Self, super::FieldError> {
+		let Some(BaseType::Object(ObjectType::Status(t))) = object.full_type() else {
 			return Err(super::FieldError("type")); // TODO maybe just wrong? better errors!
 		};
 		Ok(Model {
