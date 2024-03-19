@@ -1,4 +1,6 @@
-use crate::strenum;
+use crate::{activitystream::{Base, BaseType}, strenum};
+
+use super::ObjectType;
 
 strenum! {
 	pub enum ActorType {
@@ -20,7 +22,12 @@ pub trait Actor : super::Object {
 }
 
 impl Actor for serde_json::Value {
-
+	fn actor_type(&self) -> Option<ActorType> {
+		match self.base_type()? {
+			BaseType::Object(ObjectType::Actor(x)) => Some(x),
+			_ => None,
+		}
+	}
 }
 
 impl Profile for serde_json::Value {
