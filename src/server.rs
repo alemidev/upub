@@ -1,11 +1,9 @@
 use std::ops::Deref;
 use std::sync::Arc;
 
-use crate::activitystream::ObjectType;
-use crate::activitystream::ToJson;
-use crate::activitystream::Activity;
-use crate::activitystream::{types::ActivityType, Object, BaseType, LinkedObject};
-use crate::model::{activity, object, user};
+use crate::activitystream::object::{Activity, ActivityType};
+use crate::activitystream::{Base, BaseType, Node, ObjectType};
+use crate::model::{activity, object, user, ToJson};
 use axum::{extract::{Path, State}, http::StatusCode, routing::{get, post}, Json, Router};
 use sea_orm::{DatabaseConnection, EntityTrait, IntoActiveModel};
 
@@ -28,7 +26,7 @@ pub async fn serve(db: DatabaseConnection) {
 }
 
 async fn inbox(State(db) : State<Arc<DatabaseConnection>>, Json(object): Json<serde_json::Value>) -> Result<Json<serde_json::Value>, StatusCode> {
-	match object.full_type() {
+	match object.base_type() {
 		None => { Err(StatusCode::BAD_REQUEST) },
 		Some(BaseType::Link(_x)) => Err(StatusCode::UNPROCESSABLE_ENTITY), // we could but not yet
 		Some(BaseType::Object(ObjectType::Activity(ActivityType::Activity))) => Err(StatusCode::UNPROCESSABLE_ENTITY),
@@ -38,8 +36,8 @@ async fn inbox(State(db) : State<Arc<DatabaseConnection>>, Json(object): Json<se
 			let Ok(activity_entity) = activity::Model::new(&object) else {
 				return Err(StatusCode::UNPROCESSABLE_ENTITY);
 			};
-			let Some(LinkedObject::Object(obj)) = object.object() else {
-				// TODO we could process non-embedded activities but im lazy rn
+			let Node::Object(obj) = object.object() else {
+				// TODO we could process non-embedded activities or arrays but im lazy rn
 				return Err(StatusCode::UNPROCESSABLE_ENTITY);
 			};
 			let Ok(obj_entity) = object::Model::new(&obj) else {
