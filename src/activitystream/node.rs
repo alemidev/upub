@@ -94,8 +94,8 @@ impl From<serde_json::Value> for Node<serde_json::Value> {
 		match value {
 			serde_json::Value::String(uri) => Node::Link(Box::new(uri)),
 			serde_json::Value::Object(_) => match value.get("href") {
-				Some(_) => Node::Object(value),
-				None => Node::Link(Box::new(value)),
+				None => Node::Object(value),
+				Some(_) => Node::Link(Box::new(value)),
 			},
 			serde_json::Value::Array(arr) => Node::Array(
 				arr
