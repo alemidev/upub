@@ -3,8 +3,8 @@ use crate::strenum;
 strenum! {
 	pub enum OfferType {
 		Offer,
-		Invite
-	}
+		Invite;
+	};
 }
 
 pub trait Offer : super::Activity {

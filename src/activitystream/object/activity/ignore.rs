@@ -3,8 +3,8 @@ use crate::strenum;
 strenum! {
 	pub enum IgnoreType {
 		Ignore,
-		Block
-	}
+		Block;
+	};
 }
 
 pub trait Ignore : super::Activity {

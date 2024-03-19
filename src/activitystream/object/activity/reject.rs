@@ -3,8 +3,8 @@ use crate::strenum;
 strenum! {
 	pub enum RejectType {
 		Reject,
-		TentativeReject
-	}
+		TentativeReject;
+	};
 }
 
 pub trait Reject : super::Activity {

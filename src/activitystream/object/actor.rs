@@ -8,8 +8,8 @@ strenum! {
 		Group,
 		Organization,
 		Person,
-		Object
-	}
+		Object;
+	};
 }
 
 pub trait Profile : super::Object {

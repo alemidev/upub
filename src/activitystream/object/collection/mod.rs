@@ -9,8 +9,8 @@ strenum! {
 		Collection,
 		CollectionPage,
 		OrderedCollection,
-		OrderedCollectionPage
-	}
+		OrderedCollectionPage;
+	};
 }
 
 pub trait Collection : super::Object {

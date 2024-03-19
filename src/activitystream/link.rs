@@ -3,8 +3,8 @@ use crate::strenum;
 strenum! {
 	pub enum LinkType {
 		Link,
-		Mention
-	}
+		Mention;
+	};
 }
 
 pub trait Link : super::Base {

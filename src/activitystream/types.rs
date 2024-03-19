@@ -16,7 +16,7 @@ impl From<TypeValueError> for sea_orm::TryGetError {
 
 #[macro_export]
 macro_rules! strenum {
-	( $(pub enum $enum_name:ident { $($flat:ident),+ $($deep:ident($inner:ident)),*})+ ) => {
+	( $(pub enum $enum_name:ident { $($flat:ident),* ; $($deep:ident($inner:ident)),* };)+ ) => {
 		$(
 			#[derive(PartialEq, Eq, Debug, Clone, Copy)]
 			pub enum $enum_name {

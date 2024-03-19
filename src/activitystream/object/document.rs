@@ -6,8 +6,8 @@ strenum! {
 		Audio,
 		Image,
 		Page,
-		Video
-	}
+		Video;
+	};
 }
 
 pub trait Document : super::Object {

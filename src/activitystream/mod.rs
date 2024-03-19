@@ -13,11 +13,10 @@ use crate::strenum;
 
 strenum! {
 	pub enum BaseType {
-		Invalid
-
+		;
 		Object(ObjectType),
 		Link(LinkType)
-	}
+	};
 }
 
 pub trait Base {

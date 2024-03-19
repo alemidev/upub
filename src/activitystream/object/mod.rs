@@ -29,13 +29,13 @@ strenum! {
 		Place,
 		Profile,
 		Relationship,
-		Tombstone
+		Tombstone;
 	
 		Activity(ActivityType),
 		Actor(ActorType),
 		Collection(CollectionType),
 		Document(DocumentType)
-	}
+	};
 }
 
 pub trait Object : super::Base {

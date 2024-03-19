@@ -5,8 +5,8 @@ strenum! {
 		IntransitiveActivity,
 		Arrive,
 		Question,
-		Travel
-	}
+		Travel;
+	};
 }
 
 pub trait IntransitiveActivity : super::Activity {

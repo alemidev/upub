@@ -36,14 +36,14 @@ strenum! {
 		Remove,
 		Undo,
 		Update,
-		View
+		View;
 
 		IntransitiveActivity(IntransitiveActivityType),
 		Accept(AcceptType),
 		Ignore(IgnoreType),
 		Offer(OfferType),
 		Reject(RejectType)
-	}
+	};
 }
 
 pub trait Activity : super::Object {
