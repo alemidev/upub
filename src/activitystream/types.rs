@@ -14,8 +14,9 @@ impl From<TypeValueError> for sea_orm::TryGetError {
 	}
 }
 
+#[macro_export]
 macro_rules! strenum {
-	( $(pub enum $enum_name:ident { $($flat:ident),+ $($deep:ident($inner:ident)),*};)+ ) => {
+	( $(pub enum $enum_name:ident { $($flat:ident),+ $($deep:ident($inner:ident)),*})+ ) => {
 		$(
 			#[derive(PartialEq, Eq, Debug, Clone, Copy)]
 			pub enum $enum_name {
@@ -33,7 +34,7 @@ macro_rules! strenum {
 			}
 
 			impl TryFrom<&str> for $enum_name {
-				type Error = TypeValueError;
+				type Error = $crate::activitystream::types::TypeValueError;
 
 				fn try_from(value:&str) -> Result<Self, Self::Error> {
 					match value {
@@ -44,7 +45,7 @@ macro_rules! strenum {
 									return Ok(Self::$deep(x));
 								}
 							)*
-							Err(TypeValueError)
+							Err($crate::activitystream::types::TypeValueError)
 						},
 					}
 				}
@@ -86,143 +87,4 @@ macro_rules! strenum {
 			}
 		)*
 	};
-}
-
-strenum! {
-	pub enum BaseType {
-		Invalid
-
-		Object(ObjectType),
-		Link(LinkType)
-	};
-	
-	pub enum LinkType {
-		Base,
-		Mention
-	};
-	
-	pub enum ObjectType {
-		Object,
-		Relationship,
-		Tombstone
-
-		Activity(ActivityType),
-		Actor(ActorType),
-		Collection(CollectionType),
-		Status(StatusType)
-	};
-	
-	pub enum ActorType {
-		Application,
-		Group,
-		Organization,
-		Person,
-		Object
-	};
-	
-	pub enum StatusType {
-		Article,
-		Event,
-		Note,
-		Place,
-		Profile
-
-		Document(DocumentType)
-	};
-
-	pub enum CollectionType {
-		Collection,
-		CollectionPage,
-		OrderedCollection,
-		OrderedCollectionPage
-	};
-
-	pub enum AcceptType {
-		Accept,
-		TentativeAccept
-	};
-
-	pub enum DocumentType {
-		Document,
-		Audio,
-		Image,
-		Page,
-		Video
-	};
-	
-	pub enum ActivityType {
-		Activity,
-		Add,
-		Announce,
-		Create,
-		Delete,
-		Dislike,
-		Flag,
-		Follow,
-		Join,
-		Leave,
-		Like,
-		Listen,
-		Move,
-		Read,
-		Remove,
-		Undo,
-		Update,
-		View
-
-		IntransitiveActivity(IntransitiveActivityType),
-		Accept(AcceptType),
-		Ignore(IgnoreType),
-		Offer(OfferType),
-		Reject(RejectType)
-	};
-	
-	pub enum IntransitiveActivityType {
-		IntransitiveActivity,
-		Arrive,
-		Question,
-		Travel
-	};
-	
-	pub enum IgnoreType {
-		Ignore,
-		Block
-	};
-	
-	pub enum OfferType {
-		Offer,
-		Invite
-	};
-	
-	pub enum RejectType {
-		Reject,
-		TentativeReject
-	};
-}
-
-#[cfg(test)]
-mod test {
-	#[test]
-	fn assert_flat_types_serialize() {
-		let x = super::IgnoreType::Block;
-		assert_eq!("Block", <super::IgnoreType as AsRef<str>>::as_ref(&x));
-	}
-
-	#[test]
-	fn assert_deep_types_serialize() {
-		let x = super::StatusType::Document(super::DocumentType::Page);
-		assert_eq!("Page", <super::StatusType as AsRef<str>>::as_ref(&x));
-	}
-
-	#[test]
-	fn assert_flat_types_deserialize() {
-		let x = super::ActorType::try_from("Person").expect("could not deserialize");
-		assert_eq!(super::ActorType::Person, x);
-	}
-
-	#[test]
-	fn assert_deep_types_deserialize() {
-		let x = super::ActivityType::try_from("Invite").expect("could not deserialize");
-		assert_eq!(super::ActivityType::Offer(super::OfferType::Invite), x);
-	}
 }

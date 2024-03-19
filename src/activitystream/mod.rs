@@ -1,62 +1,48 @@
-pub mod object;
-pub use object::Object;
-
-
-pub mod actor;
-pub use actor::Actor;
-
-
-pub mod activity;
-pub use activity::Activity;
-
-
 pub mod types;
-pub use types::{BaseType, ObjectType, ActivityType, ActorType};
-
 
 pub mod link;
-pub use link::{Link, LinkedObject};
+pub use link::{Link, LinkType};
 
-pub trait ToJson : Object {
-	fn json(&self) -> serde_json::Value;
-}
+pub mod object;
+pub use object::{Object, ObjectType};
 
-impl<T> ToJson for T where T : Object {
-	fn json(&self) -> serde_json::Value {
-		let mut map = serde_json::Map::new();
-		let mp = &mut map;
+pub mod node;
+pub use node::Node;
 
-		put_str(mp, "id", self.id());
-		put_str(mp, "attributedTo", self.attributed_to());
-		put_str(mp, "name", self.name());
-		put_str(mp, "summary", self.summary());
-		put_str(mp, "content", self.content());
+use crate::strenum;
 
-		if let Some(t) = self.full_type() {
-			map.insert(
-				"type".to_string(),
-				serde_json::Value::String(format!("{t:?}")),
-			);
-		}
+strenum! {
+	pub enum BaseType {
+		Invalid
 
-		if let Some(published) = self.published() {
-			map.insert(
-				"published".to_string(),
-				serde_json::Value::String(published.to_rfc3339()),
-			);
-		}
-
-		// ... TODO!
-
-		serde_json::Value::Object(map)
+		Object(ObjectType),
+		Link(LinkType)
 	}
 }
 
-fn put_str(map: &mut serde_json::Map<String, serde_json::Value>, k: &str, v: Option<&str>) {
-	if let Some(v) = v {
-		map.insert(
-			k.to_string(),
-			serde_json::Value::String(v.to_string()),
-		);
+pub trait Base {
+	fn id(&self) -> Option<&str> { None }
+	fn base_type(&self) -> Option<BaseType> { None }
+}
+
+impl Base for () {}
+
+impl Base for String {
+	fn id(&self) -> Option<&str> {
+		Some(self)
+	}
+
+	fn base_type(&self) -> Option<BaseType> {
+		Some(BaseType::Link(LinkType::Link))
+	}
+}
+
+impl Base for serde_json::Value {
+	fn id(&self) -> Option<&str> {
+		self.get("id")?.as_str()
+	}
+
+	fn base_type(&self) -> Option<BaseType> {
+		self.get("type")?.as_str()?.try_into().ok()
 	}
 }
