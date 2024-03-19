@@ -70,6 +70,7 @@ pub trait Object : super::Base {
 
 impl Object for serde_json::Value {
 	fn object_type(&self) -> Option<ObjectType> {
+		use super::Base;
 		match self.base_type() {
 			Some(super::BaseType::Object(o)) => Some(o),
 			_ => None,
