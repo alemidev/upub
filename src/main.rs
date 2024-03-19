@@ -4,8 +4,10 @@ pub mod activitystream;
 pub mod server;
 
 use clap::{Parser, Subcommand};
-use sea_orm::{ConnectOptions, Database};
+use sea_orm::{ConnectOptions, Database, EntityTrait, IntoActiveModel};
 use sea_orm_migration::MigratorTrait;
+
+use crate::activitystream::{BaseType, ObjectType};
 
 #[derive(Parser)]
 /// all names were taken
@@ -33,6 +35,16 @@ enum CliCommand {
 
 	/// generate fake user, note and activity
 	Faker,
+
+	/// fetch a single AP object
+	Fetch {
+		/// object id, or uri, to fetch
+		uri: String,
+
+		#[arg(long, default_value_t = false)]
+		/// store fetched object in local db
+		save: bool,
+	},
 }
 
 #[tokio::main]
@@ -61,7 +73,49 @@ async fn main() {
 
 		CliCommand::Faker => model::faker(&db)
 			.await.expect("error creating fake entities"),
+
+		CliCommand::Fetch { uri, save } => fetch(&db, &uri, save)
+			.await.expect("error fetching object"),
 	}
 }
 
 
+
+async fn fetch(db: &sea_orm::DatabaseConnection, uri: &str, save: bool) -> reqwest::Result<()> {
+	use crate::activitystream::{Base, Object};
+
+	let mut node = activitystream::Node::from(uri);
+	tracing::info!("fetching object");
+	node.fetch().await?;
+	tracing::info!("fetched node");
+
+	let obj = node.get().expect("node still empty after fetch?");
+
+	tracing::info!("fetched object:{}, name:{}", obj.id().unwrap_or(""), obj.name().unwrap_or(""));
+	
+	if save {
+		match obj.base_type() {
+			Some(BaseType::Object(ObjectType::Actor(_))) => {
+				model::user::Entity::insert(
+					model::user::Model::new(obj).unwrap().into_active_model()
+				).exec(db).await.unwrap();
+			},
+			Some(BaseType::Object(ObjectType::Activity(_))) => {
+				model::activity::Entity::insert(
+					model::activity::Model::new(obj).unwrap().into_active_model()
+				).exec(db).await.unwrap();
+			},
+			Some(BaseType::Object(ObjectType::Note)) => {
+				model::object::Entity::insert(
+					model::object::Model::new(obj).unwrap().into_active_model()
+				).exec(db).await.unwrap();
+			},
+			Some(BaseType::Object(t)) => tracing::warn!("not implemented: {:?}", t),
+			Some(BaseType::Link(_)) => tracing::error!("fetched another link?"),
+			Some(BaseType::Invalid) => tracing::error!("making this was a mistake"),
+			None => tracing::error!("no type on object"),
+		}
+	}
+
+	Ok(())
+}
