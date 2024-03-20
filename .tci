@@ -7,7 +7,7 @@ systemctl --user stop upub
 echo "installing new binary"
 cat ./target/release/upub > /opt/bin/upub
 echo "applying migrations"
-/opt/bin/upub --database /srv/tci/upub.db migrate
+/opt/bin/upub --database /srv/tci/upub.db --domain https://feditest.alemi.dev migrate
 echo "restarting service"
 systemctl --user start upub
 echo "done"
