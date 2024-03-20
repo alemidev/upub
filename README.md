@@ -9,9 +9,9 @@
 
  - [x] barebone actors
  - [x] barebone activities and objects
+ - [x] activitystreams/activitypub compliance (well mostly)
  - [ ] process barebones inbox
  - [ ] process barebones outbox
- - [ ] activitystreams/activitypub compliance
  - [ ] http signatures
  - [ ] privacy, targets, scopes
  - [ ] more optimized database schema
