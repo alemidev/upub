@@ -5,13 +5,15 @@
 
 μpub is currently being developed and can't be used at all, get in touch if you want to contribute! :)
 
+a test instance is _usually_ available at [feditest.alemi.dev](https://feditest.alemi.dev)
+
 ## progress
 
  - [x] barebone actors
  - [x] barebone activities and objects
  - [x] activitystreams/activitypub compliance (well mostly)
+ - [x] process barebones outbox
  - [ ] process barebones inbox
- - [ ] process barebones outbox
  - [ ] http signatures
  - [ ] privacy, targets, scopes
  - [ ] more optimized database schema
