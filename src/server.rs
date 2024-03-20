@@ -10,6 +10,7 @@ struct ContextInner {
 	db: DatabaseConnection,
 	domain: String,
 }
+
 impl Context {
 	pub fn new(db: DatabaseConnection, mut domain: String) -> Self {
 		if !domain.starts_with("http") {
@@ -29,6 +30,18 @@ impl Context {
 		if id.starts_with("http") { id } else {
 			format!("{}/{}/{}", self.0.domain, entity, id)
 		}
+	}
+
+	pub fn user_uri(&self, id: String) -> String {
+		self.uri("users", id)
+	}
+
+	pub fn object_uri(&self, id: String) -> String {
+		self.uri("objects", id)
+	}
+
+	pub fn activity_uri(&self, id: String) -> String {
+		self.uri("activities", id)
 	}
 
 	pub fn id(&self, id: String) -> String {

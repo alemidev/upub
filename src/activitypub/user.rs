@@ -10,7 +10,7 @@ pub async fn list(State(_db) : State<Arc<DatabaseConnection>>) -> Result<Json<se
 }
 
 pub async fn view(State(ctx) : State<Context>, Path(id): Path<String>) -> Result<Json<serde_json::Value>, StatusCode> {
-	match user::Entity::find_by_id(ctx.uri("users", id)).one(ctx.db()).await {
+	match user::Entity::find_by_id(ctx.user_uri(id)).one(ctx.db()).await {
 		Ok(Some(user)) => Ok(Json(user.underlying_json_object())),
 		Ok(None) => Err(StatusCode::NOT_FOUND),
 		Err(e) => {
@@ -29,7 +29,7 @@ pub async fn outbox(
 
 		// find requested recent post, to filter based on its date (use now() as fallback)
 		let before = if let Some(before) = page.max_id {
-			match model::activity::Entity::find_by_id(ctx.uri("activities", before))
+			match model::activity::Entity::find_by_id(ctx.activity_uri(before))
 				.one(ctx.db()).await
 			{
 				Ok(None) => return Err(StatusCode::NOT_FOUND),
