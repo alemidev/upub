@@ -66,8 +66,11 @@ impl Activity for Model {
 		}
 	}
 
-	fn target(&self) -> Option<&str> {
-		self.target.as_deref()
+	fn target(&self) -> Node<impl Object> {
+		match &self.target {
+			None => Node::Empty::<serde_json::Value>,
+			Some(x) => Node::Link(Box::new(x.clone())),
+		}
 	}
 }
 
@@ -78,7 +81,7 @@ impl Model {
 			activity_type: activity.activity_type().ok_or(super::FieldError("type"))?,
 			actor: activity.actor().id().ok_or(super::FieldError("actor"))?.to_string(),
 			object: activity.object().id().map(|x| x.to_string()),
-			target: activity.target().map(|x| x.to_string()),
+			target: activity.target().id().map(|x| x.to_string()),
 			published: activity.published().ok_or(super::FieldError("published"))?,
 		})
 	}

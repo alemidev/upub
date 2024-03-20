@@ -30,7 +30,14 @@ pub trait Base {
 }
 
 pub fn object() -> serde_json::Value {
-	serde_json::Value::Object(serde_json::Map::default())
+	let mut map = serde_json::Map::default();
+	map.insert(
+		"@context".to_string(),
+		serde_json::Value::Array(vec![
+			serde_json::Value::String("https://www.w3.org/ns/activitystreams".into())
+		]),
+	);
+	serde_json::Value::Object(map)
 }
 
 pub trait BaseMut {
