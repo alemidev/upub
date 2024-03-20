@@ -1,6 +1,6 @@
 use sea_orm::entity::prelude::*;
 
-use crate::activitystream::{node::InsertStr, object::{Actor, ActorType}, Base, BaseType, Object, ObjectType};
+use crate::activitystream::{macros::InsertValue, object::actor::{Actor, ActorType}, Base, BaseType, Object, ObjectType};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "users")]
@@ -27,6 +27,14 @@ impl Base for Model {
 	fn base_type(&self) -> Option<BaseType> {
 		Some(BaseType::Object(ObjectType::Actor(self.actor_type)))
 	}
+
+	fn underlying_json_object(self) -> serde_json::Value {
+		let mut map = serde_json::Map::new();
+		map.insert_str("id", Some(&self.id));
+		map.insert_str("type", Some(self.actor_type.as_ref()));
+		map.insert_str("name", Some(&self.name));
+		serde_json::Value::Object(map)
+	}
 }
 
 impl Object for Model {
@@ -48,15 +56,5 @@ impl Model {
 			actor_type: object.actor_type().ok_or(super::FieldError("type"))?,
 			name: object.name().ok_or(super::FieldError("name"))?.to_string(),
 		})
-	}
-}
-
-impl super::ToJson for Model {
-	fn json(&self) -> serde_json::Value {
-		let mut map = serde_json::Map::new();
-		map.insert_str("id", Some(&self.id));
-		map.insert_str("type", Some(self.actor_type.as_ref()));
-		map.insert_str("name", Some(&self.name));
-		serde_json::Value::Object(map)
 	}
 }

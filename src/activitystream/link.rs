@@ -18,6 +18,17 @@ pub trait Link : super::Base {
 	fn preview(&self) -> Option<&str> { None }    // also in obj
 }
 
+pub trait LinkMut : super::BaseMut {
+	fn set_href(&mut self, href: &str) -> &mut Self;
+	fn set_rel(&mut self, val: Option<&str>) -> &mut Self;
+	fn set_media_type(&mut self, val: Option<&str>) -> &mut Self; // also in obj
+	fn set_name(&mut self, val: Option<&str>) -> &mut Self;       // also in obj
+	fn set_hreflang(&mut self, val: Option<&str>) -> &mut Self;
+	fn set_height(&mut self, val: Option<&str>) -> &mut Self;
+	fn set_width(&mut self, val: Option<&str>) -> &mut Self;
+	fn set_preview(&mut self, val: Option<&str>) -> &mut Self;    // also in obj
+}
+
 impl Link for String {
 	fn href(&self) -> &str {
 		self

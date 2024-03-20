@@ -1,6 +1,6 @@
 use sea_orm::entity::prelude::*;
 
-use crate::activitystream::{node::{InsertStr, Node}, object::{activity::{Activity, ActivityType}, actor::Actor, Object, ObjectType}, Base, BaseType};
+use crate::activitystream::{Node, macros::InsertValue, object::{activity::{Activity, ActivityType}, actor::Actor, Object, ObjectType}, Base, BaseType};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "activities")]
@@ -30,6 +30,17 @@ impl Base for Model {
 
 	fn base_type(&self) -> Option<BaseType> {
 		Some(BaseType::Object(ObjectType::Activity(self.activity_type)))
+	}
+
+	fn underlying_json_object(self) -> serde_json::Value {
+		let mut map = serde_json::Map::new();
+		map.insert_str("id", Some(&self.id));
+		map.insert_str("type", Some(self.activity_type.as_ref()));
+		map.insert_str("actor", Some(&self.actor));
+		map.insert_str("object", self.object.as_deref());
+		map.insert_str("target", self.target.as_deref());
+		map.insert_timestr("published", Some(self.published));
+		serde_json::Value::Object(map)
 	}
 }
 
@@ -70,18 +81,5 @@ impl Model {
 			target: activity.target().map(|x| x.to_string()),
 			published: activity.published().ok_or(super::FieldError("published"))?,
 		})
-	}
-}
-
-impl super::ToJson for Model {
-	fn json(&self) -> serde_json::Value {
-		let mut map = serde_json::Map::new();
-		map.insert_str("id", Some(&self.id));
-		map.insert_str("type", Some(self.activity_type.as_ref()));
-		map.insert_str("actor", Some(&self.actor));
-		map.insert_str("object", self.object.as_deref());
-		map.insert_str("target", self.target.as_deref());
-		map.insert_timestr("published", Some(self.published));
-		serde_json::Value::Object(map)
 	}
 }

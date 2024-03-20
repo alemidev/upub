@@ -1,6 +1,7 @@
 pub mod model;
 pub mod migrations;
 pub mod activitystream;
+pub mod activitypub;
 pub mod server;
 
 use clap::{Parser, Subcommand};
@@ -112,7 +113,6 @@ async fn fetch(db: &sea_orm::DatabaseConnection, uri: &str, save: bool) -> reqwe
 			},
 			Some(BaseType::Object(t)) => tracing::warn!("not implemented: {:?}", t),
 			Some(BaseType::Link(_)) => tracing::error!("fetched another link?"),
-			Some(BaseType::Invalid) => tracing::error!("making this was a mistake"),
 			None => tracing::error!("no type on object"),
 		}
 	}

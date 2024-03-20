@@ -10,5 +10,9 @@ strenum! {
 }
 
 pub trait IntransitiveActivity : super::Activity {
-	fn intransitive_activity_type(&self) -> Option<IntransitiveActivityType>;
+	fn intransitive_activity_type(&self) -> Option<IntransitiveActivityType> { None }
+}
+
+pub trait IntransitiveActivityMut : super::ActivityMut {
+	fn set_intransitive_activity_type(&mut self, val: Option<IntransitiveActivityType>) -> &mut Self;
 }

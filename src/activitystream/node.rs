@@ -1,22 +1,20 @@
-use super::Object;
-
-pub enum Node<T> {
-	Array(Vec<Node<T>>),
-	Object(T),
+pub enum Node<T : super::Base> {
+	Array(Vec<Node<T>>), // TODO would be cool to make it Box<[Node<T>]> so that Node is just a ptr
+	Object(Box<T>),
 	Link(Box<dyn super::Link>),
 	Empty,
 }
 
-impl<T> From<Option<T>> for Node<T> {
+impl<T : super::Base> From<Option<T>> for Node<T> {
 	fn from(value: Option<T>) -> Self {
 		match value {
-			Some(x) => Node::Object(x),
+			Some(x) => Node::Object(Box::new(x)),
 			None => Node::Empty,
 		}
 	}
 }
 
-impl<T> Node<T> {
+impl<T : super::Base> Node<T> {
 	pub fn get(&self) -> Option<&T> {
 		match self {
 			Node::Empty | Node::Link(_) => None,
@@ -37,7 +35,7 @@ impl<T> Node<T> {
 			Node::Object(x) => Some(vec![x]),
 			Node::Array(v) =>
 				Some(v.iter().filter_map(|x| match x {
-					Node::Object(x) => Some(x),
+					Node::Object(x) => Some(&**x),
 					_ => None,
 				}).collect()),
 		}
@@ -58,12 +56,24 @@ impl<T> Node<T> {
 			Node::Array(v) => v.len(),
 		}
 	}
-}
 
-impl<T> Node<T>
-where
-	T : Object
-{
+	pub fn flat(self) -> Vec<serde_json::Value> {
+		match self {
+			Node::Empty => vec![],
+			Node::Link(l) => vec![serde_json::Value::String(l.href().to_string())],
+			Node::Object(x) => vec![x.underlying_json_object()],
+			Node::Array(arr) => {
+				arr
+					.into_iter()
+					.filter_map(|node| match node {
+						Node::Empty | Node::Link(_) => None,
+						Node::Object(o) => Some(o.underlying_json_object()),
+						Node::Array(_) => Some(serde_json::Value::Array(node.flat())),
+					}).collect()
+			}
+		}
+	}
+
 	pub fn id(&self) -> Option<&str> {
 		match self {
 			Node::Empty => None,
@@ -71,6 +81,22 @@ where
 			Node::Object(obj) => obj.id(),
 			Node::Array(arr) => arr.first()?.id(),
 		}
+	}
+}
+
+impl Node<serde_json::Value>{
+	pub async fn fetch(&mut self) -> reqwest::Result<()> {
+		if let Node::Link(link) = self {
+			*self = reqwest::Client::new()
+				.get(link.href())
+				.header("Accept", "application/json")
+				.send()
+				.await?
+				.json::<serde_json::Value>()
+				.await?
+				.into();
+		}
+		Ok(())
 	}
 }
 
@@ -94,7 +120,7 @@ impl From<serde_json::Value> for Node<serde_json::Value> {
 		match value {
 			serde_json::Value::String(uri) => Node::Link(Box::new(uri)),
 			serde_json::Value::Object(_) => match value.get("href") {
-				None => Node::Object(value),
+				None => Node::Object(Box::new(value)),
 				Some(_) => Node::Link(Box::new(value)),
 			},
 			serde_json::Value::Array(arr) => Node::Array(
@@ -107,23 +133,6 @@ impl From<serde_json::Value> for Node<serde_json::Value> {
 		}
 	}
 }
-
-impl Node<serde_json::Value>{
-	pub async fn fetch(&mut self) -> reqwest::Result<()> {
-		if let Node::Link(link) = self {
-			*self = reqwest::Client::new()
-				.get(link.href())
-				.header("Accept", "application/json")
-				.send()
-				.await?
-				.json::<serde_json::Value>()
-				.await?
-				.into();
-		}
-		Ok(())
-	}
-}
-
 
 
 

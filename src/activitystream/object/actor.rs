@@ -12,13 +12,12 @@ strenum! {
 	};
 }
 
-pub trait Profile : super::Object {
-	// not a Node because it's always embedded and one
-	fn describes(&self) -> Option<impl super::Object> { None::<serde_json::Value> }
-}
-
 pub trait Actor : super::Object {
 	fn actor_type(&self) -> Option<ActorType> { None }
+}
+
+pub trait ActorMut : super::ObjectMut {
+	fn set_actor_type(&mut self, val: Option<ActorType>) -> &mut Self;
 }
 
 impl Actor for serde_json::Value {
@@ -28,8 +27,4 @@ impl Actor for serde_json::Value {
 			_ => None,
 		}
 	}
-}
-
-impl Profile for serde_json::Value {
-
 }

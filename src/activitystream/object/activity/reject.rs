@@ -8,5 +8,9 @@ strenum! {
 }
 
 pub trait Reject : super::Activity {
-	fn reject_type(&self) -> Option<RejectType>;
+	fn reject_type(&self) -> Option<RejectType> { None }
+}
+
+pub trait RejectMut : super::ActivityMut {
+	fn set_reject_type(&mut self, val: Option<RejectType>) -> &mut Self;
 }

@@ -1,21 +1,16 @@
 pub mod accept;
-pub use accept::{Accept, AcceptType};
-
 pub mod ignore;
-pub use ignore::{Ignore, IgnoreType};
-
 pub mod intransitive;
-pub use intransitive::{IntransitiveActivity, IntransitiveActivityType};
-
 pub mod offer;
-pub use offer::{Offer, OfferType};
-
 pub mod reject;
-pub use reject::{Reject, RejectType};
 
-use crate::activitystream::node::NodeExtractor;
 use crate::activitystream::Node;
 use crate::strenum;
+use accept::AcceptType;
+use reject::RejectType;
+use offer::OfferType;
+use intransitive::IntransitiveActivityType;
+use ignore::IgnoreType;
 
 strenum! {
 	pub enum ActivityType {
@@ -56,17 +51,19 @@ pub trait Activity : super::Object {
 	fn instrument(&self) -> Node<impl super::Object> { Node::Empty::<serde_json::Value> }
 }
 
+pub trait ActivityMut : super::ObjectMut {
+	fn set_activity_type(&mut self, val: Option<ActivityType>) -> &mut Self;
+	fn set_actor(&mut self, val: Node<impl super::Actor>) -> &mut Self;
+	fn set_object(&mut self, val: Node<impl super::Object>) -> &mut Self;
+	fn set_target(&mut self, val: Option<&str>) -> &mut Self;
+	fn set_result(&mut self, val: Node<impl super::Object>) -> &mut Self;
+	fn set_origin(&mut self, val: Node<impl super::Object>) -> &mut Self;
+	fn set_instrument(&mut self, val: Node<impl super::Object>) -> &mut Self;
+}
+
 impl Activity for serde_json::Value {
 	fn activity_type(&self) -> Option<ActivityType> {
 		let serde_json::Value::String(t) = self.get("type")? else { return None };
 		ActivityType::try_from(t.as_str()).ok()
-	}
-
-	fn object(&self) -> Node<impl super::Object> {
-		self.node_vec("object")
-	}
-
-	fn actor(&self) -> Node<impl super::Actor> {
-		self.node_vec("actor")
 	}
 }

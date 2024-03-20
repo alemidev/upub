@@ -1,24 +1,20 @@
-pub mod actor;
-pub use actor::{Actor, Profile, ActorType};
-
-pub mod collection;
-pub use collection::{Collection, CollectionPage, CollectionType};
-
-pub mod document;
-pub use document::{Document, Image, Place, DocumentType};
-
 pub mod activity;
-pub use activity::{Activity, ActivityType};
-
+pub mod actor;
+pub mod collection;
+pub mod document;
 pub mod tombstone;
-pub use tombstone::Tombstone;
-
+pub mod place;
+pub mod profile;
 pub mod relationship;
-pub use relationship::Relationship;
 
-use crate::strenum;
+use crate::{getter, setter, strenum};
 
-use super::{node::NodeExtractor, Node};
+use super::Node;
+
+use actor::{Actor, ActorType};
+use document::{Image, DocumentType};
+use activity::ActivityType;
+use collection::{Collection, CollectionType};
 
 strenum! {
 	pub enum ObjectType {
@@ -68,63 +64,105 @@ pub trait Object : super::Base {
 	fn duration(&self) -> Option<&str> { None } // TODO how to parse xsd:duration ?
 }
 
+pub trait ObjectMut : super::BaseMut {
+	fn set_object_type(&mut self, val: Option<ObjectType>) -> &mut Self;
+	fn set_attachment(&mut self, val: Node<impl Object>) -> &mut Self;
+	fn set_attributed_to(&mut self, val: Node<impl Actor>) -> &mut Self;
+	fn set_audience(&mut self, val: Node<impl Actor>) -> &mut Self;
+	fn set_content(&mut self, val: Option<&str>) -> &mut Self; // TODO handle language maps
+	fn set_context(&mut self, val: Node<impl Object>) -> &mut Self; 
+	fn set_name(&mut self, val: Option<&str>) -> &mut Self;       // also in link // TODO handle language maps
+	fn set_end_time(&mut self, val: Option<chrono::DateTime<chrono::Utc>>) -> &mut Self;
+	fn set_generator(&mut self, val: Node<impl Actor>) -> &mut Self;
+	fn set_icon(&mut self, val: Node<impl Image>) -> &mut Self;
+	fn set_image(&mut self, val: Node<impl Image>) -> &mut Self;
+	fn set_in_reply_to(&mut self, val: Node<impl Object>) -> &mut Self;
+	fn set_location(&mut self, val: Node<impl Object>) -> &mut Self;
+	fn set_preview(&mut self, val: Node<impl Object>) -> &mut Self;    // also in link
+	fn set_published(&mut self, val: Option<chrono::DateTime<chrono::Utc>>) -> &mut Self;
+	fn set_replies(&mut self, val: Node<impl Collection>) -> &mut Self;
+	fn set_start_time(&mut self, val: Option<chrono::DateTime<chrono::Utc>>) -> &mut Self;
+	fn set_summary(&mut self, val: Option<&str>) -> &mut Self;
+	fn set_tag(&mut self, val: Node<impl Object>) -> &mut Self;
+	fn set_updated(&mut self, val: Option<chrono::DateTime<chrono::Utc>>) -> &mut Self;
+	fn set_url(&mut self, val: Option<Vec<impl super::Link>>) -> &mut Self;
+	fn set_to(&mut self, val: Node<impl Object>) -> &mut Self;
+	fn set_bto(&mut self, val: Node<impl Object>) -> &mut Self;
+	fn set_cc(&mut self, val: Node<impl Object>) -> &mut Self;
+	fn set_bcc(&mut self, val: Node<impl Object>) -> &mut Self;
+	fn set_media_type(&mut self, val: Option<&str>) -> &mut Self; // also in link
+	fn set_duration(&mut self, val: Option<&str>) -> &mut Self; // TODO how to parse xsd:duration ?
+}
+
 impl Object for serde_json::Value {
-	fn object_type(&self) -> Option<ObjectType> {
-		use super::Base;
-		match self.base_type() {
-			Some(super::BaseType::Object(o)) => Some(o),
-			_ => None,
-		}
-	}
+	
+	getter! { object_type -> type ObjectType }
+	getter! { attachment -> node impl Object }
+	getter! { attributed_to::attributedTo -> node impl Actor }
+	getter! { audience -> node impl Actor }
+	getter! { content -> &str }
+	getter! { context -> node impl Object }
+	getter! { name -> &str }
+	getter! { end_time::endTime -> chrono::DateTime<chrono::Utc> }
+	getter! { generator -> node impl Actor }
+	getter! { icon -> node impl Image }
+	getter! { image -> node impl Image }
+	getter! { in_reply_to::inReplyTo -> node impl Object }
+	getter! { location -> node impl Object }
+	getter! { preview -> node impl Object }
+	getter! { published -> chrono::DateTime<chrono::Utc> }
+	getter! { replies -> node impl Collection }
+	getter! { start_time::startTime -> chrono::DateTime<chrono::Utc> }
+	getter! { summary -> &str }
+	getter! { tag -> node impl Object }
+	getter! { updated -> chrono::DateTime<chrono::Utc> }
+	getter! { to -> node impl Object }
+	getter! { bto -> node impl Object }
+	getter! { cc -> node impl Object }
+	getter! { bcc -> node impl Object }
+	getter! { media_type -> &str }
+	getter! { duration -> &str }
 
-	fn attachment(&self) -> Node<impl Object> {
-		self.node_vec("attachment")
-	}
-
-	fn attributed_to(&self) -> Node<impl Actor> {
-		self.node_vec("attributedTo")
-	}
-
-	fn audience(&self) -> Node<impl Actor> {
-		self.node_vec("audience")
-	}
-
-	fn content(&self) -> Option<&str> {
-		self.get("content")?.as_str()
-	}
-
-	fn name(&self) -> Option<&str> {
-		self.get("name")?.as_str()
-	}
-
-	fn end_time(&self) -> Option<chrono::DateTime<chrono::Utc>> {
+	fn url(&self) -> Option<Vec<impl super::Link>> { 
 		Some(
-			chrono::DateTime::parse_from_rfc3339(
-					self
-						.get("endTime")?
-						.as_str()?
-				)
-				.ok()?
-				.with_timezone(&chrono::Utc))
+			self.get("url")?
+				.as_array()?
+				.iter()
+				.filter_map(|x| Some(x.as_str()?.to_string()))
+				.collect()
+		)
 	}
+}
 
-	fn generator(&self) -> Node<impl Actor> {
-		self.node_vec("generator")
-	}
+impl ObjectMut for serde_json::Value {
+	setter! { object_type -> type ObjectType }
+	setter! { attachment -> node impl Object }
+	setter! { attributed_to::attributedTo -> node impl Actor }
+	setter! { audience -> node impl Actor }
+	setter! { content -> &str }
+	setter! { context -> node impl Object }
+	setter! { name -> &str }
+	setter! { end_time::endTime -> chrono::DateTime<chrono::Utc> }
+	setter! { generator -> node impl Actor }
+	setter! { icon -> node impl Image }
+	setter! { image -> node impl Image }
+	setter! { in_reply_to::inReplyTo -> node impl Object }
+	setter! { location -> node impl Object }
+	setter! { preview -> node impl Object }
+	setter! { published -> chrono::DateTime<chrono::Utc> }
+	setter! { replies -> node impl Collection }
+	setter! { start_time::startTime -> chrono::DateTime<chrono::Utc> }
+	setter! { summary -> &str }
+	setter! { tag -> node impl Object }
+	setter! { updated -> chrono::DateTime<chrono::Utc> }
+	setter! { to -> node impl Object }
+	setter! { bto -> node impl Object}
+	setter! { cc -> node impl Object }
+	setter! { bcc -> node impl Object }
+	setter! { media_type -> &str }
+	setter! { duration -> &str }
 
-	fn icon(&self) -> Node<impl Image> {
-		self.node_vec("icon")
-	}
-
-	fn image(&self) -> Node<impl Image> {
-		self.node_vec("image")
-	}
-
-	fn in_reply_to(&self) -> Node<impl Object> {
-		self.node_vec("inReplyTo")
-	}
-
-	fn location(&self) -> Node<impl Object> {
-		self.node_vec("location")
+	fn set_url(&mut self, _val: Option<Vec<impl super::Link>>) -> &mut Self {
+		todo!()
 	}
 }
