@@ -85,6 +85,18 @@ impl<T : super::Base> Node<T> {
 }
 
 impl Node<serde_json::Value>{
+	pub fn link(uri: &str) -> Self {
+		Node::Link(Box::new(uri.to_string()))
+	}
+
+	pub fn object(x: serde_json::Value) -> Self {
+		Node::Object(Box::new(x))
+	}
+
+	pub fn array(x: Vec<impl super::Base>) -> Self {
+		Node::Array(x.into_iter().map(|x| Node::object(x.underlying_json_object())).collect())
+	}
+
 	pub async fn fetch(&mut self) -> reqwest::Result<()> {
 		if let Node::Link(link) = self {
 			*self = reqwest::Client::new()
