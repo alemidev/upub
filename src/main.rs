@@ -17,11 +17,11 @@ struct CliArgs {
 	/// command to run
 	command: CliCommand,
 
-	#[arg(short, long, default_value = "sqlite://./upub.db")]
+	#[arg(short = 'd', long = "db", default_value = "sqlite://./upub.db")]
 	/// database connection uri
 	database: String,
 
-	#[arg(short, long, default_value = "http://localhost:3000")]
+	#[arg(short = 'D', long, default_value = "http://localhost:3000")]
 	/// instance base domain, for AP ids
 	domain: String,
 
