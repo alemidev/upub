@@ -85,8 +85,28 @@ impl<T : super::Base> Node<T> {
 }
 
 impl Node<serde_json::Value>{
-	pub fn link(uri: &str) -> Self {
-		Node::Link(Box::new(uri.to_string()))
+	pub fn empty() -> Self {
+		Node::Empty
+	}
+
+	pub fn link(uri: String) -> Self {
+		Node::Link(Box::new(uri))
+	}
+
+	pub fn links(uris: Vec<String>) -> Self {
+		Node::Array(
+			uris
+				.into_iter()
+				.map(Node::link)
+				.collect()
+		)
+	}
+
+	pub fn maybe_link(uri: Option<String>) -> Self {
+		match uri {
+			Some(uri) => Node::Link(Box::new(uri)),
+			None => Node::Empty,
+		}
 	}
 
 	pub fn object(x: serde_json::Value) -> Self {
@@ -145,8 +165,4 @@ impl From<serde_json::Value> for Node<serde_json::Value> {
 		}
 	}
 }
-
-
-
-
 

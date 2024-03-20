@@ -2,11 +2,22 @@ pub mod user;
 pub mod object;
 pub mod activity;
 
-
 use axum::{extract::State, http::StatusCode, Json};
 use sea_orm::{EntityTrait, IntoActiveModel};
 
 use crate::{activitystream::{self, object::{activity::{Activity, ActivityType}, actor::{ActorMut, ActorType}, ObjectMut, ObjectType}, Base, BaseMut, BaseType, Node}, model, server::Context, url};
+
+pub const PUBLIC_TARGET : &str = "https://www.w3.org/ns/activitystreams#Public";
+
+pub fn split_id(id: &str) -> (String, String) {
+	let clean = id
+		.replace("http://", "")
+		.replace("https://", "");
+	let mut splits = clean.split('/');
+	let first = splits.next().unwrap_or("");
+	let last = splits.last().unwrap_or(first);
+	(first.to_string(), last.to_string())
+}
 
 
 #[derive(Debug, serde::Deserialize)]
