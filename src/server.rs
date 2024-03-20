@@ -11,6 +11,13 @@ struct ContextInner {
 	domain: String,
 }
 
+#[macro_export]
+macro_rules! url {
+	($ctx:expr, $($args: tt)*) => {
+		format!("{}{}", $ctx.base(), format!($($args)*))
+	};
+}
+
 impl Context {
 	pub fn new(db: DatabaseConnection, mut domain: String) -> Self {
 		if !domain.starts_with("http") {
@@ -26,24 +33,34 @@ impl Context {
 		&self.0.db
 	}
 
+	pub fn base(&self) -> &str {
+		&self.0.domain
+	}
+
 	pub fn uri(&self, entity: &str, id: String) -> String {
 		if id.starts_with("http") { id } else {
 			format!("{}/{}/{}", self.0.domain, entity, id)
 		}
 	}
 
-	pub fn user_uri(&self, id: String) -> String {
+	// TODO maybe redo these with enums? idk
+
+	/// get full user id uri
+	pub fn uid(&self, id: String) -> String {
 		self.uri("users", id)
 	}
 
-	pub fn object_uri(&self, id: String) -> String {
+	/// get full object id uri
+	pub fn oid(&self, id: String) -> String {
 		self.uri("objects", id)
 	}
 
-	pub fn activity_uri(&self, id: String) -> String {
+	/// get full activity id uri
+	pub fn aid(&self, id: String) -> String {
 		self.uri("activities", id)
 	}
 
+	/// get bare uri, usually an uuid but unspecified
 	pub fn id(&self, id: String) -> String {
 		if id.starts_with(&self.0.domain) {
 			let mut out = id.replace(&self.0.domain, "");

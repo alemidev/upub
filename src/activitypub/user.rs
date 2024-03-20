@@ -3,14 +3,14 @@ use std::sync::Arc;
 use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
 use sea_orm::{ColumnTrait, Condition, DatabaseConnection, EntityTrait, IntoActiveModel, Order, QueryFilter, QueryOrder, QuerySelect};
 
-use crate::{activitystream::{self, object::{activity::{Activity, ActivityType}, collection::{page::CollectionPageMut, CollectionMut, CollectionType}, ObjectType}, Base, BaseMut, BaseType, Node}, model::{self, activity, object, user}, server::Context};
+use crate::{activitystream::{self, object::{activity::{Activity, ActivityType}, collection::{page::CollectionPageMut, CollectionMut, CollectionType}, ObjectType}, Base, BaseMut, BaseType, Node}, model::{self, activity, object, user}, server::Context, url};
 
 pub async fn list(State(_db) : State<Arc<DatabaseConnection>>) -> Result<Json<serde_json::Value>, StatusCode> {
 	todo!()
 }
 
 pub async fn view(State(ctx) : State<Context>, Path(id): Path<String>) -> Result<Json<serde_json::Value>, StatusCode> {
-	match user::Entity::find_by_id(ctx.user_uri(id)).one(ctx.db()).await {
+	match user::Entity::find_by_id(ctx.uid(id)).one(ctx.db()).await {
 		Ok(Some(user)) => Ok(Json(user.underlying_json_object())),
 		Ok(None) => Err(StatusCode::NOT_FOUND),
 		Err(e) => {
@@ -29,7 +29,7 @@ pub async fn outbox(
 
 		// find requested recent post, to filter based on its date (use now() as fallback)
 		let before = if let Some(before) = page.max_id {
-			match model::activity::Entity::find_by_id(ctx.activity_uri(before))
+			match model::activity::Entity::find_by_id(ctx.aid(before))
 				.one(ctx.db()).await
 			{
 				Ok(None) => return Err(StatusCode::NOT_FOUND),
@@ -58,8 +58,8 @@ pub async fn outbox(
 				obj
 					// TODO set id, calculate uri from given args
 					.set_collection_type(Some(CollectionType::OrderedCollectionPage))
-					.set_part_of(Node::link(&format!("http://localhost:3000/users/{id}/outbox")))
-					.set_next(Node::link(&format!("http://localhost:3000/users/{id}/outbox?page=true&max_id={next}")))
+					.set_part_of(Node::link(&url!(ctx, "/users/{id}/outbox")))
+					.set_next(Node::link(&url!(ctx, "/users/{id}/outbox?page=true&max_id={next}")))
 					.set_ordered_items(Node::array(items));
 				Ok(Json(obj))
 			},
@@ -68,9 +68,9 @@ pub async fn outbox(
 	} else {
 		let mut obj = crate::activitystream::object();
 		obj
-			.set_id(Some(&format!("http://localhost:3000/users/{id}/outbox")))
+			.set_id(Some(&url!(ctx, "/users/{id}/outbox")))
 			.set_collection_type(Some(CollectionType::OrderedCollection))
-			.set_first(Node::link(&format!("http://localhost:3000/users/{id}/outbox?page=true")));
+			.set_first(Node::link(&url!(ctx, "/users/{id}/outbox?page=true")));
 		Ok(Json(obj.underlying_json_object()))
 	}
 }

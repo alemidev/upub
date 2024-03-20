@@ -5,7 +5,7 @@ use crate::{activitystream::Base, model::object, server::Context};
 
 
 pub async fn view(State(ctx) : State<Context>, Path(id): Path<String>) -> Result<Json<serde_json::Value>, StatusCode> {
-	match object::Entity::find_by_id(ctx.object_uri(id)).one(ctx.db()).await {
+	match object::Entity::find_by_id(ctx.oid(id)).one(ctx.db()).await {
 		Ok(Some(object)) => Ok(Json(object.underlying_json_object())),
 		Ok(None) => Err(StatusCode::NOT_FOUND),
 		Err(e) => {
