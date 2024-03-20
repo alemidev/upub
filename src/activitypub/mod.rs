@@ -6,7 +6,7 @@ pub mod activity;
 use axum::{extract::State, http::StatusCode, Json};
 use sea_orm::{EntityTrait, IntoActiveModel};
 
-use crate::{activitystream::{object::{activity::{Activity, ActivityType}, ObjectType}, Base, BaseType, Node}, model, server::Context};
+use crate::{activitystream::{self, object::{activity::{Activity, ActivityType}, actor::{ActorMut, ActorType}, ObjectMut, ObjectType}, Base, BaseMut, BaseType, Node}, model, server::Context, url};
 
 
 #[derive(Debug, serde::Deserialize)]
@@ -14,6 +14,19 @@ use crate::{activitystream::{object::{activity::{Activity, ActivityType}, Object
 pub struct Page {
 	pub page: Option<bool>,
 	pub max_id: Option<String>,
+}
+
+pub async fn view(State(ctx): State<Context>) -> Result<Json<serde_json::Value>, StatusCode> {
+	let mut base = activitystream::object();
+	base
+		.set_actor_type(Some(ActorType::Application))
+		.set_id(Some(&url!(ctx, "")))
+		.set_name(Some("μpub"))
+		.set_summary(Some("micro social network, federated"))
+		.set_inbox(Node::link(&url!(ctx, "/inbox")))
+		.set_outbox(Node::link(&url!(ctx, "/outbox")));
+
+	Ok(Json(base))
 }
 
 pub async fn inbox(State(ctx) : State<Context>, Json(object): Json<serde_json::Value>) -> Result<Json<serde_json::Value>, StatusCode> {
