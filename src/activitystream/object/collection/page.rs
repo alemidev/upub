@@ -1,4 +1,4 @@
-use crate::activitystream::Node;
+use crate::{activitystream::Node, getter, setter};
 
 pub trait CollectionPage : super::Collection {
 	fn part_of(&self) -> Node<impl super::Collection> { Node::Empty::<serde_json::Value> }
@@ -13,5 +13,13 @@ pub trait CollectionPageMut : super::CollectionMut {
 }
 
 impl CollectionPage for serde_json::Value {
-	// ... TODO
+	getter! { part_of::partOf -> node impl super::Collection }
+	getter! { next -> node impl CollectionPage }
+	getter! { prev -> node impl CollectionPage }
+}
+
+impl CollectionPageMut for serde_json::Value {
+	setter! { part_of::partOf -> node impl super::Collection }
+	setter! { next -> node impl CollectionPage }
+	setter! { prev -> node impl CollectionPage }
 }
