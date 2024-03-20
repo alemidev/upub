@@ -12,5 +12,5 @@ pub trait Accept : super::Activity {
 }
 
 pub trait AcceptMut : super::ActivityMut {
-	fn set_accept_type(&mut self, val: Option<AcceptType>) -> &mut Self;
+	fn set_accept_type(self, val: Option<AcceptType>) -> Self;
 }

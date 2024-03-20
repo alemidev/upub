@@ -9,7 +9,7 @@ pub mod relationship;
 
 use crate::{getter, setter, strenum};
 
-use super::Node;
+use super::{Link, Node};
 
 use actor::{Actor, ActorType};
 use document::{Image, DocumentType};
@@ -56,42 +56,42 @@ pub trait Object : super::Base {
 	fn tag(&self) -> Node<impl Object> { Node::Empty::<serde_json::Value> }
 	fn updated(&self) -> Option<chrono::DateTime<chrono::Utc>> { None }
 	fn url(&self) -> Option<Vec<impl super::Link>> { None::<Vec<serde_json::Value>> }
-	fn to(&self) -> Node<impl Object> { Node::Empty::<serde_json::Value> }
-	fn bto(&self) -> Node<impl Object> { Node::Empty::<serde_json::Value> }
-	fn cc(&self) -> Node<impl Object> { Node::Empty::<serde_json::Value> }
-	fn bcc(&self) -> Node<impl Object> { Node::Empty::<serde_json::Value> }
+	fn to(&self) -> Node<impl Link> { Node::Empty::<serde_json::Value> }
+	fn bto(&self) -> Node<impl Link> { Node::Empty::<serde_json::Value> }
+	fn cc(&self) -> Node<impl Link> { Node::Empty::<serde_json::Value> }
+	fn bcc(&self) -> Node<impl Link> { Node::Empty::<serde_json::Value> }
 	fn media_type(&self) -> Option<&str> { None } // also in link
 	fn duration(&self) -> Option<&str> { None } // TODO how to parse xsd:duration ?
 }
 
 pub trait ObjectMut : super::BaseMut {
-	fn set_object_type(&mut self, val: Option<ObjectType>) -> &mut Self;
-	fn set_attachment(&mut self, val: Node<impl Object>) -> &mut Self;
-	fn set_attributed_to(&mut self, val: Node<impl Actor>) -> &mut Self;
-	fn set_audience(&mut self, val: Node<impl Actor>) -> &mut Self;
-	fn set_content(&mut self, val: Option<&str>) -> &mut Self; // TODO handle language maps
-	fn set_context(&mut self, val: Node<impl Object>) -> &mut Self; 
-	fn set_name(&mut self, val: Option<&str>) -> &mut Self;       // also in link // TODO handle language maps
-	fn set_end_time(&mut self, val: Option<chrono::DateTime<chrono::Utc>>) -> &mut Self;
-	fn set_generator(&mut self, val: Node<impl Actor>) -> &mut Self;
-	fn set_icon(&mut self, val: Node<impl Image>) -> &mut Self;
-	fn set_image(&mut self, val: Node<impl Image>) -> &mut Self;
-	fn set_in_reply_to(&mut self, val: Node<impl Object>) -> &mut Self;
-	fn set_location(&mut self, val: Node<impl Object>) -> &mut Self;
-	fn set_preview(&mut self, val: Node<impl Object>) -> &mut Self;    // also in link
-	fn set_published(&mut self, val: Option<chrono::DateTime<chrono::Utc>>) -> &mut Self;
-	fn set_replies(&mut self, val: Node<impl Collection>) -> &mut Self;
-	fn set_start_time(&mut self, val: Option<chrono::DateTime<chrono::Utc>>) -> &mut Self;
-	fn set_summary(&mut self, val: Option<&str>) -> &mut Self;
-	fn set_tag(&mut self, val: Node<impl Object>) -> &mut Self;
-	fn set_updated(&mut self, val: Option<chrono::DateTime<chrono::Utc>>) -> &mut Self;
-	fn set_url(&mut self, val: Option<Vec<impl super::Link>>) -> &mut Self;
-	fn set_to(&mut self, val: Node<impl Object>) -> &mut Self;
-	fn set_bto(&mut self, val: Node<impl Object>) -> &mut Self;
-	fn set_cc(&mut self, val: Node<impl Object>) -> &mut Self;
-	fn set_bcc(&mut self, val: Node<impl Object>) -> &mut Self;
-	fn set_media_type(&mut self, val: Option<&str>) -> &mut Self; // also in link
-	fn set_duration(&mut self, val: Option<&str>) -> &mut Self; // TODO how to parse xsd:duration ?
+	fn set_object_type(self, val: Option<ObjectType>) -> Self;
+	fn set_attachment(self, val: Node<impl Object>) -> Self;
+	fn set_attributed_to(self, val: Node<impl Actor>) -> Self;
+	fn set_audience(self, val: Node<impl Actor>) -> Self;
+	fn set_content(self, val: Option<&str>) -> Self; // TODO handle language maps
+	fn set_context(self, val: Node<impl Object>) -> Self; 
+	fn set_name(self, val: Option<&str>) -> Self;       // also in link // TODO handle language maps
+	fn set_end_time(self, val: Option<chrono::DateTime<chrono::Utc>>) -> Self;
+	fn set_generator(self, val: Node<impl Actor>) -> Self;
+	fn set_icon(self, val: Node<impl Image>) -> Self;
+	fn set_image(self, val: Node<impl Image>) -> Self;
+	fn set_in_reply_to(self, val: Node<impl Object>) -> Self;
+	fn set_location(self, val: Node<impl Object>) -> Self;
+	fn set_preview(self, val: Node<impl Object>) -> Self;    // also in link
+	fn set_published(self, val: Option<chrono::DateTime<chrono::Utc>>) -> Self;
+	fn set_replies(self, val: Node<impl Collection>) -> Self;
+	fn set_start_time(self, val: Option<chrono::DateTime<chrono::Utc>>) -> Self;
+	fn set_summary(self, val: Option<&str>) -> Self;
+	fn set_tag(self, val: Node<impl Object>) -> Self;
+	fn set_updated(self, val: Option<chrono::DateTime<chrono::Utc>>) -> Self;
+	fn set_url(self, val: Option<Vec<impl super::Link>>) -> Self;
+	fn set_to(self, val: Node<impl Link>) -> Self;
+	fn set_bto(self, val: Node<impl Link>) -> Self;
+	fn set_cc(self, val: Node<impl Link>) -> Self;
+	fn set_bcc(self, val: Node<impl Link>) -> Self;
+	fn set_media_type(self, val: Option<&str>) -> Self; // also in link
+	fn set_duration(self, val: Option<&str>) -> Self; // TODO how to parse xsd:duration ?
 }
 
 impl Object for serde_json::Value {
@@ -116,10 +116,10 @@ impl Object for serde_json::Value {
 	getter! { summary -> &str }
 	getter! { tag -> node impl Object }
 	getter! { updated -> chrono::DateTime<chrono::Utc> }
-	getter! { to -> node impl Object }
-	getter! { bto -> node impl Object }
-	getter! { cc -> node impl Object }
-	getter! { bcc -> node impl Object }
+	getter! { to -> node impl Link }
+	getter! { bto -> node impl Link }
+	getter! { cc -> node impl Link }
+	getter! { bcc -> node impl Link }
 	getter! { media_type -> &str }
 	getter! { duration -> &str }
 
@@ -155,14 +155,14 @@ impl ObjectMut for serde_json::Value {
 	setter! { summary -> &str }
 	setter! { tag -> node impl Object }
 	setter! { updated -> chrono::DateTime<chrono::Utc> }
-	setter! { to -> node impl Object }
-	setter! { bto -> node impl Object}
-	setter! { cc -> node impl Object }
-	setter! { bcc -> node impl Object }
+	setter! { to -> node impl Link }
+	setter! { bto -> node impl Link}
+	setter! { cc -> node impl Link }
+	setter! { bcc -> node impl Link }
 	setter! { media_type -> &str }
 	setter! { duration -> &str }
 
-	fn set_url(&mut self, _val: Option<Vec<impl super::Link>>) -> &mut Self {
+	fn set_url(self, _val: Option<Vec<impl super::Link>>) -> Self {
 		todo!()
 	}
 }

@@ -54,24 +54,24 @@ pub async fn outbox(
 					.into_iter()
 					.map(|i| i.underlying_json_object())
 					.collect();
-				let mut obj = activitystream::object();
-				obj
-					// TODO set id, calculate uri from given args
-					.set_collection_type(Some(CollectionType::OrderedCollectionPage))
-					.set_part_of(Node::link(&url!(ctx, "/users/{id}/outbox")))
-					.set_next(Node::link(&url!(ctx, "/users/{id}/outbox?page=true&max_id={next}")))
-					.set_ordered_items(Node::array(items));
-				Ok(Json(obj))
+				Ok(Json(
+					activitystream::object()
+						// TODO set id, calculate uri from given args
+						.set_collection_type(Some(CollectionType::OrderedCollectionPage))
+						.set_part_of(Node::link(url!(ctx, "/users/{id}/outbox")))
+						.set_next(Node::link(url!(ctx, "/users/{id}/outbox?page=true&max_id={next}")))
+						.set_ordered_items(Node::array(items))
+				))
 			},
 		}
 
 	} else {
-		let mut obj = crate::activitystream::object();
-		obj
-			.set_id(Some(&url!(ctx, "/users/{id}/outbox")))
-			.set_collection_type(Some(CollectionType::OrderedCollection))
-			.set_first(Node::link(&url!(ctx, "/users/{id}/outbox?page=true")));
-		Ok(Json(obj.underlying_json_object()))
+		Ok(Json(
+			crate::activitystream::object()
+				.set_id(Some(&url!(ctx, "/users/{id}/outbox")))
+				.set_collection_type(Some(CollectionType::OrderedCollection))
+				.set_first(Node::link(url!(ctx, "/users/{id}/outbox?page=true")))
+		))
 	}
 }
 

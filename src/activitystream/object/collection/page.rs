@@ -7,9 +7,9 @@ pub trait CollectionPage : super::Collection {
 }
 
 pub trait CollectionPageMut : super::CollectionMut {
-	fn set_part_of(&mut self, val: Node<impl super::Collection>) -> &mut Self;
-	fn set_next(&mut self, val: Node<impl CollectionPage>) -> &mut Self;
-	fn set_prev(&mut self, val: Node<impl CollectionPage>) -> &mut Self;
+	fn set_part_of(self, val: Node<impl super::Collection>) -> Self;
+	fn set_next(self, val: Node<impl CollectionPage>) -> Self;
+	fn set_prev(self, val: Node<impl CollectionPage>) -> Self;
 }
 
 impl CollectionPage for serde_json::Value {

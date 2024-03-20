@@ -25,15 +25,15 @@ pub trait Actor : super::Object {
 }
 
 pub trait ActorMut : super::ObjectMut {
-	fn set_actor_type(&mut self, val: Option<ActorType>) -> &mut Self;
-	fn set_preferred_username(&mut self, val: Option<&str>) -> &mut Self;
-	fn set_inbox(&mut self, val: Node<impl Collection>) -> &mut Self;
-	fn set_outbox(&mut self, val: Node<impl Collection>) -> &mut Self;
-	fn set_following(&mut self, val: Node<impl Collection>) -> &mut Self;
-	fn set_followers(&mut self, val: Node<impl Collection>) -> &mut Self;
-	fn set_liked(&mut self, val: Node<impl Collection>) -> &mut Self;
-	fn set_streams(&mut self, val: Node<impl Collection>) -> &mut Self;
-	fn set_endpoints(&mut self, val: Option<serde_json::Map<String, String>>) -> &mut Self;
+	fn set_actor_type(self, val: Option<ActorType>) -> Self;
+	fn set_preferred_username(self, val: Option<&str>) -> Self;
+	fn set_inbox(self, val: Node<impl Collection>) -> Self;
+	fn set_outbox(self, val: Node<impl Collection>) -> Self;
+	fn set_following(self, val: Node<impl Collection>) -> Self;
+	fn set_followers(self, val: Node<impl Collection>) -> Self;
+	fn set_liked(self, val: Node<impl Collection>) -> Self;
+	fn set_streams(self, val: Node<impl Collection>) -> Self;
+	fn set_endpoints(self, val: Option<serde_json::Map<String, String>>) -> Self;
 }
 
 impl Actor for serde_json::Value {
@@ -61,7 +61,7 @@ impl ActorMut for serde_json::Value {
 	setter! { liked -> node impl Collection }
 	setter! { streams -> node impl Collection }
 
-	fn set_endpoints(&mut self, val: Option<serde_json::Map<String, String>>) -> &mut Self {
+	fn set_endpoints(self, _val: Option<serde_json::Map<String, String>>) -> Self {
 		todo!()
 	}
 }

@@ -17,16 +17,15 @@ pub struct Page {
 }
 
 pub async fn view(State(ctx): State<Context>) -> Result<Json<serde_json::Value>, StatusCode> {
-	let mut base = activitystream::object();
-	base
-		.set_actor_type(Some(ActorType::Application))
-		.set_id(Some(&url!(ctx, "")))
-		.set_name(Some("μpub"))
-		.set_summary(Some("micro social network, federated"))
-		.set_inbox(Node::link(&url!(ctx, "/inbox")))
-		.set_outbox(Node::link(&url!(ctx, "/outbox")));
-
-	Ok(Json(base))
+	Ok(Json(
+		activitystream::object()
+			.set_actor_type(Some(ActorType::Application))
+			.set_id(Some(&url!(ctx, "")))
+			.set_name(Some("μpub"))
+			.set_summary(Some("micro social network, federated"))
+			.set_inbox(Node::link(url!(ctx, "/inbox")))
+			.set_outbox(Node::link(url!(ctx, "/outbox")))
+	))
 }
 
 pub async fn inbox(State(ctx) : State<Context>, Json(object): Json<serde_json::Value>) -> Result<Json<serde_json::Value>, StatusCode> {

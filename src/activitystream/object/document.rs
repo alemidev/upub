@@ -15,13 +15,10 @@ pub trait Document : super::Object {
 }
 
 pub trait DocumentMut : super::ObjectMut {
-	fn set_document_type(&mut self, val: Option<DocumentType>) -> &mut Self;
+	fn set_document_type(self, val: Option<DocumentType>) -> Self;
 }
 
 pub trait Image : Document {}
 
-
-
 impl Document for serde_json::Value {}
 impl Image for serde_json::Value {}
-

@@ -52,13 +52,13 @@ pub trait Activity : super::Object {
 }
 
 pub trait ActivityMut : super::ObjectMut {
-	fn set_activity_type(&mut self, val: Option<ActivityType>) -> &mut Self;
-	fn set_actor(&mut self, val: Node<impl super::Actor>) -> &mut Self;
-	fn set_object(&mut self, val: Node<impl super::Object>) -> &mut Self;
-	fn set_target(&mut self, val: Node<impl super::Object>) -> &mut Self;
-	fn set_result(&mut self, val: Node<impl super::Object>) -> &mut Self;
-	fn set_origin(&mut self, val: Node<impl super::Object>) -> &mut Self;
-	fn set_instrument(&mut self, val: Node<impl super::Object>) -> &mut Self;
+	fn set_activity_type(self, val: Option<ActivityType>) -> Self;
+	fn set_actor(self, val: Node<impl super::Actor>) -> Self;
+	fn set_object(self, val: Node<impl super::Object>) -> Self;
+	fn set_target(self, val: Node<impl super::Object>) -> Self;
+	fn set_result(self, val: Node<impl super::Object>) -> Self;
+	fn set_origin(self, val: Node<impl super::Object>) -> Self;
+	fn set_instrument(self, val: Node<impl super::Object>) -> Self;
 }
 
 impl Activity for serde_json::Value {

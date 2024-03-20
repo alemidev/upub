@@ -12,5 +12,5 @@ pub trait Reject : super::Activity {
 }
 
 pub trait RejectMut : super::ActivityMut {
-	fn set_reject_type(&mut self, val: Option<RejectType>) -> &mut Self;
+	fn set_reject_type(self, val: Option<RejectType>) -> Self;
 }

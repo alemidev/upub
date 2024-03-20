@@ -8,6 +8,7 @@ pub mod node;
 pub use node::Node;
 
 pub mod macros;
+pub mod prelude;
 
 use crate::{getter, setter, strenum};
 
@@ -41,8 +42,8 @@ pub fn object() -> serde_json::Value {
 }
 
 pub trait BaseMut {
-	fn set_id(&mut self, val: Option<&str>) -> &mut Self;
-	fn set_base_type(&mut self, val: Option<BaseType>) -> &mut Self;
+	fn set_id(self, val: Option<&str>) -> Self;
+	fn set_base_type(self, val: Option<BaseType>) -> Self;
 }
 
 

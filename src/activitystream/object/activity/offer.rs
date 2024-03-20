@@ -12,5 +12,5 @@ pub trait Offer : super::Activity {
 }
 
 pub trait OfferMut : super::ActivityMut {
-	fn set_offer_type(&mut self, val: Option<OfferType>) -> &mut Self;
+	fn set_offer_type(self, val: Option<OfferType>) -> Self;
 }

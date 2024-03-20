@@ -12,5 +12,5 @@ pub trait Ignore : super::Activity {
 }
 
 pub trait IgnoreMut : super::ActivityMut {
-	fn set_ignore_type(&mut self, val: Option<IgnoreType>) -> &mut Self;
+	fn set_ignore_type(self, val: Option<IgnoreType>) -> Self;
 }

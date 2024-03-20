@@ -8,10 +8,10 @@ pub trait Place : super::Object {
 }
 
 pub trait PlaceMut : super::ObjectMut {
-	fn set_accuracy(&mut self, val: Option<f64>) -> &mut Self;
-	fn set_altitude(&mut self, val: Option<f64>) -> &mut Self;
-	fn set_latitude(&mut self, val: Option<f64>) -> &mut Self;
-	fn set_longitude(&mut self, val: Option<f64>) -> &mut Self;
-	fn set_radius(&mut self, val: Option<f64>) -> &mut Self;
-	fn set_units(&mut self, val: Option<&str>) -> &mut Self;
+	fn set_accuracy(self, val: Option<f64>) -> Self;
+	fn set_altitude(self, val: Option<f64>) -> Self;
+	fn set_latitude(self, val: Option<f64>) -> Self;
+	fn set_longitude(self, val: Option<f64>) -> Self;
+	fn set_radius(self, val: Option<f64>) -> Self;
+	fn set_units(self, val: Option<&str>) -> Self;
 }

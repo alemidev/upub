@@ -25,14 +25,13 @@ pub trait Collection : super::Object {
 }
 
 pub trait CollectionMut : super::ObjectMut {
-	fn set_collection_type(&mut self, val: Option<CollectionType>) -> &mut Self;
-
-	fn set_total_items(&mut self, val: Option<u64>) -> &mut Self;
-	fn set_current(&mut self, val: Node<impl CollectionPage>) -> &mut Self;
-	fn set_first(&mut self, val: Node<impl CollectionPage>) -> &mut Self;
-	fn set_last(&mut self, val: Node<impl CollectionPage>) -> &mut Self;
-	fn set_items(&mut self, val: Node<impl super::Object>) -> &mut Self;
-	fn set_ordered_items(&mut self, val: Node<impl super::Object>) -> &mut Self;
+	fn set_collection_type(self, val: Option<CollectionType>) -> Self;
+	fn set_total_items(self, val: Option<u64>) -> Self;
+	fn set_current(self, val: Node<impl CollectionPage>) -> Self;
+	fn set_first(self, val: Node<impl CollectionPage>) -> Self;
+	fn set_last(self, val: Node<impl CollectionPage>) -> Self;
+	fn set_items(self, val: Node<impl super::Object>) -> Self;
+	fn set_ordered_items(self, val: Node<impl super::Object>) -> Self;
 }
 
 impl Collection for serde_json::Value {
