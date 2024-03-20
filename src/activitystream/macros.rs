@@ -124,6 +124,18 @@ macro_rules! getter {
 		}
 	};
 
+	($name:ident -> u64) => {
+		fn $name(&self) -> Option<u64> {
+			self.get(stringify!($name))?.as_u64()
+		}
+	};
+
+	($name:ident::$rename:ident -> u64) => {
+		fn $name(&self) -> Option<u64> {
+			self.get(stringify!($rename))?.as_u64()
+		}
+	};
+
 	($name:ident -> chrono::DateTime<chrono::Utc>) => {
 		fn $name(&self) -> Option<chrono::DateTime<chrono::Utc>> {
 			Some(
@@ -178,6 +190,39 @@ macro_rules! setter {
 			fn [< set_$name >](&mut self, val: Option<&str>) -> &mut Self {
 				$crate::activitystream::macros::set_maybe_value(
 					self, stringify!($name), val.map(|x| serde_json::Value::String(x.to_string()))
+				);
+				self
+			}
+		}
+	};
+
+	($name:ident::$rename:ident -> &str) => {
+		paste::item! {
+			fn [< set_$name >](&mut self, val: Option<&str>) -> &mut Self {
+				$crate::activitystream::macros::set_maybe_value(
+					self, stringify!($rename), val.map(|x| serde_json::Value::String(x.to_string()))
+				);
+				self
+			}
+		}
+	};
+
+	($name:ident -> u64) => {
+		paste::item! {
+			fn [< set_$name >](&mut self, val: Option<u64>) -> &mut Self {
+				$crate::activitystream::macros::set_maybe_value(
+					self, stringify!($name), val.map(|x| serde_json::Value::Number(serde_json::Number::from(x)))
+				);
+				self
+			}
+		}
+	};
+
+	($name:ident::$rename:ident -> u64) => {
+		paste::item! {
+			fn [< set_$name >](&mut self, val: Option<u64>) -> &mut Self {
+				$crate::activitystream::macros::set_maybe_value(
+					self, stringify!($rename), val.map(|x| serde_json::Value::Number(serde_json::Number::from(x)))
 				);
 				self
 			}

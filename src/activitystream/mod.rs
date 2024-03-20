@@ -29,6 +29,10 @@ pub trait Base {
 	fn underlying_json_object(self) -> serde_json::Value;
 }
 
+pub fn object() -> serde_json::Value {
+	serde_json::Value::Object(serde_json::Map::default())
+}
+
 pub trait BaseMut {
 	fn set_id(&mut self, val: Option<&str>) -> &mut Self;
 	fn set_base_type(&mut self, val: Option<BaseType>) -> &mut Self;

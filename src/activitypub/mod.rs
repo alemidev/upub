@@ -10,8 +10,13 @@ use sea_orm::{DatabaseConnection, EntityTrait, IntoActiveModel};
 use crate::{activitystream::{object::{ObjectType, activity::{Activity, ActivityType}}, Base, BaseType, Node}, model};
 
 
-pub fn uri_id(id: String) -> String {
-	if id.starts_with("http") { id } else { format!("http://localhost:3000/users/{id}") }
+pub fn uri_id(entity: &str, id: String) -> String {
+	if id.starts_with("http") { id } else { format!("http://localhost:3000/{entity}/{id}") }
+}
+
+pub fn id_uri(id: &str) -> &str {
+	id.split('/').last().unwrap_or("")
+}
 }
 
 pub async fn inbox(State(db) : State<Arc<DatabaseConnection>>, Json(object): Json<serde_json::Value>) -> Result<Json<serde_json::Value>, StatusCode> {

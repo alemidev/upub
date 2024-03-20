@@ -19,3 +19,4 @@ thiserror = "1.0.58"
 tokio = { version = "1.35.1", features = ["full"] }
 tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
+uuid = { version = "1.8.0", features = ["v4"] }
