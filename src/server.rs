@@ -63,11 +63,7 @@ impl Context {
 	/// get bare uri, usually an uuid but unspecified
 	pub fn id(&self, id: String) -> String {
 		if id.starts_with(&self.0.domain) {
-			let mut out = id.replace(&self.0.domain, "");
-			if out.ends_with('/') {
-				out.replace_range(out.len()-1.., "");
-			}
-			out
+			id.split('/').last().unwrap_or("").to_string()
 		} else {
 			id
 		}
