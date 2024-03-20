@@ -17,6 +17,12 @@ pub fn uri_id(entity: &str, id: String) -> String {
 pub fn id_uri(id: &str) -> &str {
 	id.split('/').last().unwrap_or("")
 }
+
+#[derive(Debug, serde::Deserialize)]
+// TODO i don't really like how pleroma/mastodon do it actually, maybe change this?
+pub struct Page {
+	pub page: Option<bool>,
+	pub max_id: Option<String>,
 }
 
 pub async fn inbox(State(db) : State<Arc<DatabaseConnection>>, Json(object): Json<serde_json::Value>) -> Result<Json<serde_json::Value>, StatusCode> {

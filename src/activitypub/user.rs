@@ -1,16 +1,16 @@
 use std::sync::Arc;
 
-use axum::{extract::{Path, State}, http::StatusCode, Json};
-use sea_orm::{ColumnTrait, Condition, DatabaseConnection, EntityTrait, IntoActiveModel, QueryFilter};
+use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
+use sea_orm::{ColumnTrait, Condition, DatabaseConnection, EntityTrait, IntoActiveModel, Order, QueryFilter, QueryOrder, QuerySelect};
 
-use crate::{activitystream::{object::{activity::{Activity, ActivityType}, ObjectType}, Base, BaseType, Node}, model::{activity, object, user}};
+use crate::{activitystream::{self, object::{activity::{Activity, ActivityType}, collection::{page::CollectionPageMut, CollectionMut, CollectionType}, ObjectType}, Base, BaseMut, BaseType, Node}, model::{self, activity, object, user}};
 
 pub async fn list(State(_db) : State<Arc<DatabaseConnection>>) -> Result<Json<serde_json::Value>, StatusCode> {
 	todo!()
 }
 
 pub async fn view(State(db) : State<Arc<DatabaseConnection>>, Path(id): Path<String>) -> Result<Json<serde_json::Value>, StatusCode> {
-	match user::Entity::find_by_id(super::uri_id(id)).one(&*db).await {
+	match user::Entity::find_by_id(super::uri_id("users", id)).one(&*db).await {
 		Ok(Some(user)) => Ok(Json(user.underlying_json_object())),
 		Ok(None) => Err(StatusCode::NOT_FOUND),
 		Err(e) => {
@@ -20,14 +20,58 @@ pub async fn view(State(db) : State<Arc<DatabaseConnection>>, Path(id): Path<Str
 	}
 }
 
-pub async fn outbox(State(db): State<Arc<DatabaseConnection>>, Path(id): Path<String>) -> Result<Json<serde_json::Value>, StatusCode> {
-	let uri = super::uri_id(id);
-	match activity::Entity::find()
-		.filter(Condition::all().add(activity::Column::Actor.eq(uri)))
-		.all(&*db).await
-	{
-		Ok(_x) => todo!(),
-		Err(_e) => todo!(),
+pub async fn outbox(
+	State(db): State<Arc<DatabaseConnection>>,
+	Path(id): Path<String>,
+	Query(page): Query<super::Page>,
+) -> Result<Json<serde_json::Value>, StatusCode> {
+	if let Some(true) = page.page {
+
+		// find requested recent post, to filter based on its date (use now() as fallback)
+		let before = if let Some(before) = page.max_id {
+			match model::activity::Entity::find_by_id(super::uri_id("activities", before))
+				.one(&*db).await
+			{
+				Ok(None) => return Err(StatusCode::NOT_FOUND),
+				Ok(Some(x)) => x.published,
+				Err(e) => {
+					tracing::error!("could not fetch activity from db: {e}");
+					chrono::Utc::now()
+				},
+			}
+		} else { chrono::Utc::now() };
+
+		match activity::Entity::find()
+			.filter(Condition::all().add(activity::Column::Published.lt(before)))
+			.order_by(activity::Column::Published, Order::Desc)
+			.limit(20) // TODO allow customizing, with boundaries
+			.all(&*db).await
+		{
+			Err(_e) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+			Ok(items) => {
+				let next = super::id_uri(&items.last().unwrap().id).to_string();
+				let items = items
+					.into_iter()
+					.map(|i| i.underlying_json_object())
+					.collect();
+				let mut obj = activitystream::object();
+				obj
+					// TODO set id, calculate uri from given args
+					.set_collection_type(Some(CollectionType::OrderedCollectionPage))
+					.set_part_of(Node::link(&format!("http://localhost:3000/users/{id}/outbox")))
+					.set_next(Node::link(&format!("http://localhost:3000/users/{id}/outbox?page=true&max_id={next}")))
+					.set_ordered_items(Node::array(items));
+				Ok(Json(obj))
+			},
+		}
+
+	} else {
+		let mut obj = crate::activitystream::object();
+		obj
+			.set_id(Some(&format!("http://localhost:3000/users/{id}/outbox")))
+			.set_collection_type(Some(CollectionType::OrderedCollection))
+			.set_first(Node::link(&format!("http://localhost:3000/users/{id}/outbox?page=true")));
+		Ok(Json(obj.underlying_json_object()))
 	}
 }
 
