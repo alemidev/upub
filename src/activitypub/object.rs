@@ -1,14 +1,11 @@
-use std::{ops::Deref, sync::Arc};
-
 use axum::{extract::{Path, State}, http::StatusCode, Json};
-use sea_orm::{DatabaseConnection, EntityTrait};
+use sea_orm::EntityTrait;
 
-use crate::{activitystream::Base, model::object};
+use crate::{activitystream::Base, model::object, server::Context};
 
 
-pub async fn view(State(db) : State<Arc<DatabaseConnection>>, Path(id): Path<String>) -> Result<Json<serde_json::Value>, StatusCode> {
-	let uri = format!("http://localhost:3000/objects/{id}");
-	match object::Entity::find_by_id(uri).one(db.deref()).await {
+pub async fn view(State(ctx) : State<Context>, Path(id): Path<String>) -> Result<Json<serde_json::Value>, StatusCode> {
+	match object::Entity::find_by_id(ctx.uri("objects", id)).one(ctx.db()).await {
 		Ok(Some(object)) => Ok(Json(object.underlying_json_object())),
 		Ok(None) => Err(StatusCode::NOT_FOUND),
 		Err(e) => {

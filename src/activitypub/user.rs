@@ -3,14 +3,14 @@ use std::sync::Arc;
 use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
 use sea_orm::{ColumnTrait, Condition, DatabaseConnection, EntityTrait, IntoActiveModel, Order, QueryFilter, QueryOrder, QuerySelect};
 
-use crate::{activitystream::{self, object::{activity::{Activity, ActivityType}, collection::{page::CollectionPageMut, CollectionMut, CollectionType}, ObjectType}, Base, BaseMut, BaseType, Node}, model::{self, activity, object, user}};
+use crate::{activitystream::{self, object::{activity::{Activity, ActivityType}, collection::{page::CollectionPageMut, CollectionMut, CollectionType}, ObjectType}, Base, BaseMut, BaseType, Node}, model::{self, activity, object, user}, server::Context};
 
 pub async fn list(State(_db) : State<Arc<DatabaseConnection>>) -> Result<Json<serde_json::Value>, StatusCode> {
 	todo!()
 }
 
-pub async fn view(State(db) : State<Arc<DatabaseConnection>>, Path(id): Path<String>) -> Result<Json<serde_json::Value>, StatusCode> {
-	match user::Entity::find_by_id(super::uri_id("users", id)).one(&*db).await {
+pub async fn view(State(ctx) : State<Context>, Path(id): Path<String>) -> Result<Json<serde_json::Value>, StatusCode> {
+	match user::Entity::find_by_id(ctx.uri("users", id)).one(ctx.db()).await {
 		Ok(Some(user)) => Ok(Json(user.underlying_json_object())),
 		Ok(None) => Err(StatusCode::NOT_FOUND),
 		Err(e) => {
@@ -21,7 +21,7 @@ pub async fn view(State(db) : State<Arc<DatabaseConnection>>, Path(id): Path<Str
 }
 
 pub async fn outbox(
-	State(db): State<Arc<DatabaseConnection>>,
+	State(ctx): State<Context>,
 	Path(id): Path<String>,
 	Query(page): Query<super::Page>,
 ) -> Result<Json<serde_json::Value>, StatusCode> {
@@ -29,8 +29,8 @@ pub async fn outbox(
 
 		// find requested recent post, to filter based on its date (use now() as fallback)
 		let before = if let Some(before) = page.max_id {
-			match model::activity::Entity::find_by_id(super::uri_id("activities", before))
-				.one(&*db).await
+			match model::activity::Entity::find_by_id(ctx.uri("activities", before))
+				.one(ctx.db()).await
 			{
 				Ok(None) => return Err(StatusCode::NOT_FOUND),
 				Ok(Some(x)) => x.published,
@@ -45,11 +45,11 @@ pub async fn outbox(
 			.filter(Condition::all().add(activity::Column::Published.lt(before)))
 			.order_by(activity::Column::Published, Order::Desc)
 			.limit(20) // TODO allow customizing, with boundaries
-			.all(&*db).await
+			.all(ctx.db()).await
 		{
 			Err(_e) => Err(StatusCode::INTERNAL_SERVER_ERROR),
 			Ok(items) => {
-				let next = super::id_uri(&items.last().unwrap().id).to_string();
+				let next = ctx.id(items.last().map(|x| x.id.as_str()).unwrap_or("").to_string());
 				let items = items
 					.into_iter()
 					.map(|i| i.underlying_json_object())
@@ -76,7 +76,7 @@ pub async fn outbox(
 }
 
 pub async fn inbox(
-	State(db): State<Arc<DatabaseConnection>>,
+	State(ctx): State<Context>,
 	Path(_id): Path<String>,
 	Json(object): Json<serde_json::Value>
 ) -> Result<Json<serde_json::Value>, StatusCode> {
@@ -98,10 +98,10 @@ pub async fn inbox(
 				return Err(StatusCode::UNPROCESSABLE_ENTITY);
 			};
 			object::Entity::insert(obj_entity.into_active_model())
-				.exec(&*db)
+				.exec(ctx.db())
 				.await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 			activity::Entity::insert(activity_entity.into_active_model())
-				.exec(&*db)
+				.exec(ctx.db())
 				.await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 			Ok(Json(serde_json::Value::Null)) // TODO hmmmmmmmmmmm not the best value to return....
 		},

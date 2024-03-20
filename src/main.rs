@@ -21,6 +21,10 @@ struct CliArgs {
 	/// database connection uri
 	database: String,
 
+	#[arg(short, long, default_value = "http://localhost:3000")]
+	/// instance base domain, for AP ids
+	domain: String,
+
 	#[arg(long, default_value_t=false)]
 	/// run with debug level tracing
 	debug: bool,
@@ -66,13 +70,13 @@ async fn main() {
 		.await.expect("error connecting to db");
 
 	match args.command {
-		CliCommand::Serve => server::serve(db)
+		CliCommand::Serve => server::serve(db, args.domain)
 			.await,
 
 		CliCommand::Migrate => migrations::Migrator::up(&db, None)
 			.await.expect("error applying migrations"),
 
-		CliCommand::Faker => model::faker(&db)
+		CliCommand::Faker => model::faker(&db, args.domain)
 			.await.expect("error creating fake entities"),
 
 		CliCommand::Fetch { uri, save } => fetch(&db, &uri, save)
