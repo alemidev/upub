@@ -13,6 +13,7 @@ pub struct Model {
 	pub name: Option<String>,
 	pub summary: Option<String>,
 	pub content: Option<String>,
+	pub context: Option<String>,
 	pub published: ChronoDateTimeUtc,
 }
 
@@ -60,6 +61,7 @@ impl crate::activitystream::Base for Model {
 			.set_name(self.name.as_deref())
 			.set_summary(self.summary.as_deref())
 			.set_content(self.content.as_deref())
+			.set_context(Node::maybe_link(self.context.clone()))
 			.set_published(Some(self.published))
 	}
 }
@@ -85,6 +87,10 @@ impl crate::activitystream::object::Object for Model {
 		self.content.as_deref()
 	}
 
+	fn context(&self) -> Node<impl crate::activitystream::Object> {
+		Node::maybe_link(self.context.clone())
+	}
+
 	fn published (&self) -> Option<chrono::DateTime<chrono::Utc>> {
 		Some(self.published)
 	}
@@ -99,6 +105,7 @@ impl Model {
 			name: object.name().map(|x| x.to_string()),
 			summary: object.summary().map(|x| x.to_string()),
 			content: object.content().map(|x| x.to_string()),
+			context: object.context().id().map(|x| x.to_string()),
 			published: object.published().ok_or(super::FieldError("published"))?,
 		})
 	}

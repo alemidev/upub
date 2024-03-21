@@ -44,6 +44,8 @@ UQIDAQAB
 
 	user::Entity::insert(root.clone().into_active_model()).exec(db).await?;
 
+	let context = uuid::Uuid::new_v4().to_string();
+
 	for i in (0..100).rev() {
 		let oid = uuid::Uuid::new_v4();
 		let aid = uuid::Uuid::new_v4();
@@ -53,6 +55,7 @@ UQIDAQAB
 			object_type: Set(crate::activitystream::object::ObjectType::Note),
 			attributed_to: Set(Some(format!("{domain}/users/root"))),
 			summary: Set(None),
+			context: Set(Some(context.clone())),
 			content: Set(Some(format!("[{i}] Tic(k). Quasiparticle of intensive multiplicity. Tics (or ticks) are intrinsically several components of autonomously numbering anorganic populations, propagating by contagion between segmentary divisions in the order of nature. Ticks - as nonqualitative differentially-decomposable counting marks - each designate a multitude comprehended as a singular variation in tic(k)-density."))),
 			published: Set(chrono::Utc::now() - std::time::Duration::from_secs(60*i)),
 		}).exec(db).await?;
