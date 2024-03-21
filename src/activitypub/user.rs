@@ -1,9 +1,10 @@
 use std::sync::Arc;
+use crate::activitystream::prelude::*;
 
 use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
 use sea_orm::{ColumnTrait, Condition, DatabaseConnection, EntityTrait, IntoActiveModel, Order, QueryFilter, QueryOrder, QuerySelect};
 
-use crate::{activitystream::{self, object::{activity::{Activity, ActivityType}, collection::{page::CollectionPageMut, CollectionMut, CollectionType}, ObjectType}, Base, BaseMut, BaseType, Node}, model::{self, activity, object, user}, server::Context, url};
+use crate::{activitystream::{self, object::{activity::ActivityType, collection::CollectionType, ObjectType}, BaseType, Node}, model::{self, activity, object, user}, server::Context, url};
 
 pub async fn list(State(_db) : State<Arc<DatabaseConnection>>) -> Result<Json<serde_json::Value>, StatusCode> {
 	todo!()
@@ -43,16 +44,17 @@ pub async fn outbox(
 
 		match activity::Entity::find()
 			.filter(Condition::all().add(activity::Column::Published.lt(before)))
+			.find_also_related(user::Entity)
 			.order_by(activity::Column::Published, Order::Desc)
 			.limit(20) // TODO allow customizing, with boundaries
 			.all(ctx.db()).await
 		{
 			Err(_e) => Err(StatusCode::INTERNAL_SERVER_ERROR),
 			Ok(items) => {
-				let next = ctx.id(items.last().map(|x| x.id.as_str()).unwrap_or("").to_string());
+				let next = ctx.id(items.last().map(|(a, _o)| a.id.as_str()).unwrap_or("").to_string());
 				let items = items
 					.into_iter()
-					.map(|i| i.underlying_json_object())
+					.map(|(a, o)| a.underlying_json_object().set_object(Node::maybe_object(o)))
 					.collect();
 				Ok(Json(
 					activitystream::object()
