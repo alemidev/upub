@@ -44,7 +44,7 @@ pub async fn outbox(
 
 		match activity::Entity::find()
 			.filter(Condition::all().add(activity::Column::Published.lt(before)))
-			.find_also_related(user::Entity)
+			.find_also_related(object::Entity)
 			.order_by(activity::Column::Published, Order::Desc)
 			.limit(20) // TODO allow customizing, with boundaries
 			.all(ctx.db()).await
