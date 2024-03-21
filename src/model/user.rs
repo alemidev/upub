@@ -84,6 +84,7 @@ impl crate::activitystream::Base for Model {
 			.set_following(self.following())
 			.set_followers(self.followers())
 			.set_public_key(self.public_key())
+			.set_discoverable(Some(true))
 			.underlying_json_object()
 	}
 }
