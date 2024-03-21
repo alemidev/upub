@@ -1,7 +1,11 @@
 use sea_orm::entity::prelude::*;
-use crate::activitystream::object::document::DocumentType;
-use crate::activitystream::prelude::*;
+use crate::activitypub::jsonld::LD;
+use crate::activitystream::key::{PublicKey as _, PublicKeyMut as _};
+use crate::activitystream::object::actor::ActorMut as _;
+use crate::activitystream::object::document::{DocumentMut as _, DocumentType};
 
+use crate::activitystream::object::ObjectMut as _;
+use crate::activitystream::{BaseMut as _, Object as _};
 use crate::{activitypub, activitystream::{object::actor::ActorType, BaseType, Node, ObjectType}};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
@@ -71,7 +75,7 @@ impl crate::activitystream::Base for Model {
 	}
 
 	fn underlying_json_object(self) -> serde_json::Value {
-		crate::activitystream::object()
+		serde_json::Value::new_object()
 			.set_id(Some(&self.id))
 			.set_actor_type(Some(self.actor_type))
 			.set_name(self.name.as_deref())
@@ -87,7 +91,6 @@ impl crate::activitystream::Base for Model {
 			.set_public_key(self.public_key())
 			.set_discoverable(Some(true))
 			.set_endpoints(None) // TODO dirty fix to put an empty object
-			.underlying_json_object()
 	}
 }
 
@@ -103,7 +106,7 @@ impl crate::activitystream::object::Object for Model {
 	fn icon(&self) -> Node<impl Image> {
 		match &self.icon {
 			Some(x) => Node::object(
-				crate::activitystream::raw_object()
+				serde_json::Value::new_object()
 					.set_document_type(Some(DocumentType::Image))
 					.set_url(Node::link(x.clone()))
 			),
@@ -114,7 +117,7 @@ impl crate::activitystream::object::Object for Model {
 	fn image(&self) -> Node<impl Image> {
 		match &self.image {
 			Some(x) => Node::object(
-				crate::activitystream::raw_object()
+				serde_json::Value::new_object()
 					.set_document_type(Some(DocumentType::Image))
 					.set_url(Node::link(x.clone()))
 			),
@@ -154,7 +157,7 @@ impl crate::activitystream::object::actor::Actor for Model {
 
 	fn public_key(&self) -> Node<impl crate::activitystream::key::PublicKey> {
 		Node::object(
-			crate::activitystream::raw_object()
+			serde_json::Value::new_object()
 				.set_id(Some(&format!("{}#main-key", self.id))) // TODO is this some standard??
 				.set_public_key_pem(&self.public_key)
 				.set_owner(Some(&self.id))

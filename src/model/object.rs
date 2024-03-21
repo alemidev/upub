@@ -1,7 +1,6 @@
 use sea_orm::entity::prelude::*;
-use crate::activitystream::prelude::*;
 
-use crate::activitystream::{object::ObjectType, BaseType, Node};
+use crate::{activitypub::jsonld::LD, activitystream::{object::{ObjectMut, ObjectType}, BaseMut, BaseType, Node}};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "objects")]
@@ -54,7 +53,7 @@ impl crate::activitystream::Base for Model {
 	}
 
 	fn underlying_json_object(self) -> serde_json::Value {
-		crate::activitystream::object()
+		serde_json::Value::new_object()
 			.set_id(Some(&self.id))
 			.set_object_type(Some(self.object_type))
 			.set_attributed_to(Node::maybe_link(self.attributed_to))

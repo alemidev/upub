@@ -8,8 +8,7 @@ strenum! {
 		Application,
 		Group,
 		Organization,
-		Person,
-		Object;
+		Person;
 	};
 }
 

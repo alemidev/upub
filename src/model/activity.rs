@@ -1,6 +1,6 @@
 use sea_orm::{entity::prelude::*, FromJsonQueryResult};
 
-use crate::activitystream::{self, link::Link, object::{activity::{Activity, ActivityMut, ActivityType}, actor::Actor, Object, ObjectMut, ObjectType}, Base, BaseMut, BaseType, Node};
+use crate::{activitypub::jsonld::LD, activitystream::{link::Link, object::{activity::{Activity, ActivityMut, ActivityType}, actor::Actor, Object, ObjectMut, ObjectType}, Base, BaseMut, BaseType, Node}};
 
 #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize, FromJsonQueryResult)]
 pub struct Audience(pub Vec<String>);
@@ -80,7 +80,7 @@ impl Base for Model {
 	}
 
 	fn underlying_json_object(self) -> serde_json::Value {
-		activitystream::object()
+		serde_json::Value::new_object()
 			.set_id(Some(&self.id))
 			.set_activity_type(Some(self.activity_type))
 			.set_actor(Node::link(self.actor))

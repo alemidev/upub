@@ -1,12 +1,11 @@
 use std::sync::Arc;
-use crate::activitystream::prelude::*;
 
 use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
 use sea_orm::{ColumnTrait, Condition, DatabaseConnection, EntityTrait, IntoActiveModel, Order, QueryFilter, QueryOrder, QuerySelect};
 
-use crate::{activitystream::{self, object::{activity::ActivityType, collection::CollectionType, ObjectType}, BaseType, Node}, model::{self, activity, object, user}, server::Context, url};
+use crate::{activitystream::{object::{activity::{Activity, ActivityMut, ActivityType}, collection::{page::CollectionPageMut, CollectionMut, CollectionType}, ObjectType}, Base, BaseMut, BaseType, Node}, model::{self, activity, object, user}, server::Context, url};
 
-use super::JsonLD;
+use super::{jsonld::LD, JsonLD};
 
 pub async fn list(State(_db) : State<Arc<DatabaseConnection>>) -> Result<JsonLD<serde_json::Value>, StatusCode> {
 	todo!()
@@ -14,7 +13,7 @@ pub async fn list(State(_db) : State<Arc<DatabaseConnection>>) -> Result<JsonLD<
 
 pub async fn view(State(ctx) : State<Context>, Path(id): Path<String>) -> Result<JsonLD<serde_json::Value>, StatusCode> {
 	match user::Entity::find_by_id(ctx.uid(id)).one(ctx.db()).await {
-		Ok(Some(user)) => Ok(JsonLD(user.underlying_json_object())),
+		Ok(Some(user)) => Ok(JsonLD(user.underlying_json_object().ld_context())),
 		Ok(None) => Err(StatusCode::NOT_FOUND),
 		Err(e) => {
 			tracing::error!("error querying for user: {e}");
@@ -59,7 +58,7 @@ pub async fn outbox(
 					.map(|(a, o)| a.underlying_json_object().set_object(Node::maybe_object(o)))
 					.collect();
 				Ok(JsonLD(
-					activitystream::object()
+					serde_json::Value::new_object()
 						// TODO set id, calculate uri from given args
 						.set_collection_type(Some(CollectionType::OrderedCollectionPage))
 						.set_part_of(Node::link(url!(ctx, "/users/{id}/outbox")))
@@ -71,7 +70,7 @@ pub async fn outbox(
 
 	} else {
 		Ok(JsonLD(
-			crate::activitystream::object()
+			serde_json::Value::new_object()
 				.set_id(Some(&url!(ctx, "/users/{id}/outbox")))
 				.set_collection_type(Some(CollectionType::OrderedCollection))
 				.set_first(Node::link(url!(ctx, "/users/{id}/outbox?page=true")))

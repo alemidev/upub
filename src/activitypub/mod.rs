@@ -7,7 +7,9 @@ pub use jsonld::JsonLD;
 use axum::{extract::State, http::StatusCode, Json};
 use sea_orm::{EntityTrait, IntoActiveModel};
 
-use crate::{activitystream::{self, object::{activity::{Activity, ActivityType}, actor::{ActorMut, ActorType}, ObjectMut, ObjectType}, Base, BaseMut, BaseType, Node}, model, server::Context, url};
+use crate::{activitystream::{object::{activity::{Activity, ActivityType}, actor::{ActorMut, ActorType}, ObjectMut, ObjectType}, Base, BaseMut, BaseType, Node}, model, server::Context, url};
+
+use self::jsonld::LD;
 
 pub const PUBLIC_TARGET : &str = "https://www.w3.org/ns/activitystreams#Public";
 
@@ -38,7 +40,7 @@ pub struct Page {
 
 pub async fn view(State(ctx): State<Context>) -> Result<Json<serde_json::Value>, StatusCode> {
 	Ok(Json(
-		activitystream::object()
+		serde_json::Value::new_object()
 			.set_actor_type(Some(ActorType::Application))
 			.set_id(Some(&url!(ctx, "")))
 			.set_name(Some("μpub"))
