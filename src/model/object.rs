@@ -1,6 +1,8 @@
 use sea_orm::entity::prelude::*;
 
-use crate::{activitypub::jsonld::LD, activitystream::{object::{ObjectMut, ObjectType}, BaseMut, BaseType, Node}};
+use crate::{activitypub::jsonld::LD, activitystream::{object::{ObjectMut, ObjectType}, BaseMut, BaseType, Link, Node}};
+
+use super::Audience;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "objects")]
@@ -14,6 +16,10 @@ pub struct Model {
 	pub summary: Option<String>,
 	pub content: Option<String>,
 	pub context: Option<String>,
+	pub cc: Audience,
+	pub bcc: Audience,
+	pub to: Audience,
+	pub bto: Audience,
 	pub published: ChronoDateTimeUtc,
 }
 
@@ -91,6 +97,22 @@ impl crate::activitystream::object::Object for Model {
 		Node::maybe_link(self.context.clone())
 	}
 
+	fn to(&self) -> Node<impl Link> {
+		Node::links(self.to.0.clone())
+	}
+
+	fn bto(&self) -> Node<impl Link> {
+		Node::links(self.bto.0.clone())
+	}
+
+	fn cc(&self) -> Node<impl Link> {
+		Node::links(self.cc.0.clone())
+	}
+
+	fn bcc(&self) -> Node<impl Link> {
+		Node::links(self.bcc.0.clone())
+	}
+
 	fn published (&self) -> Option<chrono::DateTime<chrono::Utc>> {
 		Some(self.published)
 	}
@@ -107,6 +129,10 @@ impl Model {
 			content: object.content().map(|x| x.to_string()),
 			context: object.context().id().map(|x| x.to_string()),
 			published: object.published().ok_or(super::FieldError("published"))?,
+			to: object.to().into(),
+			bto: object.bto().into(),
+			cc: object.cc().into(),
+			bcc: object.bcc().into(),
 		})
 	}
 }

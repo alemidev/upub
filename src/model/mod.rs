@@ -7,5 +7,20 @@ pub mod faker;
 #[error("missing required field: '{0}'")]
 pub struct FieldError(pub &'static str);
 
+#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize, sea_orm::FromJsonQueryResult)]
+pub struct Audience(pub Vec<String>);
+
+use crate::activitystream::{Link, Node};
+impl<T : Link> From<Node<T>> for Audience {
+	fn from(value: Node<T>) -> Self {
+		Audience(
+			match value {
+				Node::Empty => vec![],
+				Node::Link(l) => vec![l.href().to_string()],
+				Node::Object(o) => if let Some(id) = o.id() { vec![id.to_string()] } else { vec![] },
+				Node::Array(arr) => arr.into_iter().filter_map(|l| Some(l.id()?.to_string())).collect(),
+			}
+		)
 	}
 }
+

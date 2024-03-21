@@ -77,6 +77,10 @@ impl MigrationTrait for Migration {
 					.col(ColumnDef::new(Objects::Summary).string().null())
 					.col(ColumnDef::new(Objects::Content).string().null())
 					.col(ColumnDef::new(Objects::Context).string().null())
+					.col(ColumnDef::new(Objects::To).json().null())
+					.col(ColumnDef::new(Objects::Bto).json().null())
+					.col(ColumnDef::new(Objects::Cc).json().null())
+					.col(ColumnDef::new(Objects::Bcc).json().null())
 					.col(ColumnDef::new(Objects::Published).string().not_null())
 					.to_owned()
 			).await?;
@@ -148,5 +152,9 @@ enum Objects {
 	Summary,
 	Content,
 	Context,
+	Cc,
+	Bcc,
+	To,
+	Bto,
 	Published,
 }

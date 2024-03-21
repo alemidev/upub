@@ -1,22 +1,8 @@
-use sea_orm::{entity::prelude::*, FromJsonQueryResult};
+use sea_orm::entity::prelude::*;
 
 use crate::{activitypub::jsonld::LD, activitystream::{link::Link, object::{activity::{Activity, ActivityMut, ActivityType}, actor::Actor, Object, ObjectMut, ObjectType}, Base, BaseMut, BaseType, Node}};
 
-#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize, FromJsonQueryResult)]
-pub struct Audience(pub Vec<String>);
-
-impl<T : Link> From<Node<T>> for Audience {
-	fn from(value: Node<T>) -> Self {
-		Audience(
-			match value {
-				Node::Empty => vec![],
-				Node::Link(l) => vec![l.href().to_string()],
-				Node::Object(o) => if let Some(id) = o.id() { vec![id.to_string()] } else { vec![] },
-				Node::Array(arr) => arr.into_iter().filter_map(|l| Some(l.id()?.to_string())).collect(),
-			}
-		)
-	}
-}
+use super::Audience;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "activities")]
@@ -26,8 +12,8 @@ pub struct Model {
 	pub id: String,
 
 	pub activity_type: ActivityType,
-	pub actor: String, // TODO relates to USER
-	pub object: Option<String>, // TODO relates to NOTES maybe????? maybe other tables??????
+	pub actor: String,
+	pub object: Option<String>,
 
 	pub target: Option<String>, // TODO relates to USER maybe??
 	pub cc: Audience,
