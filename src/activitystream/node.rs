@@ -66,7 +66,8 @@ impl<T : super::Base> Node<T> {
 				arr
 					.into_iter()
 					.filter_map(|node| match node {
-						Node::Empty | Node::Link(_) => None,
+						Node::Empty => None,
+						Node::Link(l) => Some(serde_json::Value::String(l.href().to_string())),
 						Node::Object(o) => Some(o.underlying_json_object()),
 						Node::Array(_) => Some(serde_json::Value::Array(node.flat())),
 					}).collect()
