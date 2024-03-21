@@ -19,6 +19,13 @@ pub fn split_id(id: &str) -> (String, String) {
 	(first.to_string(), last.to_string())
 }
 
+pub fn domain(domain: &str) -> String {
+	domain
+		.replace("http://", "")
+		.replace("https://", "")
+		.replace('/', "")
+}
+
 
 #[derive(Debug, serde::Deserialize)]
 // TODO i don't really like how pleroma/mastodon do it actually, maybe change this?

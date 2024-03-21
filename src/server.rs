@@ -74,6 +74,7 @@ pub async fn serve(db: DatabaseConnection, domain: String) {
 	// build our application with a single route
 	let app = Router::new()
 		// core server inbox/outbox, maybe for feeds? TODO do we need these?
+		.route("/", get(ap::view))
 		.route("/inbox", post(ap::inbox))
 		.route("/outbox", get(ap::outbox))
 		// actor routes
