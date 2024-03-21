@@ -69,6 +69,10 @@ impl crate::activitystream::Base for Model {
 			.set_content(self.content.as_deref())
 			.set_context(Node::maybe_link(self.context.clone()))
 			.set_published(Some(self.published))
+			.set_to(Node::links(self.to.0.clone()))
+			.set_bto(Node::empty())
+			.set_cc(Node::links(self.cc.0.clone()))
+			.set_bcc(Node::empty())
 	}
 }
 
