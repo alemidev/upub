@@ -76,7 +76,7 @@ async fn main() {
 		CliCommand::Migrate => migrations::Migrator::up(&db, None)
 			.await.expect("error applying migrations"),
 
-		CliCommand::Faker => model::faker(&db, args.domain)
+		CliCommand::Faker => model::faker::faker(&db, args.domain)
 			.await.expect("error creating fake entities"),
 
 		CliCommand::Fetch { uri, save } => fetch(&db, &uri, save)
