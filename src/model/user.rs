@@ -78,6 +78,7 @@ impl crate::activitystream::Base for Model {
 			.set_summary(self.summary.as_deref())
 			.set_icon(self.icon())
 			.set_image(self.image())
+			.set_published(Some(self.created))
 			.set_preferred_username(Some(&self.preferred_username))
 			.set_inbox(self.inbox())
 			.set_outbox(self.outbox())
