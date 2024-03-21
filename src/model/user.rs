@@ -85,6 +85,7 @@ impl crate::activitystream::Base for Model {
 			.set_followers(self.followers())
 			.set_public_key(self.public_key())
 			.set_discoverable(Some(true))
+			.set_endpoints(None) // TODO dirty fix to put an empty object
 			.underlying_json_object()
 	}
 }
@@ -153,6 +154,7 @@ impl crate::activitystream::object::actor::Actor for Model {
 	fn public_key(&self) -> Node<impl crate::activitystream::key::PublicKey> {
 		Node::object(
 			crate::activitystream::raw_object()
+				.set_id(Some(&format!("{}#main-key", self.id))) // TODO is this some standard??
 				.set_public_key_pem(&self.public_key)
 				.set_owner(Some(&self.id))
 		)

@@ -71,7 +71,8 @@ impl ActorMut for serde_json::Value {
 	setter! { public_key::publicKey -> node impl PublicKey }
 	setter! { discoverable -> bool }
 
-	fn set_endpoints(self, _val: Option<serde_json::Map<String, String>>) -> Self {
-		todo!()
+	fn set_endpoints(mut self, _val: Option<serde_json::Map<String, String>>) -> Self {
+		self.as_object_mut().unwrap().insert("endpoints".to_string(), serde_json::Value::Object(serde_json::Map::default()));
+		self
 	}
 }
