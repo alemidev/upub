@@ -77,6 +77,9 @@ pub async fn serve(db: DatabaseConnection, domain: String) {
 		.route("/", get(ap::view))
 		.route("/inbox", post(ap::inbox))
 		.route("/outbox", get(ap::outbox))
+		// .well-known and discovery
+		.route("/.well-known/webfinger", get(ap::well_known::webfinger))
+		.route("/.well-known/host-meta", get(ap::well_known::host_meta))
 		// actor routes
 		.route("/users/:id", get(ap::user::view))
 		.route("/users/:id/inbox", post(ap::user::inbox))

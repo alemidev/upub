@@ -1,6 +1,8 @@
 pub mod user;
 pub mod object;
 pub mod activity;
+pub mod well_known;
+
 pub mod jsonld;
 pub use jsonld::JsonLD;
 
