@@ -18,7 +18,19 @@ impl MigrationTrait for Migration {
 							.primary_key()
 					)
 					.col(ColumnDef::new(Users::ActorType).string().not_null())
+					.col(ColumnDef::new(Users::Domain).string().not_null())
 					.col(ColumnDef::new(Users::Name).string().not_null())
+					.col(ColumnDef::new(Users::Summary).string().null())
+					.col(ColumnDef::new(Users::Image).string().null())
+					.col(ColumnDef::new(Users::Icon).string().null())
+					.col(ColumnDef::new(Users::PreferredUsername).string().null())
+					.col(ColumnDef::new(Users::Inbox).string().null())
+					.col(ColumnDef::new(Users::SharedInbox).string().null())
+					.col(ColumnDef::new(Users::Outbox).string().null())
+					.col(ColumnDef::new(Users::Following).string().null())
+					.col(ColumnDef::new(Users::Followers).string().null())
+					.col(ColumnDef::new(Users::Created).date_time().not_null())
+					.col(ColumnDef::new(Users::Updated).date_time().not_null())
 					.to_owned()
 			)
 			.await?;
@@ -38,7 +50,11 @@ impl MigrationTrait for Migration {
 					.col(ColumnDef::new(Activities::Actor).string().not_null())
 					.col(ColumnDef::new(Activities::Object).string().null())
 					.col(ColumnDef::new(Activities::Target).string().null())
-					.col(ColumnDef::new(Activities::Published).string().null())
+					.col(ColumnDef::new(Activities::To).json().null())
+					.col(ColumnDef::new(Activities::Bto).json().null())
+					.col(ColumnDef::new(Activities::Cc).json().null())
+					.col(ColumnDef::new(Activities::Bcc).json().null())
+					.col(ColumnDef::new(Activities::Published).date_time().not_null())
 					.to_owned()
 			).await?;
 
@@ -58,7 +74,7 @@ impl MigrationTrait for Migration {
 					.col(ColumnDef::new(Objects::Name).string().null())
 					.col(ColumnDef::new(Objects::Summary).string().null())
 					.col(ColumnDef::new(Objects::Content).string().null())
-					.col(ColumnDef::new(Objects::Published).string().null())
+					.col(ColumnDef::new(Objects::Published).string().not_null())
 					.to_owned()
 			).await?;
 
@@ -86,8 +102,20 @@ impl MigrationTrait for Migration {
 enum Users {
 	Table,
 	Id,
+	Domain,
 	ActorType,
 	Name,
+	Summary,
+	Image,
+	Icon,
+	PreferredUsername,
+	Inbox,
+	SharedInbox,
+	Outbox,
+	Following,
+	Followers,
+	Created,
+	Updated,
 }
 
 #[derive(DeriveIden)]
@@ -98,7 +126,11 @@ enum Activities {
 	Actor,
 	Object,
 	Target,
-	Published
+	Cc,
+	Bcc,
+	To,
+	Bto,
+	Published,
 }
 
 #[derive(DeriveIden)]
@@ -106,9 +138,9 @@ enum Objects {
 	Table,
 	Id,
 	ObjectType,
+	AttributedTo,
 	Name,
 	Summary,
-	AttributedTo,
 	Content,
 	Published,
 }

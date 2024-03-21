@@ -1,6 +1,7 @@
 use sea_orm::entity::prelude::*;
+use crate::activitystream::prelude::*;
 
-use crate::activitystream::{macros::InsertValue, object::{actor::Actor, Object, ObjectType}, Base, BaseType, Node};
+use crate::activitystream::{object::ObjectType, BaseType, Node};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "objects")]
@@ -17,11 +18,33 @@ pub struct Model {
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {}
+pub enum Relation {
+	#[sea_orm(has_many = "super::activity::Entity")]
+	Activity,
+
+	#[sea_orm(
+		belongs_to = "super::user::Entity",
+		from = "Column::AttributedTo",
+		to = "super::user::Column::Id",
+	)]
+	User,
+}
+
+impl Related<super::activity::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Activity.def()
+	}
+}
+
+impl Related<super::user::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::User.def()
+	}
+}
 
 impl ActiveModelBehavior for ActiveModel {}
 
-impl Base for Model {
+impl crate::activitystream::Base for Model {
 	fn id(&self) -> Option<&str> {
 		Some(&self.id)
 	}
@@ -31,24 +54,23 @@ impl Base for Model {
 	}
 
 	fn underlying_json_object(self) -> serde_json::Value {
-		let mut map = serde_json::Map::new();
-		map.insert_str("id", Some(&self.id));
-		map.insert_str("type", Some(self.object_type.as_ref()));
-		map.insert_str("attributedTo", self.attributed_to.as_deref());
-		map.insert_str("name", self.name.as_deref());
-		map.insert_str("summary", self.summary.as_deref());
-		map.insert_str("content", self.content.as_deref());
-		map.insert_timestr("published", Some(self.published));
-		serde_json::Value::Object(map)
+		crate::activitystream::object()
+			.set_id(Some(&self.id))
+			.set_object_type(Some(self.object_type))
+			.set_attributed_to(Node::maybe_link(self.attributed_to))
+			.set_name(self.name.as_deref())
+			.set_summary(self.summary.as_deref())
+			.set_content(self.content.as_deref())
+			.set_published(Some(self.published))
 	}
 }
 
-impl Object for Model {
+impl crate::activitystream::object::Object for Model {
 	fn object_type(&self) -> Option<ObjectType> {
 		Some(self.object_type)
 	}
 
-	fn attributed_to(&self) -> Node<impl Actor> {
+	fn attributed_to(&self) -> Node<impl crate::activitystream::object::actor::Actor> {
 		Node::<serde_json::Value>::from(self.attributed_to.as_deref())
 	}
 
@@ -70,7 +92,7 @@ impl Object for Model {
 }
 
 impl Model {
-	pub fn new(object: &impl Object) -> Result<Self, super::FieldError> {
+	pub fn new(object: &impl crate::activitystream::object::Object) -> Result<Self, super::FieldError> {
 		Ok(Model {
 			id: object.id().ok_or(super::FieldError("id"))?.to_string(),
 			object_type: object.object_type().ok_or(super::FieldError("type"))?,
