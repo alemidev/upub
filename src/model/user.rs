@@ -24,6 +24,9 @@ pub struct Model {
 	pub following: Option<String>,
 	pub followers: Option<String>,
 
+	pub public_key: String,
+	pub private_key: Option<String>,
+
 	pub created: ChronoDateTimeUtc,
 	pub updated: ChronoDateTimeUtc,
 	
@@ -79,6 +82,7 @@ impl crate::activitystream::Base for Model {
 			.set_outbox(self.outbox())
 			.set_following(self.following())
 			.set_followers(self.followers())
+			.set_public_key(self.public_key())
 			.underlying_json_object()
 	}
 }
@@ -135,6 +139,14 @@ impl crate::activitystream::object::actor::Actor for Model {
 	fn followers(&self) -> Node<impl Collection> {
 		Node::link(self.following.clone().unwrap_or(format!("https://{}/users/{}/followers", self.domain, self.name)))
 	}
+
+	fn public_key(&self) -> Node<impl crate::activitystream::key::PublicKey> {
+		Node::object(
+			crate::activitystream::raw_object()
+				.set_public_key_pem(&self.public_key)
+				.set_owner(Some(&self.id))
+		)
+	}
 }
 
 impl Model {
@@ -155,6 +167,8 @@ impl Model {
 			following: object.following().id().map(|x| x.to_string()),
 			created: object.published().unwrap_or(chrono::Utc::now()),
 			updated: chrono::Utc::now(),
+			public_key: object.public_key().get().ok_or(super::FieldError("publicKey"))?.public_key_pem().to_string(),
+			private_key: None, // there's no way to transport privkey over AP json, must come from DB
 		})
 	}
 }

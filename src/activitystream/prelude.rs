@@ -1,5 +1,6 @@
 pub use super::{
 	Base as _, BaseMut as _,
+	key::{PublicKey as _, PublicKeyMut as _},
 	link::{Link as _, LinkMut as _},
 	object::{
 		Object as _, ObjectMut as _,

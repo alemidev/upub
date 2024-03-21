@@ -29,6 +29,8 @@ impl MigrationTrait for Migration {
 					.col(ColumnDef::new(Users::Outbox).string().null())
 					.col(ColumnDef::new(Users::Following).string().null())
 					.col(ColumnDef::new(Users::Followers).string().null())
+					.col(ColumnDef::new(Users::PublicKey).string().not_null())
+					.col(ColumnDef::new(Users::PrivateKey).string().null())
 					.col(ColumnDef::new(Users::Created).date_time().not_null())
 					.col(ColumnDef::new(Users::Updated).date_time().not_null())
 					.to_owned()
@@ -114,6 +116,8 @@ enum Users {
 	Outbox,
 	Following,
 	Followers,
+	PublicKey,
+	PrivateKey,
 	Created,
 	Updated,
 }

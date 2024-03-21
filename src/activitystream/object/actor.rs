@@ -1,6 +1,7 @@
 use crate::{activitystream::Node, getter, setter, strenum};
 
 use super::collection::Collection;
+use super::super::key::PublicKey;
 
 strenum! {
 	pub enum ActorType {
@@ -17,11 +18,12 @@ pub trait Actor : super::Object {
 	fn preferred_username(&self) -> Option<&str> { None }
 	fn inbox(&self) -> Node<impl Collection>;
 	fn outbox(&self) -> Node<impl Collection>;
-	fn following(&self) -> Node<impl Collection> { Node::Empty::<serde_json::Value> }
-	fn followers(&self) -> Node<impl Collection> { Node::Empty::<serde_json::Value> }
-	fn liked(&self) -> Node<impl Collection> { Node::Empty::<serde_json::Value> }
-	fn streams(&self) -> Node<impl Collection> { Node::Empty::<serde_json::Value> }
+	fn following(&self) -> Node<impl Collection> { Node::empty() }
+	fn followers(&self) -> Node<impl Collection> { Node::empty() }
+	fn liked(&self) -> Node<impl Collection> { Node::empty() }
+	fn streams(&self) -> Node<impl Collection> { Node::empty() }
 	fn endpoints(&self) -> Option<serde_json::Map<String, String>> { None }
+	fn public_key(&self) -> Node<impl PublicKey> { Node::empty() }
 }
 
 pub trait ActorMut : super::ObjectMut {
@@ -34,6 +36,7 @@ pub trait ActorMut : super::ObjectMut {
 	fn set_liked(self, val: Node<impl Collection>) -> Self;
 	fn set_streams(self, val: Node<impl Collection>) -> Self;
 	fn set_endpoints(self, val: Option<serde_json::Map<String, String>>) -> Self;
+	fn set_public_key(self, val: Node<impl PublicKey>) -> Self;
 }
 
 impl Actor for serde_json::Value {
@@ -45,6 +48,7 @@ impl Actor for serde_json::Value {
 	getter! { followers -> node impl Collection }
 	getter! { liked -> node impl Collection }
 	getter! { streams -> node impl Collection }
+	getter! { public_key::publicKey -> node impl PublicKey }
 
 	fn endpoints(&self) -> Option<serde_json::Map<String, String>> {
 		todo!()
@@ -60,6 +64,7 @@ impl ActorMut for serde_json::Value {
 	setter! { followers -> node impl Collection }
 	setter! { liked -> node impl Collection }
 	setter! { streams -> node impl Collection }
+	setter! { public_key::publicKey -> node impl PublicKey }
 
 	fn set_endpoints(self, _val: Option<serde_json::Map<String, String>>) -> Self {
 		todo!()
