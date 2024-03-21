@@ -47,6 +47,7 @@ pub async fn view(State(ctx): State<Context>) -> Result<Json<serde_json::Value>,
 			.set_summary(Some("micro social network, federated"))
 			.set_inbox(Node::link(url!(ctx, "/inbox")))
 			.set_outbox(Node::link(url!(ctx, "/outbox")))
+			.ld_context()
 	))
 }
 

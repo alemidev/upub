@@ -64,6 +64,7 @@ pub async fn outbox(
 						.set_part_of(Node::link(url!(ctx, "/users/{id}/outbox")))
 						.set_next(Node::link(url!(ctx, "/users/{id}/outbox?page=true&max_id={next}")))
 						.set_ordered_items(Node::array(items))
+						.ld_context()
 				))
 			},
 		}
@@ -74,6 +75,7 @@ pub async fn outbox(
 				.set_id(Some(&url!(ctx, "/users/{id}/outbox")))
 				.set_collection_type(Some(CollectionType::OrderedCollection))
 				.set_first(Node::link(url!(ctx, "/users/{id}/outbox?page=true")))
+				.ld_context()
 		))
 	}
 }
