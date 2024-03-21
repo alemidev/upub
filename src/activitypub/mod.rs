@@ -1,6 +1,8 @@
 pub mod user;
 pub mod object;
 pub mod activity;
+pub mod jsonld;
+pub use jsonld::JsonLD;
 
 use axum::{extract::State, http::StatusCode, Json};
 use sea_orm::{EntityTrait, IntoActiveModel};
@@ -46,7 +48,7 @@ pub async fn view(State(ctx): State<Context>) -> Result<Json<serde_json::Value>,
 	))
 }
 
-pub async fn inbox(State(ctx) : State<Context>, Json(object): Json<serde_json::Value>) -> Result<Json<serde_json::Value>, StatusCode> {
+pub async fn inbox(State(ctx) : State<Context>, Json(object): Json<serde_json::Value>) -> Result<JsonLD<serde_json::Value>, StatusCode> {
 	match object.base_type() {
 		None => { Err(StatusCode::BAD_REQUEST) },
 		Some(BaseType::Link(_x)) => Err(StatusCode::UNPROCESSABLE_ENTITY), // we could but not yet
@@ -70,7 +72,7 @@ pub async fn inbox(State(ctx) : State<Context>, Json(object): Json<serde_json::V
 			model::activity::Entity::insert(activity_entity.into_active_model())
 				.exec(ctx.db())
 				.await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-			Ok(Json(serde_json::Value::Null)) // TODO hmmmmmmmmmmm not the best value to return....
+			Ok(JsonLD(serde_json::Value::Null)) // TODO hmmmmmmmmmmm not the best value to return....
 		},
 		Some(BaseType::Object(ObjectType::Activity(_x))) => { Err(StatusCode::NOT_IMPLEMENTED) },
 		Some(_x) => { Err(StatusCode::UNPROCESSABLE_ENTITY) }

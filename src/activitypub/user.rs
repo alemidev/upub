@@ -6,13 +6,15 @@ use sea_orm::{ColumnTrait, Condition, DatabaseConnection, EntityTrait, IntoActiv
 
 use crate::{activitystream::{self, object::{activity::ActivityType, collection::CollectionType, ObjectType}, BaseType, Node}, model::{self, activity, object, user}, server::Context, url};
 
-pub async fn list(State(_db) : State<Arc<DatabaseConnection>>) -> Result<Json<serde_json::Value>, StatusCode> {
+use super::JsonLD;
+
+pub async fn list(State(_db) : State<Arc<DatabaseConnection>>) -> Result<JsonLD<serde_json::Value>, StatusCode> {
 	todo!()
 }
 
-pub async fn view(State(ctx) : State<Context>, Path(id): Path<String>) -> Result<Json<serde_json::Value>, StatusCode> {
+pub async fn view(State(ctx) : State<Context>, Path(id): Path<String>) -> Result<JsonLD<serde_json::Value>, StatusCode> {
 	match user::Entity::find_by_id(ctx.uid(id)).one(ctx.db()).await {
-		Ok(Some(user)) => Ok(Json(user.underlying_json_object())),
+		Ok(Some(user)) => Ok(JsonLD(user.underlying_json_object())),
 		Ok(None) => Err(StatusCode::NOT_FOUND),
 		Err(e) => {
 			tracing::error!("error querying for user: {e}");
@@ -25,7 +27,7 @@ pub async fn outbox(
 	State(ctx): State<Context>,
 	Path(id): Path<String>,
 	Query(page): Query<super::Page>,
-) -> Result<Json<serde_json::Value>, StatusCode> {
+) -> Result<JsonLD<serde_json::Value>, StatusCode> {
 	if let Some(true) = page.page {
 
 		// find requested recent post, to filter based on its date (use now() as fallback)
@@ -56,7 +58,7 @@ pub async fn outbox(
 					.into_iter()
 					.map(|(a, o)| a.underlying_json_object().set_object(Node::maybe_object(o)))
 					.collect();
-				Ok(Json(
+				Ok(JsonLD(
 					activitystream::object()
 						// TODO set id, calculate uri from given args
 						.set_collection_type(Some(CollectionType::OrderedCollectionPage))
@@ -68,7 +70,7 @@ pub async fn outbox(
 		}
 
 	} else {
-		Ok(Json(
+		Ok(JsonLD(
 			crate::activitystream::object()
 				.set_id(Some(&url!(ctx, "/users/{id}/outbox")))
 				.set_collection_type(Some(CollectionType::OrderedCollection))
@@ -81,7 +83,7 @@ pub async fn inbox(
 	State(ctx): State<Context>,
 	Path(_id): Path<String>,
 	Json(object): Json<serde_json::Value>
-) -> Result<Json<serde_json::Value>, StatusCode> {
+) -> Result<JsonLD<serde_json::Value>, StatusCode> {
 	match object.base_type() {
 		None => { Err(StatusCode::BAD_REQUEST) },
 		Some(BaseType::Link(_x)) => Err(StatusCode::UNPROCESSABLE_ENTITY), // we could but not yet
@@ -105,7 +107,7 @@ pub async fn inbox(
 			activity::Entity::insert(activity_entity.into_active_model())
 				.exec(ctx.db())
 				.await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-			Ok(Json(serde_json::Value::Null)) // TODO hmmmmmmmmmmm not the best value to return....
+			Ok(JsonLD(serde_json::Value::Null)) // TODO hmmmmmmmmmmm not the best value to return....
 		},
 		Some(BaseType::Object(ObjectType::Activity(_x))) => { Err(StatusCode::NOT_IMPLEMENTED) },
 		Some(_x) => { Err(StatusCode::UNPROCESSABLE_ENTITY) }

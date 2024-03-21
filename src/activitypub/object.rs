@@ -1,12 +1,14 @@
-use axum::{extract::{Path, State}, http::StatusCode, Json};
+use axum::{extract::{Path, State}, http::StatusCode};
 use sea_orm::EntityTrait;
 
 use crate::{activitystream::Base, model::object, server::Context};
 
+use super::JsonLD;
 
-pub async fn view(State(ctx) : State<Context>, Path(id): Path<String>) -> Result<Json<serde_json::Value>, StatusCode> {
+
+pub async fn view(State(ctx) : State<Context>, Path(id): Path<String>) -> Result<JsonLD<serde_json::Value>, StatusCode> {
 	match object::Entity::find_by_id(ctx.oid(id)).one(ctx.db()).await {
-		Ok(Some(object)) => Ok(Json(object.underlying_json_object())),
+		Ok(Some(object)) => Ok(JsonLD(object.underlying_json_object())),
 		Ok(None) => Err(StatusCode::NOT_FOUND),
 		Err(e) => {
 			tracing::error!("error querying for object: {e}");
