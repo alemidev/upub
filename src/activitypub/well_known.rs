@@ -50,9 +50,13 @@ pub async fn webfinger(State(ctx): State<Context>, Query(query): Query<Webfinger
 }
 
 // i don't even want to bother with XML, im just returning a formatted xml string
-pub async fn host_meta(State(ctx): State<Context>) -> String {
-	format!(r#"<?xml version="1.0" encoding="UTF-8"?>
-	<XRD xmlns="http://docs.oasis-open.org/ns/xri/xrd-1.0">
-		<Link type="application/xrd+xml" template="{}/.well-known/webfinger?resource={{uri}}" rel="lrdd" />
-	</XRD>"#, ctx.base())
+pub async fn host_meta(State(ctx): State<Context>) -> Response {
+	(
+		[("Content-Type", "application/xrd+xml")],
+		format!(r#"<?xml version="1.0" encoding="UTF-8"?>
+			<XRD xmlns="http://docs.oasis-open.org/ns/xri/xrd-1.0">
+				<Link type="application/xrd+xml" template="{}/.well-known/webfinger?resource={{uri}}" rel="lrdd" />
+			</XRD>"#,
+			ctx.base())
+	).into_response()
 }
