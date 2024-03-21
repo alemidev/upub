@@ -15,10 +15,10 @@ pub async fn faker(db: &sea_orm::DatabaseConnection, domain: String) -> Result<(
 
 	let root = user::Model {
 		id: format!("{domain}/users/root"),
-		name: Some("Administrator".into()),
+		name: Some("μpub".into()),
 		domain: crate::activitypub::domain(&domain),
 		preferred_username: "root".to_string(),
-		summary: Some("hello world! i'm manually generated but served dynamically from db!".to_string()),
+		summary: Some("hello world! i'm manually generated but served dynamically from db! check progress at https://git.alemi.dev/upub.git".to_string()),
 		following: None,
 		followers: None,
 		icon: Some("https://cdn.alemi.dev/social/circle-square.png".to_string()),
