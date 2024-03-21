@@ -101,7 +101,6 @@ impl Object for serde_json::Value {
 	getter! { attributed_to::attributedTo -> node impl Actor }
 	getter! { audience -> node impl Actor }
 	getter! { content -> &str }
-	getter! { context -> node impl Object }
 	getter! { name -> &str }
 	getter! { end_time::endTime -> chrono::DateTime<chrono::Utc> }
 	getter! { generator -> node impl Actor }
@@ -123,6 +122,17 @@ impl Object for serde_json::Value {
 	getter! { media_type -> &str }
 	getter! { duration -> &str }
 	getter! { url -> node impl super::Link }
+
+	// TODO Mastodon doesn't use a "context" field on the object but makes up a new one!!
+	fn context(&self) -> Node<impl Object> {
+		match self.get("context") {
+			Some(x) => Node::from(x.clone()),
+			None => match self.get("conversation") {
+				Some(x) => Node::from(x.clone()),
+				None => Node::empty(),
+			}
+		}
+	}
 }
 
 impl ObjectMut for serde_json::Value {
@@ -131,7 +141,6 @@ impl ObjectMut for serde_json::Value {
 	setter! { attributed_to::attributedTo -> node impl Actor }
 	setter! { audience -> node impl Actor }
 	setter! { content -> &str }
-	setter! { context -> node impl Object }
 	setter! { name -> &str }
 	setter! { end_time::endTime -> chrono::DateTime<chrono::Utc> }
 	setter! { generator -> node impl Actor }
@@ -153,5 +162,18 @@ impl ObjectMut for serde_json::Value {
 	setter! { media_type -> &str }
 	setter! { duration -> &str }
 	setter! { url -> node impl super::Link }
+
+	// TODO Mastodon doesn't use a "context" field on the object but makes up a new one!!
+	fn set_context(mut self, ctx: Node<impl Object>) -> Self {
+		if let Some(conversation) = ctx.id() {
+			crate::activitystream::macros::set_maybe_value(
+				&mut self, "conversation", Some(serde_json::Value::String(conversation.to_string())),
+			);
+		}
+		crate::activitystream::macros::set_maybe_node(
+			&mut self, "context", ctx
+		);
+		self
+	}
 
 }
