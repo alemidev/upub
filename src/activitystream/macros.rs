@@ -100,6 +100,12 @@ macro_rules! getter {
 		}
 	};
 
+	($name:ident -> bool) => {
+		fn $name(&self) -> Option<bool> {
+			self.get(stringify!($name))?.as_bool()
+		}
+	};
+
 	($name:ident -> &str) => {
 		fn $name(&self) -> Option<&str> {
 			self.get(stringify!($name))?.as_str()
@@ -185,6 +191,17 @@ macro_rules! getter {
 
 #[macro_export]
 macro_rules! setter {
+	($name:ident -> bool) => {
+		paste::item! {
+			fn [< set_$name >](mut self, val: Option<bool>) -> Self {
+				$crate::activitystream::macros::set_maybe_value(
+					&mut self, stringify!($name), val.map(|x| serde_json::Value::Bool(x))
+				);
+				self
+			}
+		}
+	};
+
 	($name:ident -> &str) => {
 		paste::item! {
 			fn [< set_$name >](mut self, val: Option<&str>) -> Self {

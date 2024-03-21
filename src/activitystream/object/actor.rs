@@ -24,6 +24,8 @@ pub trait Actor : super::Object {
 	fn streams(&self) -> Node<impl Collection> { Node::empty() }
 	fn endpoints(&self) -> Option<serde_json::Map<String, String>> { None }
 	fn public_key(&self) -> Node<impl PublicKey> { Node::empty() }
+	// idk about this? everyone has it but AP doesn't mention it
+	fn discoverable(&self) -> Option<bool> { None }
 }
 
 pub trait ActorMut : super::ObjectMut {
@@ -37,6 +39,7 @@ pub trait ActorMut : super::ObjectMut {
 	fn set_streams(self, val: Node<impl Collection>) -> Self;
 	fn set_endpoints(self, val: Option<serde_json::Map<String, String>>) -> Self;
 	fn set_public_key(self, val: Node<impl PublicKey>) -> Self;
+	fn set_discoverable(self, val: Option<bool>) -> Self;
 }
 
 impl Actor for serde_json::Value {
@@ -49,6 +52,7 @@ impl Actor for serde_json::Value {
 	getter! { liked -> node impl Collection }
 	getter! { streams -> node impl Collection }
 	getter! { public_key::publicKey -> node impl PublicKey }
+	getter! { discoverable -> bool }
 
 	fn endpoints(&self) -> Option<serde_json::Map<String, String>> {
 		todo!()
@@ -65,6 +69,7 @@ impl ActorMut for serde_json::Value {
 	setter! { liked -> node impl Collection }
 	setter! { streams -> node impl Collection }
 	setter! { public_key::publicKey -> node impl PublicKey }
+	setter! { discoverable -> bool }
 
 	fn set_endpoints(self, _val: Option<serde_json::Map<String, String>>) -> Self {
 		todo!()
