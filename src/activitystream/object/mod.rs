@@ -55,7 +55,7 @@ pub trait Object : super::Base {
 	fn summary(&self) -> Option<&str> { None }
 	fn tag(&self) -> Node<impl Object> { Node::Empty::<serde_json::Value> }
 	fn updated(&self) -> Option<chrono::DateTime<chrono::Utc>> { None }
-	fn url(&self) -> Option<Vec<impl super::Link>> { None::<Vec<serde_json::Value>> }
+	fn url(&self) -> Node<impl super::Link> { Node::empty() }
 	fn to(&self) -> Node<impl Link> { Node::Empty::<serde_json::Value> }
 	fn bto(&self) -> Node<impl Link> { Node::Empty::<serde_json::Value> }
 	fn cc(&self) -> Node<impl Link> { Node::Empty::<serde_json::Value> }
@@ -85,7 +85,7 @@ pub trait ObjectMut : super::BaseMut {
 	fn set_summary(self, val: Option<&str>) -> Self;
 	fn set_tag(self, val: Node<impl Object>) -> Self;
 	fn set_updated(self, val: Option<chrono::DateTime<chrono::Utc>>) -> Self;
-	fn set_url(self, val: Option<Vec<impl super::Link>>) -> Self;
+	fn set_url(self, val: Node<impl super::Link>) -> Self;
 	fn set_to(self, val: Node<impl Link>) -> Self;
 	fn set_bto(self, val: Node<impl Link>) -> Self;
 	fn set_cc(self, val: Node<impl Link>) -> Self;
@@ -122,16 +122,7 @@ impl Object for serde_json::Value {
 	getter! { bcc -> node impl Link }
 	getter! { media_type -> &str }
 	getter! { duration -> &str }
-
-	fn url(&self) -> Option<Vec<impl super::Link>> { 
-		Some(
-			self.get("url")?
-				.as_array()?
-				.iter()
-				.filter_map(|x| Some(x.as_str()?.to_string()))
-				.collect()
-		)
-	}
+	getter! { url -> node impl super::Link }
 }
 
 impl ObjectMut for serde_json::Value {
@@ -161,8 +152,6 @@ impl ObjectMut for serde_json::Value {
 	setter! { bcc -> node impl Link }
 	setter! { media_type -> &str }
 	setter! { duration -> &str }
+	setter! { url -> node impl super::Link }
 
-	fn set_url(self, _val: Option<Vec<impl super::Link>>) -> Self {
-		todo!()
-	}
 }

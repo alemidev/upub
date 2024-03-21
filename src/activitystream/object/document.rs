@@ -1,4 +1,4 @@
-use crate::strenum;
+use crate::{getter, setter, strenum};
 
 strenum! {
 	pub enum DocumentType {
@@ -18,7 +18,16 @@ pub trait DocumentMut : super::ObjectMut {
 	fn set_document_type(self, val: Option<DocumentType>) -> Self;
 }
 
-pub trait Image : Document {}
 
-impl Document for serde_json::Value {}
+impl Document for serde_json::Value {
+	getter! { document_type -> type DocumentType }
+}
+
+impl DocumentMut for serde_json::Value {
+	setter! { document_type -> type DocumentType }
+}
+
+
+
+pub trait Image : Document {}
 impl Image for serde_json::Value {}

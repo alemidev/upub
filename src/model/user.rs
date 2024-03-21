@@ -1,4 +1,5 @@
 use sea_orm::entity::prelude::*;
+use crate::activitystream::object::document::DocumentType;
 use crate::activitystream::prelude::*;
 
 use crate::{activitypub, activitystream::{object::actor::ActorType, BaseType, Node, ObjectType}};
@@ -98,14 +99,22 @@ impl crate::activitystream::object::Object for Model {
 
 	fn icon(&self) -> Node<impl Image> {
 		match &self.icon {
-			Some(x) => Node::link(x.to_string()),
+			Some(x) => Node::object(
+				crate::activitystream::raw_object()
+					.set_document_type(Some(DocumentType::Image))
+					.set_url(Node::link(x.clone()))
+			),
 			None => Node::Empty,
 		}
 	}
 
 	fn image(&self) -> Node<impl Image> {
 		match &self.image {
-			Some(x) => Node::link(x.to_string()),
+			Some(x) => Node::object(
+				crate::activitystream::raw_object()
+					.set_document_type(Some(DocumentType::Image))
+					.set_url(Node::link(x.clone()))
+			),
 			None => Node::Empty,
 		}
 	}
