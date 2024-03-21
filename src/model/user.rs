@@ -12,13 +12,13 @@ pub struct Model {
 	pub id: String,
 	pub domain: String,
 	pub actor_type: ActorType,
+	pub preferred_username: String,
 
-	pub name: String,
+	pub name: Option<String>,
 	pub summary: Option<String>,
 	pub image: Option<String>,
 	pub icon: Option<String>,
 
-	pub preferred_username: Option<String>,
 	pub inbox: Option<String>,
 	pub shared_inbox: Option<String>,
 	pub outbox: Option<String>,
@@ -74,11 +74,11 @@ impl crate::activitystream::Base for Model {
 		crate::activitystream::object()
 			.set_id(Some(&self.id))
 			.set_actor_type(Some(self.actor_type))
-			.set_name(Some(&self.name))
+			.set_name(self.name.as_deref())
 			.set_summary(self.summary.as_deref())
 			.set_icon(self.icon())
 			.set_image(self.image())
-			.set_preferred_username(self.preferred_username.as_deref())
+			.set_preferred_username(Some(&self.preferred_username))
 			.set_inbox(self.inbox())
 			.set_outbox(self.outbox())
 			.set_following(self.following())
@@ -92,7 +92,7 @@ impl crate::activitystream::Base for Model {
 
 impl crate::activitystream::object::Object for Model {
 	fn name(&self) -> Option<&str> {
-		Some(&self.name)
+		self.name.as_deref()
 	}
 
 	fn summary(&self) -> Option<&str> {
@@ -132,23 +132,23 @@ impl crate::activitystream::object::actor::Actor for Model {
 	}
 
 	fn preferred_username(&self) -> Option<&str> {
-		self.preferred_username.as_deref()
+		Some(&self.preferred_username)
 	}
 
 	fn inbox(&self) -> Node<impl Collection> {
-		Node::link(self.inbox.clone().unwrap_or(format!("https://{}/users/{}/inbox", self.domain, self.name)))
+		Node::link(self.inbox.clone().unwrap_or(format!("https://{}/users/{}/inbox", self.domain, self.preferred_username)))
 	}
 
 	fn outbox(&self) -> Node<impl Collection> {
-		Node::link(self.outbox.clone().unwrap_or(format!("https://{}/users/{}/outbox", self.domain, self.name)))
+		Node::link(self.outbox.clone().unwrap_or(format!("https://{}/users/{}/outbox", self.domain, self.preferred_username)))
 	}
 
 	fn following(&self) -> Node<impl Collection> {
-		Node::link(self.following.clone().unwrap_or(format!("https://{}/users/{}/following", self.domain, self.name)))
+		Node::link(self.following.clone().unwrap_or(format!("https://{}/users/{}/following", self.domain, self.preferred_username)))
 	}
 
 	fn followers(&self) -> Node<impl Collection> {
-		Node::link(self.following.clone().unwrap_or(format!("https://{}/users/{}/followers", self.domain, self.name)))
+		Node::link(self.following.clone().unwrap_or(format!("https://{}/users/{}/followers", self.domain, self.preferred_username)))
 	}
 
 	fn public_key(&self) -> Node<impl crate::activitystream::key::PublicKey> {
@@ -164,11 +164,11 @@ impl crate::activitystream::object::actor::Actor for Model {
 impl Model {
 	pub fn new(object: &impl Actor) -> Result<Self, super::FieldError> {
 		let ap_id = object.id().ok_or(super::FieldError("id"))?.to_string();
-		let (domain, name) = activitypub::split_id(&ap_id);
+		let (domain, preferred_username) = activitypub::split_id(&ap_id);
 		Ok(Model {
-			id: ap_id, name, domain,
+			id: ap_id, preferred_username, domain,
 			actor_type: object.actor_type().ok_or(super::FieldError("type"))?,
-			preferred_username: object.preferred_username().map(|x| x.to_string()),
+			name: object.name().map(|x| x.to_string()),
 			summary: object.summary().map(|x| x.to_string()),
 			icon: object.icon().id().map(|x| x.to_string()),
 			image: object.image().id().map(|x| x.to_string()),

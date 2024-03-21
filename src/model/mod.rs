@@ -15,9 +15,9 @@ pub async fn faker(db: &sea_orm::DatabaseConnection, domain: String) -> Result<(
 
 	let root = user::Model {
 		id: format!("{domain}/users/root"),
-		name: "root".into(),
+		name: Some("Administrator".into()),
 		domain: crate::activitypub::domain(&domain),
-		preferred_username: Some("Administrator".to_string()),
+		preferred_username: "root".to_string(),
 		summary: Some("hello world! i'm manually generated but served dynamically from db!".to_string()),
 		following: None,
 		followers: None,
