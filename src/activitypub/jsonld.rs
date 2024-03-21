@@ -28,7 +28,9 @@ impl LD for serde_json::Value {
 pub struct JsonLD<T>(pub T);
 impl<T: serde::Serialize> IntoResponse for JsonLD<T> {
 	fn into_response(self) -> Response {
-		// headers                                  body
-		([("Content-Type", "application/ld+json")], axum::Json(self.0)).into_response()
+		(
+			[("Content-Type", "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"")],
+			axum::Json(self.0)
+		).into_response()
 	}
 }
