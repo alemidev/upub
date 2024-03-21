@@ -110,8 +110,15 @@ impl Node<serde_json::Value>{
 		}
 	}
 
-	pub fn object(x: serde_json::Value) -> Self {
-		Node::Object(Box::new(x))
+	pub fn object(x: impl super::Base) -> Self {
+		Node::Object(Box::new(x.underlying_json_object()))
+	}
+
+	pub fn maybe_object(x: Option<impl super::Base>) -> Self {
+		match x {
+			Some(x) => Node::Object(Box::new(x.underlying_json_object())),
+			None => Node::Empty,
+		}
 	}
 
 	pub fn array(x: Vec<impl super::Base>) -> Self {
