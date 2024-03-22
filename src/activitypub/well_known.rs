@@ -30,6 +30,8 @@ pub async fn nodeinfo_discovery(State(ctx): State<Context>) -> Json<NodeInfoDisc
 	})
 }
 
+// TODO either vendor or fork nodeinfo-rs because it still represents "repository" and "homepage"
+// even if None! technically leads to invalid nodeinfo 2.0
 pub async fn nodeinfo(State(ctx): State<Context>, Path(version): Path<String>) -> Result<Json<nodeinfo::NodeInfoOwned>, StatusCode> {
 	// TODO it's unsustainable to count these every time, especially comments since it's a complex
 	// filter! keep these numbers caches somewhere, maybe db, so that we can just look them up

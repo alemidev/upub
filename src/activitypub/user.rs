@@ -22,6 +22,34 @@ pub async fn view(State(ctx) : State<Context>, Path(id): Path<String>) -> Result
 	}
 }
 
+pub async fn followers(
+	State(ctx): State<Context>,
+	Path(id): Path<String>,
+) -> Result<JsonLD<serde_json::Value>, StatusCode> {
+	Ok(JsonLD(
+		serde_json::Value::new_object()
+			.set_id(Some(&format!("{}/users/{}/followers", ctx.base(), id)))
+			.set_collection_type(Some(CollectionType::OrderedCollection))
+			.set_total_items(Some(0))
+			.set_first(Node::link(format!("{}/users/{}/followers?page=true", ctx.base(), id)))
+			.ld_context()
+	))
+}
+
+pub async fn following(
+	State(ctx): State<Context>,
+	Path(id): Path<String>,
+) -> Result<JsonLD<serde_json::Value>, StatusCode> {
+	Ok(JsonLD(
+		serde_json::Value::new_object()
+			.set_id(Some(&format!("{}/users/{}/following", ctx.base(), id)))
+			.set_collection_type(Some(CollectionType::OrderedCollection))
+			.set_total_items(Some(0))
+			.set_first(Node::link(format!("{}/users/{}/following?page=true", ctx.base(), id)))
+			.ld_context()
+	))
+}
+
 pub async fn outbox(
 	State(ctx): State<Context>,
 	Path(id): Path<String>,
