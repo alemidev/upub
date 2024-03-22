@@ -61,6 +61,7 @@ async fn main() {
 	tracing_subscriber::fmt()
 		.compact()
 		.with_max_level(if args.debug { tracing::Level::DEBUG } else { tracing::Level::INFO })
+		.with(tracing_subscriber::filter::filter_fn(|x| args.debug || x.target() != "sqlx::query"))
 		.init();
 
 	let mut opts = ConnectOptions::new(&args.database);
