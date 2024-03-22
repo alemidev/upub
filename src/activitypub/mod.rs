@@ -34,9 +34,10 @@ pub fn domain(domain: &str) -> String {
 
 #[derive(Debug, serde::Deserialize)]
 // TODO i don't really like how pleroma/mastodon do it actually, maybe change this?
-pub struct Page {
+pub struct Pagination {
 	pub page: Option<bool>,
-	pub max_id: Option<String>,
+	pub offset: Option<u64>,
+	pub batch: Option<u64>,
 }
 
 pub async fn view(State(ctx): State<Context>) -> Result<Json<serde_json::Value>, StatusCode> {

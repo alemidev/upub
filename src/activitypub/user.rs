@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
-use sea_orm::{ColumnTrait, Condition, DatabaseConnection, EntityTrait, IntoActiveModel, Order, QueryFilter, QueryOrder, QuerySelect};
+use sea_orm::{ColumnTrait, Condition, DatabaseConnection, EntityTrait, IntoActiveModel, Order, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, SelectColumns};
 
 use crate::{activitystream::{object::{activity::{Activity, ActivityMut, ActivityType}, collection::{page::CollectionPageMut, CollectionMut, CollectionType}, ObjectType}, Base, BaseMut, BaseType, Node}, model::{self, activity, object, user}, server::Context, url};
 
@@ -25,57 +25,112 @@ pub async fn view(State(ctx) : State<Context>, Path(id): Path<String>) -> Result
 pub async fn followers(
 	State(ctx): State<Context>,
 	Path(id): Path<String>,
+	Query(page): Query<super::Pagination>,
 ) -> Result<JsonLD<serde_json::Value>, StatusCode> {
-	Ok(JsonLD(
-		serde_json::Value::new_object()
-			.set_id(Some(&format!("{}/users/{}/followers", ctx.base(), id)))
-			.set_collection_type(Some(CollectionType::OrderedCollection))
-			.set_total_items(Some(0))
-			.set_first(Node::link(format!("{}/users/{}/followers?page=true", ctx.base(), id)))
-			.ld_context()
-	))
+	let limit = page.batch.unwrap_or(20).min(50);
+	let offset = page.offset.unwrap_or(0);
+	if let Some(true) = page.page {
+		match model::relation::Entity::find()
+			.filter(Condition::all().add(model::relation::Column::Following.eq(id.clone())))
+			.select_column(model::relation::Column::Follower)
+			.limit(limit) // TODO allow customizing, with boundaries
+			.offset(page.offset.unwrap_or(0))
+			.all(ctx.db()).await
+		{
+			Err(e) => {
+				tracing::error!("error queriying who {id} is following: {e}");
+				Err(StatusCode::INTERNAL_SERVER_ERROR)
+			},
+			Ok(following) => {
+				Ok(JsonLD(
+					serde_json::Value::new_object()
+						.set_collection_type(Some(CollectionType::OrderedCollectionPage))
+						.set_part_of(Node::link(url!(ctx, "/users/{id}/followers")))
+						.set_next(Node::link(url!(ctx, "/users/{id}/followers?page=true&offset={}", offset+limit)))
+						.set_ordered_items(Node::array(following.into_iter().map(|x| x.follower).collect()))
+						.ld_context()
+				))
+			},
+		}
+	} else {
+		let count = model::relation::Entity::find()
+			.filter(Condition::all().add(model::relation::Column::Following.eq(id.clone())))
+			.count(ctx.db()).await.unwrap_or_else(|e| {
+				tracing::error!("failed counting followers for {id}: {e}");
+				0
+			});
+		Ok(JsonLD(
+			serde_json::Value::new_object()
+				.set_id(Some(&format!("{}/users/{}/following", ctx.base(), id)))
+				.set_collection_type(Some(CollectionType::OrderedCollection))
+				.set_total_items(Some(count))
+				.set_first(Node::link(format!("{}/users/{}/following?page=true", ctx.base(), id)))
+				.ld_context()
+		))
+	}
 }
 
 pub async fn following(
 	State(ctx): State<Context>,
 	Path(id): Path<String>,
+	Query(page): Query<super::Pagination>,
 ) -> Result<JsonLD<serde_json::Value>, StatusCode> {
-	Ok(JsonLD(
-		serde_json::Value::new_object()
-			.set_id(Some(&format!("{}/users/{}/following", ctx.base(), id)))
-			.set_collection_type(Some(CollectionType::OrderedCollection))
-			.set_total_items(Some(0))
-			.set_first(Node::link(format!("{}/users/{}/following?page=true", ctx.base(), id)))
-			.ld_context()
-	))
+	let limit = page.batch.unwrap_or(20).min(50);
+	let offset = page.offset.unwrap_or(0);
+	if let Some(true) = page.page {
+		match model::relation::Entity::find()
+			.filter(Condition::all().add(model::relation::Column::Follower.eq(id.clone())))
+			.select_column(model::relation::Column::Following)
+			.limit(limit) // TODO allow customizing, with boundaries
+			.offset(page.offset.unwrap_or(0))
+			.all(ctx.db()).await
+		{
+			Err(e) => {
+				tracing::error!("error queriying who {id} is following: {e}");
+				Err(StatusCode::INTERNAL_SERVER_ERROR)
+			},
+			Ok(following) => {
+				Ok(JsonLD(
+					serde_json::Value::new_object()
+						.set_collection_type(Some(CollectionType::OrderedCollectionPage))
+						.set_part_of(Node::link(url!(ctx, "/users/{id}/following")))
+						.set_next(Node::link(url!(ctx, "/users/{id}/following?page=true&offset={}", offset+limit)))
+						.set_ordered_items(Node::array(following.into_iter().map(|x| x.following).collect()))
+						.ld_context()
+				))
+			},
+		}
+	} else {
+		let count = model::relation::Entity::find()
+			.filter(Condition::all().add(model::relation::Column::Follower.eq(id.clone())))
+			.count(ctx.db()).await.unwrap_or_else(|e| {
+				tracing::error!("failed counting following for {id}: {e}");
+				0
+			});
+		Ok(JsonLD(
+			serde_json::Value::new_object()
+				.set_id(Some(&format!("{}/users/{}/following", ctx.base(), id)))
+				.set_collection_type(Some(CollectionType::OrderedCollection))
+				.set_total_items(Some(count))
+				.set_first(Node::link(format!("{}/users/{}/following?page=true", ctx.base(), id)))
+				.ld_context()
+		))
+	}
 }
 
 pub async fn outbox(
 	State(ctx): State<Context>,
 	Path(id): Path<String>,
-	Query(page): Query<super::Page>,
+	Query(page): Query<super::Pagination>,
 ) -> Result<JsonLD<serde_json::Value>, StatusCode> {
+	let limit = page.batch.unwrap_or(20).min(50);
+	let offset = page.offset.unwrap_or(0);
 	if let Some(true) = page.page {
-
-		// find requested recent post, to filter based on its date (use now() as fallback)
-		let before = if let Some(before) = page.max_id {
-			match model::activity::Entity::find_by_id(ctx.aid(before))
-				.one(ctx.db()).await
-			{
-				Ok(None) => return Err(StatusCode::NOT_FOUND),
-				Ok(Some(x)) => x.published,
-				Err(e) => {
-					tracing::error!("could not fetch activity from db: {e}");
-					chrono::Utc::now()
-				},
-			}
-		} else { chrono::Utc::now() };
-
 		match activity::Entity::find()
-			.filter(Condition::all().add(activity::Column::Published.lt(before)))
 			.find_also_related(object::Entity)
 			.order_by(activity::Column::Published, Order::Desc)
-			.limit(20) // TODO allow customizing, with boundaries
+			.limit(limit)
+			.offset(offset)
 			.all(ctx.db()).await
 		{
 			Err(_e) => Err(StatusCode::INTERNAL_SERVER_ERROR),
@@ -117,7 +172,7 @@ pub async fn inbox(
 	match object.base_type() {
 		None => { Err(StatusCode::BAD_REQUEST) },
 		Some(BaseType::Link(_x)) => Err(StatusCode::UNPROCESSABLE_ENTITY), // we could but not yet
-		Some(BaseType::Object(ObjectType::Activity(ActivityType::Activity))) => Err(StatusCode::UNPROCESSABLE_ENTITY),
+		Some(BaseType::Object(ObjectType::Activity(ActivityType::Activity))) => Err(StatusCode::UNPROCESSABLE_ENTITY), // won't ingest useless stuff
 		Some(BaseType::Object(ObjectType::Activity(ActivityType::Follow))) => { todo!() },
 		Some(BaseType::Object(ObjectType::Activity(ActivityType::Like))) => { todo!() },
 		Some(BaseType::Object(ObjectType::Activity(ActivityType::Create))) => {
