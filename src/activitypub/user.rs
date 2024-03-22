@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
-use sea_orm::{ColumnTrait, Condition, DatabaseConnection, EntityTrait, IntoActiveModel, Order, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, SelectColumns};
+use sea_orm::{sea_query::Expr, ColumnTrait, Condition, DatabaseConnection, EntityTrait, IntoActiveModel, Order, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect, SelectColumns};
 
 use crate::{activitystream::{object::{activity::{Activity, ActivityMut, ActivityType}, collection::{page::CollectionPageMut, CollectionMut, CollectionType}, ObjectType}, Base, BaseMut, BaseType, Node}, model::{self, activity, object, user}, server::Context, url};
 
@@ -173,8 +173,37 @@ pub async fn inbox(
 		None => { Err(StatusCode::BAD_REQUEST) },
 		Some(BaseType::Link(_x)) => Err(StatusCode::UNPROCESSABLE_ENTITY), // we could but not yet
 		Some(BaseType::Object(ObjectType::Activity(ActivityType::Activity))) => Err(StatusCode::UNPROCESSABLE_ENTITY), // won't ingest useless stuff
-		Some(BaseType::Object(ObjectType::Activity(ActivityType::Follow))) => { todo!() },
-		Some(BaseType::Object(ObjectType::Activity(ActivityType::Like))) => { todo!() },
+		Some(BaseType::Object(ObjectType::Activity(ActivityType::Follow))) => { Ok(JsonLD(serde_json::Value::Null)) },
+		Some(BaseType::Object(ObjectType::Activity(ActivityType::Like))) => {
+			let aid = object.actor().id().ok_or(StatusCode::BAD_REQUEST)?.to_string();
+			let oid = object.object().id().ok_or(StatusCode::BAD_REQUEST)?.to_string();
+			let like = model::like::ActiveModel {
+				id: sea_orm::ActiveValue::NotSet,
+				actor: sea_orm::Set(aid.clone()),
+				likes: sea_orm::Set(oid.clone()),
+			};
+			match model::like::Entity::insert(like).exec(ctx.db()).await {
+				Err(sea_orm::DbErr::RecordNotInserted) => Err(StatusCode::NOT_MODIFIED),
+				Err(e) => {
+					tracing::error!("unexpected error procesing like from {aid} to {oid}: {e}");
+					Err(StatusCode::INTERNAL_SERVER_ERROR)
+				}
+				Ok(_) => {
+					match model::object::Entity::update_many()
+						.col_expr(model::object::Column::Likes, Expr::col(model::object::Column::Likes).add(1))
+						.filter(model::object::Column::Id.eq(oid.clone()))
+						.exec(ctx.db())
+						.await
+					{
+						Err(e) => {
+							tracing::error!("unexpected error incrementing object {oid} like counter: {e}");
+							Err(StatusCode::INTERNAL_SERVER_ERROR)
+						},
+						Ok(_) => Ok(JsonLD(serde_json::Value::Null)),
+					}
+				},
+			}
+		},
 		Some(BaseType::Object(ObjectType::Activity(ActivityType::Create))) => {
 			let Ok(activity_entity) = activity::Model::new(&object) else {
 				return Err(StatusCode::UNPROCESSABLE_ENTITY);

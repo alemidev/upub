@@ -1,7 +1,10 @@
 pub mod user;
 pub mod object;
 pub mod activity;
+
 pub mod relation;
+pub mod share;
+pub mod like;
 
 pub mod faker;
 

@@ -10,7 +10,6 @@ impl MigrationTrait for Migration {
 			.create_table(
 				Table::create()
 					.table(Users::Table)
-					.if_not_exists()
 					.col(
 						ColumnDef::new(Users::Id)
 							.string()
@@ -33,6 +32,7 @@ impl MigrationTrait for Migration {
 					.col(ColumnDef::new(Users::PrivateKey).string().null())
 					.col(ColumnDef::new(Users::Created).date_time().not_null())
 					.col(ColumnDef::new(Users::Updated).date_time().not_null())
+					.index(Index::create().col(Users::Domain))
 					.to_owned()
 			)
 			.await?;
@@ -41,7 +41,6 @@ impl MigrationTrait for Migration {
 			.create_table(
 				Table::create()
 					.table(Activities::Table)
-					.if_not_exists()
 					.col(
 						ColumnDef::new(Activities::Id)
 							.string()
@@ -57,6 +56,9 @@ impl MigrationTrait for Migration {
 					.col(ColumnDef::new(Activities::Cc).json().null())
 					.col(ColumnDef::new(Activities::Bcc).json().null())
 					.col(ColumnDef::new(Activities::Published).date_time().not_null())
+					.index(Index::create().col(Activities::Published))
+					.index(Index::create().col(Activities::Actor))
+					.index(Index::create().col(Activities::Object))
 					.to_owned()
 			).await?;
 
@@ -64,7 +66,6 @@ impl MigrationTrait for Migration {
 			.create_table(
 				Table::create()
 					.table(Objects::Table)
-					.if_not_exists()
 					.col(
 						ColumnDef::new(Objects::Id)
 							.string()
@@ -76,12 +77,16 @@ impl MigrationTrait for Migration {
 					.col(ColumnDef::new(Objects::Name).string().null())
 					.col(ColumnDef::new(Objects::Summary).string().null())
 					.col(ColumnDef::new(Objects::Content).string().null())
+					.col(ColumnDef::new(Objects::Likes).integer().not_null().default(0))
+					.col(ColumnDef::new(Objects::Shares).integer().not_null().default(0))
+					.col(ColumnDef::new(Objects::Comments).integer().not_null().default(0))
 					.col(ColumnDef::new(Objects::Context).string().null())
 					.col(ColumnDef::new(Objects::To).json().null())
 					.col(ColumnDef::new(Objects::Bto).json().null())
 					.col(ColumnDef::new(Objects::Cc).json().null())
 					.col(ColumnDef::new(Objects::Bcc).json().null())
 					.col(ColumnDef::new(Objects::Published).string().not_null())
+					.index(Index::create().col(Objects::AttributedTo))
 					.to_owned()
 			).await?;
 
@@ -151,6 +156,9 @@ enum Objects {
 	Name,
 	Summary,
 	Content,
+	Likes,
+	Shares,
+	Comments,
 	Context,
 	Cc,
 	Bcc,
