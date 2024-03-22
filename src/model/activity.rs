@@ -138,7 +138,7 @@ impl Model {
 			actor: activity.actor().id().ok_or(super::FieldError("actor"))?.to_string(),
 			object: activity.object().id().map(|x| x.to_string()),
 			target: activity.target().id().map(|x| x.to_string()),
-			published: activity.published().ok_or(super::FieldError("published"))?,
+			published: activity.published().unwrap_or(chrono::Utc::now()),
 			to: activity.to().into(),
 			bto: activity.bto().into(),
 			cc: activity.cc().into(),
