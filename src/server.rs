@@ -75,8 +75,9 @@ pub async fn serve(db: DatabaseConnection, domain: String) {
 	let app = Router::new()
 		// core server inbox/outbox, maybe for feeds? TODO do we need these?
 		.route("/", get(ap::view))
-		.route("/inbox", post(ap::inbox))
-		.route("/outbox", get(ap::outbox))
+		// TODO shared inboxes and instance stream will come later, just use users *boxes for now
+		// .route("/inbox", post(ap::inbox))
+		// .route("/outbox", get(ap::outbox))
 		// .well-known and discovery
 		.route("/.well-known/webfinger", get(ap::well_known::webfinger))
 		.route("/.well-known/host-meta", get(ap::well_known::host_meta))
