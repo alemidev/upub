@@ -3,6 +3,7 @@ pub mod migrations;
 pub mod activitystream;
 pub mod activitypub;
 pub mod server;
+pub mod errors;
 
 use clap::{Parser, Subcommand};
 use sea_orm::{ConnectOptions, Database, EntityTrait, IntoActiveModel};
