@@ -97,6 +97,7 @@ impl MigrationTrait for Migration {
 					.table(Likes::Table)
 					.col(Likes::Actor)
 					.col(Likes::Likes)
+					.unique()
 					.to_owned()
 			).await?;
 
