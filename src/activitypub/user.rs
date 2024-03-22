@@ -61,10 +61,10 @@ pub async fn followers(
 			});
 		Ok(JsonLD(
 			serde_json::Value::new_object()
-				.set_id(Some(&format!("{}/users/{}/following", ctx.base(), id)))
+				.set_id(Some(&format!("{}/users/{}/followers", ctx.base(), id)))
 				.set_collection_type(Some(CollectionType::OrderedCollection))
 				.set_total_items(Some(count))
-				.set_first(Node::link(format!("{}/users/{}/following?page=true", ctx.base(), id)))
+				.set_first(Node::link(format!("{}/users/{}/followers?page=true", ctx.base(), id)))
 				.ld_context()
 		))
 	}
