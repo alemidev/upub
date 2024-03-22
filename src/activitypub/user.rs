@@ -184,6 +184,7 @@ pub async fn inbox(
 			};
 			match model::like::Entity::insert(like).exec(ctx.db()).await {
 				Err(sea_orm::DbErr::RecordNotInserted) => Err(StatusCode::NOT_MODIFIED),
+				Err(sea_orm::DbErr::Exec(_)) => Err(StatusCode::NOT_MODIFIED), // bad fix for sqlite
 				Err(e) => {
 					tracing::error!("unexpected error procesing like from {aid} to {oid}: {e}");
 					Err(StatusCode::INTERNAL_SERVER_ERROR)
