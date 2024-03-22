@@ -1,6 +1,8 @@
 pub mod user;
 pub mod object;
 pub mod activity;
+pub mod relation;
+
 pub mod faker;
 
 #[derive(Debug, Clone, thiserror::Error)]
