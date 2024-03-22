@@ -95,7 +95,11 @@ impl<T: serde::Serialize> IntoResponse for JsonRD<T> {
 }
 
 pub async fn webfinger(State(ctx): State<Context>, Query(query): Query<WebfingerQuery>) -> Result<JsonRD<JsonResourceDescriptor>, StatusCode> {
-	if let Some((user, domain)) = query.resource.split_once('@') {
+	if let Some((user, domain)) = query
+		.resource
+		.replace("acct:", "")
+		.split_once('@')
+	{
 		let uid = ctx.uid(user.to_string());
 		match model::user::Entity::find_by_id(uid)
 			.one(ctx.db())
