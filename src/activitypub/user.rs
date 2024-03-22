@@ -85,6 +85,7 @@ pub async fn inbox(
 	Path(_id): Path<String>,
 	Json(object): Json<serde_json::Value>
 ) -> Result<JsonLD<serde_json::Value>, StatusCode> {
+	tracing::info!("received object on inbox: {}", serde_json::to_string_pretty(&object).unwrap());
 	match object.base_type() {
 		None => { Err(StatusCode::BAD_REQUEST) },
 		Some(BaseType::Link(_x)) => Err(StatusCode::UNPROCESSABLE_ENTITY), // we could but not yet
