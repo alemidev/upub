@@ -14,6 +14,7 @@ impl MigrationTrait for Migration {
 					.col(
 						ColumnDef::new(Relations::Id)
 							.integer()
+							.auto_increment()
 							.not_null()
 							.primary_key()
 					)
