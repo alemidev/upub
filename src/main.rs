@@ -61,12 +61,13 @@ async fn main() {
 	tracing_subscriber::fmt()
 		.compact()
 		.with_max_level(if args.debug { tracing::Level::DEBUG } else { tracing::Level::INFO })
-		.with(tracing_subscriber::filter::filter_fn(|x| args.debug || x.target() != "sqlx::query"))
 		.init();
 
+	// TODO can i do connectoptions.into() or .connect() and skip these ugly bindings?
 	let mut opts = ConnectOptions::new(&args.database);
+
 	opts
-		.max_connections(1);
+		.sqlx_logging_level(tracing::log::LevelFilter::Debug);
 
 	let db = Database::connect(opts)
 		.await.expect("error connecting to db");
