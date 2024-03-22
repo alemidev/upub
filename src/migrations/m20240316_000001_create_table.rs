@@ -32,7 +32,6 @@ impl MigrationTrait for Migration {
 					.col(ColumnDef::new(Users::PrivateKey).string().null())
 					.col(ColumnDef::new(Users::Created).date_time().not_null())
 					.col(ColumnDef::new(Users::Updated).date_time().not_null())
-					.index(Index::create().col(Users::Domain))
 					.to_owned()
 			)
 			.await?;
@@ -56,9 +55,6 @@ impl MigrationTrait for Migration {
 					.col(ColumnDef::new(Activities::Cc).json().null())
 					.col(ColumnDef::new(Activities::Bcc).json().null())
 					.col(ColumnDef::new(Activities::Published).date_time().not_null())
-					.index(Index::create().col(Activities::Published))
-					.index(Index::create().col(Activities::Actor))
-					.index(Index::create().col(Activities::Object))
 					.to_owned()
 			).await?;
 
@@ -86,7 +82,6 @@ impl MigrationTrait for Migration {
 					.col(ColumnDef::new(Objects::Cc).json().null())
 					.col(ColumnDef::new(Objects::Bcc).json().null())
 					.col(ColumnDef::new(Objects::Published).string().not_null())
-					.index(Index::create().col(Objects::AttributedTo))
 					.to_owned()
 			).await?;
 

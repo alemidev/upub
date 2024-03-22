@@ -19,9 +19,6 @@ impl MigrationTrait for Migration {
 					)
 					.col(ColumnDef::new(Relations::Follower).string().not_null())
 					.col(ColumnDef::new(Relations::Following).string().not_null())
-					.index(Index::create().col(Relations::Follower).col(Relations::Following).unique())
-					.index(Index::create().col(Relations::Follower))
-					.index(Index::create().col(Relations::Following))
 					.to_owned()
 			)
 			.await?;

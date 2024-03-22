@@ -19,9 +19,6 @@ impl MigrationTrait for Migration {
 					)
 					.col(ColumnDef::new(Likes::Actor).string().not_null())
 					.col(ColumnDef::new(Likes::Likes).string().not_null())
-					.index(Index::create().col(Likes::Actor).col(Likes::Likes).unique())
-					.index(Index::create().col(Likes::Actor))
-					.index(Index::create().col(Likes::Likes))
 					.to_owned()
 			)
 			.await?;
@@ -40,8 +37,6 @@ impl MigrationTrait for Migration {
 					.col(ColumnDef::new(Shares::Actor).string().not_null())
 					.col(ColumnDef::new(Shares::Shares).string().not_null())
 					.col(ColumnDef::new(Shares::Date).date_time().not_null())
-					.index(Index::create().col(Shares::Actor))
-					.index(Index::create().col(Shares::Shares))
 					.to_owned()
 			)
 			.await?;
