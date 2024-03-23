@@ -12,6 +12,19 @@ pub struct Model {
 	pub show_following: bool,
 }
 
+impl Default for Model {
+	fn default() -> Self {
+		Model {
+			id: "".to_string(),
+			accept_follow_requests: true,
+			show_following_count: true,
+			show_following: true,
+			show_followers_count: true,
+			show_followers: true,
+		}
+	}
+}
+
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
 	#[sea_orm(
