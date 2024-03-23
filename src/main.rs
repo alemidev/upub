@@ -3,6 +3,7 @@ pub mod migrations;
 pub mod activitystream;
 pub mod activitypub;
 pub mod server;
+pub mod router;
 pub mod errors;
 
 use clap::{Parser, Subcommand};
@@ -73,7 +74,7 @@ async fn main() {
 		.await.expect("error connecting to db");
 
 	match args.command {
-		CliCommand::Serve => server::serve(db, args.domain)
+		CliCommand::Serve => router::serve(db, args.domain)
 			.await,
 
 		CliCommand::Migrate => migrations::Migrator::up(&db, None)
