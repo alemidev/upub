@@ -19,6 +19,7 @@ impl MigrationTrait for Migration {
 					)
 					.col(ColumnDef::new(Likes::Actor).string().not_null())
 					.col(ColumnDef::new(Likes::Likes).string().not_null())
+					.col(ColumnDef::new(Likes::Date).date_time().not_null())
 					.to_owned()
 			)
 			.await?;
@@ -64,6 +65,7 @@ enum Likes {
 	Id,
 	Actor,
 	Likes,
+	Date,
 }
 
 #[derive(DeriveIden)]

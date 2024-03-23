@@ -7,6 +7,7 @@ pub struct Model {
 	pub id: i64,
 	pub actor: String,
 	pub likes: String,
+	pub date: ChronoDateTimeUtc,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
