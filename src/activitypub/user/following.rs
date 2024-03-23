@@ -3,20 +3,20 @@ use sea_orm::{ColumnTrait, Condition, EntityTrait, PaginatorTrait, QueryFilter, 
 
 use crate::{activitypub::{jsonld::LD, JsonLD, Pagination}, activitystream::{object::collection::{page::CollectionPageMut, CollectionMut, CollectionType}, BaseMut, Node}, model, server::Context, url};
 
-pub async fn follow___<const out: bool>(
+pub async fn follow___<const OUTGOING: bool>(
 	State(ctx): State<Context>,
 	Path(id): Path<String>,
 	Query(page): Query<Pagination>,
 ) -> Result<JsonLD<serde_json::Value>, StatusCode> {
-	let follow___ = if out { "following" } else { "followers" };
+	let follow___ = if OUTGOING { "following" } else { "followers" };
 	let limit = page.batch.unwrap_or(20).min(50);
 	let offset = page.offset.unwrap_or(0);
 	if let Some(true) = page.page {
 
 		use model::relation::Column::{Following, Follower};
 		match model::relation::Entity::find()
-			.filter(Condition::all().add(if out { Follower } else { Following }.eq(id.clone())))
-			.select_column(if out { Following } else { Follower })
+			.filter(Condition::all().add(if OUTGOING { Follower } else { Following }.eq(id.clone())))
+			.select_column(if OUTGOING { Following } else { Follower })
 			.limit(limit)
 			.offset(page.offset.unwrap_or(0))
 			.all(ctx.db()).await

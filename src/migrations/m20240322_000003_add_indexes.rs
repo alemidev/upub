@@ -140,6 +140,7 @@ impl MigrationTrait for Migration {
 }
 
 #[derive(DeriveIden)]
+#[allow(clippy::enum_variant_names)]
 enum Likes {
 	Table,
 	Actor,
@@ -147,6 +148,7 @@ enum Likes {
 }
 
 #[derive(DeriveIden)]
+#[allow(clippy::enum_variant_names)]
 enum Shares {
 	Table,
 	Actor,

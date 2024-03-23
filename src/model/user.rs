@@ -1,12 +1,7 @@
 use sea_orm::entity::prelude::*;
-use crate::activitypub::jsonld::LD;
-use crate::activitystream::key::{PublicKey as _, PublicKeyMut as _};
-use crate::activitystream::object::actor::ActorMut as _;
-use crate::activitystream::object::document::{DocumentMut as _, DocumentType};
+use crate::activitystream::key::PublicKey as _;
 
-use crate::activitystream::object::ObjectMut as _;
-use crate::activitystream::{BaseMut as _, Object as _};
-use crate::{activitypub, activitystream::{object::actor::ActorType, BaseType, Node, ObjectType}};
+use crate::{activitypub, activitystream::object::actor::{Actor, ActorType}};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "users")]
@@ -40,7 +35,6 @@ pub struct Model {
 	// pub streams: Option<String>,
 }
 
-use crate::activitystream::object::{actor::Actor, collection::Collection, document::Image};
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
