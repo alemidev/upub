@@ -63,6 +63,7 @@ pub async fn view(State(ctx) : State<Context>, Path(id): Path<String>) -> Result
 				// .set_public_key(user.public_key) // TODO
 				.set_discoverable(Some(true))
 				.set_endpoints(None)
+				.ld_context()
 			))
 		},
 		// remote user

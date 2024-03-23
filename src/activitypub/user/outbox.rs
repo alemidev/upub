@@ -1,7 +1,7 @@
 use axum::{extract::{Path, Query, State}, http::StatusCode};
 use sea_orm::{EntityTrait, Order, QueryOrder, QuerySelect};
 
-use crate::{activitypub::{jsonld::LD, JsonLD, Pagination}, activitystream::{object::{activity::ActivityMut, collection::{page::CollectionPageMut, CollectionMut, CollectionType}}, Base, BaseMut, Node}, model::{activity, object}, server::Context, url};
+use crate::{activitypub::{jsonld::LD, JsonLD, Pagination}, activitystream::{object::{activity::ActivityMut, collection::{page::CollectionPageMut, CollectionMut, CollectionType}}, BaseMut, Node}, model::{activity, object}, server::Context, url};
 
 pub async fn outbox(
 	State(ctx): State<Context>,
@@ -23,7 +23,10 @@ pub async fn outbox(
 				let next = ctx.id(items.last().map(|(a, _o)| a.id.as_str()).unwrap_or("").to_string());
 				let items = items
 					.into_iter()
-					.map(|(a, o)| a.underlying_json_object().set_object(Node::maybe_object(o)))
+					.map(|(a, o)|
+						super::super::activity::ap_activity(a)
+							.set_object(Node::maybe_object(o.map(super::super::object::ap_object)))
+					)
 					.collect();
 				Ok(JsonLD(
 					serde_json::Value::new_object()

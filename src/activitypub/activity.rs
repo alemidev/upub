@@ -1,9 +1,22 @@
 use axum::{extract::{Path, State}, http::StatusCode};
 use sea_orm::EntityTrait;
-use crate::{activitystream::{object::activity::ActivityMut, Base, Node}, model::{activity, object}, server::Context};
+use crate::{activitystream::{object::{activity::ActivityMut, ObjectMut}, BaseMut, Node}, model::{self, activity, object}, server::Context};
 
 use super::{jsonld::LD, JsonLD};
 
+pub fn ap_activity(activity: model::activity::Model) -> serde_json::Value {
+	serde_json::Value::new_object()
+		.set_id(Some(&activity.id))
+		.set_activity_type(Some(activity.activity_type))
+		.set_actor(Node::link(activity.actor))
+		.set_object(Node::maybe_link(activity.object))
+		.set_target(Node::maybe_link(activity.target))
+		.set_published(Some(activity.published))
+		.set_to(Node::links(activity.to.0.clone()))
+		.set_bto(Node::empty())
+		.set_cc(Node::links(activity.cc.0.clone()))
+		.set_bcc(Node::empty())
+}
 
 pub async fn view(State(ctx) : State<Context>, Path(id): Path<String>) -> Result<JsonLD<serde_json::Value>, StatusCode> {
 	match activity::Entity::find_by_id(ctx.aid(id))
@@ -12,9 +25,8 @@ pub async fn view(State(ctx) : State<Context>, Path(id): Path<String>) -> Result
 		.await
 	{
 		Ok(Some((activity, object))) => Ok(JsonLD(
-			activity
-				.underlying_json_object()
-				.set_object(Node::maybe_object(object))
+			ap_activity(activity)
+				.set_object(Node::maybe_object(object.map(super::object::ap_object)))
 				.ld_context()
 		)),
 		Ok(None) => Err(StatusCode::NOT_FOUND),
