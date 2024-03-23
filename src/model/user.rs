@@ -69,107 +69,119 @@ impl Related<super::object::Entity> for Entity {
 	}
 }
 
+impl Related<super::config::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Config.def()
+	}
+}
+
+impl Related<super::credential::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Credential.def()
+	}
+}
+
 impl ActiveModelBehavior for ActiveModel {}
 
-impl crate::activitystream::Base for Model {
-	fn id(&self) -> Option<&str> {
-		Some(&self.id)
-	}
-
-	fn base_type(&self) -> Option<BaseType> {
-		Some(BaseType::Object(ObjectType::Actor(self.actor_type)))
-	}
-
-	fn underlying_json_object(self) -> serde_json::Value {
-		serde_json::Value::new_object()
-			.set_id(Some(&self.id))
-			.set_actor_type(Some(self.actor_type))
-			.set_name(self.name.as_deref())
-			.set_summary(self.summary.as_deref())
-			.set_icon(self.icon())
-			.set_image(self.image())
-			.set_published(Some(self.created))
-			.set_preferred_username(Some(&self.preferred_username))
-			.set_inbox(self.inbox())
-			.set_outbox(self.outbox())
-			.set_following(self.following())
-			.set_followers(self.followers())
-			.set_public_key(self.public_key())
-			.set_discoverable(Some(true))
-			.set_endpoints(None) // TODO dirty fix to put an empty object
-	}
-}
-
-impl crate::activitystream::object::Object for Model {
-	fn name(&self) -> Option<&str> {
-		self.name.as_deref()
-	}
-
-	fn summary(&self) -> Option<&str> {
-		self.summary.as_deref()
-	}
-
-	fn icon(&self) -> Node<impl Image> {
-		match &self.icon {
-			Some(x) => Node::object(
-				serde_json::Value::new_object()
-					.set_document_type(Some(DocumentType::Image))
-					.set_url(Node::link(x.clone()))
-			),
-			None => Node::Empty,
-		}
-	}
-
-	fn image(&self) -> Node<impl Image> {
-		match &self.image {
-			Some(x) => Node::object(
-				serde_json::Value::new_object()
-					.set_document_type(Some(DocumentType::Image))
-					.set_url(Node::link(x.clone()))
-			),
-			None => Node::Empty,
-		}
-	}
-
-	fn published(&self) -> Option<chrono::DateTime<chrono::Utc>> {
-		Some(self.created)
-	}
-}
-
-impl crate::activitystream::object::actor::Actor for Model {
-	fn actor_type(&self) -> Option<ActorType> {
-		Some(self.actor_type)
-	}
-
-	fn preferred_username(&self) -> Option<&str> {
-		Some(&self.preferred_username)
-	}
-
-	fn inbox(&self) -> Node<impl Collection> {
-		Node::link(self.inbox.clone().unwrap_or(format!("https://{}/users/{}/inbox", self.domain, self.preferred_username)))
-	}
-
-	fn outbox(&self) -> Node<impl Collection> {
-		Node::link(self.outbox.clone().unwrap_or(format!("https://{}/users/{}/outbox", self.domain, self.preferred_username)))
-	}
-
-	fn following(&self) -> Node<impl Collection> {
-		Node::link(self.following.clone().unwrap_or(format!("https://{}/users/{}/following", self.domain, self.preferred_username)))
-	}
-
-	fn followers(&self) -> Node<impl Collection> {
-		Node::link(self.following.clone().unwrap_or(format!("https://{}/users/{}/followers", self.domain, self.preferred_username)))
-	}
-
-	fn public_key(&self) -> Node<impl crate::activitystream::key::PublicKey> {
-		Node::object(
-			serde_json::Value::new_object()
-				.set_id(Some(&format!("{}#main-key", self.id))) // TODO is this some standard??
-				.set_public_key_pem(&self.public_key)
-				.set_owner(Some(&self.id))
-		)
-	}
-}
+// impl crate::activitystream::Base for Model {
+// 	fn id(&self) -> Option<&str> {
+// 		Some(&self.id)
+// 	}
+// 
+// 	fn base_type(&self) -> Option<BaseType> {
+// 		Some(BaseType::Object(ObjectType::Actor(self.actor_type)))
+// 	}
+// 
+// 	fn underlying_json_object(self) -> serde_json::Value {
+// 		serde_json::Value::new_object()
+// 			.set_id(Some(&self.id))
+// 			.set_actor_type(Some(self.actor_type))
+// 			.set_name(self.name.as_deref())
+// 			.set_summary(self.summary.as_deref())
+// 			.set_icon(self.icon())
+// 			.set_image(self.image())
+// 			.set_published(Some(self.created))
+// 			.set_preferred_username(Some(&self.preferred_username))
+// 			.set_inbox(self.inbox())
+// 			.set_outbox(self.outbox())
+// 			.set_following(self.following())
+// 			.set_followers(self.followers())
+// 			.set_public_key(self.public_key())
+// 			.set_discoverable(Some(true))
+// 			.set_endpoints(None) // TODO dirty fix to put an empty object
+// 	}
+// }
+// 
+// impl crate::activitystream::object::Object for Model {
+// 	fn name(&self) -> Option<&str> {
+// 		self.name.as_deref()
+// 	}
+// 
+// 	fn summary(&self) -> Option<&str> {
+// 		self.summary.as_deref()
+// 	}
+// 
+// 	fn icon(&self) -> Node<impl Image> {
+// 		match &self.icon {
+// 			Some(x) => Node::object(
+// 				serde_json::Value::new_object()
+// 					.set_document_type(Some(DocumentType::Image))
+// 					.set_url(Node::link(x.clone()))
+// 			),
+// 			None => Node::Empty,
+// 		}
+// 	}
+// 
+// 	fn image(&self) -> Node<impl Image> {
+// 		match &self.image {
+// 			Some(x) => Node::object(
+// 				serde_json::Value::new_object()
+// 					.set_document_type(Some(DocumentType::Image))
+// 					.set_url(Node::link(x.clone()))
+// 			),
+// 			None => Node::Empty,
+// 		}
+// 	}
+// 
+// 	fn published(&self) -> Option<chrono::DateTime<chrono::Utc>> {
+// 		Some(self.created)
+// 	}
+// }
+// 
+// impl crate::activitystream::object::actor::Actor for Model {
+// 	fn actor_type(&self) -> Option<ActorType> {
+// 		Some(self.actor_type)
+// 	}
+// 
+// 	fn preferred_username(&self) -> Option<&str> {
+// 		Some(&self.preferred_username)
+// 	}
+// 
+// 	fn inbox(&self) -> Node<impl Collection> {
+// 		Node::link(self.inbox.clone().unwrap_or(format!("https://{}/users/{}/inbox", self.domain, self.preferred_username)))
+// 	}
+// 
+// 	fn outbox(&self) -> Node<impl Collection> {
+// 		Node::link(self.outbox.clone().unwrap_or(format!("https://{}/users/{}/outbox", self.domain, self.preferred_username)))
+// 	}
+// 
+// 	fn following(&self) -> Node<impl Collection> {
+// 		Node::link(self.following.clone().unwrap_or(format!("https://{}/users/{}/following", self.domain, self.preferred_username)))
+// 	}
+// 
+// 	fn followers(&self) -> Node<impl Collection> {
+// 		Node::link(self.following.clone().unwrap_or(format!("https://{}/users/{}/followers", self.domain, self.preferred_username)))
+// 	}
+// 
+// 	fn public_key(&self) -> Node<impl crate::activitystream::key::PublicKey> {
+// 		Node::object(
+// 			serde_json::Value::new_object()
+// 				.set_id(Some(&format!("{}#main-key", self.id))) // TODO is this some standard??
+// 				.set_public_key_pem(&self.public_key)
+// 				.set_owner(Some(&self.id))
+// 		)
+// 	}
+// }
 
 impl Model {
 	pub fn new(object: &impl Actor) -> Result<Self, super::FieldError> {
