@@ -87,8 +87,8 @@ pub async fn serve(db: DatabaseConnection, domain: String) {
 		.route("/users/:id", get(ap::user::view))
 		.route("/users/:id/inbox", post(ap::user::inbox))
 		.route("/users/:id/outbox", get(ap::user::outbox))
-		.route("/users/:id/followers", get(ap::user::followers))
-		.route("/users/:id/following", get(ap::user::following))
+		.route("/users/:id/followers", get(ap::user::follow___::<false>))
+		.route("/users/:id/following", get(ap::user::follow___::<true>))
 		// specific object routes
 		.route("/activities/:id", get(ap::activity::view))
 		.route("/objects/:id", get(ap::object::view))
