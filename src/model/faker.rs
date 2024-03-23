@@ -1,4 +1,4 @@
-use crate::{activitypub::PUBLIC_TARGET, activitystream::object::actor::Actor};
+use crate::{activitypub::PUBLIC_TARGET, model::{config, credential}};
 use super::{activity, object, user, Audience};
 use sea_orm::IntoActiveModel;
 
@@ -36,6 +36,21 @@ UQIDAQAB
 
 	user::Entity::insert(root.clone().into_active_model()).exec(db).await?;
 
+	config::Entity::insert(config::ActiveModel {
+		id: Set(root.id.clone()),
+		accept_follow_requests: Set(true),
+		show_followers: Set(true),
+		show_following: Set(true),
+		show_following_count: Set(true),
+		show_followers_count: Set(true),
+	}).exec(db).await?;
+
+	credential::Entity::insert(credential::ActiveModel {
+		id: Set(root.id.clone()),
+		email: Set("mail@example.net".to_string()),
+		password: Set("very-strong-password".to_string()),
+	}).exec(db).await?;
+
 	let context = uuid::Uuid::new_v4().to_string();
 
 	for i in (0..100).rev() {
@@ -55,7 +70,7 @@ UQIDAQAB
 			shares: Set(0),
 			to: Set(Audience(vec![PUBLIC_TARGET.to_string()])),
 			bto: Set(Audience::default()),
-			cc: Set(Audience(vec![root.followers().id().unwrap_or("").to_string()])),
+			cc: Set(Audience(vec![])),
 			bcc: Set(Audience::default()),
 		}).exec(db).await?;
 
@@ -68,7 +83,7 @@ UQIDAQAB
 			published: Set(chrono::Utc::now() - std::time::Duration::from_secs(60*i)),
 			to: Set(Audience(vec![PUBLIC_TARGET.to_string()])),
 			bto: Set(Audience::default()),
-			cc: Set(Audience(vec![root.followers().id().unwrap_or("").to_string()])),
+			cc: Set(Audience(vec![])),
 			bcc: Set(Audience::default()),
 		}).exec(db).await?;
 	}
