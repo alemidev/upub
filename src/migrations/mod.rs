@@ -4,6 +4,8 @@ mod m20240316_000001_create_table;
 mod m20240322_000001_create_relations;
 mod m20240322_000002_add_likes_shares;
 mod m20240322_000003_add_indexes;
+mod m20240323_000001_add_user_configs;
+mod m20240323_000002_add_simple_credentials;
 
 pub struct Migrator;
 
@@ -15,6 +17,8 @@ impl MigratorTrait for Migrator {
 			Box::new(m20240322_000001_create_relations::Migration),
 			Box::new(m20240322_000002_add_likes_shares::Migration),
 			Box::new(m20240322_000003_add_indexes::Migration),
+			Box::new(m20240323_000001_add_user_configs::Migration),
+			Box::new(m20240323_000002_add_simple_credentials::Migration),
 		]
 	}
 }

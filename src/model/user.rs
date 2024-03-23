@@ -49,6 +49,12 @@ pub enum Relation {
 
 	#[sea_orm(has_many = "super::object::Entity")]
 	Object,
+
+	#[sea_orm(has_one = "super::config::Entity")]
+	Config,
+
+	#[sea_orm(has_one = "super::credential::Entity")]
+	Credential,
 }
 
 impl Related<super::activity::Entity> for Entity {

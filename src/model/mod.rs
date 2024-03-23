@@ -1,10 +1,12 @@
-pub mod user;
 pub mod object;
 pub mod activity;
+pub mod user;
+pub mod config;
 
 pub mod relation;
 pub mod share;
 pub mod like;
+pub mod credential;
 
 pub mod faker;
 
