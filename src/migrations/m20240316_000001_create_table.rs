@@ -28,6 +28,8 @@ impl MigrationTrait for Migration {
 					.col(ColumnDef::new(Users::Outbox).string().null())
 					.col(ColumnDef::new(Users::Following).string().null())
 					.col(ColumnDef::new(Users::Followers).string().null())
+					.col(ColumnDef::new(Users::FollowingCount).integer().not_null().default(0))
+					.col(ColumnDef::new(Users::FollowersCount).integer().not_null().default(0))
 					.col(ColumnDef::new(Users::PublicKey).string().not_null())
 					.col(ColumnDef::new(Users::PrivateKey).string().null())
 					.col(ColumnDef::new(Users::Created).date_time().not_null())
@@ -120,7 +122,9 @@ enum Users {
 	SharedInbox,
 	Outbox,
 	Following,
+	FollowingCount,
 	Followers,
+	FollowersCount,
 	PublicKey,
 	PrivateKey,
 	Created,

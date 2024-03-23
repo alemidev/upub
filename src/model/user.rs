@@ -1,7 +1,7 @@
 use sea_orm::entity::prelude::*;
 use crate::activitystream::key::PublicKey as _;
 
-use crate::{activitypub, activitystream::object::actor::{Actor, ActorType}};
+use crate::{activitypub, activitystream::object::{collection::Collection, actor::{Actor, ActorType}}};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "users")]
@@ -23,6 +23,9 @@ pub struct Model {
 	pub outbox: Option<String>,
 	pub following: Option<String>,
 	pub followers: Option<String>,
+
+	pub following_count: i64,
+	pub followers_count: i64,
 
 	pub public_key: String,
 	pub private_key: Option<String>,
@@ -53,6 +56,8 @@ impl Model {
 			following: object.following().id().map(|x| x.to_string()),
 			created: object.published().unwrap_or(chrono::Utc::now()),
 			updated: chrono::Utc::now(),
+			following_count: object.following().get().map(|f| f.total_items().unwrap_or(0)).unwrap_or(0) as i64,
+			followers_count: object.followers().get().map(|f| f.total_items().unwrap_or(0)).unwrap_or(0) as i64,
 			public_key: object.public_key().get().ok_or(super::FieldError("publicKey"))?.public_key_pem().to_string(),
 			private_key: None, // there's no way to transport privkey over AP json, must come from DB
 		})
