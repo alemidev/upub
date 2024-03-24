@@ -23,3 +23,5 @@ uuid = { version = "1.8.0", features = ["v4"] }
 jrd = "0.1"
 # nodeinfo = "0.0.2" # the version on crates.io doesn't re-export necessary types to build the struct!!!
 nodeinfo = { git = "https://codeberg.org/thefederationinfo/nodeinfo-rs", rev = "e865094804" }
+rand = "0.8.5"
+sha256 = "1.5.0"

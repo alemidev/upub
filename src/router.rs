@@ -12,6 +12,8 @@ pub async fn serve(db: DatabaseConnection, domain: String) {
 		// .route("/inbox", post(ap::inbox::post))
 		// .route("/outbox", get(ap::outbox::get))
 		// .route("/outbox", get(ap::outbox::post))
+		// AUTH routes
+		.route("/auth", post(ap::auth))
 		// .well-known and discovery
 		.route("/.well-known/webfinger", get(ap::well_known::webfinger))
 		.route("/.well-known/host-meta", get(ap::well_known::host_meta))
