@@ -1,4 +1,6 @@
 pub mod user;
+pub mod inbox;
+pub mod outbox;
 pub mod object;
 pub mod activity;
 pub mod well_known;
@@ -53,10 +55,3 @@ pub async fn view(State(ctx): State<Context>) -> Result<Json<serde_json::Value>,
 	))
 }
 
-pub async fn inbox(State(_ctx) : State<Context>, Json(_object): Json<serde_json::Value>) -> Result<JsonLD<serde_json::Value>, StatusCode> {
-	todo!()
-}
-
-pub async fn outbox(State(_db): State<Context>) -> Result<Json<serde_json::Value>, StatusCode> {
-	todo!()
-}

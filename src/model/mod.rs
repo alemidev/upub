@@ -4,9 +4,11 @@ pub mod user;
 pub mod config;
 
 pub mod relation;
+pub mod addressing;
 pub mod share;
 pub mod like;
 pub mod credential;
+pub mod session;
 
 pub mod faker;
 
