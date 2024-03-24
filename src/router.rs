@@ -8,8 +8,10 @@ pub async fn serve(db: DatabaseConnection, domain: String) {
 		// core server inbox/outbox, maybe for feeds? TODO do we need these?
 		.route("/", get(ap::view))
 		// TODO shared inboxes and instance stream will come later, just use users *boxes for now
-		// .route("/inbox", post(ap::inbox))
-		// .route("/outbox", get(ap::outbox))
+		.route("/inbox", get(ap::inbox::get))
+		// .route("/inbox", post(ap::inbox::post))
+		// .route("/outbox", get(ap::outbox::get))
+		// .route("/outbox", get(ap::outbox::post))
 		// .well-known and discovery
 		.route("/.well-known/webfinger", get(ap::well_known::webfinger))
 		.route("/.well-known/host-meta", get(ap::well_known::host_meta))
@@ -26,8 +28,8 @@ pub async fn serve(db: DatabaseConnection, domain: String) {
 		.route("/objects/:id", get(ap::object::view))
 		.with_state(crate::server::Context::new(db, domain));
 
-	// run our app with hyper, listening globally on port 3000
-	let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+	// run our app with hyper, listening locally on port 3000
+	let listener = tokio::net::TcpListener::bind("127.0.0.1:3000").await.unwrap();
 
 	axum::serve(listener, app)
 		.await

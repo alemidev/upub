@@ -1,8 +1,6 @@
 use std::sync::Arc;
 
-use axum::{routing::{get, post}, Router};
 use sea_orm::DatabaseConnection;
-use crate::activitypub as ap;
 
 #[derive(Clone)]
 pub struct Context(Arc<ContextInner>);

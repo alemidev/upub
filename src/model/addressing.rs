@@ -8,6 +8,7 @@ pub struct Model {
 	pub actor: String,
 	pub activity: String,
 	pub object: Option<String>,
+	pub published: ChronoDateTimeUtc,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
