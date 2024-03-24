@@ -16,8 +16,26 @@ impl MigrationTrait for Migration {
 							.not_null()
 							.primary_key()
 					)
-					.col(ColumnDef::new(Credentials::Email).boolean().not_null())
-					.col(ColumnDef::new(Credentials::Password).boolean().not_null())
+					.col(ColumnDef::new(Credentials::Email).string().not_null())
+					.col(ColumnDef::new(Credentials::Password).string().not_null())
+					.to_owned()
+			)
+			.await?;
+
+		manager
+			.create_table(
+				Table::create()
+					.table(Sessions::Table)
+					.col(
+						ColumnDef::new(Sessions::Id)
+							.integer()
+							.not_null()
+							.auto_increment()
+							.primary_key()
+					)
+					.col(ColumnDef::new(Sessions::Actor).string().not_null())
+					.col(ColumnDef::new(Sessions::Session).string().not_null())
+					.col(ColumnDef::new(Sessions::Expires).date_time().not_null())
 					.to_owned()
 			)
 			.await?;
@@ -40,4 +58,13 @@ enum Credentials {
 	Id,
 	Email,
 	Password,
+}
+
+#[derive(DeriveIden)]
+enum Sessions {
+	Table,
+	Id, // TODO here ID is a number but in Credentials it's the actor ID (String) ??? weird!!
+	Actor,
+	Session,
+	Expires,
 }

@@ -7,7 +7,6 @@ use crate::{activitypub, activitystream::object::{collection::Collection, actor:
 #[sea_orm(table_name = "users")]
 pub struct Model {
 	#[sea_orm(primary_key)]
-	/// must be full AP ID, since they are unique over the network
 	pub id: String,
 	pub domain: String,
 	pub actor_type: ActorType,
@@ -77,6 +76,9 @@ pub enum Relation {
 
 	#[sea_orm(has_one = "super::credential::Entity")]
 	Credential,
+
+	#[sea_orm(has_many = "super::session::Entity")]
+	Session,
 }
 
 impl Related<super::activity::Entity> for Entity {
@@ -100,6 +102,12 @@ impl Related<super::config::Entity> for Entity {
 impl Related<super::credential::Entity> for Entity {
 	fn to() -> RelationDef {
 		Relation::Credential.def()
+	}
+}
+
+impl Related<super::session::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Session.def()
 	}
 }
 
