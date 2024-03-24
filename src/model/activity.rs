@@ -8,7 +8,6 @@ use super::Audience;
 #[sea_orm(table_name = "activities")]
 pub struct Model {
 	#[sea_orm(primary_key)]
-	/// must be https://instance.org/users/:user , even if local! TODO bad design...
 	pub id: String,
 
 	pub activity_type: ActivityType,
@@ -57,6 +56,9 @@ pub enum Relation {
 		to = "super::object::Column::Id"
 	)]
 	Object,
+
+	#[sea_orm(has_many = "super::addressing::Entity")]
+	Addressing,
 }
 
 impl Related<super::user::Entity> for Entity {
@@ -68,6 +70,12 @@ impl Related<super::user::Entity> for Entity {
 impl Related<super::object::Entity> for Entity {
 	fn to() -> RelationDef {
 		Relation::Object.def()
+	}
+}
+
+impl Related<super::addressing::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Addressing.def()
 	}
 }
 

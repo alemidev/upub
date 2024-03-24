@@ -79,6 +79,9 @@ pub enum Relation {
 
 	#[sea_orm(has_many = "super::session::Entity")]
 	Session,
+
+	#[sea_orm(has_many = "super::addressing::Entity")]
+	Addressing,
 }
 
 impl Related<super::activity::Entity> for Entity {
@@ -108,6 +111,12 @@ impl Related<super::credential::Entity> for Entity {
 impl Related<super::session::Entity> for Entity {
 	fn to() -> RelationDef {
 		Relation::Session.def()
+	}
+}
+
+impl Related<super::addressing::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Addressing.def()
 	}
 }
 
