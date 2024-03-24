@@ -1,7 +1,7 @@
 use axum::{extract::{Path, State}, http::StatusCode, Json};
 use sea_orm::{sea_query::Expr, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
 
-use crate::{activitypub::JsonLD, activitystream::{object::{activity::{Activity, ActivityType}, ObjectType}, Base, BaseType, Node}, errors::LoggableError, model::{self, activity, object}, server::Context};
+use crate::{activitypub::JsonLD, activitystream::{object::{activity::{Activity, ActivityType}, Addressed, ObjectType}, Base, BaseType, Node}, errors::LoggableError, model::{self, activity, addressing, object}, server::Context};
 
 pub async fn inbox(
 	State(ctx): State<Context>,
@@ -88,10 +88,27 @@ pub async fn inbox(
 				return Err(StatusCode::UNPROCESSABLE_ENTITY);
 			};
 			tracing::info!("processing Create activity by {} for {}", activity_entity.actor, activity_entity.object.as_deref().unwrap_or("<embedded>"));
+			let object_id = obj_entity.id.clone();
+			let activity_id = activity_entity.id.clone();
 			object::Entity::insert(obj_entity.into_active_model())
 				.exec(ctx.db())
 				.await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 			activity::Entity::insert(activity_entity.into_active_model())
+				.exec(ctx.db())
+				.await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+			addressing::Entity::insert_many(
+				object.addressed()
+					.into_iter()
+					.map(|actor|
+						addressing::ActiveModel{
+							id: sea_orm::ActiveValue::NotSet,
+							actor: sea_orm::Set(actor),
+							activity: sea_orm::Set(activity_id.clone()),
+							object: sea_orm::Set(Some(object_id.clone())),
+							published: sea_orm::Set(chrono::Utc::now()),
+						}
+					)
+			)
 				.exec(ctx.db())
 				.await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 			Ok(JsonLD(serde_json::Value::Null)) // TODO hmmmmmmmmmmm not the best value to return....

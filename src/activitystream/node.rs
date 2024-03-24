@@ -29,7 +29,8 @@ impl<T : super::Base> Node<T> {
 		}
 	}
 
-	pub fn all(&self) -> Option<Vec<&T>> {
+	// TODO extremely unforgiving, is this even useful?
+	pub fn get_items(&self) -> Option<Vec<&T>> {
 		match self {
 			Node::Empty | Node::Link(_) => None,
 			Node::Object(x) => Some(vec![x]),
@@ -38,6 +39,24 @@ impl<T : super::Base> Node<T> {
 					Node::Object(x) => Some(&**x),
 					_ => None,
 				}).collect()),
+		}
+	}
+
+	pub fn get_links(&self) -> Vec<String> {
+		match self {
+			Node::Empty => vec![],
+			Node::Link(x) => vec![x.href().to_string()],
+			Node::Object(x) => match x.id() {
+				Some(x) => vec![x.to_string()],
+				None => vec![],
+			},
+			Node::Array(v) =>
+				v.iter().filter_map(|x| match x {
+					Node::Link(x) => Some(x.href().to_string()),
+					Node::Object(x) => x.id().map(|x| x.to_string()),
+					// TODO handle array of arrays maybe?
+					_ => None,
+				}).collect(),
 		}
 	}
 	

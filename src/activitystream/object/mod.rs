@@ -64,6 +64,16 @@ pub trait Object : super::Base {
 	fn duration(&self) -> Option<&str> { None } // TODO how to parse xsd:duration ?
 }
 
+pub trait Addressed : Object {
+	fn addressed(&self) -> Vec<String> {
+		let mut to = self.to().get_links();
+		to.append(&mut self.bto().get_links());
+		to.append(&mut self.cc().get_links());
+		to.append(&mut self.bcc().get_links());
+		to
+	}
+}
+
 pub trait ObjectMut : super::BaseMut {
 	fn set_object_type(self, val: Option<ObjectType>) -> Self;
 	fn set_attachment(self, val: Node<impl Object>) -> Self;
@@ -134,6 +144,8 @@ impl Object for serde_json::Value {
 		}
 	}
 }
+
+impl Addressed for serde_json::Value {}
 
 impl ObjectMut for serde_json::Value {
 	setter! { object_type -> type ObjectType }
