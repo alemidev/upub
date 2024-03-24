@@ -31,7 +31,10 @@ pub async fn get(State(ctx) : State<Context>, Query(page): Query<Pagination>) ->
 				))
 				.ld_context()
 			)),
-			Err(_e) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+			Err(e) => {
+				tracing::error!("failed paginating global outbox: {e}");
+				Err(StatusCode::INTERNAL_SERVER_ERROR)
+			},
 		}
 	} else {
 		Ok(JsonLD(serde_json::Value::new_object()

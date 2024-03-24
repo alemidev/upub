@@ -4,7 +4,7 @@ use sea_orm::entity::prelude::*;
 #[sea_orm(table_name = "addressing")]
 pub struct Model {
 	#[sea_orm(primary_key)]
-	pub id: String,
+	pub id: i64,
 	pub actor: String,
 	pub activity: String,
 	pub object: Option<String>,
