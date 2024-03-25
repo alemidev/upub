@@ -1,4 +1,4 @@
-use axum::{extract::{FromRef, FromRequestParts}, http::{header::{self, HeaderValue, USER_AGENT}, request::Parts, StatusCode}};
+use axum::{extract::{FromRef, FromRequestParts}, http::{header, request::Parts, StatusCode}};
 use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter};
 
 use crate::{model, server::Context};

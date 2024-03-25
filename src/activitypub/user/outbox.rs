@@ -1,7 +1,7 @@
 use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
-use sea_orm::{ColumnTrait, Condition, EntityTrait, Order, QueryFilter, QueryOrder, QuerySelect};
+use sea_orm::{EntityTrait, Order, QueryOrder, QuerySelect};
 
-use crate::{activitypub::{jsonld::LD, JsonLD, Pagination, PUBLIC_TARGET}, activitystream::{object::{activity::{accept::AcceptType, reject::RejectType, ActivityMut, ActivityType}, collection::{page::CollectionPageMut, CollectionMut, CollectionType}}, Base, BaseMut, BaseType, Node, ObjectType}, auth::{AuthIdentity, Identity}, model::{self, activity, object}, server::Context, url};
+use crate::{activitypub::{jsonld::LD, JsonLD, Pagination}, activitystream::{object::{activity::ActivityMut, collection::{page::CollectionPageMut, CollectionMut, CollectionType}}, Base, BaseMut, BaseType, Node}, auth::{AuthIdentity, Identity}, model::{activity, object}, server::Context, url};
 
 pub async fn get(
 	State(ctx): State<Context>,
@@ -20,29 +20,21 @@ pub async fn page(
 	State(ctx): State<Context>,
 	Path(id): Path<String>,
 	Query(page): Query<Pagination>,
-	AuthIdentity(auth): AuthIdentity,
+	AuthIdentity(_auth): AuthIdentity,
 ) -> Result<JsonLD<serde_json::Value>, StatusCode> {
 	let limit = page.batch.unwrap_or(20).min(50);
 	let offset = page.offset.unwrap_or(0);
 
-	let mut conditions = Condition::any()
-		.add(model::addressing::Column::Actor.eq(PUBLIC_TARGET));
+	// let mut conditions = Condition::any()
+	// 	.add(model::addressing::Column::Actor.eq(PUBLIC_TARGET));
 
-	if let Identity::User(x) = auth {
-		conditions = conditions.add(model::addressing::Column::Actor.eq(x));
-	}
+	// if let Identity::User(ref x) = auth {
+	// 	conditions = conditions.add(model::addressing::Column::Actor.eq(x));
+	// }
 
-	if let Identity::Server(x) = auth {
-		conditions = conditions.add(model::addressing::Column::Server.eq(x));
-	}
-
-	let x = model::addressing::Entity::find()
-		.filter(conditions)
-		.inner_join(model::activity::Entity)
-		.left_join(model::object::Entity)
-		.all(ctx.db())
-		.await;
-
+	// if let Identity::Server(ref x) = auth {
+	// 	conditions = conditions.add(model::addressing::Column::Server.eq(x));
+	// }
 
 	match activity::Entity::find()
 		.find_also_related(object::Entity)
