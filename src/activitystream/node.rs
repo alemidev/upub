@@ -15,17 +15,14 @@ impl<T : super::Base> From<Option<T>> for Node<T> {
 }
 
 impl<T : super::Base> Node<T> {
-	pub fn get(&self) -> Option<&T> {
+	pub fn get(self) -> Option<T> {
 		match self {
 			Node::Empty | Node::Link(_) => None,
-			Node::Object(x) => Some(x),
-			Node::Array(v) => match v.iter().find_map(|x| match x {
-				Node::Object(x) => Some(x),
+			Node::Object(x) => Some(*x),
+			Node::Array(v) => v.into_iter().find_map(|x| match x {
+				Node::Object(x) => Some(*x),
 				_ => None,
-			}) {
-				Some(x) => Some(x),
-				None => None,
-			},
+			}),
 		}
 	}
 
