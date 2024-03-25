@@ -2,11 +2,14 @@ use std::sync::Arc;
 
 use sea_orm::DatabaseConnection;
 
+use crate::dispatcher::Dispatcher;
+
 #[derive(Clone)]
 pub struct Context(Arc<ContextInner>);
 struct ContextInner {
 	db: DatabaseConnection,
 	domain: String,
+	protocol: String,
 }
 
 #[macro_export]
@@ -18,13 +21,18 @@ macro_rules! url {
 
 impl Context {
 	pub fn new(db: DatabaseConnection, mut domain: String) -> Self {
-		if !domain.starts_with("http") {
-			domain = format!("https://{domain}");
-		}
+		let protocol = if domain.starts_with("http://")
+		{ "http://" } else { "https://" }.to_string();
 		if domain.ends_with('/') {
 			domain.replace_range(domain.len()-1.., "");
 		}
-		Context(Arc::new(ContextInner { db, domain }))
+		if domain.starts_with("http") {
+			domain = domain.replace("https://", "").replace("http://", "");
+		}
+		for _ in 0..1 { // TODO customize delivery workers amount
+			Dispatcher::spawn(db.clone(), domain.clone(), 30); // TODO ew don't do it this deep and secretly!!
+		}
+		Context(Arc::new(ContextInner { db, domain, protocol }))
 	}
 
 	pub fn db(&self) -> &DatabaseConnection {
@@ -37,7 +45,7 @@ impl Context {
 
 	pub fn uri(&self, entity: &str, id: String) -> String {
 		if id.starts_with("http") { id } else {
-			format!("{}/{}/{}", self.0.domain, entity, id)
+			format!("{}{}/{}/{}", self.0.protocol, self.0.domain, entity, id)
 		}
 	}
 
