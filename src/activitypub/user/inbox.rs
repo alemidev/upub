@@ -1,7 +1,79 @@
-use axum::{extract::{Path, State}, http::StatusCode, Json};
-use sea_orm::{sea_query::Expr, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
+use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
+use sea_orm::{sea_query::Expr, ColumnTrait, Condition, EntityTrait, IntoActiveModel, Order, QueryFilter, QueryOrder, QuerySelect};
 
-use crate::{activitypub::JsonLD, activitystream::{object::{activity::{Activity, ActivityType}, Addressed, ObjectType}, Base, BaseType, Node}, errors::LoggableError, model::{self, activity, addressing, object}, server::Context};
+use crate::{activitypub::{activity::ap_activity, jsonld::LD, JsonLD, Pagination, PUBLIC_TARGET}, activitystream::{object::{activity::{Activity, ActivityType}, collection::{page::CollectionPageMut, CollectionMut, CollectionType}, Addressed, ObjectType}, Base, BaseMut, BaseType, Node}, auth::{AuthIdentity, Identity}, errors::LoggableError, model::{self, activity, addressing, object}, server::Context, url};
+
+pub async fn get(
+	State(ctx): State<Context>,
+	Path(id): Path<String>,
+	AuthIdentity(auth): AuthIdentity,
+) -> Result<JsonLD<serde_json::Value>, StatusCode> {
+	match auth {
+		Identity::Anonymous => Err(StatusCode::FORBIDDEN),
+		Identity::Remote(_) => Err(StatusCode::FORBIDDEN),
+		Identity::Local(user) => if ctx.uid(id.clone()) == user {
+			Ok(JsonLD(serde_json::Value::new_object()
+				.set_id(Some(&url!(ctx, "/users/{id}/inbox")))
+				.set_collection_type(Some(CollectionType::OrderedCollection))
+				.set_first(Node::link(url!(ctx, "/users/{id}/inbox/page")))
+				.ld_context()
+			))
+		} else {
+			Err(StatusCode::FORBIDDEN)
+		},
+	}
+}
+
+pub async fn page(
+	State(ctx): State<Context>,
+	Path(id): Path<String>,
+	AuthIdentity(auth): AuthIdentity,
+	Query(page): Query<Pagination>,
+) -> Result<JsonLD<serde_json::Value>, StatusCode> {
+	let uid = ctx.uid(id.clone());
+	match auth {
+		Identity::Anonymous => Err(StatusCode::FORBIDDEN),
+		Identity::Remote(_) => Err(StatusCode::FORBIDDEN),
+		Identity::Local(user) => if uid == user {
+			let limit = page.batch.unwrap_or(20).min(50);
+			let offset = page.offset.unwrap_or(0);
+			match model::addressing::Entity::find()
+				.filter(Condition::any()
+					.add(model::addressing::Column::Actor.eq(PUBLIC_TARGET))
+					.add(model::addressing::Column::Actor.eq(uid))
+				)
+				.order_by(model::addressing::Column::Published, Order::Asc)
+				.find_also_related(model::activity::Entity)
+				.limit(limit)
+				.offset(offset)
+				.all(ctx.db())
+				.await
+			{
+				Ok(activities) => {
+					Ok(JsonLD(serde_json::Value::new_object()
+						.set_id(Some(&url!(ctx, "/users/{id}/inbox/page?offset={offset}")))
+						.set_collection_type(Some(CollectionType::OrderedCollectionPage))
+						.set_part_of(Node::link(url!(ctx, "/users/{id}/inbox")))
+						.set_next(Node::link(url!(ctx, "/users/{id}/inbox/page?offset={}", offset+limit)))
+						.set_ordered_items(Node::array(
+							activities
+								.into_iter()
+								.filter_map(|(_, a)| Some(ap_activity(a?)))
+								.collect::<Vec<serde_json::Value>>()
+						))
+						.ld_context()
+					))
+				},
+				Err(e) => {
+					tracing::error!("failed paginating user inbox for {id}: {e}");
+					Err(StatusCode::INTERNAL_SERVER_ERROR)
+				},
+			}
+		} else {
+			Err(StatusCode::FORBIDDEN)
+		},
+	}
+}
 
 pub async fn post(
 	State(ctx): State<Context>,
@@ -123,8 +195,4 @@ pub async fn post(
 			Err(StatusCode::UNPROCESSABLE_ENTITY)
 		}
 	}
-}
-
-pub async fn get() -> StatusCode {
-	StatusCode::NOT_IMPLEMENTED
 }
