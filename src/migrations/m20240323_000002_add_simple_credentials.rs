@@ -28,13 +28,11 @@ impl MigrationTrait for Migration {
 					.table(Sessions::Table)
 					.col(
 						ColumnDef::new(Sessions::Id)
-							.integer()
+							.string()
 							.not_null()
-							.auto_increment()
 							.primary_key()
 					)
 					.col(ColumnDef::new(Sessions::Actor).string().not_null())
-					.col(ColumnDef::new(Sessions::Session).string().not_null())
 					.col(ColumnDef::new(Sessions::Expires).date_time().not_null())
 					.to_owned()
 			)
@@ -63,8 +61,7 @@ enum Credentials {
 #[derive(DeriveIden)]
 enum Sessions {
 	Table,
-	Id, // TODO here ID is a number but in Credentials it's the actor ID (String) ??? weird!!
+	Id, // TODO here ID is the session "secret" but in Credentials it's the actor ID (String) ??? weird!!
 	Actor,
-	Session,
 	Expires,
 }

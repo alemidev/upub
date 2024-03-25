@@ -4,9 +4,8 @@ use sea_orm::entity::prelude::*;
 #[sea_orm(table_name = "sessions")]
 pub struct Model {
 	#[sea_orm(primary_key)]
-	pub id: i64,
+	pub id: String,
 	pub actor: String,
-	pub session: String,
 	pub expires: ChronoDateTimeUtc,
 }
 
