@@ -1,8 +1,6 @@
-mod inbox;
-pub use inbox::inbox;
+pub mod inbox;
 
-mod outbox;
-pub use outbox::outbox;
+pub mod outbox;
 
 mod following;
 pub use following::follow___;

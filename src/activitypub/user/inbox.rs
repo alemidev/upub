@@ -3,7 +3,7 @@ use sea_orm::{sea_query::Expr, ColumnTrait, EntityTrait, IntoActiveModel, QueryF
 
 use crate::{activitypub::JsonLD, activitystream::{object::{activity::{Activity, ActivityType}, Addressed, ObjectType}, Base, BaseType, Node}, errors::LoggableError, model::{self, activity, addressing, object}, server::Context};
 
-pub async fn inbox(
+pub async fn post(
 	State(ctx): State<Context>,
 	Path(_id): Path<String>,
 	Json(object): Json<serde_json::Value>
@@ -122,4 +122,8 @@ pub async fn inbox(
 			Err(StatusCode::UNPROCESSABLE_ENTITY)
 		}
 	}
+}
+
+pub async fn get() -> StatusCode {
+	StatusCode::NOT_IMPLEMENTED
 }

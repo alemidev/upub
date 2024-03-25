@@ -21,8 +21,10 @@ pub async fn serve(db: DatabaseConnection, domain: String) {
 		.route("/nodeinfo/:version", get(ap::well_known::nodeinfo))
 		// actor routes
 		.route("/users/:id", get(ap::user::view))
-		.route("/users/:id/inbox", post(ap::user::inbox))
-		.route("/users/:id/outbox", get(ap::user::outbox))
+		.route("/users/:id/inbox", get(ap::user::inbox::get))
+		.route("/users/:id/inbox", post(ap::user::inbox::post))
+		.route("/users/:id/outbox", get(ap::user::outbox::get))
+		.route("/users/:id/outbox/page", get(ap::user::outbox::page))
 		.route("/users/:id/followers", get(ap::user::follow___::<false>))
 		.route("/users/:id/following", get(ap::user::follow___::<true>))
 		// specific object routes
