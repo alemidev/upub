@@ -72,9 +72,8 @@ where
 				.join("\n");
 
 			let user = ctx.fetch().user(&user_id).await.map_err(|_e| StatusCode::UNAUTHORIZED)?;
-			// TODO we should choose algo depending on http signature requested algo
 			let pubkey = PKey::public_key_from_pem(user.public_key.as_bytes()).map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)?;
-			let mut verifier = Verifier::new(MessageDigest::sha256(), &pubkey).map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)?;
+			let mut verifier = Verifier::new(signature.digest(), &pubkey).map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)?;
 			verifier.update(data.as_bytes()).map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)?;
 			if verifier.verify(signature.signature.as_bytes()).map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)? {
 				identity = Identity::Remote(user_id);
@@ -92,6 +91,21 @@ pub struct HttpSignature {
 	algorithm: String,
 	headers: Vec<String>,
 	signature: String,
+}
+
+impl HttpSignature {
+	pub fn digest(&self) -> MessageDigest {
+		match self.algorithm.as_str() {
+			"rsa-sha512" => MessageDigest::sha512(),
+			"rsa-sha384" => MessageDigest::sha384(),
+			"rsa-sha256" => MessageDigest::sha256(),
+			"rsa-sha1" => MessageDigest::sha1(),
+			_ => {
+				tracing::error!("unknown digest algorithm, trying with rsa-sha256");
+				MessageDigest::sha256()
+			}
+		}
+	}
 }
 
 impl TryFrom<&str> for HttpSignature {
