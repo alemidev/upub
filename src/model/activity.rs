@@ -59,6 +59,9 @@ pub enum Relation {
 
 	#[sea_orm(has_many = "super::addressing::Entity")]
 	Addressing,
+
+	#[sea_orm(has_many = "super::delivery::Entity")]
+	Delivery,
 }
 
 impl Related<super::user::Entity> for Entity {

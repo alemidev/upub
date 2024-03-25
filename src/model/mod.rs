@@ -9,6 +9,7 @@ pub mod share;
 pub mod like;
 pub mod credential;
 pub mod session;
+pub mod delivery;
 
 pub mod faker;
 

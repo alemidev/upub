@@ -25,3 +25,5 @@ jrd = "0.1"
 nodeinfo = { git = "https://codeberg.org/thefederationinfo/nodeinfo-rs", rev = "e865094804" }
 rand = "0.8.5"
 sha256 = "1.5.0"
+openssl = "0.10.64"
+base64 = "0.22.0"

@@ -7,6 +7,7 @@ mod m20240322_000003_add_indexes;
 mod m20240323_000001_add_user_configs;
 mod m20240323_000002_add_simple_credentials;
 mod m20240324_000001_add_addressing;
+mod m20240325_000001_add_deliveries;
 
 pub struct Migrator;
 
@@ -21,6 +22,7 @@ impl MigratorTrait for Migrator {
 			Box::new(m20240323_000001_add_user_configs::Migration),
 			Box::new(m20240323_000002_add_simple_credentials::Migration),
 			Box::new(m20240324_000001_add_addressing::Migration),
+			Box::new(m20240325_000001_add_deliveries::Migration),
 		]
 	}
 }
