@@ -6,6 +6,7 @@ pub struct Model {
 	#[sea_orm(primary_key)]
 	pub id: i64,
 	pub actor: String,
+	pub server: String,
 	pub activity: String,
 	pub object: Option<String>,
 	pub published: ChronoDateTimeUtc,

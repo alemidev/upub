@@ -41,8 +41,6 @@ impl Context {
 		}
 	}
 
-	// TODO maybe redo these with enums? idk
-
 	/// get full user id uri
 	pub fn uid(&self, id: String) -> String {
 		self.uri("users", id)
@@ -58,12 +56,22 @@ impl Context {
 		self.uri("activities", id)
 	}
 
-	/// get bare uri, usually an uuid but unspecified
+	/// get bare id, usually an uuid but unspecified
 	pub fn id(&self, id: String) -> String {
 		if id.starts_with(&self.0.domain) {
 			id.split('/').last().unwrap_or("").to_string()
 		} else {
 			id
 		}
+	}
+
+	pub fn server(id: &str) -> String {
+		id
+			.replace("https://", "")
+			.replace("http://", "")
+			.split('/')
+			.next()
+			.unwrap_or("")
+			.to_string()
 	}
 }

@@ -83,9 +83,8 @@ pub async fn auth(State(ctx): State<Context>, Json(login): Json<LoginForm>) -> R
 				.collect();
 			model::session::Entity::insert(
 				model::session::ActiveModel {
-					id: sea_orm::ActiveValue::NotSet,
+					id: sea_orm::ActiveValue::Set(token.clone()),
 					actor: sea_orm::ActiveValue::Set(x.id),
-					session: sea_orm::ActiveValue::Set(token.clone()),
 					expires: sea_orm::ActiveValue::Set(chrono::Utc::now() + std::time::Duration::from_secs(3600 * 6)),
 				}
 			)

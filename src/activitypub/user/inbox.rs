@@ -102,6 +102,7 @@ pub async fn post(
 					.map(|actor|
 						addressing::ActiveModel{
 							id: sea_orm::ActiveValue::NotSet,
+							server: sea_orm::Set(Context::server(&actor)),
 							actor: sea_orm::Set(actor),
 							activity: sea_orm::Set(activity_id.clone()),
 							object: sea_orm::Set(Some(object_id.clone())),

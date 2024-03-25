@@ -18,6 +18,7 @@ impl MigrationTrait for Migration {
 							.primary_key()
 					)
 					.col(ColumnDef::new(Addressing::Actor).string().not_null())
+					.col(ColumnDef::new(Addressing::Server).string().not_null())
 					.col(ColumnDef::new(Addressing::Activity).string().not_null())
 					.col(ColumnDef::new(Addressing::Object).string().null())
 					.col(ColumnDef::new(Addressing::Published).date_time().not_null())
@@ -35,6 +36,16 @@ impl MigrationTrait for Migration {
 					.name("addressing-actor-index")
 					.table(Addressing::Table)
 					.col(Addressing::Actor)
+					.to_owned()
+			)
+			.await?;
+
+		manager
+			.create_index(
+				Index::create()
+					.name("addressing-server-index")
+					.table(Addressing::Table)
+					.col(Addressing::Server)
 					.to_owned()
 			)
 			.await?;
@@ -72,6 +83,10 @@ impl MigrationTrait for Migration {
 			.await?;
 
 		manager
+			.drop_index(Index::drop().name("addressing-server-index").to_owned())
+			.await?;
+
+		manager
 			.drop_index(Index::drop().name("addressing-activity-index").to_owned())
 			.await?;
 
@@ -88,6 +103,7 @@ enum Addressing {
 	Table,
 	Id,
 	Actor,
+	Server,
 	Activity,
 	Object,
 	Published,
