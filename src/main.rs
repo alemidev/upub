@@ -49,7 +49,7 @@ enum CliCommand {
 	/// generate fake user, note and activity
 	Faker{
 		/// how many fake statuses to insert for root user
-		count: usize,
+		count: u64,
 	},
 
 	/// fetch a single AP object
@@ -89,7 +89,7 @@ async fn main() {
 		CliCommand::Migrate => migrations::Migrator::up(&db, None)
 			.await.expect("error applying migrations"),
 
-		CliCommand::Faker => model::faker::faker(&db, args.domain)
+		CliCommand::Faker { count } => model::faker::faker(&db, args.domain, count)
 			.await.expect("error creating fake entities"),
 
 		CliCommand::Fetch { uri, save } => fetch(&db, &uri, save)

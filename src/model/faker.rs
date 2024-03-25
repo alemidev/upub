@@ -2,7 +2,7 @@ use crate::{activitypub::PUBLIC_TARGET, model::{config, credential}};
 use super::{activity, object, user, Audience};
 use sea_orm::IntoActiveModel;
 
-pub async fn faker(db: &sea_orm::DatabaseConnection, domain: String, count: usize) -> Result<(), sea_orm::DbErr> {
+pub async fn faker(db: &sea_orm::DatabaseConnection, domain: String, count: u64) -> Result<(), sea_orm::DbErr> {
 	use sea_orm::{EntityTrait, Set};
 
 	let root = super::user::Model {
