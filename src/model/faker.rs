@@ -2,7 +2,7 @@ use crate::{activitypub::PUBLIC_TARGET, model::{config, credential}};
 use super::{activity, object, user, Audience};
 use sea_orm::IntoActiveModel;
 
-pub async fn faker(db: &sea_orm::DatabaseConnection, domain: String) -> Result<(), sea_orm::DbErr> {
+pub async fn faker(db: &sea_orm::DatabaseConnection, domain: String, count: usize) -> Result<(), sea_orm::DbErr> {
 	use sea_orm::{EntityTrait, Set};
 
 	let root = super::user::Model {
@@ -55,7 +55,7 @@ UQIDAQAB
 
 	let context = uuid::Uuid::new_v4().to_string();
 
-	for i in (0..100).rev() {
+	for i in (0..count).rev() {
 		let oid = uuid::Uuid::new_v4();
 		let aid = uuid::Uuid::new_v4();
 		object::Entity::insert(object::ActiveModel {

@@ -47,7 +47,10 @@ enum CliCommand {
 	Migrate,
 
 	/// generate fake user, note and activity
-	Faker,
+	Faker{
+		/// how many fake statuses to insert for root user
+		count: usize,
+	},
 
 	/// fetch a single AP object
 	Fetch {
