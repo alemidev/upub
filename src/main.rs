@@ -1,11 +1,12 @@
-pub mod model;
-pub mod migrations;
 pub mod activitystream;
 pub mod activitypub;
-pub mod server;
-pub mod router;
-pub mod errors;
-pub mod auth;
+
+mod model;
+mod migrations;
+mod server;
+mod router;
+mod errors;
+mod auth;
 mod dispatcher;
 
 use clap::{Parser, Subcommand};
