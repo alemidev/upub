@@ -55,20 +55,20 @@ impl Dispatcher {
 					},
 				};
 
-				let Some(key_pem) = model::user::Entity::find_by_id(&delivery.from)
+				let Some(key_pem) = model::user::Entity::find_by_id(&delivery.actor)
 					.select_only()
 					.select_column(model::user::Column::PrivateKey)
 					.into_tuple::<String>()
 					.one(&db)
 					.await?
 				else { 
-					tracing::error!("can not dispatch activity for user without private key: {}", delivery.from);
+					tracing::error!("can not dispatch activity for user without private key: {}", delivery.actor);
 					continue;
 				};
 
 				let Ok(key) = PKey::private_key_from_pem(key_pem.as_bytes())
 				else {
-					tracing::error!("failed parsing private key for user {}", delivery.from);
+					tracing::error!("failed parsing private key for user {}", delivery.actor);
 					continue;
 				};
 
@@ -81,7 +81,7 @@ impl Dispatcher {
 				let signed_string = format!("(request-target): post {request_target}\nhost: {host}\ndate: {date}");
 				signer.update(signed_string.as_bytes()).unwrap();
 				let signature = base64::prelude::BASE64_URL_SAFE.encode(signer.sign_to_vec().unwrap());
-				let signature_header = format!("keyId=\"{}\",headers=\"(request-target) host date\",signature=\"{signature}\"", delivery.from);
+				let signature_header = format!("keyId=\"{}\",headers=\"(request-target) host date\",signature=\"{signature}\"", delivery.actor);
 
 				if let Err(e) = reqwest::Client::new()
 					.post(&delivery.target)
@@ -97,7 +97,7 @@ impl Dispatcher {
 					let new_delivery = model::delivery::ActiveModel {
 						id: sea_orm::ActiveValue::NotSet,
 						not_before: sea_orm::ActiveValue::Set(delivery.next_delivery()),
-						from: sea_orm::ActiveValue::Set(delivery.from),
+						actor: sea_orm::ActiveValue::Set(delivery.actor),
 						target: sea_orm::ActiveValue::Set(delivery.target),
 						activity: sea_orm::ActiveValue::Set(delivery.activity),
 						created: sea_orm::ActiveValue::Set(delivery.created),
