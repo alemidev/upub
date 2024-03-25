@@ -1,4 +1,7 @@
+use std::collections::BTreeMap;
+
 use axum::{extract::{FromRef, FromRequestParts}, http::{header, request::Parts, StatusCode}};
+use openssl::{hash::MessageDigest, pkey::PKey, sign::Verifier};
 use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter};
 
 use crate::{model, server::Context};
@@ -50,34 +53,68 @@ where
 			.get("Signature")
 			.map(|v| v.to_str().unwrap_or(""))
 		{
-			// TODO load pub key of actor and decode+verify signature
-			let decoded = "asd".to_string();
+			let signature = HttpSignature::try_from(sig)?;
+			let user_id = signature.key_id.split('#').next().unwrap_or("").to_string();
+			let data : String = signature.headers.iter()
+				.map(|header| {
+					if header == "(request-target)" {
+						format!("(request-target): {} {}", parts.method, parts.uri)
+					} else {
+						format!(
+							"{header}: {}",
+							parts.headers.get(header)
+								.map(|h| h.to_str().unwrap_or(""))
+								.unwrap_or("")
+						)
+					}
+				})
+				.collect::<Vec<String>>() // TODO can we avoid this unneeded allocation?
+				.join("\n");
 
-			let mut key_id = None;
-			let mut headers = None;
-			let mut signature = None;
-			for frag in decoded.split(',') {
-				if frag.starts_with("keyId=") {
-					key_id = Some(frag.replace("keyId=\"", ""));
-					key_id.as_mut().unwrap().pop();
-				}
-				if frag.starts_with("signature=") {
-					signature = Some(frag.replace("signature=\"", ""));
-					signature.as_mut().unwrap().pop();
-				}
-				if frag.starts_with("headers=") {
-					let mut h = frag.replace("headers=\"", "");
-					h.pop();
-					headers = Some(h.split(' ').map(|x| x.to_string()).collect::<Vec<String>>());
-				}
-			}
-
-			if key_id.is_none() || headers.is_none() || signature.is_none() {
-				tracing::warn!("malformed signature");
-				return Err(StatusCode::BAD_REQUEST);
+			let user = ctx.fetch().user(&user_id).await.map_err(|_e| StatusCode::UNAUTHORIZED)?;
+			// TODO we should choose algo depending on http signature requested algo
+			let pubkey = PKey::public_key_from_pem(user.public_key.as_bytes()).map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)?;
+			let mut verifier = Verifier::new(MessageDigest::sha256(), &pubkey).map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)?;
+			verifier.update(data.as_bytes()).map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)?;
+			if verifier.verify(signature.signature.as_bytes()).map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)? {
+				identity = Identity::Remote(user_id);
+			} else {
+				return Err(StatusCode::FORBIDDEN);
 			}
 		}
 
 		Ok(AuthIdentity(identity))
 	}
 }
+
+pub struct HttpSignature {
+	key_id: String,
+	algorithm: String,
+	headers: Vec<String>,
+	signature: String,
+}
+
+impl TryFrom<&str> for HttpSignature {
+	type Error = StatusCode; // TODO: quite ad hoc...
+
+	fn try_from(value: &str) -> Result<Self, Self::Error> {
+		let parameters : BTreeMap<String, String> = value
+			.split(',')
+			.filter_map(|s| { // TODO kinda ugly, can be made nicer?
+				let (k, v) = s.split_once("=\"")?;
+				let (k, mut v) = (k.to_string(), v.to_string());
+				v.pop();
+				Some((k, v))
+			}).collect();
+
+		let sig = HttpSignature {
+			key_id: parameters.get("keyId").ok_or(StatusCode::BAD_REQUEST)?.to_string(),
+			algorithm: parameters.get("algorithm").ok_or(StatusCode::BAD_REQUEST)?.to_string(),
+			headers: parameters.get("headers").map(|x| x.split(' ').map(|x| x.to_string()).collect()).unwrap_or(vec!["date".to_string()]),
+			signature: parameters.get("signature").ok_or(StatusCode::BAD_REQUEST)?.to_string(),
+		};
+
+		Ok(sig)
+	}
+}
+
