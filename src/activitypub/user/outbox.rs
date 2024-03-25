@@ -1,7 +1,7 @@
-use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
-use sea_orm::{EntityTrait, Order, QueryOrder, QuerySelect};
+use axum::{extract::{Path, Query, State}, http::StatusCode, response::IntoResponse, Json};
+use sea_orm::{ColumnTrait, Condition, EntityTrait, IntoActiveModel, Order, QueryFilter, QueryOrder, QuerySelect, SelectColumns, Set};
 
-use crate::{activitypub::{jsonld::LD, JsonLD, Pagination}, activitystream::{object::{activity::ActivityMut, collection::{page::CollectionPageMut, CollectionMut, CollectionType}}, Base, BaseMut, BaseType, Node}, auth::{AuthIdentity, Identity}, model::{activity, object}, server::Context, url};
+use crate::{activitypub::{jsonld::LD, JsonLD, Pagination}, activitystream::{object::{activity::{Activity, ActivityMut, ActivityType}, collection::{page::CollectionPageMut, CollectionMut, CollectionType}, Addressed, Object, ObjectMut}, Base, BaseMut, BaseType, Node, ObjectType}, auth::{AuthIdentity, Identity}, model::{self, activity, object}, server::Context, url};
 
 pub async fn get(
 	State(ctx): State<Context>,
@@ -72,20 +72,166 @@ pub async fn post(
 	Path(id): Path<String>,
 	Json(activity): Json<serde_json::Value>,
 	AuthIdentity(auth): AuthIdentity,
-) -> Result<JsonLD<serde_json::Value>, StatusCode> {
+) -> Result<impl IntoResponse, StatusCode> {
 	match auth {
 		Identity::Anonymous => Err(StatusCode::UNAUTHORIZED),
 		Identity::Remote(_) => Err(StatusCode::NOT_IMPLEMENTED),
-		Identity::Local(uid) => if ctx.uid(id) == uid {
+		Identity::Local(uid) => if ctx.uid(id.clone()) == uid {
 			match activity.base_type() {
 				None => Err(StatusCode::BAD_REQUEST),
 				Some(BaseType::Link(_)) => Err(StatusCode::UNPROCESSABLE_ENTITY),
 				// Some(BaseType::Object(ObjectType::Note)) => {
 				// },
-				// Some(BaseType::Object(ObjectType::Activity(ActivityType::Create))) => {
-				// },
-				// Some(BaseType::Object(ObjectType::Activity(ActivityType::Like))) => {
-				// },
+				Some(BaseType::Object(ObjectType::Activity(ActivityType::Create))) => {
+					let Some(object) = activity.object().get().map(|x| x.underlying_json_object()) else {
+						return Err(StatusCode::BAD_REQUEST);
+					};
+					let oid = uuid::Uuid::new_v4().to_string();
+					let aid = uuid::Uuid::new_v4().to_string();
+					let mut object_model = model::object::Model::new(&object)?;
+					let mut activity_model = model::activity::Model::new(&activity)?;
+					object_model.id = oid.clone();
+					object_model.to = activity_model.to.clone();
+					object_model.bto = activity_model.bto.clone();
+					object_model.cc = activity_model.cc.clone();
+					object_model.bcc = activity_model.bcc.clone();
+					object_model.attributed_to = Some(uid.clone());
+					object_model.published = chrono::Utc::now();
+					activity_model.id = aid.clone();
+					activity_model.published = chrono::Utc::now();
+					activity_model.actor = uid.clone();
+					activity_model.object = Some(oid.clone());
+
+					model::object::Entity::insert(object_model.into_active_model())
+						.exec(ctx.db())
+						.await
+						.map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+					model::activity::Entity::insert(activity_model.into_active_model())
+						.exec(ctx.db())
+						.await
+						.map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+					let mut addressed = activity.addressed();
+					let followers = url!(ctx, "/users/{id}/followers"); // TODO maybe can be done better?
+					if let Some(i) = addressed.iter().position(|x| x == &followers) {
+						addressed.remove(i);
+						model::relation::Entity::find()
+							.filter(Condition::all().add(model::relation::Column::Following.eq(uid.clone())))
+							.select_column(model::relation::Column::Follower)
+							.into_tuple::<String>()
+							.all(ctx.db())
+							.await
+							.map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)?
+							.into_iter()
+							.for_each(|x| addressed.push(x));
+					}
+
+					let addressings : Vec<model::addressing::ActiveModel> = addressed
+						.iter()
+						.map(|to| model::addressing::ActiveModel {
+							server: Set(Context::server(&uid)),
+							actor: Set(to.to_string()),
+							activity: Set(aid.clone()),
+							object: Set(Some(oid.clone())),
+							..Default::default()
+						})
+						.collect();
+
+					model::addressing::Entity::insert_many(addressings)
+						.exec(ctx.db())
+						.await
+						.map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+					let deliveries : Vec<model::delivery::ActiveModel> = addressed
+						.iter()
+						.filter(|to| Context::server(to) != ctx.base())
+						.map(|to| model::delivery::ActiveModel {
+							// TODO we should resolve each user by id and check its inbox because we can't assume
+							// it's /users/{id}/inbox for every software, but oh well it's waaaaay easier now
+							actor: Set(uid.clone()),
+							target: Set(format!("{}/inbox", to)),
+							activity: Set(aid.clone()),
+							created: Set(chrono::Utc::now()),
+							not_before: Set(chrono::Utc::now()),
+							attempt: Set(0),
+							..Default::default()
+						})
+						.collect();
+
+					model::delivery::Entity::insert_many(deliveries)
+						.exec(ctx.db())
+						.await
+						.map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+					Ok(StatusCode::CREATED)
+				},
+				Some(BaseType::Object(ObjectType::Activity(ActivityType::Like))) => {
+					let aid = uuid::Uuid::new_v4().to_string();
+					let mut activity_model = model::activity::Model::new(&activity)?;
+					activity_model.id = aid.clone();
+					activity_model.published = chrono::Utc::now();
+					activity_model.actor = uid.clone();
+
+					model::activity::Entity::insert(activity_model.into_active_model())
+						.exec(ctx.db())
+						.await
+						.map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+					let mut addressed = activity.addressed();
+					let followers = url!(ctx, "/users/{id}/followers"); // TODO maybe can be done better?
+					if let Some(i) = addressed.iter().position(|x| x == &followers) {
+						addressed.remove(i);
+						model::relation::Entity::find()
+							.filter(Condition::all().add(model::relation::Column::Following.eq(uid.clone())))
+							.select_column(model::relation::Column::Follower)
+							.into_tuple::<String>()
+							.all(ctx.db())
+							.await
+							.map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)?
+							.into_iter()
+							.for_each(|x| addressed.push(x));
+					}
+
+					let addressings : Vec<model::addressing::ActiveModel> = addressed
+						.iter()
+						.map(|to| model::addressing::ActiveModel {
+							server: Set(Context::server(&uid)),
+							actor: Set(to.to_string()),
+							activity: Set(aid.clone()),
+							object: Set(None),
+							..Default::default()
+						})
+						.collect();
+
+					model::addressing::Entity::insert_many(addressings)
+						.exec(ctx.db())
+						.await
+						.map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+					let deliveries : Vec<model::delivery::ActiveModel> = addressed
+						.iter()
+						.filter(|to| Context::server(to) != ctx.base())
+						.map(|to| model::delivery::ActiveModel {
+							// TODO we should resolve each user by id and check its inbox because we can't assume
+							// it's /users/{id}/inbox for every software, but oh well it's waaaaay easier now
+							actor: Set(uid.clone()),
+							target: Set(format!("{}/inbox", to)),
+							activity: Set(aid.clone()),
+							created: Set(chrono::Utc::now()),
+							not_before: Set(chrono::Utc::now()),
+							attempt: Set(0),
+							..Default::default()
+						})
+						.collect();
+
+					model::delivery::Entity::insert_many(deliveries)
+						.exec(ctx.db())
+						.await
+						.map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+					Ok(StatusCode::CREATED)
+				},
 				// Some(BaseType::Object(ObjectType::Activity(ActivityType::Follow))) => {
 				// },
 				// Some(BaseType::Object(ObjectType::Activity(ActivityType::Undo))) => {
