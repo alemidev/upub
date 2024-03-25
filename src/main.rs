@@ -5,6 +5,7 @@ pub mod activitypub;
 pub mod server;
 pub mod router;
 pub mod errors;
+pub mod auth;
 
 use clap::{Parser, Subcommand};
 use sea_orm::{ConnectOptions, Database, EntityTrait, IntoActiveModel};
