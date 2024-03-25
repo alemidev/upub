@@ -8,6 +8,8 @@ pub struct Model {
 
 	pub private_key: String,
 	pub public_key: String,
+
+	pub created: ChronoDateTimeUtc,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

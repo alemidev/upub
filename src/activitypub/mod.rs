@@ -12,7 +12,7 @@ use axum::{extract::State, http::StatusCode, Json};
 use rand::Rng;
 use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter};
 
-use crate::{activitystream::{object::{actor::{ActorMut, ActorType}, ObjectMut}, BaseMut}, model, server::Context, url};
+use crate::{activitystream::{key::PublicKeyMut, object::{actor::{ActorMut, ActorType}, ObjectMut}, BaseMut, Node}, model, server::Context, url};
 
 use self::jsonld::LD;
 
@@ -47,12 +47,17 @@ pub struct Pagination {
 pub async fn view(State(ctx): State<Context>) -> Result<Json<serde_json::Value>, StatusCode> {
 	Ok(Json(
 		serde_json::Value::new_object()
-			.set_actor_type(Some(ActorType::Application))
 			.set_id(Some(&url!(ctx, "")))
+			.set_actor_type(Some(ActorType::Application))
 			.set_name(Some("μpub"))
 			.set_summary(Some("micro social network, federated"))
-			// .set_inbox(Node::link(url!(ctx, "/inbox")))
-			// .set_outbox(Node::link(url!(ctx, "/outbox")))
+			.set_published(Some(ctx.app().created))
+			.set_public_key(Node::object(
+				serde_json::Value::new_object()
+					.set_id(Some(&url!(ctx, "#main-key")))
+					.set_owner(Some(ctx.base()))
+					.set_public_key_pem(&ctx.app().public_key)
+			))
 			.ld_context()
 	))
 }

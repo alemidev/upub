@@ -19,6 +19,7 @@ impl MigrationTrait for Migration {
 					)
 					.col(ColumnDef::new(Application::PrivateKey).string().not_null())
 					.col(ColumnDef::new(Application::PublicKey).string().not_null())
+					.col(ColumnDef::new(Application::Created).date_time().not_null())
 					.to_owned()
 			)
 			.await?;
@@ -41,4 +42,5 @@ enum Application {
 	Id,
 	PrivateKey,
 	PublicKey,
+	Created,
 }

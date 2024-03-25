@@ -1,7 +1,7 @@
 use std::{str::Utf8Error, sync::Arc};
 
 use openssl::rsa::Rsa;
-use sea_orm::{DatabaseConnection, DbErr, EntityTrait, QuerySelect, SelectColumns};
+use sea_orm::{DatabaseConnection, DbErr, EntityTrait};
 
 use crate::{dispatcher::Dispatcher, fetcher::Fetcher, model};
 
@@ -13,8 +13,7 @@ struct ContextInner {
 	protocol: String,
 	fetcher: Fetcher,
 	// TODO keep these pre-parsed
-	public_key: String,
-	private_key: String,
+	app: model::application::Model,
 }
 
 #[macro_export]
@@ -49,14 +48,8 @@ impl Context {
 		for _ in 0..1 { // TODO customize delivery workers amount
 			Dispatcher::spawn(db.clone(), domain.clone(), 30); // TODO ew don't do it this deep and secretly!!
 		}
-		let (public_key, private_key) = match model::application::Entity::find()
-			.select_only()
-			.select_column(model::application::Column::PublicKey)
-			.select_column(model::application::Column::PrivateKey)
-			.one(&db)
-			.await?
-		{
-			Some(model) => (model.public_key, model.private_key),
+		let app = match model::application::Entity::find().one(&db).await? {
+			Some(model) => model,
 			None => {
 				tracing::info!("generating application keys");
 				let rsa = Rsa::generate(2048)?;
@@ -66,17 +59,23 @@ impl Context {
 					id: sea_orm::ActiveValue::NotSet,
 					private_key: sea_orm::ActiveValue::Set(privk.clone()),
 					public_key: sea_orm::ActiveValue::Set(pubk.clone()),
+					created: sea_orm::ActiveValue::Set(chrono::Utc::now()),
 				};
 				model::application::Entity::insert(system).exec(&db).await?;
-				(pubk, privk)
+				// sqlite doesn't resurn last inserted id so we're better off just querying again, it's just one time
+				model::application::Entity::find().one(&db).await?.expect("could not find app config just inserted")
 			}
 		};
 
-		let fetcher = Fetcher::new(db.clone(), domain.clone(), private_key.clone());
+		let fetcher = Fetcher::new(db.clone(), domain.clone(), app.private_key.clone());
 
 		Ok(Context(Arc::new(ContextInner {
-			db, domain, protocol, private_key, public_key, fetcher,
+			db, domain, protocol, app, fetcher,
 		})))
+	}
+
+	pub fn app(&self) -> &model::application::Model {
+		&self.0.app
 	}
 
 	pub fn db(&self) -> &DatabaseConnection {
