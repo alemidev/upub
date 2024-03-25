@@ -8,7 +8,7 @@ pub use following::follow___;
 use axum::{extract::{Path, State}, http::StatusCode};
 use sea_orm::EntityTrait;
 
-use crate::{activitystream::{object::{actor::ActorMut, collection::{CollectionMut, CollectionType}, document::{DocumentMut, DocumentType}, ObjectMut}, BaseMut, Node}, model::{self, user}, server::Context, url};
+use crate::{activitystream::{key::PublicKeyMut, object::{actor::ActorMut, collection::{CollectionMut, CollectionType}, document::{DocumentMut, DocumentType}, ObjectMut}, BaseMut, Node}, model::{self, user}, server::Context, url};
 
 use super::{jsonld::LD, JsonLD};
 
@@ -44,7 +44,12 @@ pub fn ap_user(user: model::user::Model) -> serde_json::Value {
 				.set_collection_type(Some(CollectionType::OrderedCollection))
 				.set_total_items(Some(user.followers_count as u64))
 		))
-		// .set_public_key(user.public_key) // TODO
+		.set_public_key(Node::object(
+			serde_json::Value::new_object()
+				.set_id(Some(&format!("{}#main-key", user.id)))
+				.set_owner(Some(&user.id))
+				.set_public_key_pem(&user.public_key)
+		))
 		.set_discoverable(Some(true))
 		.set_endpoints(None)
 }
