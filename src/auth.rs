@@ -6,8 +6,8 @@ use crate::{model, server::Context};
 #[derive(Debug, Clone)]
 pub enum Identity {
 	Anonymous,
-	User(String),
-	Server(String),
+	Local(String),
+	Remote(String),
 }
 
 pub struct AuthIdentity(pub Identity);
@@ -36,7 +36,7 @@ where
 				.one(ctx.db())
 				.await
 			{
-				Ok(Some(x)) => identity = Identity::User(x.actor),
+				Ok(Some(x)) => identity = Identity::Local(x.actor),
 				Ok(None) => return Err(StatusCode::UNAUTHORIZED),
 				Err(e) => {
 					tracing::error!("failed querying user session: {e}");
@@ -45,8 +45,39 @@ where
 			}
 		}
 
-		// TODO check and validate HTTP signature
-	
+		if let Some(sig) = parts
+			.headers
+			.get("Signature")
+			.map(|v| v.to_str().unwrap_or(""))
+		{
+			// TODO load pub key of actor and decode+verify signature
+			let decoded = "asd".to_string();
+
+			let mut key_id = None;
+			let mut headers = None;
+			let mut signature = None;
+			for frag in decoded.split(',') {
+				if frag.starts_with("keyId=") {
+					key_id = Some(frag.replace("keyId=\"", ""));
+					key_id.as_mut().unwrap().pop();
+				}
+				if frag.starts_with("signature=") {
+					signature = Some(frag.replace("signature=\"", ""));
+					signature.as_mut().unwrap().pop();
+				}
+				if frag.starts_with("headers=") {
+					let mut h = frag.replace("headers=\"", "");
+					h.pop();
+					headers = Some(h.split(' ').map(|x| x.to_string()).collect::<Vec<String>>());
+				}
+			}
+
+			if key_id.is_none() || headers.is_none() || signature.is_none() {
+				tracing::warn!("malformed signature");
+				return Err(StatusCode::BAD_REQUEST);
+			}
+		}
+
 		Ok(AuthIdentity(identity))
 	}
 }

@@ -75,8 +75,8 @@ pub async fn post(
 ) -> Result<JsonLD<serde_json::Value>, StatusCode> {
 	match auth {
 		Identity::Anonymous => Err(StatusCode::UNAUTHORIZED),
-		Identity::Server(_) => Err(StatusCode::NOT_IMPLEMENTED),
-		Identity::User(uid) => if ctx.uid(id) == uid {
+		Identity::Remote(_) => Err(StatusCode::NOT_IMPLEMENTED),
+		Identity::Local(uid) => if ctx.uid(id) == uid {
 			match activity.base_type() {
 				None => Err(StatusCode::BAD_REQUEST),
 				Some(BaseType::Link(_)) => Err(StatusCode::UNPROCESSABLE_ENTITY),
