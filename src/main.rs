@@ -112,17 +112,17 @@ async fn fetch(db: &sea_orm::DatabaseConnection, uri: &str, save: bool) -> reqwe
 		match obj.base_type() {
 			Some(BaseType::Object(ObjectType::Actor(_))) => {
 				model::user::Entity::insert(
-					model::user::Model::new(obj).unwrap().into_active_model()
+					model::user::Model::new(&obj).unwrap().into_active_model()
 				).exec(db).await.unwrap();
 			},
 			Some(BaseType::Object(ObjectType::Activity(_))) => {
 				model::activity::Entity::insert(
-					model::activity::Model::new(obj).unwrap().into_active_model()
+					model::activity::Model::new(&obj).unwrap().into_active_model()
 				).exec(db).await.unwrap();
 			},
 			Some(BaseType::Object(ObjectType::Note)) => {
 				model::object::Entity::insert(
-					model::object::Model::new(obj).unwrap().into_active_model()
+					model::object::Model::new(&obj).unwrap().into_active_model()
 				).exec(db).await.unwrap();
 			},
 			Some(BaseType::Object(t)) => tracing::warn!("not implemented: {:?}", t),

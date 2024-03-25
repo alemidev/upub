@@ -1,3 +1,4 @@
+use openssl::pkey::{PKey, Private};
 use reqwest::header::USER_AGENT;
 use sea_orm::{DatabaseConnection, EntityTrait, IntoActiveModel};
 
@@ -18,13 +19,13 @@ pub enum FetchError {
 
 pub struct Fetcher {
 	db: DatabaseConnection,
-	key: String, // TODO store pre-parsed
+	_key: PKey<Private>, // TODO store pre-parsed
 	domain: String, // TODO merge directly with Context so we don't need to copy this
 }
 
 impl Fetcher {
 	pub fn new(db: DatabaseConnection, domain: String, key: String) -> Self {
-		Fetcher { db, domain, key }
+		Fetcher { db, domain, _key: PKey::private_key_from_pem(key.as_bytes()).unwrap() }
 	}
 
 	pub async fn user(&self, id: &str) -> Result<model::user::Model, FetchError> {

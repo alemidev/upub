@@ -18,6 +18,13 @@ pub mod faker;
 #[error("missing required field: '{0}'")]
 pub struct FieldError(pub &'static str);
 
+impl From<FieldError> for axum::http::StatusCode {
+	fn from(value: FieldError) -> Self {
+		tracing::error!("bad request: {value}");
+		axum::http::StatusCode::BAD_REQUEST
+	}
+}
+
 #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize, sea_orm::FromJsonQueryResult)]
 pub struct Audience(pub Vec<String>);
 
