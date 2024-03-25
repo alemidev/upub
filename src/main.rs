@@ -13,6 +13,8 @@ use sea_orm_migration::MigratorTrait;
 
 use crate::activitystream::{BaseType, ObjectType};
 
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
+
 #[derive(Parser)]
 /// all names were taken
 struct CliArgs {

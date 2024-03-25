@@ -2,7 +2,7 @@ use axum::{extract::{Path, Query, State}, http::StatusCode, response::{IntoRespo
 use jrd::{JsonResourceDescriptor, JsonResourceDescriptorLink};
 use sea_orm::{EntityTrait, PaginatorTrait};
 
-use crate::{model, server::Context};
+use crate::{model, server::Context, VERSION};
 
 #[derive(serde::Serialize)]
 pub struct NodeInfoDiscovery {
@@ -42,7 +42,7 @@ pub async fn nodeinfo(State(ctx): State<Context>, Path(version): Path<String>) -
 		"2.0.json" => (
 			nodeinfo::types::Software {
 				name: "μpub".to_string(),
-				version: Some(env!("CARGO_PKG_VERSION").into()),
+				version: Some(VERSION.into()),
 				repository: None,
 				homepage: None,
 			},
@@ -51,7 +51,7 @@ pub async fn nodeinfo(State(ctx): State<Context>, Path(version): Path<String>) -
 		"2.1.json" => (
 			nodeinfo::types::Software {
 				name: "μpub".to_string(),
-				version: Some(env!("CARGO_PKG_VERSION").into()),
+				version: Some(VERSION.into()),
 				repository: Some("https://git.alemi.dev/upub.git/".into()),
 				homepage: None,
 			},
