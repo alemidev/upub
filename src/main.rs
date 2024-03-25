@@ -8,6 +8,7 @@ mod router;
 mod errors;
 mod auth;
 mod dispatcher;
+mod fetcher;
 
 use clap::{Parser, Subcommand};
 use sea_orm::{ConnectOptions, Database, EntityTrait, IntoActiveModel};

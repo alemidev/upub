@@ -30,7 +30,9 @@ pub async fn serve(db: DatabaseConnection, domain: String) {
 		// specific object routes
 		.route("/activities/:id", get(ap::activity::view))
 		.route("/objects/:id", get(ap::object::view))
-		.with_state(crate::server::Context::new(db, domain));
+		.with_state(
+			crate::server::Context::new(db, domain).await.expect("could not create server state")
+		);
 
 	// run our app with hyper, listening locally on port 3000
 	let listener = tokio::net::TcpListener::bind("127.0.0.1:3000").await.unwrap();

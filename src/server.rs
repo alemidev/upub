@@ -1,8 +1,9 @@
-use std::sync::Arc;
+use std::{str::Utf8Error, sync::Arc};
 
-use sea_orm::DatabaseConnection;
+use openssl::rsa::Rsa;
+use sea_orm::{DatabaseConnection, DbErr, EntityTrait, QuerySelect, SelectColumns};
 
-use crate::dispatcher::Dispatcher;
+use crate::{dispatcher::Dispatcher, fetcher::Fetcher, model};
 
 #[derive(Clone)]
 pub struct Context(Arc<ContextInner>);
@@ -10,6 +11,10 @@ struct ContextInner {
 	db: DatabaseConnection,
 	domain: String,
 	protocol: String,
+	fetcher: Fetcher,
+	// TODO keep these pre-parsed
+	public_key: String,
+	private_key: String,
 }
 
 #[macro_export]
@@ -19,8 +24,20 @@ macro_rules! url {
 	};
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum ContextError {
+	#[error("database error: {0}")]
+	Db(#[from] DbErr),
+
+	#[error("openssl error: {0}")]
+	OpenSSL(#[from] openssl::error::ErrorStack),
+
+	#[error("invalid UTF8 PEM key: {0}")]
+	UTF8Error(#[from] Utf8Error)
+}
+
 impl Context {
-	pub fn new(db: DatabaseConnection, mut domain: String) -> Self {
+	pub async fn new(db: DatabaseConnection, mut domain: String) -> Result<Self, ContextError> {
 		let protocol = if domain.starts_with("http://")
 		{ "http://" } else { "https://" }.to_string();
 		if domain.ends_with('/') {
@@ -32,7 +49,34 @@ impl Context {
 		for _ in 0..1 { // TODO customize delivery workers amount
 			Dispatcher::spawn(db.clone(), domain.clone(), 30); // TODO ew don't do it this deep and secretly!!
 		}
-		Context(Arc::new(ContextInner { db, domain, protocol }))
+		let (public_key, private_key) = match model::application::Entity::find()
+			.select_only()
+			.select_column(model::application::Column::PublicKey)
+			.select_column(model::application::Column::PrivateKey)
+			.one(&db)
+			.await?
+		{
+			Some(model) => (model.public_key, model.private_key),
+			None => {
+				tracing::info!("generating application keys");
+				let rsa = Rsa::generate(2048)?;
+				let privk = std::str::from_utf8(&rsa.private_key_to_pem()?)?.to_string();
+				let pubk = std::str::from_utf8(&rsa.public_key_to_pem()?)?.to_string();
+				let system = model::application::ActiveModel {
+					id: sea_orm::ActiveValue::NotSet,
+					private_key: sea_orm::ActiveValue::Set(privk.clone()),
+					public_key: sea_orm::ActiveValue::Set(pubk.clone()),
+				};
+				model::application::Entity::insert(system).exec(&db).await?;
+				(pubk, privk)
+			}
+		};
+
+		let fetcher = Fetcher::new(db.clone(), domain.clone(), private_key.clone());
+
+		Ok(Context(Arc::new(ContextInner {
+			db, domain, protocol, private_key, public_key, fetcher,
+		})))
 	}
 
 	pub fn db(&self) -> &DatabaseConnection {
@@ -47,6 +91,10 @@ impl Context {
 		if id.starts_with("http") { id } else {
 			format!("{}{}/{}/{}", self.0.protocol, self.0.domain, entity, id)
 		}
+	}
+
+	pub fn fetch(&self) -> &Fetcher {
+		&self.0.fetcher
 	}
 
 	/// get full user id uri
