@@ -147,11 +147,15 @@ async fn deliver(key: &PKey<Private>, to: &str, from: &str, payload: serde_json:
 		.header(USER_AGENT, format!("upub+{VERSION} ({domain})")) // TODO put instance admin email
 		.body(payload)
 		.send()
-		.await?
-		.error_for_status()?
-		.text()
 		.await?;
-	tracing::info!("server answered with OK '{res}'");
-	Ok(())
+
+	let status = res.status();
+	let txt = res.text().await?;
+	tracing::info!("delivery answer: {txt}");
+	if status.is_client_error() || status.is_server_error() {
+		Err(UpubError::Status(axum::http::StatusCode::from_u16(status.as_u16()).unwrap()))
+	} else {
+		Ok(())
+	}
 }
 
