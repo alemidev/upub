@@ -104,7 +104,7 @@ async fn deliver(key: &PKey<Private>, to: &str, from: &str, payload: serde_json:
 	let date = chrono::Utc::now().format("%d %b %Y %H:%M:%S %Z").to_string(); // TODO literally what the fuck
 	let path = to.replace("https://", "").replace("http://", "").replace(&host, "");
 
-	tracing::info!("payload:\n{payload}\nsha-256={digest}");
+	tracing::info!("payload:\n{payload}\n{digest}");
 
 	// let headers : BTreeMap<String, String> = [
 	// 	("Host".to_string(), host.clone()),
@@ -135,7 +135,7 @@ async fn deliver(key: &PKey<Private>, to: &str, from: &str, payload: serde_json:
 		let mut signer = Signer::new(MessageDigest::sha256(), key)?;
 		signer.update(to_sign.as_bytes())?;
 		let signature = base64::prelude::BASE64_URL_SAFE.encode(signer.sign_to_vec()?);
-		format!("keyId=\"{from}#main-key\",algorithm=\"rsa-sha256\",headers=\"host date digest\",signature=\"{signature}\"")
+		format!("keyId=\"{from}#main-key\",algorithm=\"rsa-sha256\",headers=\"(request-target) host date digest\",signature=\"{signature}\"")
 	};
 
 	tracing::info!("signature header:\n{signature_header}");
