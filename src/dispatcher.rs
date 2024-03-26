@@ -112,6 +112,7 @@ async fn deliver(key: &PKey<Private>, to: &str, from: &str, payload: serde_json:
 	let path = to.replace("https://", "").replace("http://", "").replace(&host, "");
 
 	let signature_header = Config::new()
+		.dont_use_created_field()
 		.begin_sign("POST", &path, headers)
 		.unwrap()
 		.sign(format!("{from}#main-key"), |to_sign| {
