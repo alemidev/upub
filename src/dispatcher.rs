@@ -104,7 +104,7 @@ impl Dispatcher {
 }
 
 async fn deliver(target: &str, payload: &serde_json::Value, host: String, date: String, signature_header: String, domain: &str) -> Result<(), reqwest::Error> {
-	reqwest::Client::new()
+	let res = reqwest::Client::new()
 		.post(target)
 		.json(payload)
 		.header("Host", host)
@@ -113,7 +113,10 @@ async fn deliver(target: &str, payload: &serde_json::Value, host: String, date: 
 		.header(USER_AGENT, format!("upub+{VERSION} ({domain})")) // TODO put instance admin email
 		.send()
 		.await?
-		.error_for_status()?;
+		.error_for_status()?
+		.text()
+		.await?;
+	tracing::info!("server answered with OK '{res}'");
 	Ok(())
 }
 
