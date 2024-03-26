@@ -113,6 +113,9 @@ async fn deliver(key: &PKey<Private>, to: &str, from: &str, payload: serde_json:
 
 	let signature_header = Config::new()
 		.dont_use_created_field()
+		.require_header("host")
+		.require_header("date")
+		.require_header("digest")
 		.begin_sign("POST", &path, headers)
 		.unwrap()
 		.sign(format!("{from}#main-key"), |to_sign| {
