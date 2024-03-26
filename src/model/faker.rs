@@ -8,7 +8,7 @@ pub async fn faker(db: &sea_orm::DatabaseConnection, domain: String, count: u64)
 
 	let key = Rsa::generate(2048).unwrap();
 	let test_user = super::user::Model {
-		id: format!("{domain}/users/text"),
+		id: format!("{domain}/users/test"),
 		name: Some("μpub".into()),
 		domain: crate::activitypub::domain(&domain),
 		preferred_username: "test".to_string(),
