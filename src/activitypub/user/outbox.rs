@@ -164,6 +164,7 @@ pub async fn post(
 							actor: Set(to.to_string()),
 							activity: Set(aid.clone()),
 							object: Set(Some(oid.clone())),
+							published: Set(chrono::Utc::now()),
 							..Default::default()
 						})
 						.collect();
@@ -225,6 +226,7 @@ pub async fn post(
 							actor: Set(to.to_string()),
 							activity: Set(aid.clone()),
 							object: Set(None),
+							published: Set(chrono::Utc::now()),
 							..Default::default()
 						})
 						.collect();
