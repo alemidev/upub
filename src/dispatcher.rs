@@ -81,13 +81,15 @@ async fn worker(db: DatabaseConnection, domain: String, poll_interval: u64) -> R
 		let mut signer = Signer::new(MessageDigest::sha256(), &key)?;
 
 		let without_protocol = delivery.target.replace("https://", "").replace("http://", "");
-		let host = without_protocol.replace('/', "");
+		let host = without_protocol.split('/').next().unwrap_or("").to_string();
 		let request_target = without_protocol.replace(&host, "");
 		let date = chrono::Utc::now().to_rfc2822();
 		let signed_string = format!("(request-target): post {request_target}\nhost: {host}\ndate: {date}");
+		tracing::info!("signing: \n{signed_string}");
 		signer.update(signed_string.as_bytes())?;
 		let signature = base64::prelude::BASE64_URL_SAFE.encode(signer.sign_to_vec()?);
 		let signature_header = format!("keyId=\"{}\",algorithm=\"rsa-sha256\",headers=\"(request-target) host date\",signature=\"{signature}\"", delivery.actor);
+		tracing::info!("attaching header: {signature_header}");
 
 		if let Err(e) = deliver(&delivery.target, payload, host, date, signature_header, &domain).await {
 			tracing::warn!("failed delivery of {} to {} : {e}", delivery.activity, delivery.target);
