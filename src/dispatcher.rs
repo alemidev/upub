@@ -1,10 +1,13 @@
+use std::collections::BTreeMap;
+
 use base64::Engine;
-use openssl::{hash::MessageDigest, pkey::PKey, sign::Signer};
+use http_signature_normalization::Config;
+use openssl::{hash::MessageDigest, pkey::{PKey, Private}, sign::Signer};
 use reqwest::header::{CONTENT_TYPE, USER_AGENT};
-use sea_orm::{ColumnTrait, Condition, DatabaseConnection, EntityTrait, Order, QueryFilter, QueryOrder, QuerySelect, SelectColumns};
+use sea_orm::{ColumnTrait, Condition, DatabaseConnection, EntityTrait, Order, QueryFilter, QueryOrder};
 use tokio::task::JoinHandle;
 
-use crate::{activitypub::{activity::ap_activity, jsonld::LD, object::ap_object, user::outbox::UpubError}, activitystream::{object::activity::ActivityMut, Node}, model, VERSION};
+use crate::{activitypub::{activity::ap_activity, object::ap_object, user::outbox::UpubError}, activitystream::{object::activity::ActivityMut, Node}, model, server::Context, VERSION};
 
 pub struct Dispatcher;
 
@@ -52,7 +55,7 @@ async fn worker(db: DatabaseConnection, domain: String, poll_interval: u64) -> R
 
 		tracing::info!("delivering {} to {}", delivery.activity, delivery.target);
 
-		let json_data = match model::activity::Entity::find_by_id(&delivery.activity)
+		let payload = match model::activity::Entity::find_by_id(&delivery.activity)
 			.find_also_related(model::object::Entity)
 			.one(&db)
 			.await? // TODO probably should not fail here and at least re-insert the delivery
@@ -78,22 +81,7 @@ async fn worker(db: DatabaseConnection, domain: String, poll_interval: u64) -> R
 			continue;
 		};
 
-		let mut signer = Signer::new(MessageDigest::sha256(), &key)?;
-
-		let without_protocol = delivery.target.replace("https://", "").replace("http://", "");
-		let host = without_protocol.split('/').next().unwrap_or("").to_string();
-		let request_target = without_protocol.replace(&host, "");
-		let date = chrono::Utc::now().to_rfc2822();
-		let payload = serde_json::to_string(&json_data.ld_context()).unwrap();
-		let digest = format!("sha-256={}", sha256::digest(&payload));
-		let signed_string = format!("(request-target): post {request_target}\nhost: {host}\ndate: {date}\ndigest: {digest}");
-		tracing::info!("signing: \n{signed_string}");
-		signer.update(signed_string.as_bytes())?;
-		let signature = base64::prelude::BASE64_URL_SAFE.encode(signer.sign_to_vec()?);
-		let signature_header = format!("keyId=\"{}#main-key\",headers=\"(request-target) host date digest\",signature=\"{signature}\"", delivery.actor);
-		tracing::info!("attaching header: {signature_header}");
-
-		if let Err(e) = deliver(&delivery.target, payload, host, date, digest, signature_header, &domain).await {
+		if let Err(e) = deliver(&key, &delivery.target, &delivery.actor, payload, &domain).await {
 			tracing::warn!("failed delivery of {} to {} : {e}", delivery.activity, delivery.target);
 			let new_delivery = model::delivery::ActiveModel {
 				id: sea_orm::ActiveValue::NotSet,
@@ -109,16 +97,40 @@ async fn worker(db: DatabaseConnection, domain: String, poll_interval: u64) -> R
 	}
 }
 
-async fn deliver(target: &str, payload: String, host: String, date: String, digest: String, signature_header: String, domain: &str) -> Result<(), reqwest::Error> {
+async fn deliver(key: &PKey<Private>, to: &str, from: &str, payload: serde_json::Value, domain: &str) -> Result<(), UpubError> {
+	let payload = serde_json::to_string(&payload).unwrap();
+	let digest = format!("sha-256={}", sha256::digest(&payload));
+	let date = chrono::Utc::now().to_rfc3339();
+
+	let headers : BTreeMap<String, String> = [
+		("Date".to_string(), chrono::Utc::now().to_rfc3339()),
+		("Host".to_string(), Context::server(to)),
+		("Digest".to_string(), digest.clone()),
+	].into();
+
+	let path = to.replace("https://", "").replace("http://", "").split('/').next().unwrap_or("").to_string();
+
+	let signature_header = Config::new()
+		.begin_sign("POST", &path, headers)
+		.unwrap()
+		.sign(format!("{from}#main-key"), |to_sign| {
+			let mut signer = Signer::new(MessageDigest::sha256(), key)?;
+			signer.update(to_sign.as_bytes())?;
+			let signature = base64::prelude::BASE64_URL_SAFE.encode(signer.sign_to_vec()?);
+			Ok(signature) as Result<_, UpubError>
+		})
+		.unwrap()
+		.signature_header();
+
 	let res = reqwest::Client::new()
-		.post(target)
-		.body(payload)
-		.header("Host", host)
+		.post(to)
+		.header("Host", Context::server(to))
 		.header("Date", date)
 		.header("Digest", digest)
 		.header("Signature", signature_header)
 		.header(CONTENT_TYPE, "application/ld+json")
 		.header(USER_AGENT, format!("upub+{VERSION} ({domain})")) // TODO put instance admin email
+		.body(payload)
 		.send()
 		.await?
 		.error_for_status()?

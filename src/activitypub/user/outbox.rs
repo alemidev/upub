@@ -29,6 +29,9 @@ pub enum UpubError {
 
 	#[error("openssl error: {0}")]
 	OpenSSL(#[from] openssl::error::ErrorStack),
+
+	#[error("fetch error: {0}")]
+	Reqwest(#[from] reqwest::Error),
 }
 
 impl From<StatusCode> for UpubError {
