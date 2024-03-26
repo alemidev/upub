@@ -1,10 +1,12 @@
 use crate::{activitypub::PUBLIC_TARGET, model::{config, credential}};
 use super::{activity, object, user, Audience};
+use openssl::rsa::Rsa;
 use sea_orm::IntoActiveModel;
 
 pub async fn faker(db: &sea_orm::DatabaseConnection, domain: String, count: u64) -> Result<(), sea_orm::DbErr> {
 	use sea_orm::{EntityTrait, Set};
 
+	let key = Rsa::generate(2048).unwrap();
 	let root = super::user::Model {
 		id: format!("{domain}/users/root"),
 		name: Some("μpub".into()),
@@ -23,17 +25,9 @@ pub async fn faker(db: &sea_orm::DatabaseConnection, domain: String, count: u64)
 		actor_type: crate::activitystream::object::actor::ActorType::Person,
 		created: chrono::Utc::now(),
 		updated: chrono::Utc::now(),
-		private_key: None,
+		private_key: Some(std::str::from_utf8(&key.private_key_to_pem().unwrap()).unwrap().to_string()),
 		// TODO generate a fresh one every time
-		public_key: "-----BEGIN PUBLIC KEY-----
-MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA01IkF1A8t7zUS7x3ZqIx
-NvG/X43JEJTdgPOFufOKMBTK48uMqrODK3wflaK6cSOMWkoOYHyWNhw10vL53GR9
-iOOGUHTaU7aoV7KBb5Fbh/tN9ZyN/S6FdCfpXze93CzpKQGNJa4SZ4FAFw2Ji1JJ
-pdT7r+vaa5TkYTQuIgeHFisVEQAhmlz9xPbfPRPxSskroK7OnJSLMZ+aJvJHc9uX
-kOq9wKgagV/I5ka7H3rRLTG1mBC97lrSfNdXfPRF//S4mFs095s+Pbnj0Hajf+qf
-1Dryarmn6EmQi+diyhxFD3E8PWtMSBHrK+nmsiE58zjR/gd7G8SrXr4jtW+jcI6n
-UQIDAQAB
------END PUBLIC KEY-----".into()
+		public_key: std::str::from_utf8(&key.public_key_to_pem().unwrap()).unwrap().to_string(),
 	};
 
 	user::Entity::insert(root.clone().into_active_model()).exec(db).await?;
