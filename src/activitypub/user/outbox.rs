@@ -197,11 +197,21 @@ pub async fn post(
 				},
 				Some(BaseType::Object(ObjectType::Activity(ActivityType::Like))) => {
 					let aid = uuid::Uuid::new_v4().to_string();
+					let Some(oid) = activity.object().id().map(|x| x.to_string()) else {
+						return Err(StatusCode::BAD_REQUEST.into());
+					};
 					let mut activity_model = model::activity::Model::new(&activity)?;
 					activity_model.id = aid.clone();
 					activity_model.published = chrono::Utc::now();
 					activity_model.actor = uid.clone();
 
+					let like_model = model::like::ActiveModel {
+						actor: Set(uid.clone()),
+						likes: Set(oid.clone()),
+						date: Set(chrono::Utc::now()),
+						..Default::default()
+					};
+					model::like::Entity::insert(like_model).exec(ctx.db()).await?;
 					model::activity::Entity::insert(activity_model.into_active_model())
 						.exec(ctx.db()).await?;
 
