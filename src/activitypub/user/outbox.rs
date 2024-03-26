@@ -121,8 +121,8 @@ pub async fn post(
 					let Some(object) = activity.object().get().map(|x| x.underlying_json_object()) else {
 						return Err(StatusCode::BAD_REQUEST.into());
 					};
-					let oid = uuid::Uuid::new_v4().to_string();
-					let aid = uuid::Uuid::new_v4().to_string();
+					let oid = ctx.oid(uuid::Uuid::new_v4().to_string());
+					let aid = ctx.aid(uuid::Uuid::new_v4().to_string());
 					let mut object_model = model::object::Model::new(&object)?;
 					let mut activity_model = model::activity::Model::new(&activity)?;
 					object_model.id = oid.clone();
@@ -160,7 +160,7 @@ pub async fn post(
 					let addressings : Vec<model::addressing::ActiveModel> = addressed
 						.iter()
 						.map(|to| model::addressing::ActiveModel {
-							server: Set(Context::server(&uid)),
+							server: Set(Context::server(to)),
 							actor: Set(to.to_string()),
 							activity: Set(aid.clone()),
 							object: Set(Some(oid.clone())),
@@ -196,7 +196,7 @@ pub async fn post(
 					Ok(CreationResult(aid))
 				},
 				Some(BaseType::Object(ObjectType::Activity(ActivityType::Like))) => {
-					let aid = uuid::Uuid::new_v4().to_string();
+					let aid = ctx.aid(uuid::Uuid::new_v4().to_string());
 					let Some(oid) = activity.object().id().map(|x| x.to_string()) else {
 						return Err(StatusCode::BAD_REQUEST.into());
 					};
@@ -232,7 +232,7 @@ pub async fn post(
 					let addressings : Vec<model::addressing::ActiveModel> = addressed
 						.iter()
 						.map(|to| model::addressing::ActiveModel {
-							server: Set(Context::server(&uid)),
+							server: Set(Context::server(to)),
 							actor: Set(to.to_string()),
 							activity: Set(aid.clone()),
 							object: Set(None),
