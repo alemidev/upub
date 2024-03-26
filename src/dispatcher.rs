@@ -102,14 +102,15 @@ async fn deliver(key: &PKey<Private>, to: &str, from: &str, payload: serde_json:
 	let digest = format!("sha-256={}", sha256::digest(&payload));
 	let host = Context::server(to);
 	let date = chrono::Utc::now().format("%d %b %Y %H:%M:%S %Z").to_string(); // TODO literally what the fuck
-
-	let headers : BTreeMap<String, String> = [
-		("Host".to_string(), host.clone()),
-		("Date".to_string(), date.clone()),
-		("Digest".to_string(), digest.clone()),
-	].into();
-
 	let path = to.replace("https://", "").replace("http://", "").replace(&host, "");
+
+	tracing::info!("payload:\n{payload}\nsha-256={digest}");
+
+	// let headers : BTreeMap<String, String> = [
+	// 	("Host".to_string(), host.clone()),
+	// 	("Date".to_string(), date.clone()),
+	// 	("Digest".to_string(), digest.clone()),
+	// ].into();
 
 	// let signature_header = Config::new()
 	// 	.dont_use_created_field()
@@ -129,14 +130,15 @@ async fn deliver(key: &PKey<Private>, to: &str, from: &str, payload: serde_json:
 	// 	.signature_header();
 	
 	let signature_header = {
-		let to_sign = format!("(request-target): post {path}\nhost: {host}\ndate: {date}");
-		tracing::info!("signing '{to_sign}'");
+		let to_sign = format!("(request-target): post {path}\nhost: {host}\ndate: {date}\ndigest: {digest}");
+		tracing::info!("signing:\n{to_sign}");
 		let mut signer = Signer::new(MessageDigest::sha256(), key)?;
 		signer.update(to_sign.as_bytes())?;
-		base64::prelude::BASE64_URL_SAFE.encode(signer.sign_to_vec()?)
+		let signature = base64::prelude::BASE64_URL_SAFE.encode(signer.sign_to_vec()?);
+		format!("keyId=\"{from}#main-key\",headers=\"host date digest\",signature=\"{signature}\"")
 	};
 
-	tracing::info!("signature header: {signature_header}");
+	tracing::info!("signature header:\n{signature_header}");
 
 	let res = reqwest::Client::new()
 		.post(to)
