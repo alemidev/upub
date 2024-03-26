@@ -100,11 +100,12 @@ async fn worker(db: DatabaseConnection, domain: String, poll_interval: u64) -> R
 async fn deliver(key: &PKey<Private>, to: &str, from: &str, payload: serde_json::Value, domain: &str) -> Result<(), UpubError> {
 	let payload = serde_json::to_string(&payload).unwrap();
 	let digest = format!("sha-256={}", sha256::digest(&payload));
-	let date = chrono::Utc::now().to_rfc3339();
+	let host = Context::server(to);
+	let date = chrono::Utc::now().format("%d %b $Y %H:%M:%S %Z").to_string(); // TODO literally what the fuck
 
 	let headers : BTreeMap<String, String> = [
-		("Date".to_string(), chrono::Utc::now().to_rfc3339()),
-		("Host".to_string(), Context::server(to)),
+		("Host".to_string(), host.clone()),
+		("Date".to_string(), date.clone()),
 		("Digest".to_string(), digest.clone()),
 	].into();
 
@@ -114,6 +115,7 @@ async fn deliver(key: &PKey<Private>, to: &str, from: &str, payload: serde_json:
 		.begin_sign("POST", &path, headers)
 		.unwrap()
 		.sign(format!("{from}#main-key"), |to_sign| {
+			tracing::info!("signing '{to_sign}'");
 			let mut signer = Signer::new(MessageDigest::sha256(), key)?;
 			signer.update(to_sign.as_bytes())?;
 			let signature = base64::prelude::BASE64_URL_SAFE.encode(signer.sign_to_vec()?);
@@ -124,7 +126,7 @@ async fn deliver(key: &PKey<Private>, to: &str, from: &str, payload: serde_json:
 
 	let res = reqwest::Client::new()
 		.post(to)
-		.header("Host", Context::server(to))
+		.header("Host", host)
 		.header("Date", date)
 		.header("Digest", digest)
 		.header("Signature", signature_header)
