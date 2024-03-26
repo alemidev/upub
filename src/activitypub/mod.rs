@@ -55,7 +55,7 @@ pub async fn view(State(ctx): State<Context>) -> Result<Json<serde_json::Value>,
 			.set_public_key(Node::object(
 				serde_json::Value::new_object()
 					.set_id(Some(&url!(ctx, "#main-key")))
-					.set_owner(Some(ctx.base()))
+					.set_owner(Some(&url!(ctx, "")))
 					.set_public_key_pem(&ctx.app().public_key)
 			))
 			.ld_context()

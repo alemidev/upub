@@ -19,7 +19,7 @@ struct ContextInner {
 #[macro_export]
 macro_rules! url {
 	($ctx:expr, $($args: tt)*) => {
-		format!("{}{}", $ctx.base(), format!($($args)*))
+		format!("{}{}{}", $ctx.protocol(), $ctx.base(), format!($($args)*))
 	};
 }
 
@@ -84,6 +84,10 @@ impl Context {
 
 	pub fn base(&self) -> &str {
 		&self.0.domain
+	}
+
+	pub fn protocol(&self) -> &str {
+		&self.0.protocol
 	}
 
 	pub fn uri(&self, entity: &str, id: String) -> String {
