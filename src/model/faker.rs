@@ -50,7 +50,7 @@ UQIDAQAB
 	credential::Entity::insert(credential::ActiveModel {
 		id: Set(root.id.clone()),
 		email: Set("mail@example.net".to_string()),
-		password: Set("very-strong-password".to_string()),
+		password: Set(sha256::digest("very-strong-password")),
 	}).exec(db).await?;
 
 	let context = uuid::Uuid::new_v4().to_string();
