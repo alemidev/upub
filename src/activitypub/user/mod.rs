@@ -32,18 +32,20 @@ pub fn ap_user(user: model::user::Model) -> serde_json::Value {
 		.set_preferred_username(Some(&user.preferred_username))
 		.set_inbox(Node::maybe_link(user.inbox))
 		.set_outbox(Node::maybe_link(user.outbox))
-		.set_following(Node::object(
-			serde_json::Value::new_object()
-				.set_id(user.following.as_deref())
-				.set_collection_type(Some(CollectionType::OrderedCollection))
-				.set_total_items(Some(user.following_count as u64))
-		))
-		.set_followers(Node::object(
-			serde_json::Value::new_object()
-				.set_id(user.followers.as_deref())
-				.set_collection_type(Some(CollectionType::OrderedCollection))
-				.set_total_items(Some(user.followers_count as u64))
-		))
+		.set_following(Node::maybe_link(user.following))
+		// .set_following(Node::object(
+		// 	serde_json::Value::new_object()
+		// 		.set_id(user.following.as_deref())
+		// 		.set_collection_type(Some(CollectionType::OrderedCollection))
+		// 		.set_total_items(Some(user.following_count as u64))
+		// ))
+		.set_followers(Node::maybe_link(user.followers))
+		// .set_followers(Node::object(
+		// 	serde_json::Value::new_object()
+		// 		.set_id(user.followers.as_deref())
+		// 		.set_collection_type(Some(CollectionType::OrderedCollection))
+		// 		.set_total_items(Some(user.followers_count as u64))
+		// ))
 		.set_public_key(Node::object(
 			serde_json::Value::new_object()
 				.set_id(Some(&format!("{}#main-key", user.id)))
@@ -60,24 +62,12 @@ pub async fn view(State(ctx) : State<Context>, Path(id): Path<String>) -> Result
 		.one(ctx.db()).await
 	{
 		// local user
-		Ok(Some((user, Some(cfg)))) => {
+		Ok(Some((user, Some(_cfg)))) => {
 			Ok(JsonLD(ap_user(user.clone()) // ew ugly clone TODO
 				.set_inbox(Node::link(url!(ctx, "/users/{id}/inbox")))
 				.set_outbox(Node::link(url!(ctx, "/users/{id}/outbox")))
-				.set_following(Node::object(
-					serde_json::Value::new_object()
-						.set_id(Some(&url!(ctx, "/users/{id}/following")))
-						.set_collection_type(Some(CollectionType::OrderedCollection))
-						.set_total_items(if cfg.show_following_count { Some(user.following_count as u64) } else { None })
-						.set_first(Node::link(url!(ctx, "/users/{id}/following?page=true")))
-				))
-				.set_followers(Node::object(
-					serde_json::Value::new_object()
-						.set_id(Some(&url!(ctx, "/users/{id}/followers")))
-						.set_collection_type(Some(CollectionType::OrderedCollection))
-						.set_total_items(if cfg.show_followers_count { Some(user.followers_count as u64) } else { None })
-						.set_first(Node::link(url!(ctx, "/users/{id}/followers?page=true")))
-				))
+				.set_following(Node::link(url!(ctx, "/users/{id}/following")))
+				.set_followers(Node::link(url!(ctx, "/users/{id}/followers")))
 				// .set_public_key(user.public_key) // TODO
 				.ld_context()
 			))
