@@ -34,7 +34,7 @@ impl Fetcher {
 		}
 
 		// TODO sign http fetches, we got the app key and db to get user keys just in case
-
+		tracing::info!("fetching {id}");
 		let user = reqwest::Client::new()
 			.get(id)
 			.header(USER_AGENT, format!("upub+{VERSION} ({})", self.domain)) // TODO put instance admin email

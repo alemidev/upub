@@ -42,6 +42,8 @@ impl Dispatcher {
 					continue; // go back to top
 				}
 
+				tracing::info!("delivering {} to {}", delivery.activity, delivery.target);
+
 				let payload = match model::activity::Entity::find_by_id(&delivery.activity)
 					.find_also_related(model::object::Entity)
 					.one(&db)
