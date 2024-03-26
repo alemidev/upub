@@ -1,7 +1,7 @@
 use axum::{extract::{Path, Query, State}, http::StatusCode, response::IntoResponse, Json};
 use sea_orm::{ColumnTrait, Condition, EntityTrait, IntoActiveModel, Order, QueryFilter, QueryOrder, QuerySelect, SelectColumns, Set};
 
-use crate::{activitypub::{jsonld::LD, JsonLD, Pagination, PUBLIC_TARGET}, activitystream::{object::{activity::{Activity, ActivityMut, ActivityType}, collection::{page::CollectionPageMut, CollectionMut, CollectionType}, Addressed}, Base, BaseMut, BaseType, Node, ObjectType}, auth::{AuthIdentity, Identity}, model::{self, activity, object}, server::Context, url};
+use crate::{activitypub::{jsonld::LD, JsonLD, Pagination, PUBLIC_TARGET}, activitystream::{object::{activity::{Activity, ActivityMut, ActivityType}, collection::{page::CollectionPageMut, CollectionMut, CollectionType}, Addressed}, Base, BaseMut, BaseType, Node, ObjectType}, auth::{AuthIdentity, Identity}, model::{self, activity, object, FieldError}, server::Context, url};
 
 pub async fn get(
 	State(ctx): State<Context>,
@@ -14,6 +14,41 @@ pub async fn get(
 			.set_first(Node::link(url!(ctx, "/users/{id}/outbox/page")))
 			.ld_context()
 	))
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum UpubError {
+	#[error("database error: {0}")]
+	Database(#[from] sea_orm::DbErr),
+
+	#[error("api returned {0}")]
+	Status(StatusCode),
+
+	#[error("missing field: {0}")]
+	Field(#[from] FieldError),
+}
+
+impl From<StatusCode> for UpubError {
+	fn from(value: StatusCode) -> Self {
+		UpubError::Status(value)
+	}
+}
+
+impl IntoResponse for UpubError {
+	fn into_response(self) -> axum::response::Response {
+		(StatusCode::INTERNAL_SERVER_ERROR, self.to_string()).into_response()
+	}
+}
+
+pub struct CreationResult(pub String);
+impl IntoResponse for CreationResult {
+	fn into_response(self) -> axum::response::Response {
+		(
+			StatusCode::CREATED,
+			[("Location", self.0.as_str())]
+		)
+			.into_response()
+	}
 }
 
 pub async fn page(
@@ -72,19 +107,19 @@ pub async fn post(
 	Path(id): Path<String>,
 	AuthIdentity(auth): AuthIdentity,
 	Json(activity): Json<serde_json::Value>,
-) -> Result<impl IntoResponse, StatusCode> {
+) -> Result<CreationResult, UpubError> {
 	match auth {
-		Identity::Anonymous => Err(StatusCode::UNAUTHORIZED),
-		Identity::Remote(_) => Err(StatusCode::NOT_IMPLEMENTED),
+		Identity::Anonymous => Err(StatusCode::UNAUTHORIZED.into()),
+		Identity::Remote(_) => Err(StatusCode::NOT_IMPLEMENTED.into()),
 		Identity::Local(uid) => if ctx.uid(id.clone()) == uid {
 			match activity.base_type() {
-				None => Err(StatusCode::BAD_REQUEST),
-				Some(BaseType::Link(_)) => Err(StatusCode::UNPROCESSABLE_ENTITY),
+				None => Err(StatusCode::BAD_REQUEST.into()),
+				Some(BaseType::Link(_)) => Err(StatusCode::UNPROCESSABLE_ENTITY.into()),
 				// Some(BaseType::Object(ObjectType::Note)) => {
 				// },
 				Some(BaseType::Object(ObjectType::Activity(ActivityType::Create))) => {
 					let Some(object) = activity.object().get().map(|x| x.underlying_json_object()) else {
-						return Err(StatusCode::BAD_REQUEST);
+						return Err(StatusCode::BAD_REQUEST.into());
 					};
 					let oid = uuid::Uuid::new_v4().to_string();
 					let aid = uuid::Uuid::new_v4().to_string();
@@ -103,14 +138,10 @@ pub async fn post(
 					activity_model.object = Some(oid.clone());
 
 					model::object::Entity::insert(object_model.into_active_model())
-						.exec(ctx.db())
-						.await
-						.map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)?;
+						.exec(ctx.db()).await?;
 
 					model::activity::Entity::insert(activity_model.into_active_model())
-						.exec(ctx.db())
-						.await
-						.map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)?;
+						.exec(ctx.db()).await?;
 
 					let mut addressed = activity.addressed();
 					let followers = url!(ctx, "/users/{id}/followers"); // TODO maybe can be done better?
@@ -121,8 +152,7 @@ pub async fn post(
 							.select_column(model::relation::Column::Follower)
 							.into_tuple::<String>()
 							.all(ctx.db())
-							.await
-							.map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)?
+							.await?
 							.into_iter()
 							.for_each(|x| addressed.push(x));
 					}
@@ -139,9 +169,7 @@ pub async fn post(
 						.collect();
 
 					model::addressing::Entity::insert_many(addressings)
-						.exec(ctx.db())
-						.await
-						.map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)?;
+						.exec(ctx.db()).await?;
 
 					let deliveries : Vec<model::delivery::ActiveModel> = addressed
 						.iter()
@@ -162,10 +190,9 @@ pub async fn post(
 
 					model::delivery::Entity::insert_many(deliveries)
 						.exec(ctx.db())
-						.await
-						.map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)?;
+						.await?;
 
-					Ok(StatusCode::CREATED)
+					Ok(CreationResult(aid))
 				},
 				Some(BaseType::Object(ObjectType::Activity(ActivityType::Like))) => {
 					let aid = uuid::Uuid::new_v4().to_string();
@@ -175,9 +202,7 @@ pub async fn post(
 					activity_model.actor = uid.clone();
 
 					model::activity::Entity::insert(activity_model.into_active_model())
-						.exec(ctx.db())
-						.await
-						.map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)?;
+						.exec(ctx.db()).await?;
 
 					let mut addressed = activity.addressed();
 					let followers = url!(ctx, "/users/{id}/followers"); // TODO maybe can be done better?
@@ -188,8 +213,7 @@ pub async fn post(
 							.select_column(model::relation::Column::Follower)
 							.into_tuple::<String>()
 							.all(ctx.db())
-							.await
-							.map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)?
+							.await?
 							.into_iter()
 							.for_each(|x| addressed.push(x));
 					}
@@ -207,8 +231,7 @@ pub async fn post(
 
 					model::addressing::Entity::insert_many(addressings)
 						.exec(ctx.db())
-						.await
-						.map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)?;
+						.await?;
 
 					let deliveries : Vec<model::delivery::ActiveModel> = addressed
 						.iter()
@@ -229,10 +252,9 @@ pub async fn post(
 
 					model::delivery::Entity::insert_many(deliveries)
 						.exec(ctx.db())
-						.await
-						.map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)?;
+						.await?;
 
-					Ok(StatusCode::CREATED)
+					Ok(CreationResult(aid))
 				},
 				// Some(BaseType::Object(ObjectType::Activity(ActivityType::Follow))) => {
 				// },
@@ -242,10 +264,10 @@ pub async fn post(
 				// },
 				// Some(BaseType::Object(ObjectType::Activity(ActivityType::Reject(RejectType::Reject)))) => {
 				// },
-				Some(_) => Err(StatusCode::NOT_IMPLEMENTED),
+				Some(_) => Err(StatusCode::NOT_IMPLEMENTED.into()),
 			}
 		} else {
-			Err(StatusCode::FORBIDDEN)
+			Err(StatusCode::FORBIDDEN.into())
 		}
 	}
 }
