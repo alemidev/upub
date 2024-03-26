@@ -22,17 +22,16 @@ impl Dispatcher {
 }
 
 async fn worker(db: DatabaseConnection, domain: String, poll_interval: u64) -> Result<(), UpubError> {
-	let mut nosleep = true;
 	loop {
-		if nosleep { nosleep = false } else {
-			tokio::time::sleep(std::time::Duration::from_secs(poll_interval)).await;
-		}
 		let Some(delivery) = model::delivery::Entity::find()
 			.filter(Condition::all().add(model::delivery::Column::NotBefore.lte(chrono::Utc::now())))
 			.order_by(model::delivery::Column::NotBefore, Order::Asc)
 			.one(&db)
 			.await?
-		else { continue };
+		else {
+			tokio::time::sleep(std::time::Duration::from_secs(poll_interval)).await;
+			continue
+		};
 
 		let del_row = model::delivery::ActiveModel {
 			id: sea_orm::ActiveValue::Set(delivery.id),
@@ -44,12 +43,10 @@ async fn worker(db: DatabaseConnection, domain: String, poll_interval: u64) -> R
 
 		if del.rows_affected == 0 {
 			// another worker claimed this delivery
-			nosleep = true;
 			continue; // go back to the top
 		}
 		if delivery.expired() {
 			// try polling for another one
-			nosleep = true;
 			continue; // go back to top
 		}
 
