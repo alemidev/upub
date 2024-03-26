@@ -7,11 +7,11 @@ pub async fn faker(db: &sea_orm::DatabaseConnection, domain: String, count: u64)
 	use sea_orm::{EntityTrait, Set};
 
 	let key = Rsa::generate(2048).unwrap();
-	let root = super::user::Model {
-		id: format!("{domain}/users/root"),
+	let test_user = super::user::Model {
+		id: format!("{domain}/users/text"),
 		name: Some("μpub".into()),
 		domain: crate::activitypub::domain(&domain),
-		preferred_username: "root".to_string(),
+		preferred_username: "test".to_string(),
 		summary: Some("hello world! i'm manually generated but served dynamically from db! check progress at https://git.alemi.dev/upub.git".to_string()),
 		following: None,
 		following_count: 0,
@@ -30,10 +30,10 @@ pub async fn faker(db: &sea_orm::DatabaseConnection, domain: String, count: u64)
 		public_key: std::str::from_utf8(&key.public_key_to_pem().unwrap()).unwrap().to_string(),
 	};
 
-	user::Entity::insert(root.clone().into_active_model()).exec(db).await?;
+	user::Entity::insert(test_user.clone().into_active_model()).exec(db).await?;
 
 	config::Entity::insert(config::ActiveModel {
-		id: Set(root.id.clone()),
+		id: Set(test_user.id.clone()),
 		accept_follow_requests: Set(true),
 		show_followers: Set(true),
 		show_following: Set(true),
@@ -42,7 +42,7 @@ pub async fn faker(db: &sea_orm::DatabaseConnection, domain: String, count: u64)
 	}).exec(db).await?;
 
 	credential::Entity::insert(credential::ActiveModel {
-		id: Set(root.id.clone()),
+		id: Set(test_user.id.clone()),
 		email: Set("mail@example.net".to_string()),
 		password: Set(sha256::digest("very-strong-password")),
 	}).exec(db).await?;
@@ -56,7 +56,7 @@ pub async fn faker(db: &sea_orm::DatabaseConnection, domain: String, count: u64)
 			id: Set(format!("{domain}/objects/{oid}")),
 			name: Set(None),
 			object_type: Set(crate::activitystream::object::ObjectType::Note),
-			attributed_to: Set(Some(format!("{domain}/users/root"))),
+			attributed_to: Set(Some(format!("{domain}/users/test"))),
 			summary: Set(None),
 			context: Set(Some(context.clone())),
 			content: Set(Some(format!("[{i}] Tic(k). Quasiparticle of intensive multiplicity. Tics (or ticks) are intrinsically several components of autonomously numbering anorganic populations, propagating by contagion between segmentary divisions in the order of nature. Ticks - as nonqualitative differentially-decomposable counting marks - each designate a multitude comprehended as a singular variation in tic(k)-density."))),
@@ -73,7 +73,7 @@ pub async fn faker(db: &sea_orm::DatabaseConnection, domain: String, count: u64)
 		activity::Entity::insert(activity::ActiveModel {
 			id: Set(format!("{domain}/activities/{aid}")),
 			activity_type: Set(crate::activitystream::object::activity::ActivityType::Create),
-			actor: Set(format!("{domain}/users/root")),
+			actor: Set(format!("{domain}/users/test")),
 			object: Set(Some(format!("{domain}/objects/{oid}"))),
 			target: Set(None),
 			published: Set(chrono::Utc::now() - std::time::Duration::from_secs(60*i)),
