@@ -139,8 +139,8 @@ pub async fn host_meta(State(ctx): State<Context>) -> Response {
 		[("Content-Type", "application/xrd+xml")],
 		format!(r#"<?xml version="1.0" encoding="UTF-8"?>
 			<XRD xmlns="http://docs.oasis-open.org/ns/xri/xrd-1.0">
-				<Link type="application/xrd+xml" template="{}/.well-known/webfinger?resource={{uri}}" rel="lrdd" />
+				<Link type="application/xrd+xml" template="{}{}/.well-known/webfinger?resource={{uri}}" rel="lrdd" />
 			</XRD>"#,
-			ctx.base())
+			ctx.protocol(), ctx.base())
 	).into_response()
 }
