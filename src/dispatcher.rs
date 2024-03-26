@@ -52,7 +52,7 @@ async fn worker(db: DatabaseConnection, domain: String, poll_interval: u64) -> R
 
 		tracing::info!("delivering {} to {}", delivery.activity, delivery.target);
 
-		let payload = match model::activity::Entity::find_by_id(&delivery.activity)
+		let json_data = match model::activity::Entity::find_by_id(&delivery.activity)
 			.find_also_related(model::object::Entity)
 			.one(&db)
 			.await? // TODO probably should not fail here and at least re-insert the delivery
@@ -84,14 +84,16 @@ async fn worker(db: DatabaseConnection, domain: String, poll_interval: u64) -> R
 		let host = without_protocol.split('/').next().unwrap_or("").to_string();
 		let request_target = without_protocol.replace(&host, "");
 		let date = chrono::Utc::now().to_rfc2822();
-		let signed_string = format!("(request-target): post {request_target}\nhost: {host}\ndate: {date}");
+		let payload = serde_json::to_string(&json_data.ld_context()).unwrap();
+		let digest = format!("sha-256={}", sha256::digest(&payload));
+		let signed_string = format!("(request-target): post {request_target}\nhost: {host}\ndate: {date}\ndigest: {digest}");
 		tracing::info!("signing: \n{signed_string}");
 		signer.update(signed_string.as_bytes())?;
 		let signature = base64::prelude::BASE64_URL_SAFE.encode(signer.sign_to_vec()?);
-		let signature_header = format!("keyId=\"{}#main-key\",algorithm=\"rsa-sha256\",headers=\"(request-target) host date\",signature=\"{signature}\"", delivery.actor);
+		let signature_header = format!("keyId=\"{}#main-key\",headers=\"(request-target) host date digest\",signature=\"{signature}\"", delivery.actor);
 		tracing::info!("attaching header: {signature_header}");
 
-		if let Err(e) = deliver(&delivery.target, payload, host, date, signature_header, &domain).await {
+		if let Err(e) = deliver(&delivery.target, payload, host, date, digest, signature_header, &domain).await {
 			tracing::warn!("failed delivery of {} to {} : {e}", delivery.activity, delivery.target);
 			let new_delivery = model::delivery::ActiveModel {
 				id: sea_orm::ActiveValue::NotSet,
@@ -107,12 +109,13 @@ async fn worker(db: DatabaseConnection, domain: String, poll_interval: u64) -> R
 	}
 }
 
-async fn deliver(target: &str, payload: serde_json::Value, host: String, date: String, signature_header: String, domain: &str) -> Result<(), reqwest::Error> {
+async fn deliver(target: &str, payload: String, host: String, date: String, digest: String, signature_header: String, domain: &str) -> Result<(), reqwest::Error> {
 	let res = reqwest::Client::new()
 		.post(target)
-		.json(&payload.ld_context())
+		.body(payload)
 		.header("Host", host)
 		.header("Date", date)
+		.header("Digest", digest)
 		.header("Signature", signature_header)
 		.header(CONTENT_TYPE, "application/ld+json")
 		.header(USER_AGENT, format!("upub+{VERSION} ({domain})")) // TODO put instance admin email
