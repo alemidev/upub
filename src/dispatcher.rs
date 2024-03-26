@@ -85,16 +85,7 @@ impl Dispatcher {
 				let signature = base64::prelude::BASE64_URL_SAFE.encode(signer.sign_to_vec().unwrap());
 				let signature_header = format!("keyId=\"{}\",algorithm=\"rsa-sha256\",headers=\"(request-target) host date\",signature=\"{signature}\"", delivery.actor);
 
-				if let Err(e) = reqwest::Client::new()
-					.post(&delivery.target)
-					.json(&payload)
-					.header("Host", host)
-					.header("Date", date)
-					.header("Signature", signature_header)
-					.header(USER_AGENT, format!("upub+{VERSION} ({domain})")) // TODO put instance admin email
-					.send()
-					.await
-				{
+				if let Err(e) = deliver(&delivery.target, &payload, host, date, signature_header, &domain).await {
 					tracing::warn!("failed delivery of {} to {} : {e}", delivery.activity, delivery.target);
 					let new_delivery = model::delivery::ActiveModel {
 						id: sea_orm::ActiveValue::NotSet,
@@ -105,12 +96,24 @@ impl Dispatcher {
 						created: sea_orm::ActiveValue::Set(delivery.created),
 						attempt: sea_orm::ActiveValue::Set(delivery.attempt + 1),
 					};
-					model::delivery::Entity::insert(new_delivery)
-						.exec(&db)
-						.await?;
+					model::delivery::Entity::insert(new_delivery).exec(&db).await?;
 				}
 			}
 		})
 	}
+}
+
+async fn deliver(target: &str, payload: &serde_json::Value, host: String, date: String, signature_header: String, domain: &str) -> Result<(), reqwest::Error> {
+	reqwest::Client::new()
+		.post(target)
+		.json(payload)
+		.header("Host", host)
+		.header("Date", date)
+		.header("Signature", signature_header)
+		.header(USER_AGENT, format!("upub+{VERSION} ({domain})")) // TODO put instance admin email
+		.send()
+		.await?
+		.error_for_status()?;
+	Ok(())
 }
 
