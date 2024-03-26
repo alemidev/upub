@@ -99,7 +99,7 @@ async fn worker(db: DatabaseConnection, domain: String, poll_interval: u64) -> R
 
 async fn deliver(key: &PKey<Private>, to: &str, from: &str, payload: serde_json::Value, domain: &str) -> Result<(), UpubError> {
 	let payload = serde_json::to_string(&payload).unwrap();
-	let digest = format!("sha-256={}", sha256::digest(&payload));
+	let digest = format!("sha-256={}", base64::prelude::BASE64_URL_SAFE.encode(openssl::sha::sha256(payload.as_bytes())));
 	let host = Context::server(to);
 	let date = chrono::Utc::now().format("%d %b %Y %H:%M:%S %Z").to_string(); // TODO literally what the fuck
 	let path = to.replace("https://", "").replace("http://", "").replace(&host, "");
@@ -135,7 +135,7 @@ async fn deliver(key: &PKey<Private>, to: &str, from: &str, payload: serde_json:
 		let mut signer = Signer::new(MessageDigest::sha256(), key)?;
 		signer.update(to_sign.as_bytes())?;
 		let signature = base64::prelude::BASE64_URL_SAFE.encode(signer.sign_to_vec()?);
-		format!("keyId=\"{from}#main-key\",headers=\"host date digest\",signature=\"{signature}\"")
+		format!("keyId=\"{from}#main-key\",algorithm=\"rsa-sha256\",headers=\"host date digest\",signature=\"{signature}\"")
 	};
 
 	tracing::info!("signature header:\n{signature_header}");
