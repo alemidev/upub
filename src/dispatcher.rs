@@ -1,10 +1,10 @@
 use base64::Engine;
 use openssl::{hash::MessageDigest, pkey::PKey, sign::Signer};
-use reqwest::header::USER_AGENT;
+use reqwest::header::{CONTENT_TYPE, USER_AGENT};
 use sea_orm::{ColumnTrait, Condition, DatabaseConnection, EntityTrait, Order, QueryFilter, QueryOrder, QuerySelect, SelectColumns};
 use tokio::task::JoinHandle;
 
-use crate::{activitypub::{activity::ap_activity, object::ap_object, user::outbox::UpubError}, activitystream::{object::activity::ActivityMut, Node}, model, VERSION};
+use crate::{activitypub::{activity::ap_activity, jsonld::LD, object::ap_object, user::outbox::UpubError}, activitystream::{object::activity::ActivityMut, Node}, model, VERSION};
 
 pub struct Dispatcher;
 
@@ -89,7 +89,7 @@ async fn worker(db: DatabaseConnection, domain: String, poll_interval: u64) -> R
 		let signature = base64::prelude::BASE64_URL_SAFE.encode(signer.sign_to_vec()?);
 		let signature_header = format!("keyId=\"{}\",algorithm=\"rsa-sha256\",headers=\"(request-target) host date\",signature=\"{signature}\"", delivery.actor);
 
-		if let Err(e) = deliver(&delivery.target, &payload, host, date, signature_header, &domain).await {
+		if let Err(e) = deliver(&delivery.target, payload, host, date, signature_header, &domain).await {
 			tracing::warn!("failed delivery of {} to {} : {e}", delivery.activity, delivery.target);
 			let new_delivery = model::delivery::ActiveModel {
 				id: sea_orm::ActiveValue::NotSet,
@@ -105,13 +105,14 @@ async fn worker(db: DatabaseConnection, domain: String, poll_interval: u64) -> R
 	}
 }
 
-async fn deliver(target: &str, payload: &serde_json::Value, host: String, date: String, signature_header: String, domain: &str) -> Result<(), reqwest::Error> {
+async fn deliver(target: &str, payload: serde_json::Value, host: String, date: String, signature_header: String, domain: &str) -> Result<(), reqwest::Error> {
 	let res = reqwest::Client::new()
 		.post(target)
-		.json(payload)
+		.json(&payload.ld_context())
 		.header("Host", host)
 		.header("Date", date)
 		.header("Signature", signature_header)
+		.header(CONTENT_TYPE, "application/ld+json")
 		.header(USER_AGENT, format!("upub+{VERSION} ({domain})")) // TODO put instance admin email
 		.send()
 		.await?
