@@ -70,8 +70,8 @@ pub async fn page(
 pub async fn post(
 	State(ctx): State<Context>,
 	Path(id): Path<String>,
-	Json(activity): Json<serde_json::Value>,
 	AuthIdentity(auth): AuthIdentity,
+	Json(activity): Json<serde_json::Value>,
 ) -> Result<impl IntoResponse, StatusCode> {
 	match auth {
 		Identity::Anonymous => Err(StatusCode::UNAUTHORIZED),
