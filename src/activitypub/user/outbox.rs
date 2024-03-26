@@ -1,7 +1,7 @@
 use axum::{extract::{Path, Query, State}, http::StatusCode, response::IntoResponse, Json};
 use sea_orm::{ColumnTrait, Condition, EntityTrait, IntoActiveModel, Order, QueryFilter, QueryOrder, QuerySelect, SelectColumns, Set};
 
-use crate::{activitypub::{jsonld::LD, JsonLD, Pagination}, activitystream::{object::{activity::{Activity, ActivityMut, ActivityType}, collection::{page::CollectionPageMut, CollectionMut, CollectionType}, Addressed}, Base, BaseMut, BaseType, Node, ObjectType}, auth::{AuthIdentity, Identity}, model::{self, activity, object}, server::Context, url};
+use crate::{activitypub::{jsonld::LD, JsonLD, Pagination, PUBLIC_TARGET}, activitystream::{object::{activity::{Activity, ActivityMut, ActivityType}, collection::{page::CollectionPageMut, CollectionMut, CollectionType}, Addressed}, Base, BaseMut, BaseType, Node, ObjectType}, auth::{AuthIdentity, Identity}, model::{self, activity, object}, server::Context, url};
 
 pub async fn get(
 	State(ctx): State<Context>,
@@ -146,6 +146,7 @@ pub async fn post(
 					let deliveries : Vec<model::delivery::ActiveModel> = addressed
 						.iter()
 						.filter(|to| Context::server(to) != ctx.base())
+						.filter(|to| to != &PUBLIC_TARGET)
 						.map(|to| model::delivery::ActiveModel {
 							// TODO we should resolve each user by id and check its inbox because we can't assume
 							// it's /users/{id}/inbox for every software, but oh well it's waaaaay easier now
@@ -212,6 +213,7 @@ pub async fn post(
 					let deliveries : Vec<model::delivery::ActiveModel> = addressed
 						.iter()
 						.filter(|to| Context::server(to) != ctx.base())
+						.filter(|to| to != &PUBLIC_TARGET)
 						.map(|to| model::delivery::ActiveModel {
 							// TODO we should resolve each user by id and check its inbox because we can't assume
 							// it's /users/{id}/inbox for every software, but oh well it's waaaaay easier now
