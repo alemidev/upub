@@ -111,22 +111,30 @@ async fn deliver(key: &PKey<Private>, to: &str, from: &str, payload: serde_json:
 
 	let path = to.replace("https://", "").replace("http://", "").replace(&host, "");
 
-	let signature_header = Config::new()
-		.dont_use_created_field()
-		.require_header("host")
-		.require_header("date")
-		.require_header("digest")
-		.begin_sign("POST", &path, headers)
-		.unwrap()
-		.sign(format!("{from}#main-key"), |to_sign| {
-			tracing::info!("signing '{to_sign}'");
-			let mut signer = Signer::new(MessageDigest::sha256(), key)?;
-			signer.update(to_sign.as_bytes())?;
-			let signature = base64::prelude::BASE64_URL_SAFE.encode(signer.sign_to_vec()?);
-			Ok(signature) as Result<_, UpubError>
-		})
-		.unwrap()
-		.signature_header();
+	// let signature_header = Config::new()
+	// 	.dont_use_created_field()
+	// 	.require_header("host")
+	// 	.require_header("date")
+	// 	.require_header("digest")
+	// 	.begin_sign("POST", &path, headers)
+	// 	.unwrap()
+	// 	.sign(format!("{from}#main-key"), |to_sign| {
+	// 		tracing::info!("signing '{to_sign}'");
+	// 		let mut signer = Signer::new(MessageDigest::sha256(), key)?;
+	// 		signer.update(to_sign.as_bytes())?;
+	// 		let signature = base64::prelude::BASE64_URL_SAFE.encode(signer.sign_to_vec()?);
+	// 		Ok(signature) as Result<_, UpubError>
+	// 	})
+	// 	.unwrap()
+	// 	.signature_header();
+	
+	let signature_header = {
+		let to_sign = format!("(request-target): post {path}\nhost: {host}\ndate: {date}");
+		tracing::info!("signing '{to_sign}'");
+		let mut signer = Signer::new(MessageDigest::sha256(), key)?;
+		signer.update(to_sign.as_bytes())?;
+		base64::prelude::BASE64_URL_SAFE.encode(signer.sign_to_vec()?)
+	};
 
 	tracing::info!("signature header: {signature_header}");
 
