@@ -24,10 +24,13 @@ pub async fn view(State(ctx) : State<Context>, Path(id): Path<String>) -> Result
 		.one(ctx.db())
 		.await
 	{
-		Ok(Some((activity, object))) => Ok(JsonLD(
+		Ok(Some((activity, Some(object)))) => Ok(JsonLD(
 			ap_activity(activity)
-				.set_object(Node::maybe_object(object.map(super::object::ap_object)))
+				.set_object(Node::object(super::object::ap_object(object)))
 				.ld_context()
+		)),
+		Ok(Some((activity, None))) => Ok(JsonLD(
+			ap_activity(activity).ld_context()
 		)),
 		Ok(None) => Err(StatusCode::NOT_FOUND),
 		Err(e) => {
