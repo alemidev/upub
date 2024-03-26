@@ -65,18 +65,14 @@ async fn worker(db: DatabaseConnection, domain: String, poll_interval: u64) -> R
 			},
 		};
 
-		let Some(key_pem) = model::user::Entity::find_by_id(&delivery.actor)
-			.select_only()
-			.select_column(model::user::Column::PrivateKey)
-			.into_tuple::<String>()
-			.one(&db)
-			.await?
+		let Some(model::user::Model{ private_key: Some(key), .. }) = model::user::Entity::find_by_id(&delivery.actor)
+			.one(&db).await?
 		else { 
 			tracing::error!("can not dispatch activity for user without private key: {}", delivery.actor);
 			continue;
 		};
 
-		let Ok(key) = PKey::private_key_from_pem(key_pem.as_bytes())
+		let Ok(key) = PKey::private_key_from_pem(key.as_bytes())
 		else {
 			tracing::error!("failed parsing private key for user {}", delivery.actor);
 			continue;
