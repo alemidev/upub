@@ -101,7 +101,7 @@ async fn deliver(key: &PKey<Private>, to: &str, from: &str, payload: serde_json:
 	let payload = serde_json::to_string(&payload).unwrap();
 	let digest = format!("sha-256={}", sha256::digest(&payload));
 	let host = Context::server(to);
-	let date = chrono::Utc::now().format("%d %b $Y %H:%M:%S %Z").to_string(); // TODO literally what the fuck
+	let date = chrono::Utc::now().format("%d %b %Y %H:%M:%S %Z").to_string(); // TODO literally what the fuck
 
 	let headers : BTreeMap<String, String> = [
 		("Host".to_string(), host.clone()),
@@ -124,13 +124,15 @@ async fn deliver(key: &PKey<Private>, to: &str, from: &str, payload: serde_json:
 		.unwrap()
 		.signature_header();
 
+	tracing::info!("signature header: {signature_header}");
+
 	let res = reqwest::Client::new()
 		.post(to)
 		.header("Host", host)
 		.header("Date", date)
 		.header("Digest", digest)
 		.header("Signature", signature_header)
-		.header(CONTENT_TYPE, "application/ld+json")
+		.header(CONTENT_TYPE, "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"")
 		.header(USER_AGENT, format!("upub+{VERSION} ({domain})")) // TODO put instance admin email
 		.body(payload)
 		.send()
