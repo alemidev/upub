@@ -88,7 +88,7 @@ async fn worker(db: DatabaseConnection, domain: String, poll_interval: u64) -> R
 		tracing::info!("signing: \n{signed_string}");
 		signer.update(signed_string.as_bytes())?;
 		let signature = base64::prelude::BASE64_URL_SAFE.encode(signer.sign_to_vec()?);
-		let signature_header = format!("keyId=\"{}\",algorithm=\"rsa-sha256\",headers=\"(request-target) host date\",signature=\"{signature}\"", delivery.actor);
+		let signature_header = format!("keyId=\"{}#main-key\",algorithm=\"rsa-sha256\",headers=\"(request-target) host date\",signature=\"{signature}\"", delivery.actor);
 		tracing::info!("attaching header: {signature_header}");
 
 		if let Err(e) = deliver(&delivery.target, payload, host, date, signature_header, &domain).await {
