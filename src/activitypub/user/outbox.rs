@@ -26,6 +26,9 @@ pub enum UpubError {
 
 	#[error("missing field: {0}")]
 	Field(#[from] FieldError),
+
+	#[error("openssl error: {0}")]
+	OpenSSL(#[from] openssl::error::ErrorStack),
 }
 
 impl From<StatusCode> for UpubError {
