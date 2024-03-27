@@ -2,8 +2,7 @@ pub mod inbox;
 
 pub mod outbox;
 
-mod following;
-pub use following::follow___;
+pub mod following;
 
 use axum::{extract::{Path, State}, http::StatusCode};
 use sea_orm::EntityTrait;
