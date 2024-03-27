@@ -98,7 +98,7 @@ async fn deliver(key: &PKey<Private>, to: &str, from: &str, payload: serde_json:
 	let payload = serde_json::to_string(&payload).unwrap();
 	let digest = format!("sha-256={}", base64::prelude::BASE64_URL_SAFE.encode(openssl::sha::sha256(payload.as_bytes())));
 	let host = Context::server(to);
-	let date = chrono::Utc::now().format("%a, %d %b %Y %H:%M:%S %Z").to_string(); // what the fuck
+	let date = chrono::Utc::now().format("%d %b %Y %H:%M:%S %Z").to_string(); // what the fuck
 	let path = to.replace("https://", "").replace("http://", "").replace(&host, "");
 
 	tracing::info!("payload:\n{payload}\n{digest}");
