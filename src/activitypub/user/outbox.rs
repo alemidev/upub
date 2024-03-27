@@ -66,10 +66,14 @@ pub async fn page(
 					.set_ordered_items(Node::array(
 						items
 							.into_iter()
-							.map(|(a, o)| 
+							.map(|(a, o)| {
+								let oid = a.object.clone();
 								super::super::activity::ap_activity(a)
-									.set_object(Node::maybe_object(o.map(super::super::object::ap_object)))
-							)
+									.set_object(match o {
+										Some(o) => Node::object(super::super::object::ap_object(o)),
+										None => Node::maybe_link(oid),
+									})
+							})
 							.collect()
 					))
 					.ld_context()
