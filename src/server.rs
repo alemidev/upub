@@ -1,7 +1,7 @@
 use std::{str::Utf8Error, sync::Arc};
 
 use openssl::rsa::Rsa;
-use sea_orm::{ColumnTrait, Condition, DatabaseConnection, DbErr, EntityTrait, QueryFilter, SelectColumns, Set};
+use sea_orm::{ColumnTrait, Condition, DatabaseConnection, DbErr, EntityTrait, QueryFilter, QuerySelect, SelectColumns, Set};
 
 use crate::{activitypub::PUBLIC_TARGET, dispatcher::Dispatcher, fetcher::Fetcher, model};
 
@@ -140,6 +140,7 @@ impl Context {
 			targets.remove(i);
 			model::relation::Entity::find()
 				.filter(Condition::all().add(model::relation::Column::Following.eq(uid.to_string())))
+				.select_only()
 				.select_column(model::relation::Column::Follower)
 				.into_tuple::<String>()
 				.all(self.db())
