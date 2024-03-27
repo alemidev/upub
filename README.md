@@ -3,7 +3,9 @@
 
 μpub aims to be a fast, lightweight and secure [ActivityPub](https://www.w3.org/TR/activitypub/) server
 
-μpub is currently being developed and can't be used at all, get in touch if you want to contribute! :)
+μpub is currently being developed and can do some basic things, like posting notes, follows and likes
+
+all interactions must happen with ActivityPub's client-server methods (basically POST to your inbox your activities)
 
 a test instance is _usually_ available at [feditest.alemi.dev](https://feditest.alemi.dev)
 
@@ -12,9 +14,10 @@ a test instance is _usually_ available at [feditest.alemi.dev](https://feditest.
  - [x] barebone actors
  - [x] barebone activities and objects
  - [x] activitystreams/activitypub compliance (well mostly)
+ - [x] process barebones feeds
+ - [x] process barebones inbox
  - [x] process barebones outbox
- - [ ] process barebones inbox
- - [ ] http signatures
+ - [x] http signatures
  - [ ] privacy, targets, scopes
  - [ ] more optimized database schema
  - [ ] hashtags, discovery
