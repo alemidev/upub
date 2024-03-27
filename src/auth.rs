@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use axum::{extract::{FromRef, FromRequestParts}, http::{header, request::Parts, StatusCode}};
-use openssl::{hash::MessageDigest, pkey::PKey, sign::Verifier};
+use openssl::hash::MessageDigest;
 use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter};
 
 use crate::{model, server::Context};
@@ -48,44 +48,45 @@ where
 			}
 		}
 
-		if let Some(sig) = parts
-			.headers
-			.get("Signature")
-			.map(|v| v.to_str().unwrap_or(""))
-		{
-			let signature = HttpSignature::try_from(sig)?;
-			let user_id = signature.key_id.split('#').next().unwrap_or("").to_string();
-			let data : String = signature.headers.iter()
-				.map(|header| {
-					if header == "(request-target)" {
-						format!("(request-target): {} {}", parts.method, parts.uri)
-					} else {
-						format!(
-							"{header}: {}",
-							parts.headers.get(header)
-								.map(|h| h.to_str().unwrap_or(""))
-								.unwrap_or("")
-						)
-					}
-				})
-				.collect::<Vec<String>>() // TODO can we avoid this unneeded allocation?
-				.join("\n");
+		// if let Some(sig) = parts
+		// 	.headers
+		// 	.get("Signature")
+		// 	.map(|v| v.to_str().unwrap_or(""))
+		// {
+		// 	let signature = HttpSignature::try_from(sig)?;
+		// 	let user_id = signature.key_id.split('#').next().unwrap_or("").to_string();
+		// 	let data : String = signature.headers.iter()
+		// 		.map(|header| {
+		// 			if header == "(request-target)" {
+		// 				format!("(request-target): {} {}", parts.method, parts.uri)
+		// 			} else {
+		// 				format!(
+		// 					"{header}: {}",
+		// 					parts.headers.get(header)
+		// 						.map(|h| h.to_str().unwrap_or(""))
+		// 						.unwrap_or("")
+		// 				)
+		// 			}
+		// 		})
+		// 		.collect::<Vec<String>>() // TODO can we avoid this unneeded allocation?
+		// 		.join("\n");
 
-			let user = ctx.fetch().user(&user_id).await.map_err(|_e| StatusCode::UNAUTHORIZED)?;
-			let pubkey = PKey::public_key_from_pem(user.public_key.as_bytes()).map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)?;
-			let mut verifier = Verifier::new(signature.digest(), &pubkey).map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)?;
-			verifier.update(data.as_bytes()).map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)?;
-			if verifier.verify(signature.signature.as_bytes()).map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)? {
-				identity = Identity::Remote(user_id);
-			} else {
-				return Err(StatusCode::FORBIDDEN);
-			}
-		}
+		// 	let user = ctx.fetch().user(&user_id).await.map_err(|_e| StatusCode::UNAUTHORIZED)?;
+		// 	let pubkey = PKey::public_key_from_pem(user.public_key.as_bytes()).map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)?;
+		// 	let mut verifier = Verifier::new(signature.digest(), &pubkey).map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)?;
+		// 	verifier.update(data.as_bytes()).map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)?;
+		// 	if verifier.verify(signature.signature.as_bytes()).map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)? {
+		// 		identity = Identity::Remote(user_id);
+		// 	} else {
+		// 		return Err(StatusCode::FORBIDDEN);
+		// 	}
+		// }
 
 		Ok(AuthIdentity(identity))
 	}
 }
 
+#[allow(unused)] // TODO am i gonna reimplement http signatures for verification?
 pub struct HttpSignature {
 	key_id: String,
 	algorithm: String,
@@ -94,6 +95,7 @@ pub struct HttpSignature {
 }
 
 impl HttpSignature {
+	#[allow(unused)] // TODO am i gonna reimplement http signatures for verification?
 	pub fn digest(&self) -> MessageDigest {
 		match self.algorithm.as_str() {
 			"rsa-sha512" => MessageDigest::sha512(),

@@ -1,9 +1,9 @@
 use std::{str::Utf8Error, sync::Arc};
 
 use openssl::rsa::Rsa;
-use sea_orm::{DatabaseConnection, DbErr, EntityTrait};
+use sea_orm::{ColumnTrait, Condition, DatabaseConnection, DbErr, EntityTrait, QueryFilter, SelectColumns, Set};
 
-use crate::{dispatcher::Dispatcher, fetcher::Fetcher, model};
+use crate::{activitypub::PUBLIC_TARGET, dispatcher::Dispatcher, fetcher::Fetcher, model};
 
 #[derive(Clone)]
 pub struct Context(Arc<ContextInner>);
@@ -133,4 +133,67 @@ impl Context {
 			.unwrap_or("")
 			.to_string()
 	}
+
+	pub async fn expand_addressing(&self, uid: &str, mut targets: Vec<String>) -> Result<Vec<String>, DbErr> {
+		let following_addr = format!("{uid}/followers");
+		if let Some(i) = targets.iter().position(|x| x == &following_addr) {
+			targets.remove(i);
+			model::relation::Entity::find()
+				.filter(Condition::all().add(model::relation::Column::Following.eq(uid.to_string())))
+				.select_column(model::relation::Column::Follower)
+				.into_tuple::<String>()
+				.all(self.db())
+				.await?
+				.into_iter()
+				.for_each(|x| targets.push(x));
+		}
+		Ok(targets)
+	}
+
+	pub async fn address_to(&self, aid: &str, oid: Option<&str>, targets: &[String]) -> Result<(), DbErr> {
+		let addressings : Vec<model::addressing::ActiveModel> = targets
+			.iter()
+			.filter(|x| !x.ends_with("/followers"))
+			.map(|to| model::addressing::ActiveModel {
+				server: Set(Context::server(to)),
+				actor: Set(to.to_string()),
+				activity: Set(aid.to_string()),
+				object: Set(oid.map(|x| x.to_string())),
+				published: Set(chrono::Utc::now()),
+				..Default::default()
+			})
+			.collect();
+
+		model::addressing::Entity::insert_many(addressings)
+			.exec(self.db())
+			.await?;
+
+		Ok(())
+	}
+
+	pub async fn deliver_to(&self, aid: &str, from: &str, targets: &[String]) -> Result<(), DbErr> {
+		let deliveries : Vec<model::delivery::ActiveModel> = targets
+			.iter()
+			.filter(|to| Context::server(to) != self.base())
+			.filter(|to| to != &PUBLIC_TARGET)
+			.map(|to| model::delivery::ActiveModel {
+				actor: Set(from.to_string()),
+				// TODO we should resolve each user by id and check its inbox because we can't assume
+				// it's /users/{id}/inbox for every software, but oh well it's waaaaay easier now
+				target: Set(format!("{}/inbox", to)),
+				activity: Set(aid.to_string()),
+				created: Set(chrono::Utc::now()),
+				not_before: Set(chrono::Utc::now()),
+				attempt: Set(0),
+				..Default::default()
+			})
+			.collect();
+
+		model::delivery::Entity::insert_many(deliveries)
+			.exec(self.db())
+			.await?;
+
+		Ok(())
+	}
 }
+

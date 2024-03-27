@@ -1,7 +1,7 @@
 use axum::{extract::{Path, Query, State}, http::StatusCode, response::IntoResponse, Json};
-use sea_orm::{ColumnTrait, Condition, DbErr, EntityTrait, IntoActiveModel, Order, QueryFilter, QueryOrder, QuerySelect, SelectColumns, Set};
+use sea_orm::{EntityTrait, IntoActiveModel, Order, QueryOrder, QuerySelect, Set};
 
-use crate::{activitypub::{jsonld::LD, JsonLD, Pagination, PUBLIC_TARGET}, activitystream::{object::{activity::{accept::AcceptType, Activity, ActivityMut, ActivityType}, collection::{page::CollectionPageMut, CollectionMut, CollectionType}, Addressed, ObjectMut}, Base, BaseMut, BaseType, Node, ObjectType}, auth::{AuthIdentity, Identity}, model::{self, activity, object, FieldError}, server::Context, url};
+use crate::{activitypub::{jsonld::LD, JsonLD, Pagination}, activitystream::{object::{activity::{accept::AcceptType, Activity, ActivityMut, ActivityType}, collection::{page::CollectionPageMut, CollectionMut, CollectionType}, Addressed, ObjectMut}, Base, BaseMut, BaseType, Node, ObjectType}, auth::{AuthIdentity, Identity}, errors::UpubError, model, server::Context, url};
 
 pub async fn get(
 	State(ctx): State<Context>,
@@ -14,36 +14,6 @@ pub async fn get(
 			.set_first(Node::link(url!(ctx, "/users/{id}/outbox/page")))
 			.ld_context()
 	))
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum UpubError {
-	#[error("database error: {0}")]
-	Database(#[from] sea_orm::DbErr),
-
-	#[error("api returned {0}")]
-	Status(StatusCode),
-
-	#[error("missing field: {0}")]
-	Field(#[from] FieldError),
-
-	#[error("openssl error: {0}")]
-	OpenSSL(#[from] openssl::error::ErrorStack),
-
-	#[error("fetch error: {0}")]
-	Reqwest(#[from] reqwest::Error),
-}
-
-impl From<StatusCode> for UpubError {
-	fn from(value: StatusCode) -> Self {
-		UpubError::Status(value)
-	}
-}
-
-impl IntoResponse for UpubError {
-	fn into_response(self) -> axum::response::Response {
-		(StatusCode::INTERNAL_SERVER_ERROR, self.to_string()).into_response()
-	}
 }
 
 pub struct CreationResult(pub String);
@@ -77,9 +47,9 @@ pub async fn page(
 	// 	conditions = conditions.add(model::addressing::Column::Server.eq(x));
 	// }
 
-	match activity::Entity::find()
-		.find_also_related(object::Entity)
-		.order_by(activity::Column::Published, Order::Desc)
+	match model::activity::Entity::find()
+		.find_also_related(model::object::Entity)
+		.order_by(model::activity::Column::Published, Order::Desc)
 		.limit(limit)
 		.offset(offset)
 		.all(ctx.db()).await
@@ -309,67 +279,3 @@ pub async fn post(
 		}
 	}
 }
-
-impl Context {
-	async fn expand_addressing(&self, uid: &str, mut targets: Vec<String>) -> Result<Vec<String>, DbErr> {
-		let following_addr = format!("{uid}/followers");
-		if let Some(i) = targets.iter().position(|x| x == &following_addr) {
-			targets.remove(i);
-			model::relation::Entity::find()
-				.filter(Condition::all().add(model::relation::Column::Following.eq(uid.to_string())))
-				.select_column(model::relation::Column::Follower)
-				.into_tuple::<String>()
-				.all(self.db())
-				.await?
-				.into_iter()
-				.for_each(|x| targets.push(x));
-		}
-		Ok(targets)
-	}
-
-	async fn address_to(&self, aid: &str, oid: Option<&str>, targets: &[String]) -> Result<(), DbErr> {
-		let addressings : Vec<model::addressing::ActiveModel> = targets
-			.iter()
-			.map(|to| model::addressing::ActiveModel {
-				server: Set(Context::server(to)),
-				actor: Set(to.to_string()),
-				activity: Set(aid.to_string()),
-				object: Set(oid.map(|x| x.to_string())),
-				published: Set(chrono::Utc::now()),
-				..Default::default()
-			})
-			.collect();
-
-		model::addressing::Entity::insert_many(addressings)
-			.exec(self.db())
-			.await?;
-
-		Ok(())
-	}
-
-	async fn deliver_to(&self, aid: &str, from: &str, targets: &[String]) -> Result<(), DbErr> {
-		let deliveries : Vec<model::delivery::ActiveModel> = targets
-			.iter()
-			.filter(|to| Context::server(to) != self.base())
-			.filter(|to| to != &PUBLIC_TARGET)
-			.map(|to| model::delivery::ActiveModel {
-				actor: Set(from.to_string()),
-				// TODO we should resolve each user by id and check its inbox because we can't assume
-				// it's /users/{id}/inbox for every software, but oh well it's waaaaay easier now
-				target: Set(format!("{}/inbox", to)),
-				activity: Set(aid.to_string()),
-				created: Set(chrono::Utc::now()),
-				not_before: Set(chrono::Utc::now()),
-				attempt: Set(0),
-				..Default::default()
-			})
-			.collect();
-
-		model::delivery::Entity::insert_many(deliveries)
-			.exec(self.db())
-			.await?;
-
-		Ok(())
-	}
-}
-

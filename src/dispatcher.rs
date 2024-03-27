@@ -4,7 +4,7 @@ use reqwest::header::{CONTENT_TYPE, USER_AGENT};
 use sea_orm::{ColumnTrait, Condition, DatabaseConnection, EntityTrait, Order, QueryFilter, QueryOrder};
 use tokio::task::JoinHandle;
 
-use crate::{activitypub::{activity::ap_activity, object::ap_object, user::outbox::UpubError}, activitystream::{object::activity::ActivityMut, Node}, model, server::Context, VERSION};
+use crate::{activitypub::{activity::ap_activity, object::ap_object}, activitystream::{object::activity::ActivityMut, Node}, errors::UpubError, model, server::Context, VERSION};
 
 pub struct Dispatcher;
 
