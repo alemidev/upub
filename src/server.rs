@@ -12,6 +12,7 @@ struct ContextInner {
 	domain: String,
 	protocol: String,
 	fetcher: Fetcher,
+	dispatcher: Dispatcher,
 	// TODO keep these pre-parsed
 	app: model::application::Model,
 }
@@ -45,8 +46,9 @@ impl Context {
 		if domain.starts_with("http") {
 			domain = domain.replace("https://", "").replace("http://", "");
 		}
+		let dispatcher = Dispatcher::new();
 		for _ in 0..1 { // TODO customize delivery workers amount
-			Dispatcher::spawn(db.clone(), domain.clone(), 30); // TODO ew don't do it this deep and secretly!!
+			dispatcher.spawn(db.clone(), domain.clone(), 30); // TODO ew don't do it this deep and secretly!!
 		}
 		let app = match model::application::Entity::find().one(&db).await? {
 			Some(model) => model,
@@ -70,7 +72,7 @@ impl Context {
 		let fetcher = Fetcher::new(db.clone(), domain.clone(), app.private_key.clone());
 
 		Ok(Context(Arc::new(ContextInner {
-			db, domain, protocol, app, fetcher,
+			db, domain, protocol, app, fetcher, dispatcher,
 		})))
 	}
 
@@ -199,6 +201,8 @@ impl Context {
 				.exec(self.db())
 				.await?;
 		}
+
+		self.0.dispatcher.wakeup();
 
 		Ok(())
 	}
