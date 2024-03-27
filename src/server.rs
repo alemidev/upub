@@ -153,7 +153,8 @@ impl Context {
 	pub async fn address_to(&self, aid: &str, oid: Option<&str>, targets: &[String]) -> Result<(), DbErr> {
 		let addressings : Vec<model::addressing::ActiveModel> = targets
 			.iter()
-			.filter(|x| !x.ends_with("/followers"))
+			.filter(|to| !to.is_empty())
+			.filter(|to| !to.ends_with("/followers"))
 			.map(|to| model::addressing::ActiveModel {
 				id: sea_orm::ActiveValue::NotSet,
 				server: Set(Context::server(to)),
@@ -176,6 +177,7 @@ impl Context {
 	pub async fn deliver_to(&self, aid: &str, from: &str, targets: &[String]) -> Result<(), DbErr> {
 		let deliveries : Vec<model::delivery::ActiveModel> = targets
 			.iter()
+			.filter(|to| !to.is_empty())
 			.filter(|to| Context::server(to) != self.base())
 			.filter(|to| to != &PUBLIC_TARGET)
 			.map(|to| model::delivery::ActiveModel {
