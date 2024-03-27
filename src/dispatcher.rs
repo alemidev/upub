@@ -98,8 +98,6 @@ async fn deliver(key: &PKey<Private>, to: &str, from: &str, payload: serde_json:
 	let date = chrono::Utc::now().format("%a, %d %b %Y %H:%M:%S GMT").to_string(); // lmao @ "GMT"
 	let path = to.replace("https://", "").replace("http://", "").replace(&host, "");
 
-	tracing::info!("payload:\n{payload}\n{digest}");
-
 	// let headers : BTreeMap<String, String> = [
 	// 	("Host".to_string(), host.clone()),
 	// 	("Date".to_string(), date.clone()),
@@ -125,16 +123,13 @@ async fn deliver(key: &PKey<Private>, to: &str, from: &str, payload: serde_json:
 	
 	let signature_header = {
 		let to_sign = format!("(request-target): post {path}\nhost: {host}\ndate: {date}\ndigest: {digest}");
-		tracing::info!("signing:\n{to_sign}");
 		let mut signer = Signer::new(MessageDigest::sha256(), key)?;
 		signer.update(to_sign.as_bytes())?;
 		let signature = base64::prelude::BASE64_STANDARD.encode(signer.sign_to_vec()?);
 		format!("keyId=\"{from}#main-key\",algorithm=\"rsa-sha256\",headers=\"(request-target) host date digest\",signature=\"{signature}\"")
 	};
 
-	tracing::info!("signature header:\n{signature_header}");
-
-	let res = reqwest::Client::new()
+	reqwest::Client::new()
 		.post(to)
 		.header("Host", host)
 		.header("Date", date)
@@ -144,15 +139,9 @@ async fn deliver(key: &PKey<Private>, to: &str, from: &str, payload: serde_json:
 		.header(USER_AGENT, format!("upub+{VERSION} ({domain})")) // TODO put instance admin email
 		.body(payload)
 		.send()
-		.await?;
+		.await?
+		.error_for_status()?;
 
-	let status = res.status();
-	let txt = res.text().await?;
-	tracing::info!("delivery answer: {txt}");
-	if status.is_client_error() || status.is_server_error() {
-		Err(UpubError::Status(axum::http::StatusCode::from_u16(status.as_u16()).unwrap()))
-	} else {
-		Ok(())
-	}
+	Ok(())
 }
 
