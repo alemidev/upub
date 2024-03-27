@@ -1,7 +1,4 @@
-use std::collections::BTreeMap;
-
 use base64::Engine;
-use http_signature_normalization::Config;
 use openssl::{hash::MessageDigest, pkey::{PKey, Private}, sign::Signer};
 use reqwest::header::{CONTENT_TYPE, USER_AGENT};
 use sea_orm::{ColumnTrait, Condition, DatabaseConnection, EntityTrait, Order, QueryFilter, QueryOrder};

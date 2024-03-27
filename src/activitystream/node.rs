@@ -91,12 +91,12 @@ impl<T : super::Base> Node<T> {
 		}
 	}
 
-	pub fn id(&self) -> Option<&str> {
+	pub fn id(&self) -> Option<String> {
 		match self {
 			Node::Empty => None,
-			Node::Link(uri) => Some(uri.href()),
-			Node::Object(obj) => obj.id(),
-			Node::Array(arr) => arr.first()?.id(),
+			Node::Link(uri) => Some(uri.href().to_string()),
+			Node::Object(obj) => obj.id().map(|x| x.to_string()),
+			Node::Array(arr) => arr.first()?.id().map(|x| x.to_string()),
 		}
 	}
 }

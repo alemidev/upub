@@ -8,7 +8,7 @@ pub use following::follow___;
 use axum::{extract::{Path, State}, http::StatusCode};
 use sea_orm::EntityTrait;
 
-use crate::{activitystream::{key::PublicKeyMut, object::{actor::ActorMut, collection::{CollectionMut, CollectionType}, document::{DocumentMut, DocumentType}, ObjectMut}, BaseMut, Node}, model::{self, user}, server::Context, url};
+use crate::{activitystream::{key::PublicKeyMut, object::{actor::ActorMut, document::{DocumentMut, DocumentType}, ObjectMut}, BaseMut, Node}, model::{self, user}, server::Context, url};
 
 use super::{jsonld::LD, JsonLD};
 
@@ -33,19 +33,7 @@ pub fn ap_user(user: model::user::Model) -> serde_json::Value {
 		.set_inbox(Node::maybe_link(user.inbox))
 		.set_outbox(Node::maybe_link(user.outbox))
 		.set_following(Node::maybe_link(user.following))
-		// .set_following(Node::object(
-		// 	serde_json::Value::new_object()
-		// 		.set_id(user.following.as_deref())
-		// 		.set_collection_type(Some(CollectionType::OrderedCollection))
-		// 		.set_total_items(Some(user.following_count as u64))
-		// ))
 		.set_followers(Node::maybe_link(user.followers))
-		// .set_followers(Node::object(
-		// 	serde_json::Value::new_object()
-		// 		.set_id(user.followers.as_deref())
-		// 		.set_collection_type(Some(CollectionType::OrderedCollection))
-		// 		.set_total_items(Some(user.followers_count as u64))
-		// ))
 		.set_public_key(Node::object(
 			serde_json::Value::new_object()
 				.set_id(Some(&format!("{}#main-key", user.id)))
