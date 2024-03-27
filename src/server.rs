@@ -155,18 +155,20 @@ impl Context {
 			.iter()
 			.filter(|x| !x.ends_with("/followers"))
 			.map(|to| model::addressing::ActiveModel {
+				id: sea_orm::ActiveValue::NotSet,
 				server: Set(Context::server(to)),
 				actor: Set(to.to_string()),
 				activity: Set(aid.to_string()),
 				object: Set(oid.map(|x| x.to_string())),
 				published: Set(chrono::Utc::now()),
-				..Default::default()
 			})
 			.collect();
 
-		model::addressing::Entity::insert_many(addressings)
-			.exec(self.db())
-			.await?;
+		if !addressings.is_empty() {
+			model::addressing::Entity::insert_many(addressings)
+				.exec(self.db())
+				.await?;
+		}
 
 		Ok(())
 	}
@@ -177,6 +179,7 @@ impl Context {
 			.filter(|to| Context::server(to) != self.base())
 			.filter(|to| to != &PUBLIC_TARGET)
 			.map(|to| model::delivery::ActiveModel {
+				id: sea_orm::ActiveValue::NotSet,
 				actor: Set(from.to_string()),
 				// TODO we should resolve each user by id and check its inbox because we can't assume
 				// it's /users/{id}/inbox for every software, but oh well it's waaaaay easier now
@@ -185,13 +188,14 @@ impl Context {
 				created: Set(chrono::Utc::now()),
 				not_before: Set(chrono::Utc::now()),
 				attempt: Set(0),
-				..Default::default()
 			})
 			.collect();
 
-		model::delivery::Entity::insert_many(deliveries)
-			.exec(self.db())
-			.await?;
+		if !deliveries.is_empty() {
+			model::delivery::Entity::insert_many(deliveries)
+				.exec(self.db())
+				.await?;
+		}
 
 		Ok(())
 	}
