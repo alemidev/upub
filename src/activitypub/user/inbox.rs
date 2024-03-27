@@ -1,7 +1,7 @@
 use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
-use sea_orm::{sea_query::Expr, ColumnTrait, Condition, EntityTrait, IntoActiveModel, Order, QueryFilter, QueryOrder, QuerySelect};
+use sea_orm::{sea_query::Expr, ColumnTrait, Condition, EntityTrait, IntoActiveModel, Order, QueryFilter, QueryOrder, QuerySelect, Set};
 
-use crate::{activitypub::{activity::ap_activity, jsonld::LD, JsonLD, Pagination, PUBLIC_TARGET}, activitystream::{object::{activity::{Activity, ActivityType}, collection::{page::CollectionPageMut, CollectionMut, CollectionType}, Addressed, ObjectType}, Base, BaseMut, BaseType, Node}, auth::{AuthIdentity, Identity}, errors::LoggableError, model::{self, activity, addressing, object}, server::Context, url};
+use crate::{activitypub::{activity::ap_activity, jsonld::LD, JsonLD, Pagination, PUBLIC_TARGET}, activitystream::{object::{activity::{Activity, ActivityType}, collection::{page::CollectionPageMut, CollectionMut, CollectionType}, Addressed, ObjectType}, Base, BaseMut, BaseType, Node}, auth::{AuthIdentity, Identity}, errors::{LoggableError, UpubError}, model, server::Context, url};
 
 pub async fn get(
 	State(ctx): State<Context>,
@@ -79,17 +79,20 @@ pub async fn post(
 	State(ctx): State<Context>,
 	Path(_id): Path<String>,
 	Json(object): Json<serde_json::Value>
-) -> Result<JsonLD<serde_json::Value>, StatusCode> {
+) -> Result<(), UpubError> {
 	match object.base_type() {
-		None => { Err(StatusCode::BAD_REQUEST) },
+		None => { Err(StatusCode::BAD_REQUEST.into()) },
+
 		Some(BaseType::Link(_x)) => {
 			tracing::warn!("skipping remote activity: {}", serde_json::to_string_pretty(&object).unwrap());
-			Err(StatusCode::UNPROCESSABLE_ENTITY) // we could but not yet
+			Err(StatusCode::UNPROCESSABLE_ENTITY.into()) // we could but not yet
 		},
+
 		Some(BaseType::Object(ObjectType::Activity(ActivityType::Activity))) => {
 			tracing::warn!("skipping unprocessable base activity: {}", serde_json::to_string_pretty(&object).unwrap());
-			Err(StatusCode::UNPROCESSABLE_ENTITY) // won't ingest useless stuff
+			Err(StatusCode::UNPROCESSABLE_ENTITY.into()) // won't ingest useless stuff
 		},
+
 		Some(BaseType::Object(ObjectType::Activity(ActivityType::Delete))) => {
 			// TODO verify the signature before just deleting lmao
 			let oid = object.object().id().ok_or(StatusCode::BAD_REQUEST)?.to_string();
@@ -97,19 +100,65 @@ pub async fn post(
 			model::user::Entity::delete_by_id(&oid).exec(ctx.db()).await.info_failed("failed deleting from users");
 			model::activity::Entity::delete_by_id(&oid).exec(ctx.db()).await.info_failed("failed deleting from activities");
 			model::object::Entity::delete_by_id(&oid).exec(ctx.db()).await.info_failed("failed deleting from objects");
-			Ok(JsonLD(serde_json::Value::Null))
+			Ok(())
 		},
+
 		Some(BaseType::Object(ObjectType::Activity(ActivityType::Follow))) => {
-			let Ok(activity_entity) = activity::Model::new(&object) else {
-				tracing::warn!("could not serialize activity: {}", serde_json::to_string_pretty(&object).unwrap());
-				return Err(StatusCode::UNPROCESSABLE_ENTITY);
-			};
+			let activity_targets = object.addressed();
+			let activity_entity = model::activity::Model::new(&object)?;
+			let aid = activity_entity.id.clone();
 			tracing::info!("{} wants to follow {}", activity_entity.actor, activity_entity.object.as_deref().unwrap_or("<no-one???>"));
-			activity::Entity::insert(activity_entity.into_active_model())
-				.exec(ctx.db())
-				.await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-			Ok(JsonLD(serde_json::Value::Null))
+			model::activity::Entity::insert(activity_entity.into_active_model())
+				.exec(ctx.db()).await?;
+			ctx.address_to(&aid, None, &activity_targets).await?;
+			Ok(())
 		},
+
+		Some(BaseType::Object(ObjectType::Activity(ActivityType::Accept(_)))) => {
+			// TODO what about TentativeAccept
+			let activity_model = model::activity::Model::new(&object)?;
+			let Some(follow_request_id) = activity_model.object else {
+				return Err(StatusCode::BAD_REQUEST.into());
+			};
+			let Some(follow_activity) = model::activity::Entity::find_by_id(follow_request_id)
+				.one(ctx.db()).await?
+			else {
+				return Err(StatusCode::NOT_FOUND.into());
+			};
+			if follow_activity.object.unwrap_or("".into()) != activity_model.actor {
+				return Err(StatusCode::FORBIDDEN.into());
+			}
+
+			model::relation::Entity::insert(
+				model::relation::ActiveModel {
+					follower: Set(follow_activity.actor),
+					following: Set(activity_model.actor),
+					..Default::default()
+				}
+			).exec(ctx.db()).await?;
+
+			ctx.address_to(&activity_model.id, None, &object.addressed()).await?;
+			Ok(())
+		},
+
+		Some(BaseType::Object(ObjectType::Activity(ActivityType::Reject(_)))) => {
+			// TODO what about TentativeReject?
+			let activity_model = model::activity::Model::new(&object)?;
+			let Some(follow_request_id) = activity_model.object else {
+				return Err(StatusCode::BAD_REQUEST.into());
+			};
+			let Some(follow_activity) = model::activity::Entity::find_by_id(follow_request_id)
+				.one(ctx.db()).await?
+			else {
+				return Err(StatusCode::NOT_FOUND.into());
+			};
+			if follow_activity.object.unwrap_or("".into()) != activity_model.actor {
+				return Err(StatusCode::FORBIDDEN.into());
+			}
+			ctx.address_to(&activity_model.id, None, &object.addressed()).await?;
+			Ok(())
+		},
+
 		Some(BaseType::Object(ObjectType::Activity(ActivityType::Like))) => {
 			let aid = object.actor().id().ok_or(StatusCode::BAD_REQUEST)?.to_string();
 			let oid = object.object().id().ok_or(StatusCode::BAD_REQUEST)?.to_string();
@@ -120,79 +169,50 @@ pub async fn post(
 				date: sea_orm::Set(chrono::Utc::now()),
 			};
 			match model::like::Entity::insert(like).exec(ctx.db()).await {
-				Err(sea_orm::DbErr::RecordNotInserted) => Err(StatusCode::NOT_MODIFIED),
-				Err(sea_orm::DbErr::Exec(_)) => Err(StatusCode::NOT_MODIFIED), // bad fix for sqlite
+				Err(sea_orm::DbErr::RecordNotInserted) => Err(StatusCode::NOT_MODIFIED.into()),
+				Err(sea_orm::DbErr::Exec(_)) => Err(StatusCode::NOT_MODIFIED.into()), // bad fix for sqlite
 				Err(e) => {
 					tracing::error!("unexpected error procesing like from {aid} to {oid}: {e}");
-					Err(StatusCode::INTERNAL_SERVER_ERROR)
+					Err(StatusCode::INTERNAL_SERVER_ERROR.into())
 				}
 				Ok(_) => {
-					match model::object::Entity::update_many()
+					model::object::Entity::update_many()
 						.col_expr(model::object::Column::Likes, Expr::col(model::object::Column::Likes).add(1))
 						.filter(model::object::Column::Id.eq(oid.clone()))
 						.exec(ctx.db())
-						.await
-					{
-						Err(e) => {
-							tracing::error!("unexpected error incrementing object {oid} like counter: {e}");
-							Err(StatusCode::INTERNAL_SERVER_ERROR)
-						},
-						Ok(_) => {
-							tracing::info!("{} liked {}", aid, oid);
-							Ok(JsonLD(serde_json::Value::Null))
-						}
-					}
+						.await?;
+					tracing::info!("{} liked {}", aid, oid);
+					Ok(())
 				},
 			}
 		},
+
 		Some(BaseType::Object(ObjectType::Activity(ActivityType::Create))) => {
-			let Ok(activity_entity) = activity::Model::new(&object) else {
-				tracing::warn!("could not serialize activity: {}", serde_json::to_string_pretty(&object).unwrap());
-				return Err(StatusCode::UNPROCESSABLE_ENTITY);
-			};
-			let Node::Object(obj) = object.object() else {
+			let activity_model = model::activity::Model::new(&object)?;
+			let activity_targets = object.addressed();
+			let Some(object_node) = object.object().get() else {
 				// TODO we could process non-embedded activities or arrays but im lazy rn
 				tracing::error!("refusing to process activity without embedded object: {}", serde_json::to_string_pretty(&object).unwrap());
-				return Err(StatusCode::UNPROCESSABLE_ENTITY);
+				return Err(StatusCode::UNPROCESSABLE_ENTITY.into());
 			};
-			let Ok(obj_entity) = object::Model::new(&*obj) else {
-				tracing::warn!("coult not serialize object: {}", serde_json::to_string_pretty(&object).unwrap());
-				return Err(StatusCode::UNPROCESSABLE_ENTITY);
-			};
-			tracing::info!("processing Create activity by {} for {}", activity_entity.actor, activity_entity.object.as_deref().unwrap_or("<embedded>"));
-			let object_id = obj_entity.id.clone();
-			let activity_id = activity_entity.id.clone();
-			object::Entity::insert(obj_entity.into_active_model())
-				.exec(ctx.db())
-				.await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-			activity::Entity::insert(activity_entity.into_active_model())
-				.exec(ctx.db())
-				.await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-			addressing::Entity::insert_many(
-				object.addressed()
-					.into_iter()
-					.map(|actor|
-						addressing::ActiveModel{
-							id: sea_orm::ActiveValue::NotSet,
-							server: sea_orm::Set(Context::server(&actor)),
-							actor: sea_orm::Set(actor),
-							activity: sea_orm::Set(activity_id.clone()),
-							object: sea_orm::Set(Some(object_id.clone())),
-							published: sea_orm::Set(chrono::Utc::now()),
-						}
-					)
-			)
-				.exec(ctx.db())
-				.await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
-			Ok(JsonLD(serde_json::Value::Null)) // TODO hmmmmmmmmmmm not the best value to return....
+			let object_model = model::object::Model::new(&object_node)?;
+			let aid = activity_model.id.clone();
+			let oid = object_model.id.clone();
+			model::object::Entity::insert(object_model.into_active_model()).exec(ctx.db()).await?;
+			model::activity::Entity::insert(activity_model.into_active_model()).exec(ctx.db()).await?;
+			ctx.address_to(&aid, Some(&oid), &activity_targets).await?;
+			tracing::info!("{} posted {}", aid, oid);
+			Ok(())
 		},
+
 		Some(BaseType::Object(ObjectType::Activity(_x))) => {
 			tracing::info!("received unimplemented activity on inbox: {}", serde_json::to_string_pretty(&object).unwrap());
-			Err(StatusCode::NOT_IMPLEMENTED)
+			Err(StatusCode::NOT_IMPLEMENTED.into())
 		},
+
 		Some(_x) => {
 			tracing::warn!("ignoring non-activity object in inbox: {}", serde_json::to_string_pretty(&object).unwrap());
-			Err(StatusCode::UNPROCESSABLE_ENTITY)
+			Err(StatusCode::UNPROCESSABLE_ENTITY.into())
 		}
 	}
 }
