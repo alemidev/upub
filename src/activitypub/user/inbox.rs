@@ -129,6 +129,8 @@ pub async fn post(
 				return Err(StatusCode::FORBIDDEN.into());
 			}
 
+			tracing::info!("{} accepted follow request by {}", activity_model.actor, follow_activity.actor);
+
 			model::relation::Entity::insert(
 				model::relation::ActiveModel {
 					follower: Set(follow_activity.actor),
@@ -155,6 +157,7 @@ pub async fn post(
 			if follow_activity.object.unwrap_or("".into()) != activity_model.actor {
 				return Err(StatusCode::FORBIDDEN.into());
 			}
+			tracing::info!("{} rejected follow request by {}", activity_model.actor, follow_activity.actor);
 			ctx.address_to(&activity_model.id, None, &object.addressed()).await?;
 			Ok(())
 		},
