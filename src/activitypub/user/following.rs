@@ -11,7 +11,7 @@ pub async fn get<const OUTGOING: bool>(
 ) -> Result<JsonLD<serde_json::Value>, StatusCode> {
 	let follow___ = if OUTGOING { "following" } else { "followers" };
 	let count = model::relation::Entity::find()
-		.filter(Condition::all().add(if OUTGOING { Follower } else { Following }.eq(id.clone())))
+		.filter(Condition::all().add(if OUTGOING { Follower } else { Following }.eq(ctx.uid(id.clone()))))
 		.count(ctx.db()).await.unwrap_or_else(|e| {
 			tracing::error!("failed counting {follow___} for {id}: {e}");
 			0
@@ -33,7 +33,7 @@ pub async fn page<const OUTGOING: bool>(
 	let limit = page.batch.unwrap_or(20).min(50);
 	let offset = page.offset.unwrap_or(0);
 	match model::relation::Entity::find()
-		.filter(Condition::all().add(if OUTGOING { Follower } else { Following }.eq(id.clone())))
+		.filter(Condition::all().add(if OUTGOING { Follower } else { Following }.eq(ctx.uid(id.clone()))))
 		.select_column(if OUTGOING { Following } else { Follower })
 		.limit(limit)
 		.offset(page.offset.unwrap_or(0))
