@@ -39,7 +39,7 @@ pub async fn nodeinfo(State(ctx): State<Context>, Path(version): Path<String>) -
 	let total_posts = None;
 	let total_comments = None; 
 	let (software, version) = match version.as_str() {
-		"2.0.json" => (
+		"2.0.json" | "2.0" => (
 			nodeinfo::types::Software {
 				name: "μpub".to_string(),
 				version: Some(VERSION.into()),
@@ -48,7 +48,7 @@ pub async fn nodeinfo(State(ctx): State<Context>, Path(version): Path<String>) -
 			},
 			"2.0".to_string()
 		),
-		"2.1.json" => (
+		"2.1.json" | "2.1" => (
 			nodeinfo::types::Software {
 				name: "μpub".to_string(),
 				version: Some(VERSION.into()),
