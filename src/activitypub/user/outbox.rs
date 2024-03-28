@@ -78,8 +78,40 @@ pub async fn post(
 				None => Err(StatusCode::BAD_REQUEST.into()),
 				Some(BaseType::Link(_)) => Err(StatusCode::UNPROCESSABLE_ENTITY.into()),
 
-				// Some(BaseType::Object(ObjectType::Note)) => {
-				// },
+				Some(BaseType::Object(ObjectType::Note)) => {
+					let oid = ctx.oid(uuid::Uuid::new_v4().to_string());
+					let aid = ctx.aid(uuid::Uuid::new_v4().to_string());
+					let activity_targets = activity.addressed();
+					let object_model = model::object::Model::new(
+						&activity
+							.set_id(Some(&oid))
+							.set_attributed_to(Node::link(uid.clone()))
+							.set_published(Some(chrono::Utc::now()))
+					)?;
+					let activity_model = model::activity::Model {
+						id: aid.clone(),
+						activity_type: ActivityType::Create,
+						actor: uid.clone(),
+						object: Some(oid.clone()),
+						target: None,
+						cc: object_model.cc.clone(),
+						bcc: object_model.bcc.clone(),
+						to: object_model.to.clone(),
+						bto: object_model.bto.clone(),
+						published: object_model.published,
+					};
+
+					model::object::Entity::insert(object_model.into_active_model())
+						.exec(ctx.db()).await?;
+					model::activity::Entity::insert(activity_model.into_active_model())
+						.exec(ctx.db()).await?;
+
+					let addressed = ctx.expand_addressing(&uid, activity_targets).await?;
+					ctx.address_to(&aid, Some(&oid), &addressed).await?;
+					ctx.deliver_to(&aid, &uid, &addressed).await?;
+
+					Ok(CreationResult(aid))
+				},
 
 				Some(BaseType::Object(ObjectType::Activity(ActivityType::Create))) => {
 					let Some(object) = activity.object().get().map(|x| x.underlying_json_object()) else {
