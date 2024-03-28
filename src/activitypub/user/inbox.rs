@@ -1,7 +1,7 @@
 use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
 use sea_orm::{sea_query::Expr, ColumnTrait, Condition, EntityTrait, IntoActiveModel, Order, QueryFilter, QueryOrder, QuerySelect, Set};
 
-use crate::{activitypub::{activity::ap_activity, jsonld::LD, JsonLD, Pagination, PUBLIC_TARGET}, activitystream::{object::{activity::{Activity, ActivityType}, collection::{page::CollectionPageMut, CollectionMut, CollectionType}, Addressed, ObjectType}, Base, BaseMut, BaseType, Node}, auth::{AuthIdentity, Identity}, errors::{LoggableError, UpubError}, model, server::Context, url};
+use crate::{activitypub::{activity::ap_activity, jsonld::LD, JsonLD, Pagination, PUBLIC_TARGET}, activitystream::{object::{activity::{Activity, ActivityType}, collection::{page::CollectionPageMut, CollectionMut, CollectionType}, Addressed, Object, ObjectType}, Base, BaseMut, BaseType, Node}, auth::{AuthIdentity, Identity}, errors::{LoggableError, UpubError}, model, server::Context, url};
 
 pub async fn get(
 	State(ctx): State<Context>,
@@ -205,6 +205,40 @@ pub async fn post(
 			model::activity::Entity::insert(activity_model.into_active_model()).exec(ctx.db()).await?;
 			ctx.address_to(&aid, Some(&oid), &activity_targets).await?;
 			tracing::info!("{} posted {}", aid, oid);
+			Ok(())
+		},
+
+		Some(BaseType::Object(ObjectType::Activity(ActivityType::Update))) => {
+			let activity_model = model::activity::Model::new(&object)?;
+			let activity_targets = object.addressed();
+			let Some(object_node) = object.object().get() else {
+				// TODO we could process non-embedded activities or arrays but im lazy rn
+				tracing::error!("refusing to process activity without embedded object: {}", serde_json::to_string_pretty(&object).unwrap());
+				return Err(StatusCode::UNPROCESSABLE_ENTITY.into());
+			};
+			let aid = activity_model.id.clone();
+			let Some(oid) = object_node.id().map(|x| x.to_string()) else {
+				return Err(StatusCode::BAD_REQUEST.into());
+			};
+			model::activity::Entity::insert(activity_model.into_active_model()).exec(ctx.db()).await?;
+			match object_node.object_type() {
+				Some(ObjectType::Actor(_)) => {
+					// TODO oof here is an example of the weakness of this model, we have to go all the way
+					// back up to serde_json::Value because impl Object != impl Actor
+					let actor_model = model::user::Model::new(&object_node.underlying_json_object())?;
+					model::user::Entity::update(actor_model.into_active_model())
+						.exec(ctx.db()).await?;
+				},
+				Some(ObjectType::Note) => {
+					let object_model = model::object::Model::new(&object_node)?;
+					model::object::Entity::update(object_model.into_active_model())
+						.exec(ctx.db()).await?;
+				},
+				Some(t) => tracing::warn!("no side effects implemented for update type {t:?}"),
+				None => tracing::warn!("empty type on embedded updated object"),
+			}
+			ctx.address_to(&aid, Some(&oid), &activity_targets).await?;
+			tracing::info!("{} updated {}", aid, oid);
 			Ok(())
 		},
 
