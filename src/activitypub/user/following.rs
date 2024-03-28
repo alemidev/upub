@@ -34,9 +34,11 @@ pub async fn page<const OUTGOING: bool>(
 	let offset = page.offset.unwrap_or(0);
 	match model::relation::Entity::find()
 		.filter(Condition::all().add(if OUTGOING { Follower } else { Following }.eq(ctx.uid(id.clone()))))
+		.select_only()
 		.select_column(if OUTGOING { Following } else { Follower })
 		.limit(limit)
 		.offset(page.offset.unwrap_or(0))
+		.into_tuple::<String>()
 		.all(ctx.db()).await
 	{
 		Err(e) => {
@@ -49,7 +51,7 @@ pub async fn page<const OUTGOING: bool>(
 					&url!(ctx, "/users/{id}/{follow___}"),
 					offset,
 					limit,
-					following.into_iter().map(|x| Node::link(x.following)).collect()
+					following.into_iter().map(Node::link).collect()
 				).ld_context()
 			))
 		},
