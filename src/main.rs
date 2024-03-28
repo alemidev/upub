@@ -14,6 +14,8 @@ use clap::{Parser, Subcommand};
 use sea_orm::{ConnectOptions, Database, EntityTrait, IntoActiveModel};
 use sea_orm_migration::MigratorTrait;
 
+pub use errors::UpubResult as Result;
+
 use crate::activitystream::{BaseType, ObjectType};
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

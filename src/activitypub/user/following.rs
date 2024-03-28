@@ -17,12 +17,10 @@ pub async fn get<const OUTGOING: bool>(
 			0
 		});
 	Ok(JsonLD(
-		serde_json::Value::new_object()
-			.set_id(Some(&format!("{}/users/{id}/{follow___}", ctx.base())))
-			.set_collection_type(Some(CollectionType::OrderedCollection))
-			.set_total_items(Some(count))
-			.set_first(Node::link(format!("{}/users/{id}/{follow___}/page", ctx.base())))
-			.ld_context()
+		ctx.ap_collection(
+			&url!(ctx, "/users/{id}/{follow___}"),
+			Some(count)
+		).ld_context()
 	))
 }
 
@@ -47,12 +45,12 @@ pub async fn page<const OUTGOING: bool>(
 		},
 		Ok(following) => {
 			Ok(JsonLD(
-				serde_json::Value::new_object()
-					.set_collection_type(Some(CollectionType::OrderedCollectionPage))
-					.set_part_of(Node::link(url!(ctx, "/users/{id}/{follow___}")))
-					.set_next(Node::link(url!(ctx, "/users/{id}/{follow___}/page?offset={}", offset+limit)))
-					.set_ordered_items(Node::array(following.into_iter().map(|x| x.following).collect()))
-					.ld_context()
+				ctx.ap_collection_page(
+					&url!(ctx, "/users/{id}/{follow___}"),
+					offset,
+					limit,
+					following.into_iter().map(|x| Node::link(x.following)).collect()
+				).ld_context()
 			))
 		},
 	}

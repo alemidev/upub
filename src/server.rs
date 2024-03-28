@@ -3,7 +3,7 @@ use std::{str::Utf8Error, sync::Arc};
 use openssl::rsa::Rsa;
 use sea_orm::{ColumnTrait, Condition, DatabaseConnection, DbErr, EntityTrait, QueryFilter, QuerySelect, SelectColumns, Set};
 
-use crate::{activitypub::PUBLIC_TARGET, dispatcher::Dispatcher, fetcher::Fetcher, model};
+use crate::{activitypub::{jsonld::LD, PUBLIC_TARGET}, activitystream::{object::{activity::ActivityMut, collection::{page::CollectionPageMut, CollectionMut, CollectionType}}, Base, BaseMut, Node, Object}, dispatcher::Dispatcher, fetcher::Fetcher, model};
 
 #[derive(Clone)]
 pub struct Context(Arc<ContextInner>);
@@ -206,5 +206,21 @@ impl Context {
 
 		Ok(())
 	}
-}
 
+	pub fn ap_collection(&self, id: &str, total_items: Option<u64>) -> serde_json::Value {
+		serde_json::Value::new_object()
+			.set_id(Some(id))
+			.set_collection_type(Some(CollectionType::OrderedCollection))
+			.set_first(Node::link(format!("{id}/page")))
+			.set_total_items(total_items)
+	}
+
+	pub fn ap_collection_page(&self, id: &str, offset: u64, limit: u64, items: Vec<Node<serde_json::Value>>) -> serde_json::Value {
+		serde_json::Value::new_object()
+			.set_id(Some(&format!("{id}?offset={offset}")))
+			.set_collection_type(Some(CollectionType::OrderedCollectionPage))
+			.set_part_of(Node::link(id.replace("/page", "")))
+			.set_next(Node::link(format!("{id}?offset={}", offset+limit)))
+			.set_ordered_items(Node::Array(items))
+	}
+}

@@ -1,30 +1,15 @@
-use axum::{extract::{Path, Query, State}, http::StatusCode, response::IntoResponse, Json};
+use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
 use sea_orm::{EntityTrait, IntoActiveModel, Order, QueryOrder, QuerySelect, Set};
 
-use crate::{activitypub::{jsonld::LD, JsonLD, Pagination}, activitystream::{object::{activity::{accept::AcceptType, Activity, ActivityMut, ActivityType}, collection::{page::CollectionPageMut, CollectionMut, CollectionType}, Addressed, ObjectMut}, Base, BaseMut, BaseType, Node, ObjectType}, auth::{AuthIdentity, Identity}, errors::UpubError, model, server::Context, url};
+use crate::{activitypub::{jsonld::LD, CreationResult, JsonLD, Pagination}, activitystream::{object::{activity::{accept::AcceptType, Activity, ActivityMut, ActivityType}, collection::{page::CollectionPageMut, CollectionMut, CollectionType}, Addressed, ObjectMut}, Base, BaseMut, BaseType, Node, ObjectType}, auth::{AuthIdentity, Identity}, errors::UpubError, model, server::Context, url};
 
 pub async fn get(
 	State(ctx): State<Context>,
 	Path(id): Path<String>,
 ) -> Result<JsonLD<serde_json::Value>, StatusCode> {
 	Ok(JsonLD(
-		serde_json::Value::new_object()
-			.set_id(Some(&url!(ctx, "/users/{id}/outbox")))
-			.set_collection_type(Some(CollectionType::OrderedCollection))
-			.set_first(Node::link(url!(ctx, "/users/{id}/outbox/page")))
-			.ld_context()
+		ctx.ap_collection(&url!(ctx, "/users/{id}/outbox"), None).ld_context()
 	))
-}
-
-pub struct CreationResult(pub String);
-impl IntoResponse for CreationResult {
-	fn into_response(self) -> axum::response::Response {
-		(
-			StatusCode::CREATED,
-			[("Location", self.0.as_str())]
-		)
-			.into_response()
-	}
 }
 
 pub async fn page(
@@ -57,26 +42,23 @@ pub async fn page(
 		Err(_e) => Err(StatusCode::INTERNAL_SERVER_ERROR),
 		Ok(items) => {
 			Ok(JsonLD(
-				serde_json::Value::new_object()
-					// TODO set id, calculate uri from given args
-					.set_id(Some(&url!(ctx, "/users/{id}/outbox/page?offset={offset}")))
-					.set_collection_type(Some(CollectionType::OrderedCollectionPage))
-					.set_part_of(Node::link(url!(ctx, "/users/{id}/outbox")))
-					.set_next(Node::link(url!(ctx, "/users/{id}/outbox/page?offset={}", limit+offset)))
-					.set_ordered_items(Node::array(
-						items
-							.into_iter()
-							.map(|(a, o)| {
-								let oid = a.object.clone();
+				ctx.ap_collection_page(
+					&url!(ctx, "/users/{id}/outbox/page"),
+					offset, limit,
+					items
+						.into_iter()
+						.map(|(a, o)| {
+							let oid = a.object.clone();
+							Node::object(
 								super::super::activity::ap_activity(a)
 									.set_object(match o {
 										Some(o) => Node::object(super::super::object::ap_object(o)),
-										None => Node::maybe_link(oid),
+										None    => Node::maybe_link(oid),
 									})
-							})
-							.collect()
-					))
-					.ld_context()
+							)
+						})
+						.collect()
+				).ld_context()
 			))
 		},
 	}

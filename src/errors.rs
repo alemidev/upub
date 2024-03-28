@@ -16,6 +16,14 @@ pub enum UpubError {
 	Reqwest(#[from] reqwest::Error),
 }
 
+impl UpubError {
+	pub fn code(code: axum::http::StatusCode) -> Self {
+		UpubError::Status(code)
+	}
+}
+
+pub type UpubResult<T> = Result<T, UpubError>;
+
 impl From<axum::http::StatusCode> for UpubError {
 	fn from(value: axum::http::StatusCode) -> Self {
 		UpubError::Status(value)

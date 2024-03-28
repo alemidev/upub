@@ -8,7 +8,7 @@ pub mod well_known;
 pub mod jsonld;
 pub use jsonld::JsonLD;
 
-use axum::{extract::State, http::StatusCode, Json};
+use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use rand::Rng;
 use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter};
 
@@ -39,9 +39,19 @@ pub fn domain(domain: &str) -> String {
 #[derive(Debug, serde::Deserialize)]
 // TODO i don't really like how pleroma/mastodon do it actually, maybe change this?
 pub struct Pagination {
-	pub page: Option<bool>,
 	pub offset: Option<u64>,
 	pub batch: Option<u64>,
+}
+
+pub struct CreationResult(pub String);
+impl IntoResponse for CreationResult {
+	fn into_response(self) -> axum::response::Response {
+		(
+			StatusCode::CREATED,
+			[("Location", self.0.as_str())]
+		)
+			.into_response()
+	}
 }
 
 pub async fn view(State(ctx): State<Context>) -> Result<Json<serde_json::Value>, StatusCode> {

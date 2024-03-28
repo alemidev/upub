@@ -12,12 +12,7 @@ pub async fn get(
 		Identity::Anonymous => Err(StatusCode::FORBIDDEN),
 		Identity::Remote(_) => Err(StatusCode::FORBIDDEN),
 		Identity::Local(user) => if ctx.uid(id.clone()) == user {
-			Ok(JsonLD(serde_json::Value::new_object()
-				.set_id(Some(&url!(ctx, "/users/{id}/inbox")))
-				.set_collection_type(Some(CollectionType::OrderedCollection))
-				.set_first(Node::link(url!(ctx, "/users/{id}/inbox/page")))
-				.ld_context()
-			))
+			Ok(JsonLD(ctx.ap_collection(&url!(ctx, "/users/{id}/inbox"), None).ld_context()))
 		} else {
 			Err(StatusCode::FORBIDDEN)
 		},
@@ -29,19 +24,16 @@ pub async fn page(
 	Path(id): Path<String>,
 	AuthIdentity(auth): AuthIdentity,
 	Query(page): Query<Pagination>,
-) -> Result<JsonLD<serde_json::Value>, StatusCode> {
+) -> crate::Result<JsonLD<serde_json::Value>> {
 	let uid = ctx.uid(id.clone());
 	match auth {
-		Identity::Anonymous => Err(StatusCode::FORBIDDEN),
-		Identity::Remote(_) => Err(StatusCode::FORBIDDEN),
+		Identity::Anonymous => Err(StatusCode::FORBIDDEN.into()),
+		Identity::Remote(_) => Err(StatusCode::FORBIDDEN.into()),
 		Identity::Local(user) => if uid == user {
 			let limit = page.batch.unwrap_or(20).min(50);
 			let offset = page.offset.unwrap_or(0);
 			match model::addressing::Entity::find()
-				.filter(Condition::any()
-					.add(model::addressing::Column::Actor.eq(PUBLIC_TARGET))
-					.add(model::addressing::Column::Actor.eq(uid))
-				)
+				.filter(Condition::all().add(model::addressing::Column::Actor.eq(uid)))
 				.order_by(model::addressing::Column::Published, Order::Asc)
 				.find_also_related(model::activity::Entity)
 				.limit(limit)
@@ -50,27 +42,24 @@ pub async fn page(
 				.await
 			{
 				Ok(activities) => {
-					Ok(JsonLD(serde_json::Value::new_object()
-						.set_id(Some(&url!(ctx, "/users/{id}/inbox/page?offset={offset}")))
-						.set_collection_type(Some(CollectionType::OrderedCollectionPage))
-						.set_part_of(Node::link(url!(ctx, "/users/{id}/inbox")))
-						.set_next(Node::link(url!(ctx, "/users/{id}/inbox/page?offset={}", offset+limit)))
-						.set_ordered_items(Node::array(
+					Ok(JsonLD(
+						ctx.ap_collection_page(
+							&url!(ctx, "/users/{id}/inbox/page"),
+							offset, limit,
 							activities
 								.into_iter()
-								.filter_map(|(_, a)| Some(ap_activity(a?)))
-								.collect::<Vec<serde_json::Value>>()
-						))
-						.ld_context()
+								.filter_map(|(_, a)| Some(Node::object(ap_activity(a?))))
+								.collect::<Vec<Node<serde_json::Value>>>()
+						).ld_context()
 					))
 				},
 				Err(e) => {
 					tracing::error!("failed paginating user inbox for {id}: {e}");
-					Err(StatusCode::INTERNAL_SERVER_ERROR)
+					Err(StatusCode::INTERNAL_SERVER_ERROR.into())
 				},
 			}
 		} else {
-			Err(StatusCode::FORBIDDEN)
+			Err(StatusCode::FORBIDDEN.into())
 		},
 	}
 }
