@@ -3,7 +3,7 @@ use std::{str::Utf8Error, sync::Arc};
 use openssl::rsa::Rsa;
 use sea_orm::{ColumnTrait, Condition, DatabaseConnection, DbErr, EntityTrait, QueryFilter, QuerySelect, SelectColumns, Set};
 
-use crate::{activitypub::{jsonld::LD, PUBLIC_TARGET}, activitystream::{object::{activity::ActivityMut, collection::{page::CollectionPageMut, CollectionMut, CollectionType}}, Base, BaseMut, Node, Object}, dispatcher::Dispatcher, fetcher::Fetcher, model};
+use crate::{activitypub::{jsonld::LD, PUBLIC_TARGET}, activitystream::{object::collection::{page::CollectionPageMut, CollectionMut, CollectionType}, BaseMut, Node}, dispatcher::Dispatcher, fetcher::Fetcher, model};
 
 #[derive(Clone)]
 pub struct Context(Arc<ContextInner>);

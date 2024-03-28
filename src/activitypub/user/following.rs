@@ -1,7 +1,7 @@
 use axum::{extract::{Path, Query, State}, http::StatusCode};
 use sea_orm::{ColumnTrait, Condition, EntityTrait, PaginatorTrait, QueryFilter, QuerySelect, SelectColumns};
 
-use crate::{activitypub::{jsonld::LD, JsonLD, Pagination}, activitystream::{object::collection::{page::CollectionPageMut, CollectionMut, CollectionType}, BaseMut, Node}, model, server::Context, url};
+use crate::{activitypub::{jsonld::LD, JsonLD, Pagination}, activitystream::Node, model, server::Context, url};
 
 use model::relation::Column::{Following, Follower};
 
