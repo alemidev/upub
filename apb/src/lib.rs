@@ -1,4 +1,5 @@
 mod macros;
+pub(crate) use macros::{strenum, getter, setter};
 
 mod node;
 pub use node::Node;
@@ -6,7 +7,7 @@ pub use node::Node;
 mod link;
 pub use link::{Link, LinkMut, LinkType};
 
-pub mod key;
+mod key;
 pub use key::{PublicKey, PublicKeyMut};
 
 mod base;

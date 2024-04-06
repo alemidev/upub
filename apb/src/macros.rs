@@ -17,7 +17,6 @@ impl From<TypeValueError> for sea_orm::TryGetError {
 }
 
 
-#[macro_export]
 macro_rules! strenum {
 	( $(pub enum $enum_name:ident { $($flat:ident),* ; $($deep:ident($inner:ident)),* };)+ ) => {
 		$(
@@ -95,7 +94,8 @@ macro_rules! strenum {
 	};
 }
 
-#[macro_export]
+pub(crate) use strenum;
+
 macro_rules! getter {
 	($name:ident -> type $t:ty) => {
 		fn $name(&self) -> Option<$t> {
@@ -192,7 +192,8 @@ macro_rules! getter {
 	};
 }
 
-#[macro_export]
+pub(crate) use getter;
+
 macro_rules! setter {
 	($name:ident -> bool) => {
 		paste::item! {
@@ -304,6 +305,8 @@ macro_rules! setter {
 		}
 	};
 }
+
+pub(crate) use setter;
 
 #[cfg(feature = "unstructured")]
 pub fn set_maybe_node(obj: &mut serde_json::Value, key: &str, node: crate::Node<serde_json::Value>) {
