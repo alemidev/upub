@@ -1,7 +1,7 @@
 use axum::{extract::{Query, State}, http::StatusCode};
 use sea_orm::{ColumnTrait, Condition, EntityTrait, Order, QueryFilter, QueryOrder, QuerySelect};
 
-use crate::{activitystream::Node, auth::{AuthIdentity, Identity}, errors::UpubError, model, server::Context, url};
+use crate::{auth::{AuthIdentity, Identity}, errors::UpubError, model, server::Context, url};
 
 use super::{activity::ap_activity, jsonld::LD, JsonLD, Pagination, PUBLIC_TARGET};
 
@@ -39,8 +39,8 @@ pub async fn page(
 			offset, limit,
 			activities
 				.into_iter()
-				.filter_map(|(_, a)| Some(Node::object(ap_activity(a?))))
-				.collect::<Vec<Node<serde_json::Value>>>()
+				.filter_map(|(_, a)| Some(ap_activity(a?)))
+				.collect::<Vec<serde_json::Value>>()
 		).ld_context()
 	))
 }

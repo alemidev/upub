@@ -1,4 +1,3 @@
-pub mod activitystream;
 pub mod activitypub;
 
 mod model;
@@ -15,8 +14,6 @@ use sea_orm::{ConnectOptions, Database, EntityTrait, IntoActiveModel};
 use sea_orm_migration::MigratorTrait;
 
 pub use errors::UpubResult as Result;
-
-use crate::activitystream::{BaseType, ObjectType};
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -102,9 +99,9 @@ async fn main() {
 
 
 async fn fetch(db: &sea_orm::DatabaseConnection, uri: &str, save: bool) -> reqwest::Result<()> {
-	use crate::activitystream::{Base, Object};
+	use apb::{Base, Object};
 
-	let mut node = activitystream::Node::from(uri);
+	let mut node = apb::Node::from(uri);
 	tracing::info!("fetching object");
 	node.fetch().await?;
 	tracing::info!("fetched node");
@@ -115,23 +112,23 @@ async fn fetch(db: &sea_orm::DatabaseConnection, uri: &str, save: bool) -> reqwe
 	
 	if save {
 		match obj.base_type() {
-			Some(BaseType::Object(ObjectType::Actor(_))) => {
+			Some(apb::BaseType::Object(apb::ObjectType::Actor(_))) => {
 				model::user::Entity::insert(
-					model::user::Model::new(&obj).unwrap().into_active_model()
+					model::user::Model::new(obj).unwrap().into_active_model()
 				).exec(db).await.unwrap();
 			},
-			Some(BaseType::Object(ObjectType::Activity(_))) => {
+			Some(apb::BaseType::Object(apb::ObjectType::Activity(_))) => {
 				model::activity::Entity::insert(
-					model::activity::Model::new(&obj).unwrap().into_active_model()
+					model::activity::Model::new(obj).unwrap().into_active_model()
 				).exec(db).await.unwrap();
 			},
-			Some(BaseType::Object(ObjectType::Note)) => {
+			Some(apb::BaseType::Object(apb::ObjectType::Note)) => {
 				model::object::Entity::insert(
-					model::object::Model::new(&obj).unwrap().into_active_model()
+					model::object::Model::new(obj).unwrap().into_active_model()
 				).exec(db).await.unwrap();
 			},
-			Some(BaseType::Object(t)) => tracing::warn!("not implemented: {:?}", t),
-			Some(BaseType::Link(_)) => tracing::error!("fetched another link?"),
+			Some(apb::BaseType::Object(t)) => tracing::warn!("not implemented: {:?}", t),
+			Some(apb::BaseType::Link(_)) => tracing::error!("fetched another link?"),
 			None => tracing::error!("no type on object"),
 		}
 	}

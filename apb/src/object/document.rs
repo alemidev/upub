@@ -26,8 +26,3 @@ impl Document for serde_json::Value {
 impl DocumentMut for serde_json::Value {
 	setter! { document_type -> type DocumentType }
 }
-
-
-
-pub trait Image : Document {}
-impl Image for serde_json::Value {}

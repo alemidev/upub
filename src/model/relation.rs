@@ -11,5 +11,6 @@ pub struct Model {
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {}
+// TODO how to represent this User-to-User relation in sea orm??
 
 impl ActiveModelBehavior for ActiveModel {}

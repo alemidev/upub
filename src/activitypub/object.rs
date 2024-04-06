@@ -1,7 +1,8 @@
 use axum::{extract::{Path, State}, http::StatusCode};
 use sea_orm::EntityTrait;
 
-use crate::{activitystream::{object::ObjectMut, BaseMut, Node}, model::{self, object}, server::Context};
+use apb::{ObjectMut, BaseMut, Node};
+use crate::{model::{self, object}, server::Context};
 
 use super::{jsonld::LD, JsonLD};
 
@@ -16,9 +17,9 @@ pub fn ap_object(object: model::object::Model) -> serde_json::Value {
 		.set_context(Node::maybe_link(object.context.clone()))
 		.set_published(Some(object.published))
 		.set_to(Node::links(object.to.0.clone()))
-		.set_bto(Node::empty())
+		.set_bto(Node::Empty)
 		.set_cc(Node::links(object.cc.0.clone()))
-		.set_bcc(Node::empty())
+		.set_bcc(Node::Empty)
 }
 
 pub async fn view(State(ctx) : State<Context>, Path(id): Path<String>) -> Result<JsonLD<serde_json::Value>, StatusCode> {

@@ -1,7 +1,7 @@
 use axum::{extract::{Path, Query, State}, http::StatusCode};
 use sea_orm::{ColumnTrait, Condition, EntityTrait, PaginatorTrait, QueryFilter, QuerySelect, SelectColumns};
 
-use crate::{activitypub::{jsonld::LD, JsonLD, Pagination}, activitystream::Node, model, server::Context, url};
+use crate::{activitypub::{jsonld::LD, JsonLD, Pagination}, model, server::Context, url};
 
 use model::relation::Column::{Following, Follower};
 
@@ -51,7 +51,7 @@ pub async fn page<const OUTGOING: bool>(
 					&url!(ctx, "/users/{id}/{follow___}"),
 					offset,
 					limit,
-					following.into_iter().map(Node::link).collect()
+					following.into_iter().map(serde_json::Value::String).collect()
 				).ld_context()
 			))
 		},

@@ -28,7 +28,7 @@ impl From<FieldError> for axum::http::StatusCode {
 #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize, sea_orm::FromJsonQueryResult)]
 pub struct Audience(pub Vec<String>);
 
-use crate::activitystream::{Link, Node};
+use apb::{Link, Node};
 impl<T : Link> From<Node<T>> for Audience {
 	fn from(value: Node<T>) -> Self {
 		Audience(

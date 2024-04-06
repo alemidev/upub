@@ -7,7 +7,8 @@ pub mod following;
 use axum::{extract::{Path, State}, http::StatusCode};
 use sea_orm::EntityTrait;
 
-use crate::{activitystream::{key::PublicKeyMut, object::{actor::ActorMut, document::{DocumentMut, DocumentType}, ObjectMut}, BaseMut, Node}, model::{self, user}, server::Context, url};
+use apb::{PublicKeyMut, ActorMut, DocumentMut, DocumentType, ObjectMut, BaseMut, Node};
+use crate::{model::{self, user}, server::Context, url};
 
 use super::{jsonld::LD, JsonLD};
 

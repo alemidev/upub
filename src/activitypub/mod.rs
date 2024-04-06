@@ -12,9 +12,24 @@ use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
 use rand::Rng;
 use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter};
 
-use crate::{activitystream::{key::PublicKeyMut, object::{actor::{ActorMut, ActorType}, ObjectMut}, BaseMut, Node}, model, server::Context, url};
+use apb::{PublicKeyMut, ActorMut, ActorType, Link, Object, ObjectMut, BaseMut, Node};
+use crate::{model, server::Context, url};
 
 use self::jsonld::LD;
+
+pub trait Addressed : Object {
+	fn addressed(&self) -> Vec<String>;
+}
+
+impl Addressed for serde_json::Value {
+	fn addressed(&self) -> Vec<String> {
+		let mut to : Vec<String> = self.to().map(|x| x.href().to_string()).collect();
+		to.append(&mut self.bto().map(|x| x.href().to_string()).collect());
+		to.append(&mut self.cc().map(|x| x.href().to_string()).collect());
+		to.append(&mut self.bcc().map(|x| x.href().to_string()).collect());
+		to
+	}
+}
 
 pub const PUBLIC_TARGET : &str = "https://www.w3.org/ns/activitystreams#Public";
 

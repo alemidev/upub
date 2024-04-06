@@ -1,7 +1,7 @@
 use sea_orm::entity::prelude::*;
-use crate::activitystream::key::PublicKey as _;
 
-use crate::{activitypub, activitystream::object::{collection::Collection, actor::{Actor, ActorType}}};
+use apb::{Collection, Actor, PublicKey, ActorType};
+use crate::activitypub;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "users")]
@@ -46,13 +46,13 @@ impl Model {
 			actor_type: object.actor_type().ok_or(super::FieldError("type"))?,
 			name: object.name().map(|x| x.to_string()),
 			summary: object.summary().map(|x| x.to_string()),
-			icon: object.icon().id().map(|x| x.to_string()),
-			image: object.image().id().map(|x| x.to_string()),
-			inbox: object.inbox().id().map(|x| x.to_string()),
-			outbox: object.inbox().id().map(|x| x.to_string()),
+			icon: object.icon().id(),
+			image: object.image().id(),
+			inbox: object.inbox().id(),
+			outbox: object.inbox().id(),
 			shared_inbox: None, // TODO!!! parse endpoints
-			followers: object.followers().id().map(|x| x.to_string()),
-			following: object.following().id().map(|x| x.to_string()),
+			followers: object.followers().id(),
+			following: object.following().id(),
 			created: object.published().unwrap_or(chrono::Utc::now()),
 			updated: chrono::Utc::now(),
 			following_count: object.following().get().map(|f| f.total_items().unwrap_or(0)).unwrap_or(0) as i64,

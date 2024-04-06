@@ -1,7 +1,5 @@
 use sea_orm::entity::prelude::*;
 
-use crate::activitystream::object::ObjectType;
-
 use super::Audience;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
@@ -9,7 +7,7 @@ use super::Audience;
 pub struct Model {
 	#[sea_orm(primary_key)]
 	pub id: String,
-	pub object_type: ObjectType,
+	pub object_type: apb::ObjectType,
 	pub attributed_to: Option<String>,
 	pub name: Option<String>,
 	pub summary: Option<String>,
@@ -26,15 +24,15 @@ pub struct Model {
 }
 
 impl Model {
-	pub fn new(object: &impl crate::activitystream::object::Object) -> Result<Self, super::FieldError> {
+	pub fn new(object: &impl apb::Object) -> Result<Self, super::FieldError> {
 		Ok(Model {
 			id: object.id().ok_or(super::FieldError("id"))?.to_string(),
 			object_type: object.object_type().ok_or(super::FieldError("type"))?,
-			attributed_to: object.attributed_to().id().map(|x| x.to_string()),
+			attributed_to: object.attributed_to().id(),
 			name: object.name().map(|x| x.to_string()),
 			summary: object.summary().map(|x| x.to_string()),
 			content: object.content().map(|x| x.to_string()),
-			context: object.context().id().map(|x| x.to_string()),
+			context: object.context().id(),
 			published: object.published().ok_or(super::FieldError("published"))?,
 			comments: 0,
 			likes: 0,

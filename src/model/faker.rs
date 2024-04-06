@@ -22,7 +22,7 @@ pub async fn faker(db: &sea_orm::DatabaseConnection, domain: String, count: u64)
 		inbox: None,
 		shared_inbox: None,
 		outbox: None,
-		actor_type: crate::activitystream::object::actor::ActorType::Person,
+		actor_type: apb::ActorType::Person,
 		created: chrono::Utc::now(),
 		updated: chrono::Utc::now(),
 		private_key: Some(std::str::from_utf8(&key.private_key_to_pem().unwrap()).unwrap().to_string()),
@@ -55,7 +55,7 @@ pub async fn faker(db: &sea_orm::DatabaseConnection, domain: String, count: u64)
 		object::Entity::insert(object::ActiveModel {
 			id: Set(format!("{domain}/objects/{oid}")),
 			name: Set(None),
-			object_type: Set(crate::activitystream::object::ObjectType::Note),
+			object_type: Set(apb::ObjectType::Note),
 			attributed_to: Set(Some(format!("{domain}/users/test"))),
 			summary: Set(None),
 			context: Set(Some(context.clone())),
@@ -72,7 +72,7 @@ pub async fn faker(db: &sea_orm::DatabaseConnection, domain: String, count: u64)
 
 		activity::Entity::insert(activity::ActiveModel {
 			id: Set(format!("{domain}/activities/{aid}")),
-			activity_type: Set(crate::activitystream::object::activity::ActivityType::Create),
+			activity_type: Set(apb::ActivityType::Create),
 			actor: Set(format!("{domain}/users/test")),
 			object: Set(Some(format!("{domain}/objects/{oid}"))),
 			target: Set(None),

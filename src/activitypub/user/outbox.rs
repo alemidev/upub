@@ -1,7 +1,8 @@
 use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
 use sea_orm::{EntityTrait, IntoActiveModel, Order, QueryOrder, QuerySelect, Set};
 
-use crate::{activitypub::{jsonld::LD, CreationResult, JsonLD, Pagination}, activitystream::{object::{activity::{accept::AcceptType, Activity, ActivityMut, ActivityType}, Addressed, ObjectMut}, Base, BaseMut, BaseType, Node, ObjectType}, auth::{AuthIdentity, Identity}, errors::UpubError, model, server::Context, url};
+use apb::{AcceptType, Activity, ActivityMut, ActivityType, ObjectMut, Base, BaseMut, BaseType, Node, ObjectType};
+use crate::{activitypub::{jsonld::LD, Addressed, CreationResult, JsonLD, Pagination}, auth::{AuthIdentity, Identity}, errors::UpubError, model, server::Context, url};
 
 pub async fn get(
 	State(ctx): State<Context>,
@@ -49,13 +50,11 @@ pub async fn page(
 						.into_iter()
 						.map(|(a, o)| {
 							let oid = a.object.clone();
-							Node::object(
-								super::super::activity::ap_activity(a)
-									.set_object(match o {
-										Some(o) => Node::object(super::super::object::ap_object(o)),
-										None    => Node::maybe_link(oid),
-									})
-							)
+							super::super::activity::ap_activity(a)
+								.set_object(match o {
+									Some(o) => Node::object(super::super::object::ap_object(o)),
+									None    => Node::maybe_link(oid),
+								})
 						})
 						.collect()
 				).ld_context()
@@ -114,7 +113,7 @@ pub async fn post(
 				},
 
 				Some(BaseType::Object(ObjectType::Activity(ActivityType::Create))) => {
-					let Some(object) = activity.object().get().map(|x| x.underlying_json_object()) else {
+					let Some(object) = activity.object().extract() else {
 						return Err(StatusCode::BAD_REQUEST.into());
 					};
 					let oid = ctx.oid(uuid::Uuid::new_v4().to_string());
@@ -152,7 +151,7 @@ pub async fn post(
 				Some(BaseType::Object(ObjectType::Activity(ActivityType::Like))) => {
 					let aid = ctx.aid(uuid::Uuid::new_v4().to_string());
 					let activity_targets = activity.addressed();
-					let Some(oid) = activity.object().id().map(|x| x.to_string()) else {
+					let Some(oid) = activity.object().id() else {
 						return Err(StatusCode::BAD_REQUEST.into());
 					};
 					let activity_model = model::activity::Model::new(
@@ -164,7 +163,7 @@ pub async fn post(
 
 					let like_model = model::like::ActiveModel {
 						actor: Set(uid.clone()),
-						likes: Set(oid.clone()),
+						likes: Set(oid),
 						date: Set(chrono::Utc::now()),
 						..Default::default()
 					};

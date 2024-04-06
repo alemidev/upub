@@ -37,7 +37,7 @@ macro_rules! strenum {
 			}
 
 			impl TryFrom<&str> for $enum_name {
-				type Error = $crate::activitystream::macros::TypeValueError;
+				type Error = $crate::macros::TypeValueError;
 
 				fn try_from(value:&str) -> Result<Self, Self::Error> {
 					match value {
@@ -48,7 +48,7 @@ macro_rules! strenum {
 									return Ok(Self::$deep(x));
 								}
 							)*
-							Err($crate::activitystream::macros::TypeValueError)
+							Err($crate::macros::TypeValueError)
 						},
 					}
 				}
@@ -171,19 +171,19 @@ macro_rules! getter {
 	};
 
 	($name:ident -> node $t:ty) => {
-		fn $name(&self) -> $crate::activitystream::Node<$t> {
+		fn $name(&self) -> $crate::Node<$t> {
 			match self.get(stringify!($name)) {
-				Some(x) => $crate::activitystream::Node::from(x.clone()),
-				None => $crate::activitystream::Node::Empty,
+				Some(x) => $crate::Node::from(x.clone()),
+				None => $crate::Node::Empty,
 			}
 		}
 	};
 
 	($name:ident::$rename:ident -> node $t:ty) => {
-		fn $name(&self) -> $crate::activitystream::Node<$t> {
+		fn $name(&self) -> $crate::Node<$t> {
 			match self.get(stringify!($rename)) {
-				Some(x) => $crate::activitystream::Node::from(x.clone()),
-				None => $crate::activitystream::Node::Empty,
+				Some(x) => $crate::Node::from(x.clone()),
+				None => $crate::Node::Empty,
 			}
 		}
 	};
@@ -194,7 +194,7 @@ macro_rules! setter {
 	($name:ident -> bool) => {
 		paste::item! {
 			fn [< set_$name >](mut self, val: Option<bool>) -> Self {
-				$crate::activitystream::macros::set_maybe_value(
+				$crate::macros::set_maybe_value(
 					&mut self, stringify!($name), val.map(|x| serde_json::Value::Bool(x))
 				);
 				self
@@ -205,7 +205,7 @@ macro_rules! setter {
 	($name:ident -> &str) => {
 		paste::item! {
 			fn [< set_$name >](mut self, val: Option<&str>) -> Self {
-				$crate::activitystream::macros::set_maybe_value(
+				$crate::macros::set_maybe_value(
 					&mut self, stringify!($name), val.map(|x| serde_json::Value::String(x.to_string()))
 				);
 				self
@@ -216,7 +216,7 @@ macro_rules! setter {
 	($name:ident::$rename:ident -> &str) => {
 		paste::item! {
 			fn [< set_$name >](mut self, val: Option<&str>) -> Self {
-				$crate::activitystream::macros::set_maybe_value(
+				$crate::macros::set_maybe_value(
 					&mut self, stringify!($rename), val.map(|x| serde_json::Value::String(x.to_string()))
 				);
 				self
@@ -227,7 +227,7 @@ macro_rules! setter {
 	($name:ident -> u64) => {
 		paste::item! {
 			fn [< set_$name >](mut self, val: Option<u64>) -> Self {
-				$crate::activitystream::macros::set_maybe_value(
+				$crate::macros::set_maybe_value(
 					&mut self, stringify!($name), val.map(|x| serde_json::Value::Number(serde_json::Number::from(x)))
 				);
 				self
@@ -238,7 +238,7 @@ macro_rules! setter {
 	($name:ident::$rename:ident -> u64) => {
 		paste::item! {
 			fn [< set_$name >](mut self, val: Option<u64>) -> Self {
-				$crate::activitystream::macros::set_maybe_value(
+				$crate::macros::set_maybe_value(
 					&mut self, stringify!($rename), val.map(|x| serde_json::Value::Number(serde_json::Number::from(x)))
 				);
 				self
@@ -249,7 +249,7 @@ macro_rules! setter {
 	($name:ident -> chrono::DateTime<chrono::Utc>) => {
 		paste::item! {
 			fn [< set_$name >](mut self, val: Option<chrono::DateTime<chrono::Utc>>) -> Self {
-				$crate::activitystream::macros::set_maybe_value(
+				$crate::macros::set_maybe_value(
 					&mut self, stringify!($name), val.map(|x| serde_json::Value::String(x.to_rfc3339()))
 				);
 				self
@@ -260,7 +260,7 @@ macro_rules! setter {
 	($name:ident::$rename:ident -> chrono::DateTime<chrono::Utc>) => {
 		paste::item! {
 			fn [< set_$name >](mut self, val: Option<chrono::DateTime<chrono::Utc>>) -> Self {
-				$crate::activitystream::macros::set_maybe_value(
+				$crate::macros::set_maybe_value(
 					&mut self, stringify!($rename), val.map(|x| serde_json::Value::String(x.to_rfc3339()))
 				);
 				self
@@ -270,8 +270,8 @@ macro_rules! setter {
 
 	($name:ident -> node $t:ty ) => {
 		paste::item! {
-			fn [< set_$name >](mut self, val: $crate::activitystream::Node<$t>) -> Self {
-				$crate::activitystream::macros::set_maybe_node(
+			fn [< set_$name >](mut self, val: $crate::Node<$t>) -> Self {
+				$crate::macros::set_maybe_node(
 					&mut self, stringify!($name), val
 				);
 				self
@@ -281,8 +281,8 @@ macro_rules! setter {
 
 	($name:ident::$rename:ident -> node $t:ty ) => {
 		paste::item! {
-			fn [< set_$name >](mut self, val: $crate::activitystream::Node<$t>) -> Self {
-				$crate::activitystream::macros::set_maybe_node(
+			fn [< set_$name >](mut self, val: $crate::Node<$t>) -> Self {
+				$crate::macros::set_maybe_node(
 					&mut self, stringify!($rename), val
 				);
 				self
@@ -293,7 +293,7 @@ macro_rules! setter {
 	($name:ident -> type $t:ty ) => {
 		paste::item! {
 			fn [< set_$name >](mut self, val: Option<$t>) -> Self {
-				$crate::activitystream::macros::set_maybe_value(
+				$crate::macros::set_maybe_value(
 					&mut self, "type", val.map(|x| serde_json::Value::String(x.as_ref().to_string()))
 				);
 				self
@@ -302,11 +302,11 @@ macro_rules! setter {
 	};
 }
 
-pub fn set_maybe_node<T : super::Base>(obj: &mut serde_json::Value, key: &str, node: super::Node<T>) {
+pub fn set_maybe_node(obj: &mut serde_json::Value, key: &str, node: super::Node<serde_json::Value>) {
 	match node {
 		super::Node::Object(x) => {
 			set_maybe_value(
-				obj, key, Some(x.underlying_json_object()),
+				obj, key, Some(*x),
 			);
 		},
 		super::Node::Link(l) => {
@@ -316,7 +316,7 @@ pub fn set_maybe_node<T : super::Base>(obj: &mut serde_json::Value, key: &str, n
 		},
 		super::Node::Array(_) => {
 			set_maybe_value(
-				obj, key, Some(serde_json::Value::Array(node.flat())),
+				obj, key, Some(serde_json::Value::Array(node.into_iter().collect())),
 			);
 		},
 		super::Node::Empty => {
@@ -357,7 +357,7 @@ impl InsertValue for serde_json::Map<String, serde_json::Value> {
 			Node::Array(ref _arr) => {
 				self.insert(
 					k.to_string(),
-					serde_json::Value::Array(node.flat()),
+					serde_json::Value::Array(node.into_iter().collect()),
 				);
 			},
 			Node::Link(l) => {

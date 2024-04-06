@@ -1,7 +1,5 @@
 use sea_orm::entity::prelude::*;
 
-use crate::activitystream::object::activity::{Activity, ActivityType};
-
 use super::Audience;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
@@ -10,7 +8,7 @@ pub struct Model {
 	#[sea_orm(primary_key)]
 	pub id: String,
 
-	pub activity_type: ActivityType,
+	pub activity_type: apb::ActivityType,
 	pub actor: String,
 	pub object: Option<String>,
 
@@ -25,13 +23,13 @@ pub struct Model {
 }
 
 impl Model {
-	pub fn new(activity: &impl Activity) -> Result<Self, super::FieldError> {
+	pub fn new(activity: &impl apb::Activity) -> Result<Self, super::FieldError> {
 		Ok(Model {
 			id: activity.id().ok_or(super::FieldError("id"))?.to_string(),
 			activity_type: activity.activity_type().ok_or(super::FieldError("type"))?,
-			actor: activity.actor().id().ok_or(super::FieldError("actor"))?.to_string(),
-			object: activity.object().id().map(|x| x.to_string()),
-			target: activity.target().id().map(|x| x.to_string()),
+			actor: activity.actor().id().ok_or(super::FieldError("actor"))?,
+			object: activity.object().id(),
+			target: activity.target().id(),
 			published: activity.published().unwrap_or(chrono::Utc::now()),
 			to: activity.to().into(),
 			bto: activity.bto().into(),

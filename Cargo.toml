@@ -1,3 +1,6 @@
+[workspace]
+members = ["apb"]
+
 [package]
 name = "upub"
 version = "0.1.0"
@@ -10,7 +13,7 @@ axum = "0.7.3"
 chrono = { version = "0.4.31", features = ["serde"] }
 clap = { version = "4.5.3", features = ["derive"] }
 paste = "1.0.14"
-reqwest = { version = "0.11.26", features = ["json"] }
+reqwest = { version = "0.12", features = ["json"] }
 sea-orm = { version = "0.12.14", features = ["macros", "sqlx-sqlite", "runtime-tokio-rustls"] }
 sea-orm-migration = "0.12.15"
 serde = { version = "1.0.193", features = ["derive"] }
@@ -21,6 +24,7 @@ tracing = "0.1.40"
 tracing-subscriber = "0.3.18"
 uuid = { version = "1.8.0", features = ["v4"] }
 jrd = "0.1"
+apb = { path = "apb", features = ["dict", "fetch", "orm"] }
 # nodeinfo = "0.0.2" # the version on crates.io doesn't re-export necessary types to build the struct!!!
 nodeinfo = { git = "https://codeberg.org/thefederationinfo/nodeinfo-rs", rev = "e865094804" }
 rand = "0.8.5"

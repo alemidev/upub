@@ -1,7 +1,8 @@
 use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
 use sea_orm::{sea_query::Expr, ColumnTrait, Condition, EntityTrait, IntoActiveModel, Order, QueryFilter, QueryOrder, QuerySelect, Set};
 
-use crate::{activitypub::{activity::ap_activity, jsonld::LD, JsonLD, Pagination}, activitystream::{object::{activity::{Activity, ActivityType}, Addressed, Object, ObjectType}, Base, BaseType, Node}, auth::{AuthIdentity, Identity}, errors::{LoggableError, UpubError}, model, server::Context, url};
+use apb::{Activity, ActivityType, Object, ObjectType, Base, BaseType};
+use crate::{activitypub::{activity::ap_activity, jsonld::LD, Addressed, JsonLD, Pagination}, auth::{AuthIdentity, Identity}, errors::{LoggableError, UpubError}, model, server::Context, url};
 
 pub async fn get(
 	State(ctx): State<Context>,
@@ -48,8 +49,8 @@ pub async fn page(
 							offset, limit,
 							activities
 								.into_iter()
-								.filter_map(|(_, a)| Some(Node::object(ap_activity(a?))))
-								.collect::<Vec<Node<serde_json::Value>>>()
+								.filter_map(|(_, a)| Some(ap_activity(a?)))
+								.collect::<Vec<serde_json::Value>>()
 						).ld_context()
 					))
 				},
@@ -84,7 +85,7 @@ pub async fn post(
 
 		Some(BaseType::Object(ObjectType::Activity(ActivityType::Delete))) => {
 			// TODO verify the signature before just deleting lmao
-			let oid = object.object().id().ok_or(StatusCode::BAD_REQUEST)?.to_string();
+			let oid = object.object().id().ok_or(StatusCode::BAD_REQUEST)?;
 			// TODO maybe we should keep the tombstone?
 			model::user::Entity::delete_by_id(&oid).exec(ctx.db()).await.info_failed("failed deleting from users");
 			model::activity::Entity::delete_by_id(&oid).exec(ctx.db()).await.info_failed("failed deleting from activities");
@@ -152,8 +153,8 @@ pub async fn post(
 		},
 
 		Some(BaseType::Object(ObjectType::Activity(ActivityType::Like))) => {
-			let aid = object.actor().id().ok_or(StatusCode::BAD_REQUEST)?.to_string();
-			let oid = object.object().id().ok_or(StatusCode::BAD_REQUEST)?.to_string();
+			let aid = object.actor().id().ok_or(StatusCode::BAD_REQUEST)?;
+			let oid = object.object().id().ok_or(StatusCode::BAD_REQUEST)?;
 			let like = model::like::ActiveModel {
 				id: sea_orm::ActiveValue::NotSet,
 				actor: sea_orm::Set(aid.clone()),
@@ -182,7 +183,7 @@ pub async fn post(
 		Some(BaseType::Object(ObjectType::Activity(ActivityType::Create))) => {
 			let activity_model = model::activity::Model::new(&object)?;
 			let activity_targets = object.addressed();
-			let Some(object_node) = object.object().get() else {
+			let Some(object_node) = object.object().extract() else {
 				// TODO we could process non-embedded activities or arrays but im lazy rn
 				tracing::error!("refusing to process activity without embedded object: {}", serde_json::to_string_pretty(&object).unwrap());
 				return Err(StatusCode::UNPROCESSABLE_ENTITY.into());
@@ -200,7 +201,7 @@ pub async fn post(
 		Some(BaseType::Object(ObjectType::Activity(ActivityType::Update))) => {
 			let activity_model = model::activity::Model::new(&object)?;
 			let activity_targets = object.addressed();
-			let Some(object_node) = object.object().get() else {
+			let Some(object_node) = object.object().extract() else {
 				// TODO we could process non-embedded activities or arrays but im lazy rn
 				tracing::error!("refusing to process activity without embedded object: {}", serde_json::to_string_pretty(&object).unwrap());
 				return Err(StatusCode::UNPROCESSABLE_ENTITY.into());
@@ -214,7 +215,7 @@ pub async fn post(
 				Some(ObjectType::Actor(_)) => {
 					// TODO oof here is an example of the weakness of this model, we have to go all the way
 					// back up to serde_json::Value because impl Object != impl Actor
-					let actor_model = model::user::Model::new(&object_node.underlying_json_object())?;
+					let actor_model = model::user::Model::new(&object_node)?;
 					model::user::Entity::update(actor_model.into_active_model())
 						.exec(ctx.db()).await?;
 				},
