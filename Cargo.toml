@@ -5,6 +5,12 @@ members = ["apb"]
 name = "upub"
 version = "0.1.0"
 edition = "2021"
+authors = [ "alemi <me@alemi.dev>" ]
+description = "Traits and types to handle ActivityPub objects"
+license = "AGPL-3.0"
+keywords = ["activitypub", "activitystreams", "json"]
+repository = "https://git.alemi.dev/upub.git"
+readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
