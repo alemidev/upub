@@ -1,3 +1,5 @@
+/// ActivityPub object node, representing either nothing, something, a link to something or
+/// multiple things
 pub enum Node<T : super::Base> {
 	Array(Vec<T>), // TODO would be cool to make it Box<[T]> so that Node is just a ptr
 	Object(Box<T>),
@@ -30,6 +32,7 @@ impl<T : super::Base + Clone> Iterator for Node<T> {
 }
 
 impl<T : super::Base> Node<T> {
+	/// return reference to embedded object (or last if many are present)
 	pub fn get(&self) -> Option<&T> {
 		match self {
 			Node::Empty | Node::Link(_) => None,
@@ -38,6 +41,7 @@ impl<T : super::Base> Node<T> {
 		}
 	}
 
+	/// consume node and extract embedded object (or last if many are present)
 	pub fn extract(self) -> Option<T> {
 		match self {
 			Node::Empty | Node::Link(_) => None,
@@ -46,22 +50,27 @@ impl<T : super::Base> Node<T> {
 		}
 	}
 
+	/// true only if Node is empty
 	pub fn is_empty(&self) -> bool {
 		matches!(self, Node::Empty)
 	}
 
+	/// true only if Node is link
 	pub fn is_link(&self) -> bool {
 		matches!(self, Node::Link(_))
 	}
 
+	/// true only if Node contains one embedded object
 	pub fn is_object(&self) -> bool {
 		matches!(self, Node::Object(_))
 	}
 
+	/// true only if Node contains many embedded objects
 	pub fn is_array(&self) -> bool {
 		matches!(self, Node::Array(_))
 	}
 
+	/// returns number of contained items (links count as items for len)
 	pub fn len(&self) -> usize {
 		match self {
 			Node::Empty => 0,
@@ -71,6 +80,7 @@ impl<T : super::Base> Node<T> {
 		}
 	}
 
+	/// returns id of object: url for link, id for object, None if empty or array
 	pub fn id(&self) -> Option<String> {
 		match self {
 			Node::Empty | Node::Array(_) => None,
