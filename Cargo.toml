@@ -9,27 +9,34 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-axum = "0.7.3"
-chrono = { version = "0.4.31", features = ["serde"] }
-clap = { version = "4.5.3", features = ["derive"] }
-paste = "1.0.14"
-reqwest = { version = "0.12", features = ["json"] }
-sea-orm = { version = "0.12.14", features = ["macros", "sqlx-sqlite", "runtime-tokio-rustls"] }
-sea-orm-migration = "0.12.15"
-serde = { version = "1.0.193", features = ["derive"] }
-serde_json = "1.0.108"
-thiserror = "1.0.58"
-tokio = { version = "1.35.1", features = ["full"] }
-tracing = "0.1.40"
-tracing-subscriber = "0.3.18"
-uuid = { version = "1.8.0", features = ["v4"] }
+thiserror = "1"
+rand = "0.8"
+sha256 = "1.5"
+openssl = "0.10" # TODO handle pubkeys with a smaller crate
+base64 = "0.22"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.8", features = ["v4"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
 jrd = "0.1"
-apb = { path = "apb", features = ["dict", "fetch", "orm"] }
+tracing = "0.1"
+tracing-subscriber = "0.3"
+clap = { version = "4.5", features = ["derive"] }
+tokio = { version = "1.35", features = ["full"] } # TODO slim this down
+sea-orm = { version = "0.12", features = ["macros", "sqlx-sqlite", "runtime-tokio-rustls"] }
+reqwest = { version = "0.12", features = ["json"] }
+axum = "0.7"
+apb = { path = "apb", features = ["unstructured", "fetch", "orm"] }
 # nodeinfo = "0.0.2" # the version on crates.io doesn't re-export necessary types to build the struct!!!
 nodeinfo = { git = "https://codeberg.org/thefederationinfo/nodeinfo-rs", rev = "e865094804" }
-rand = "0.8.5"
-sha256 = "1.5.0"
-openssl = "0.10.64"
-base64 = "0.22.0"
 http-signature-normalization = "0.7.0"
-mastodon-async-entities = "1.1.0"
+# migrations
+sea-orm-migration = { version = "0.12", optional = true }
+# mastodon
+mastodon-async-entities = { version = "1.1.0", optional = true }
+
+[features]
+default = ["faker", "migrations"]
+faker = []
+migrations = ["dep:sea-orm-migration"]
+mastodon = ["dep:mastodon-async-entities"]

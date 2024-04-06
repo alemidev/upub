@@ -1,18 +1,25 @@
 pub mod activitypub;
 
 mod model;
-mod migrations;
 mod server;
 mod router;
 mod errors;
 mod auth;
 mod dispatcher;
 mod fetcher;
+
+
+#[cfg(feature = "migrations")]
+mod migrations;
+
+#[cfg(feature = "migrations")]
+use sea_orm_migration::MigratorTrait;
+
+#[cfg(feature = "mastodon")]
 mod mastodon;
 
 use clap::{Parser, Subcommand};
 use sea_orm::{ConnectOptions, Database, EntityTrait, IntoActiveModel};
-use sea_orm_migration::MigratorTrait;
 
 pub use errors::UpubResult as Result;
 
@@ -43,9 +50,11 @@ enum CliCommand {
 	/// run fediverse server
 	Serve ,
 
+	#[cfg(feature = "migrations")]
 	/// apply database migrations
 	Migrate,
 
+	#[cfg(feature = "faker")]
 	/// generate fake user, note and activity
 	Faker{
 		/// how many fake statuses to insert for root user
@@ -86,9 +95,11 @@ async fn main() {
 		CliCommand::Serve => router::serve(db, args.domain)
 			.await,
 
+		#[cfg(feature = "migrations")]
 		CliCommand::Migrate => migrations::Migrator::up(&db, None)
 			.await.expect("error applying migrations"),
 
+		#[cfg(feature = "faker")]
 		CliCommand::Faker { count } => model::faker::faker(&db, args.domain, count)
 			.await.expect("error creating fake entities"),
 

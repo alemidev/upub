@@ -12,6 +12,7 @@ pub mod session;
 pub mod delivery;
 pub mod application;
 
+#[cfg(feature = "faker")]
 pub mod faker;
 
 #[derive(Debug, Clone, thiserror::Error)]
