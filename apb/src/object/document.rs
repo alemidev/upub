@@ -1,6 +1,4 @@
-use crate::{getter, setter, strenum};
-
-strenum! {
+crate::strenum! {
 	pub enum DocumentType {
 		Document,
 		Audio,
@@ -19,10 +17,12 @@ pub trait DocumentMut : super::ObjectMut {
 }
 
 
+#[cfg(feature = "unstructured")]
 impl Document for serde_json::Value {
-	getter! { document_type -> type DocumentType }
+	crate::getter! { document_type -> type DocumentType }
 }
 
+#[cfg(feature = "unstructured")]
 impl DocumentMut for serde_json::Value {
-	setter! { document_type -> type DocumentType }
+	crate::setter! { document_type -> type DocumentType }
 }

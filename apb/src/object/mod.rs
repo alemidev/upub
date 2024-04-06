@@ -7,8 +7,6 @@ pub mod place;
 pub mod profile;
 pub mod relationship;
 
-use crate::{getter, setter, strenum};
-
 use super::{Base, BaseMut, Link, Node};
 
 use actor::{Actor, ActorType};
@@ -16,7 +14,7 @@ use document::{Document, DocumentType};
 use activity::ActivityType;
 use collection::{Collection, CollectionType};
 
-strenum! {
+crate::strenum! {
 	pub enum ObjectType {
 		Object,
 		Article,
@@ -106,6 +104,7 @@ pub trait ObjectMut : BaseMut {
 	fn set_duration(self, val: Option<&str>) -> Self; // TODO how to parse xsd:duration ?
 }
 
+#[cfg(feature = "unstructured")]
 impl Object for serde_json::Value {
 	type Link = serde_json::Value;
 	type Actor = serde_json::Value;
@@ -113,32 +112,32 @@ impl Object for serde_json::Value {
 	type Document = serde_json::Value;
 	type Collection = serde_json::Value;
 	
-	getter! { object_type -> type ObjectType }
-	getter! { attachment -> node <Self as Object>::Object }
-	getter! { attributed_to::attributedTo -> node Self::Actor }
-	getter! { audience -> node Self::Actor }
-	getter! { content -> &str }
-	getter! { name -> &str }
-	getter! { end_time::endTime -> chrono::DateTime<chrono::Utc> }
-	getter! { generator -> node Self::Actor }
-	getter! { icon -> node Self::Document }
-	getter! { image -> node Self::Document }
-	getter! { in_reply_to::inReplyTo -> node <Self as Object>::Object }
-	getter! { location -> node <Self as Object>::Object }
-	getter! { preview -> node <Self as Object>::Object }
-	getter! { published -> chrono::DateTime<chrono::Utc> }
-	getter! { replies -> node Self::Collection }
-	getter! { start_time::startTime -> chrono::DateTime<chrono::Utc> }
-	getter! { summary -> &str }
-	getter! { tag -> node <Self as Object>::Object }
-	getter! { updated -> chrono::DateTime<chrono::Utc> }
-	getter! { to -> node Self::Link }
-	getter! { bto -> node Self::Link }
-	getter! { cc -> node Self::Link }
-	getter! { bcc -> node Self::Link }
-	getter! { media_type -> &str }
-	getter! { duration -> &str }
-	getter! { url -> node Self::Link }
+	crate::getter! { object_type -> type ObjectType }
+	crate::getter! { attachment -> node <Self as Object>::Object }
+	crate::getter! { attributed_to::attributedTo -> node Self::Actor }
+	crate::getter! { audience -> node Self::Actor }
+	crate::getter! { content -> &str }
+	crate::getter! { name -> &str }
+	crate::getter! { end_time::endTime -> chrono::DateTime<chrono::Utc> }
+	crate::getter! { generator -> node Self::Actor }
+	crate::getter! { icon -> node Self::Document }
+	crate::getter! { image -> node Self::Document }
+	crate::getter! { in_reply_to::inReplyTo -> node <Self as Object>::Object }
+	crate::getter! { location -> node <Self as Object>::Object }
+	crate::getter! { preview -> node <Self as Object>::Object }
+	crate::getter! { published -> chrono::DateTime<chrono::Utc> }
+	crate::getter! { replies -> node Self::Collection }
+	crate::getter! { start_time::startTime -> chrono::DateTime<chrono::Utc> }
+	crate::getter! { summary -> &str }
+	crate::getter! { tag -> node <Self as Object>::Object }
+	crate::getter! { updated -> chrono::DateTime<chrono::Utc> }
+	crate::getter! { to -> node Self::Link }
+	crate::getter! { bto -> node Self::Link }
+	crate::getter! { cc -> node Self::Link }
+	crate::getter! { bcc -> node Self::Link }
+	crate::getter! { media_type -> &str }
+	crate::getter! { duration -> &str }
+	crate::getter! { url -> node Self::Link }
 
 	// TODO Mastodon doesn't use a "context" field on the object but makes up a new one!!
 	fn context(&self) -> Node<<Self as Object>::Object> {
@@ -152,6 +151,7 @@ impl Object for serde_json::Value {
 	}
 }
 
+#[cfg(feature = "unstructured")]
 impl ObjectMut for serde_json::Value {
 	type Link = serde_json::Value;
 	type Actor = serde_json::Value;
@@ -159,32 +159,32 @@ impl ObjectMut for serde_json::Value {
 	type Document = serde_json::Value;
 	type Collection = serde_json::Value;
 
-	setter! { object_type -> type ObjectType }
-	setter! { attachment -> node <Self as Object>::Object }
-	setter! { attributed_to::attributedTo -> node Self::Actor }
-	setter! { audience -> node Self::Actor }
-	setter! { content -> &str }
-	setter! { name -> &str }
-	setter! { end_time::endTime -> chrono::DateTime<chrono::Utc> }
-	setter! { generator -> node Self::Actor }
-	setter! { icon -> node Self::Document }
-	setter! { image -> node Self::Document }
-	setter! { in_reply_to::inReplyTo -> node <Self as Object>::Object }
-	setter! { location -> node <Self as Object>::Object }
-	setter! { preview -> node <Self as Object>::Object }
-	setter! { published -> chrono::DateTime<chrono::Utc> }
-	setter! { replies -> node Self::Collection }
-	setter! { start_time::startTime -> chrono::DateTime<chrono::Utc> }
-	setter! { summary -> &str }
-	setter! { tag -> node <Self as Object>::Object }
-	setter! { updated -> chrono::DateTime<chrono::Utc> }
-	setter! { to -> node Self::Link }
-	setter! { bto -> node Self::Link}
-	setter! { cc -> node Self::Link }
-	setter! { bcc -> node Self::Link }
-	setter! { media_type -> &str }
-	setter! { duration -> &str }
-	setter! { url -> node Self::Link }
+	crate::setter! { object_type -> type ObjectType }
+	crate::setter! { attachment -> node <Self as Object>::Object }
+	crate::setter! { attributed_to::attributedTo -> node Self::Actor }
+	crate::setter! { audience -> node Self::Actor }
+	crate::setter! { content -> &str }
+	crate::setter! { name -> &str }
+	crate::setter! { end_time::endTime -> chrono::DateTime<chrono::Utc> }
+	crate::setter! { generator -> node Self::Actor }
+	crate::setter! { icon -> node Self::Document }
+	crate::setter! { image -> node Self::Document }
+	crate::setter! { in_reply_to::inReplyTo -> node <Self as Object>::Object }
+	crate::setter! { location -> node <Self as Object>::Object }
+	crate::setter! { preview -> node <Self as Object>::Object }
+	crate::setter! { published -> chrono::DateTime<chrono::Utc> }
+	crate::setter! { replies -> node Self::Collection }
+	crate::setter! { start_time::startTime -> chrono::DateTime<chrono::Utc> }
+	crate::setter! { summary -> &str }
+	crate::setter! { tag -> node <Self as Object>::Object }
+	crate::setter! { updated -> chrono::DateTime<chrono::Utc> }
+	crate::setter! { to -> node Self::Link }
+	crate::setter! { bto -> node Self::Link}
+	crate::setter! { cc -> node Self::Link }
+	crate::setter! { bcc -> node Self::Link }
+	crate::setter! { media_type -> &str }
+	crate::setter! { duration -> &str }
+	crate::setter! { url -> node Self::Link }
 
 	// TODO Mastodon doesn't use a "context" field on the object but makes up a new one!!
 	fn set_context(mut self, ctx: Node<<Self as Object>::Object>) -> Self {

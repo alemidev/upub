@@ -8,6 +8,7 @@ pub trait TombstoneMut : super::ObjectMut {
 	fn set_deleted(self, val: Option<chrono::DateTime<chrono::Utc>>) -> Self;
 }
 
+#[cfg(feature = "unstructured")]
 impl Tombstone for serde_json::Value {
 	// ... TODO
 }

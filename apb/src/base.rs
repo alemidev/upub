@@ -1,6 +1,6 @@
-use crate::{getter, setter, strenum, LinkType, ObjectType};
+use crate::{LinkType, ObjectType};
 
-strenum! {
+crate::strenum! {
 	pub enum BaseType {
 		;
 		Object(ObjectType),
@@ -30,12 +30,14 @@ impl Base for String {
 	}
 }
 
+#[cfg(feature = "unstructured")]
 impl Base for serde_json::Value {
-	getter! { id -> &str }
-	getter! { base_type -> type BaseType }
+	crate::getter! { id -> &str }
+	crate::getter! { base_type -> type BaseType }
 }
 
+#[cfg(feature = "unstructured")]
 impl BaseMut for serde_json::Value {
-	setter! { id -> &str }
-	setter! { base_type -> type BaseType }
+	crate::setter! { id -> &str }
+	crate::setter! { base_type -> type BaseType }
 }

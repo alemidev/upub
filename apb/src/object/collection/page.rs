@@ -1,4 +1,4 @@
-use crate::{Node, getter, setter};
+use crate::Node;
 
 pub trait CollectionPage : super::Collection {
 	fn part_of(&self) -> Node<Self::Collection> { Node::Empty }
@@ -12,14 +12,16 @@ pub trait CollectionPageMut : super::CollectionMut {
 	fn set_prev(self, val: Node<Self::CollectionPage>) -> Self;
 }
 
+#[cfg(feature = "unstructured")]
 impl CollectionPage for serde_json::Value {
-	getter! { part_of::partOf -> node Self::Collection }
-	getter! { next -> node Self::CollectionPage }
-	getter! { prev -> node Self::CollectionPage }
+	crate::getter! { part_of::partOf -> node Self::Collection }
+	crate::getter! { next -> node Self::CollectionPage }
+	crate::getter! { prev -> node Self::CollectionPage }
 }
 
+#[cfg(feature = "unstructured")]
 impl CollectionPageMut for serde_json::Value {
-	setter! { part_of::partOf -> node Self::Collection }
-	setter! { next -> node Self::CollectionPage }
-	setter! { prev -> node Self::CollectionPage }
+	crate::setter! { part_of::partOf -> node Self::Collection }
+	crate::setter! { next -> node Self::CollectionPage }
+	crate::setter! { prev -> node Self::CollectionPage }
 }

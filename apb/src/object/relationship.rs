@@ -14,6 +14,7 @@ pub trait RelationshipMut : super::ObjectMut {
 	fn set_relationship_object(self, val: Node<Self::Object>) -> Self;
 }
 
+#[cfg(feature = "unstructured")]
 impl Relationship for serde_json::Value {
 	// ... TODO
 }

@@ -9,15 +9,16 @@ edition = "2021"
 
 [dependencies]
 chrono = { version = "0.4", features = ["serde"] }
-thiserror = "1.0"
-serde_json = { version = "1.0", optional = true }
-reqwest = { version = "0.12", features = ["json"], optional = true }
-paste = "1.0.14"
+thiserror = "1"
+paste = "1.0"
+tracing = "0.1"
+serde_json = { version = "1", optional = true }
 sea-orm = { version = "0.12", optional = true }
-tracing = "0.1.40"
+reqwest = { version = "0.12", features = ["json"], optional = true }
 
 [features]
-default = ["fetch", "dict", "orm"]
-fetch   = ["dep:reqwest"]
-dict    = ["dep:serde_json"]
-orm     = ["dep:sea-orm"]
+default = []
+orm = ["dep:sea-orm"]
+fetch = ["dep:reqwest"]
+unstructured = ["dep:serde_json"]
+# TODO eventually also make a structured base?

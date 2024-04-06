@@ -1,9 +1,9 @@
 pub mod page;
 pub use page::CollectionPage;
 
-use crate::{Node, Object, object::ObjectMut, getter, setter, strenum};
+use crate::{Node, Object, object::ObjectMut};
 
-strenum! {
+crate::strenum! {
 	pub enum CollectionType {
 		Collection,
 		CollectionPage,
@@ -37,26 +37,28 @@ pub trait CollectionMut : ObjectMut {
 	fn set_ordered_items(self, val: Node<Self::Object>) -> Self;
 }
 
+#[cfg(feature = "unstructured")]
 impl Collection for serde_json::Value {
 	type CollectionPage = serde_json::Value;
 
-	getter! { collection_type -> type CollectionType }
-	getter! { total_items::totalItems -> u64 }
-	getter! { current -> node Self::CollectionPage }
-	getter! { first -> node Self::CollectionPage }
-	getter! { last -> node Self::CollectionPage }
-	getter! { items -> node <Self as Object>::Object }
-	getter! { ordered_items::orderedItems -> node <Self as Object>::Object }
+	crate::getter! { collection_type -> type CollectionType }
+	crate::getter! { total_items::totalItems -> u64 }
+	crate::getter! { current -> node Self::CollectionPage }
+	crate::getter! { first -> node Self::CollectionPage }
+	crate::getter! { last -> node Self::CollectionPage }
+	crate::getter! { items -> node <Self as Object>::Object }
+	crate::getter! { ordered_items::orderedItems -> node <Self as Object>::Object }
 }
 
+#[cfg(feature = "unstructured")]
 impl CollectionMut for serde_json::Value {
 	type CollectionPage = serde_json::Value;
 
-	setter! { collection_type -> type CollectionType }
-	setter! { total_items::totalItems -> u64 }
-	setter! { current -> node Self::CollectionPage }
-	setter! { first -> node Self::CollectionPage }
-	setter! { last -> node Self::CollectionPage }
-	setter! { items -> node <Self as Object>::Object }
-	setter! { ordered_items::orderedItems -> node <Self as Object>::Object }
+	crate::setter! { collection_type -> type CollectionType }
+	crate::setter! { total_items::totalItems -> u64 }
+	crate::setter! { current -> node Self::CollectionPage }
+	crate::setter! { first -> node Self::CollectionPage }
+	crate::setter! { last -> node Self::CollectionPage }
+	crate::setter! { items -> node <Self as Object>::Object }
+	crate::setter! { ordered_items::orderedItems -> node <Self as Object>::Object }
 }

@@ -1,15 +1,15 @@
-use super::Node;
-
 #[derive(Debug, thiserror::Error)]
 #[error("invalid type value")]
 pub struct TypeValueError;
 
+#[cfg(feature = "orm")]
 impl From<TypeValueError> for sea_orm::sea_query::ValueTypeErr {
 	fn from(_: TypeValueError) -> Self {
 		sea_orm::sea_query::ValueTypeErr
 	}
 }
 
+#[cfg(feature = "orm")]
 impl From<TypeValueError> for sea_orm::TryGetError {
 	fn from(_: TypeValueError) -> Self {
 		sea_orm::TryGetError::Null("value is not a valid type".into())
@@ -54,12 +54,14 @@ macro_rules! strenum {
 				}
 			}
 
+			#[cfg(feature = "orm")]
 			impl From<$enum_name> for sea_orm::Value {
 				fn from(value: $enum_name) -> sea_orm::Value {
 					sea_orm::Value::String(Some(Box::new(value.as_ref().to_string())))
 				}
 			}
 
+			#[cfg(feature = "orm")]
 			impl sea_orm::sea_query::ValueType for $enum_name {
 				fn try_from(v: sea_orm::Value) -> Result<Self, sea_orm::sea_query::ValueTypeErr> {
 					match v {
@@ -82,6 +84,7 @@ macro_rules! strenum {
 				}
 			}
 			
+			#[cfg(feature = "orm")]
 			impl sea_orm::TryGetable for $enum_name {
 				fn try_get_by<I: sea_orm::ColIdx>(res: &sea_orm::prelude::QueryResult, index: I) -> Result<Self, sea_orm::TryGetError> {
 					let x : String = res.try_get_by(index)?;
@@ -302,24 +305,25 @@ macro_rules! setter {
 	};
 }
 
-pub fn set_maybe_node(obj: &mut serde_json::Value, key: &str, node: super::Node<serde_json::Value>) {
+#[cfg(feature = "unstructured")]
+pub fn set_maybe_node(obj: &mut serde_json::Value, key: &str, node: crate::Node<serde_json::Value>) {
 	match node {
-		super::Node::Object(x) => {
+		crate::Node::Object(x) => {
 			set_maybe_value(
 				obj, key, Some(*x),
 			);
 		},
-		super::Node::Link(l) => {
+		crate::Node::Link(l) => {
 			set_maybe_value(
 				obj, key, Some(serde_json::Value::String(l.href().to_string())),
 			);
 		},
-		super::Node::Array(_) => {
+		crate::Node::Array(_) => {
 			set_maybe_value(
 				obj, key, Some(serde_json::Value::Array(node.into_iter().collect())),
 			);
 		},
-		super::Node::Empty => {
+		crate::Node::Empty => {
 			set_maybe_value(
 				obj, key, None,
 			);
@@ -327,6 +331,7 @@ pub fn set_maybe_node(obj: &mut serde_json::Value, key: &str, node: super::Node<
 	}
 }
 
+#[cfg(feature = "unstructured")]
 pub fn set_maybe_value(obj: &mut serde_json::Value, key: &str, value: Option<serde_json::Value>) {
 	if let Some(map) = obj.as_object_mut() {
 		match value {
@@ -338,35 +343,37 @@ pub fn set_maybe_value(obj: &mut serde_json::Value, key: &str, value: Option<ser
 	}
 }
 
+#[cfg(feature = "unstructured")]
 pub(crate) trait InsertValue {
-	fn insert_node(&mut self, k: &str, v: Node<serde_json::Value>);
+	fn insert_node(&mut self, k: &str, v: crate::Node<serde_json::Value>);
 	fn insert_str(&mut self, k: &str, v: Option<&str>);
 	fn insert_float(&mut self, k: &str, f: Option<f64>);
 	fn insert_timestr(&mut self, k: &str, t: Option<chrono::DateTime<chrono::Utc>>);
 }
 
+#[cfg(feature = "unstructured")]
 impl InsertValue for serde_json::Map<String, serde_json::Value> {
-	fn insert_node(&mut self, k: &str, node: Node<serde_json::Value>) {
+	fn insert_node(&mut self, k: &str, node: crate::Node<serde_json::Value>) {
 		match node {
-			Node::Object(x) => {
+			crate::Node::Object(x) => {
 				self.insert(
 					k.to_string(),
 					*x,
 				);
 			},
-			Node::Array(ref _arr) => {
+			crate::Node::Array(ref _arr) => {
 				self.insert(
 					k.to_string(),
 					serde_json::Value::Array(node.into_iter().collect()),
 				);
 			},
-			Node::Link(l) => {
+			crate::Node::Link(l) => {
 				self.insert(
 					k.to_string(),
 					serde_json::Value::String(l.href().to_string()),
 				);
 			},
-			Node::Empty => {},
+			crate::Node::Empty => {},
 		};
 	}
 

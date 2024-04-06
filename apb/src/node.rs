@@ -80,7 +80,7 @@ impl<T : super::Base> Node<T> {
 	}
 }
 
-#[cfg(feature = "dict")]
+#[cfg(feature = "unstructured")]
 impl Node<serde_json::Value> {
 	pub fn link(uri: String) -> Self {
 		Node::Link(Box::new(uri))
@@ -133,7 +133,7 @@ impl Node<serde_json::Value> {
 	}
 }
 
-#[cfg(feature = "dict")]
+#[cfg(feature = "unstructured")]
 impl From<Option<&str>> for Node<serde_json::Value> {
 	fn from(value: Option<&str>) -> Self {
 		match value {
@@ -143,14 +143,14 @@ impl From<Option<&str>> for Node<serde_json::Value> {
 	}
 }
 
-#[cfg(feature = "dict")]
+#[cfg(feature = "unstructured")]
 impl From<&str> for Node<serde_json::Value> {
 	fn from(value: &str) -> Self {
 		Node::Link(Box::new(value.to_string()))
 	}
 }
 
-#[cfg(feature = "dict")]
+#[cfg(feature = "unstructured")]
 impl From<serde_json::Value> for Node<serde_json::Value> {
 	fn from(value: serde_json::Value) -> Self {
 		match value {
