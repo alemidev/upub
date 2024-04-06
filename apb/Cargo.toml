@@ -2,6 +2,12 @@
 name = "apb"
 version = "0.1.0"
 edition = "2021"
+authors = [ "alemi <me@alemi.dev>" ]
+description = "Traits and types to handle ActivityPub objects"
+license = "MIT"
+keywords = ["activitypub", "activitystreams", "json"]
+repository = "https://git.alemi.dev/upub.git"
+readme = "README.md"
 
 [lib]
 
