@@ -1,22 +1,14 @@
-pub mod activitypub;
+pub mod server;
+pub mod model;
+pub mod routes;
 
-mod model;
-mod server;
-mod router;
-mod errors;
-mod auth;
-mod dispatcher;
-mod fetcher;
-
+pub mod errors;
 
 #[cfg(feature = "migrations")]
 mod migrations;
 
 #[cfg(feature = "migrations")]
 use sea_orm_migration::MigratorTrait;
-
-#[cfg(feature = "mastodon")]
-mod mastodon;
 
 use clap::{Parser, Subcommand};
 use sea_orm::{ConnectOptions, Database, EntityTrait, IntoActiveModel};
@@ -92,7 +84,7 @@ async fn main() {
 		.await.expect("error connecting to db");
 
 	match args.command {
-		CliCommand::Serve => router::serve(db, args.domain)
+		CliCommand::Serve => routes::activitypub::router::serve(db, args.domain)
 			.await,
 
 		#[cfg(feature = "migrations")]

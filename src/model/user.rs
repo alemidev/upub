@@ -1,7 +1,7 @@
 use sea_orm::entity::prelude::*;
 
 use apb::{Collection, Actor, PublicKey, ActorType};
-use crate::activitypub;
+use crate::routes::activitypub;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "users")]

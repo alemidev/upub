@@ -1,7 +1,7 @@
 use axum::{extract::{Query, State}, http::StatusCode};
 use sea_orm::{ColumnTrait, Condition, EntityTrait, Order, QueryFilter, QueryOrder, QuerySelect};
 
-use crate::{auth::{AuthIdentity, Identity}, errors::UpubError, model, server::Context, url};
+use crate::{server::auth::{AuthIdentity, Identity}, errors::UpubError, model, server::Context, url};
 
 use super::{activity::ap_activity, jsonld::LD, JsonLD, Pagination, PUBLIC_TARGET};
 

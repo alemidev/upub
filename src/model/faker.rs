@@ -1,4 +1,4 @@
-use crate::{activitypub::PUBLIC_TARGET, model::{config, credential}};
+use crate::{routes::activitypub::PUBLIC_TARGET, model::{config, credential}};
 use super::{activity, object, user, Audience};
 use openssl::rsa::Rsa;
 use sea_orm::IntoActiveModel;
@@ -10,7 +10,7 @@ pub async fn faker(db: &sea_orm::DatabaseConnection, domain: String, count: u64)
 	let test_user = super::user::Model {
 		id: format!("{domain}/users/test"),
 		name: Some("μpub".into()),
-		domain: crate::activitypub::domain(&domain),
+		domain: crate::routes::activitypub::domain(&domain),
 		preferred_username: "test".to_string(),
 		summary: Some("hello world! i'm manually generated but served dynamically from db! check progress at https://git.alemi.dev/upub.git".to_string()),
 		following: None,

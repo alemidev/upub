@@ -5,17 +5,21 @@ use sea_orm::{ColumnTrait, Condition, DatabaseConnection, EntityTrait, Order, Qu
 use tokio::{sync::broadcast, task::JoinHandle};
 
 use apb::{ActivityMut, Node};
-use crate::{activitypub::{activity::ap_activity, object::ap_object}, errors::UpubError, model, server::Context, VERSION};
+use crate::{routes::activitypub::{activity::ap_activity, object::ap_object}, errors::UpubError, model, server::Context, VERSION};
 
 pub struct Dispatcher {
 	waker: broadcast::Sender<()>,
 }
 
-impl Dispatcher {
-	pub fn new() -> Self {
+impl Default for Dispatcher {
+	fn default() -> Self {
 		let (waker, _) = broadcast::channel(1);
 		Dispatcher { waker }
 	}
+}
+
+impl Dispatcher {
+	pub fn new() -> Self { Dispatcher::default() }
 
 	pub fn spawn(&self, db: DatabaseConnection, domain: String, poll_interval: u64) -> JoinHandle<()> {
 		let waker = self.waker.subscribe();

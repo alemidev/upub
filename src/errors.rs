@@ -12,6 +12,9 @@ pub enum UpubError {
 	#[error("openssl error: {0}")]
 	OpenSSL(#[from] openssl::error::ErrorStack),
 
+	#[error("invalid UTF8 in key: {0}")]
+	OpenSSLParse(#[from] std::str::Utf8Error),
+
 	#[error("fetch error: {0}")]
 	Reqwest(#[from] reqwest::Error),
 }
@@ -23,6 +26,22 @@ impl UpubError {
 
 	pub fn unprocessable() -> Self {
 		Self::Status(axum::http::StatusCode::UNPROCESSABLE_ENTITY)
+	}
+
+	pub fn not_found() -> Self {
+		Self::Status(axum::http::StatusCode::NOT_FOUND)
+	}
+
+	pub fn forbidden() -> Self {
+		Self::Status(axum::http::StatusCode::FORBIDDEN)
+	}
+
+	pub fn not_modified() -> Self {
+		Self::Status(axum::http::StatusCode::NOT_MODIFIED)
+	}
+
+	pub fn internal_server_error() -> Self {
+		Self::Status(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
 	}
 }
 

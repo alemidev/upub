@@ -1,6 +1,6 @@
 use axum::{routing::{get, post}, Router};
 use sea_orm::DatabaseConnection;
-use crate::activitypub as ap;
+use crate::routes::activitypub as ap;
 
 pub async fn serve(db: DatabaseConnection, domain: String) {
 	// build our application with a single route
