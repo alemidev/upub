@@ -5,7 +5,7 @@
 
 μpub is currently being developed and can do some basic things, like posting notes, follows and likes
 
-all interactions must happen with ActivityPub's client-server methods (basically POST to your inbox your activities)
+all interactions must happen with ActivityPub's client-server methods (basically POST your activities to your outbox)
 
 a test instance is _usually_ available at [feditest.alemi.dev](https://feditest.alemi.dev)
 
