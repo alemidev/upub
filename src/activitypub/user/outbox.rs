@@ -79,10 +79,10 @@ pub async fn post(
 				Some(BaseType::Link(_)) => Err(StatusCode::UNPROCESSABLE_ENTITY.into()),
 
 				Some(BaseType::Object(ObjectType::Note)) =>
-					Ok(CreationResult(ctx.post_note(uid, activity).await?)),
+					Ok(CreationResult(ctx.create_note(uid, activity).await?)),
 
 				Some(BaseType::Object(ObjectType::Activity(ActivityType::Create))) =>
-					Ok(CreationResult(ctx.post_activity(uid, activity).await?)),
+					Ok(CreationResult(ctx.create(uid, activity).await?)),
 
 				Some(BaseType::Object(ObjectType::Activity(ActivityType::Like))) =>
 					Ok(CreationResult(ctx.like(uid, activity).await?)),

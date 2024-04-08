@@ -132,11 +132,23 @@ pub async fn auth(State(ctx): State<Context>, Json(login): Json<LoginForm>) -> R
 
 #[axum::async_trait]
 pub trait APOutbox {
-	async fn post_note(&self, uid: String, object: serde_json::Value) -> crate::Result<String>;
-	async fn post_activity(&self, uid: String, activity: serde_json::Value) -> crate::Result<String>;
+	async fn create_note(&self, uid: String, object: serde_json::Value) -> crate::Result<String>;
+	async fn create(&self, uid: String, activity: serde_json::Value) -> crate::Result<String>;
 	async fn like(&self, uid: String, activity: serde_json::Value) -> crate::Result<String>;
 	async fn follow(&self, uid: String, activity: serde_json::Value) -> crate::Result<String>;
 	async fn accept(&self, uid: String, activity: serde_json::Value) -> crate::Result<String>;
 	async fn reject(&self, _uid: String, _activity: serde_json::Value) -> crate::Result<String>;
 	async fn undo(&self, uid: String, activity: serde_json::Value) -> crate::Result<String>;
+}
+
+#[axum::async_trait]
+pub trait APInbox {
+	async fn create(&self, activity: serde_json::Value) -> crate::Result<()>;
+	async fn like(&self, activity: serde_json::Value) -> crate::Result<()>;
+	async fn follow(&self, activity: serde_json::Value) -> crate::Result<()>;
+	async fn accept(&self, activity: serde_json::Value) -> crate::Result<()>;
+	async fn reject(&self, activity: serde_json::Value) -> crate::Result<()>;
+	async fn undo(&self, activity: serde_json::Value) -> crate::Result<()>;
+	async fn delete(&self, activity: serde_json::Value) -> crate::Result<()>;
+	async fn update(&self, activity: serde_json::Value) -> crate::Result<()>;
 }

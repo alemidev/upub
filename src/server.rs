@@ -2,10 +2,10 @@ use std::{str::Utf8Error, sync::Arc};
 
 use openssl::rsa::Rsa;
 use reqwest::StatusCode;
-use sea_orm::{ColumnTrait, Condition, DatabaseConnection, DbErr, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect, SelectColumns, Set};
+use sea_orm::{sea_query::Expr, ColumnTrait, Condition, DatabaseConnection, DbErr, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect, SelectColumns, Set};
 
-use crate::{activitypub::{jsonld::LD, APOutbox, Addressed, CreationResult, PUBLIC_TARGET}, dispatcher::Dispatcher, errors::UpubError, fetcher::Fetcher, model};
-use apb::{Activity, ActivityMut, BaseMut, CollectionMut, CollectionPageMut, CollectionType, Node, ObjectMut};
+use crate::{activitypub::{jsonld::LD, APInbox, APOutbox, Addressed, PUBLIC_TARGET}, dispatcher::Dispatcher, errors::{LoggableError, UpubError}, fetcher::Fetcher, model};
+use apb::{Activity, ActivityMut, Base, BaseMut, CollectionMut, CollectionPageMut, CollectionType, Node, Object, ObjectMut};
 
 #[derive(Clone)]
 pub struct Context(Arc<ContextInner>);
@@ -240,7 +240,7 @@ impl Context {
 
 #[axum::async_trait]
 impl APOutbox for Context {
-	async fn post_note(&self, uid: String, object: serde_json::Value) -> crate::Result<String> {
+	async fn create_note(&self, uid: String, object: serde_json::Value) -> crate::Result<String> {
 		let oid = self.oid(uuid::Uuid::new_v4().to_string());
 		let aid = self.aid(uuid::Uuid::new_v4().to_string());
 		let activity_targets = object.addressed();
@@ -273,7 +273,7 @@ impl APOutbox for Context {
 		Ok(aid)
 	}
 
-	async fn post_activity(&self, uid: String, activity: serde_json::Value) -> crate::Result<String> {
+	async fn create(&self, uid: String, activity: serde_json::Value) -> crate::Result<String> {
 		let Some(object) = activity.object().extract() else {
 			return Err(UpubError::bad_request());
 		};
@@ -448,5 +448,161 @@ impl APOutbox for Context {
 		self.dispatch(&uid, activity_targets, &aid, None).await?;
 
 		Ok(aid)
+	}
+}
+
+#[axum::async_trait]
+impl APInbox for Context {
+	async fn create(&self, activity: serde_json::Value) -> crate::Result<()> {
+		let activity_model = model::activity::Model::new(&activity)?;
+		let activity_targets = activity.addressed();
+		let Some(object_node) = activity.object().extract() else {
+			// TODO we could process non-embedded activities or arrays but im lazy rn
+			tracing::error!("refusing to process activity without embedded object: {}", serde_json::to_string_pretty(&activity).unwrap());
+			return Err(StatusCode::UNPROCESSABLE_ENTITY.into());
+		};
+		let object_model = model::object::Model::new(&object_node)?;
+		let aid = activity_model.id.clone();
+		let oid = object_model.id.clone();
+		model::object::Entity::insert(object_model.into_active_model()).exec(self.db()).await?;
+		model::activity::Entity::insert(activity_model.into_active_model()).exec(self.db()).await?;
+		self.address_to(&aid, Some(&oid), &activity_targets).await?;
+		tracing::info!("{} posted {}", aid, oid);
+		Ok(())
+	}
+
+	async fn like(&self, activity: serde_json::Value) -> crate::Result<()> {
+		let aid = activity.actor().id().ok_or(StatusCode::BAD_REQUEST)?;
+		let oid = activity.object().id().ok_or(StatusCode::BAD_REQUEST)?;
+		let like = model::like::ActiveModel {
+			id: sea_orm::ActiveValue::NotSet,
+			actor: sea_orm::Set(aid.clone()),
+			likes: sea_orm::Set(oid.clone()),
+			date: sea_orm::Set(chrono::Utc::now()),
+		};
+		match model::like::Entity::insert(like).exec(self.db()).await {
+			Err(sea_orm::DbErr::RecordNotInserted) => Err(StatusCode::NOT_MODIFIED.into()),
+			Err(sea_orm::DbErr::Exec(_)) => Err(StatusCode::NOT_MODIFIED.into()), // bad fix for sqlite
+			Err(e) => {
+				tracing::error!("unexpected error procesing like from {aid} to {oid}: {e}");
+				Err(StatusCode::INTERNAL_SERVER_ERROR.into())
+			}
+			Ok(_) => {
+				model::object::Entity::update_many()
+					.col_expr(model::object::Column::Likes, Expr::col(model::object::Column::Likes).add(1))
+					.filter(model::object::Column::Id.eq(oid.clone()))
+					.exec(self.db())
+					.await?;
+				tracing::info!("{} liked {}", aid, oid);
+				Ok(())
+			},
+		}
+	}
+
+	async fn follow(&self, activity: serde_json::Value) -> crate::Result<()> {
+		let activity_targets = activity.addressed();
+		let activity_model = model::activity::Model::new(&activity)?;
+		let aid = activity_model.id.clone();
+		tracing::info!("{} wants to follow {}", activity_model.actor, activity_model.object.as_deref().unwrap_or("<no-one???>"));
+		model::activity::Entity::insert(activity_model.into_active_model())
+			.exec(self.db()).await?;
+		self.address_to(&aid, None, &activity_targets).await?;
+		Ok(())
+	}
+
+	async fn accept(&self, activity: serde_json::Value) -> crate::Result<()> {
+		// TODO what about TentativeAccept
+		let activity_model = model::activity::Model::new(&activity)?;
+		let Some(follow_request_id) = activity_model.object else {
+			return Err(StatusCode::BAD_REQUEST.into());
+		};
+		let Some(follow_activity) = model::activity::Entity::find_by_id(follow_request_id)
+			.one(self.db()).await?
+		else {
+			return Err(StatusCode::NOT_FOUND.into());
+		};
+		if follow_activity.object.unwrap_or("".into()) != activity_model.actor {
+			return Err(StatusCode::FORBIDDEN.into());
+		}
+
+		tracing::info!("{} accepted follow request by {}", activity_model.actor, follow_activity.actor);
+
+		model::relation::Entity::insert(
+			model::relation::ActiveModel {
+				follower: Set(follow_activity.actor),
+				following: Set(activity_model.actor),
+				..Default::default()
+			}
+		).exec(self.db()).await?;
+
+		self.address_to(&activity_model.id, None, &activity.addressed()).await?;
+		Ok(())
+	}
+
+	async fn reject(&self, activity: serde_json::Value) -> crate::Result<()> {
+		// TODO what about TentativeReject?
+		let activity_model = model::activity::Model::new(&activity)?;
+		let Some(follow_request_id) = activity_model.object else {
+			return Err(StatusCode::BAD_REQUEST.into());
+		};
+		let Some(follow_activity) = model::activity::Entity::find_by_id(follow_request_id)
+			.one(self.db()).await?
+		else {
+			return Err(StatusCode::NOT_FOUND.into());
+		};
+		if follow_activity.object.unwrap_or("".into()) != activity_model.actor {
+			return Err(StatusCode::FORBIDDEN.into());
+		}
+		tracing::info!("{} rejected follow request by {}", activity_model.actor, follow_activity.actor);
+		self.address_to(&activity_model.id, None, &activity.addressed()).await?;
+		Ok(())
+	}
+
+	async fn delete(&self, activity: serde_json::Value) -> crate::Result<()> {
+		// TODO verify the signature before just deleting lmao
+		let oid = activity.object().id().ok_or(StatusCode::BAD_REQUEST)?;
+		// TODO maybe we should keep the tombstone?
+		model::user::Entity::delete_by_id(&oid).exec(self.db()).await.info_failed("failed deleting from users");
+		model::activity::Entity::delete_by_id(&oid).exec(self.db()).await.info_failed("failed deleting from activities");
+		model::object::Entity::delete_by_id(&oid).exec(self.db()).await.info_failed("failed deleting from objects");
+		Ok(())
+	}
+
+	async fn update(&self, activity: serde_json::Value) -> crate::Result<()> {
+		let activity_model = model::activity::Model::new(&activity)?;
+		let activity_targets = activity.addressed();
+		let Some(object_node) = activity.object().extract() else {
+			// TODO we could process non-embedded activities or arrays but im lazy rn
+			tracing::error!("refusing to process activity without embedded object: {}", serde_json::to_string_pretty(&activity).unwrap());
+			return Err(UpubError::unprocessable());
+		};
+		let aid = activity_model.id.clone();
+		let Some(oid) = object_node.id().map(|x| x.to_string()) else {
+			return Err(UpubError::bad_request());
+		};
+		model::activity::Entity::insert(activity_model.into_active_model()).exec(self.db()).await?;
+		match object_node.object_type() {
+			Some(apb::ObjectType::Actor(_)) => {
+				// TODO oof here is an example of the weakness of this model, we have to go all the way
+				// back up to serde_json::Value because impl Object != impl Actor
+				let actor_model = model::user::Model::new(&object_node)?;
+				model::user::Entity::update(actor_model.into_active_model())
+					.exec(self.db()).await?;
+			},
+			Some(apb::ObjectType::Note) => {
+				let object_model = model::object::Model::new(&object_node)?;
+				model::object::Entity::update(object_model.into_active_model())
+					.exec(self.db()).await?;
+			},
+			Some(t) => tracing::warn!("no side effects implemented for update type {t:?}"),
+			None => tracing::warn!("empty type on embedded updated object"),
+		}
+		self.address_to(&aid, Some(&oid), &activity_targets).await?;
+		tracing::info!("{} updated {}", aid, oid);
+		Ok(())
+	}
+
+	async fn undo(&self, _activity: serde_json::Value) -> crate::Result<()> {
+		todo!()
 	}
 }
