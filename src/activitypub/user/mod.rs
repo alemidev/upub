@@ -41,7 +41,7 @@ pub fn ap_user(user: model::user::Model) -> serde_json::Value {
 				.set_public_key_pem(&user.public_key)
 		))
 		.set_discoverable(Some(true))
-		.set_endpoints(None)
+		.set_endpoints(Node::Empty)
 }
 
 pub async fn view(State(ctx) : State<Context>, Path(id): Path<String>) -> Result<JsonLD<serde_json::Value>, StatusCode> {

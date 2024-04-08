@@ -1,3 +1,5 @@
+use reqwest::StatusCode;
+
 #[derive(Debug, thiserror::Error)]
 pub enum UpubError {
 	#[error("database error: {0}")]
@@ -17,8 +19,8 @@ pub enum UpubError {
 }
 
 impl UpubError {
-	pub fn code(code: axum::http::StatusCode) -> Self {
-		UpubError::Status(code)
+	pub fn bad_request() -> Self {
+		Self::Status(StatusCode::BAD_REQUEST)
 	}
 }
 

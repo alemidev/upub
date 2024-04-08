@@ -1,8 +1,8 @@
 use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
-use sea_orm::{EntityTrait, IntoActiveModel, Order, QueryOrder, QuerySelect, Set};
+use sea_orm::{EntityTrait, Order, QueryOrder, QuerySelect};
 
-use apb::{AcceptType, Activity, ActivityMut, ActivityType, ObjectMut, Base, BaseMut, BaseType, Node, ObjectType};
-use crate::{activitypub::{jsonld::LD, Addressed, CreationResult, JsonLD, Pagination}, auth::{AuthIdentity, Identity}, errors::UpubError, model, server::Context, url};
+use apb::{AcceptType, ActivityMut, ActivityType, Base, BaseType, Node, ObjectType, RejectType};
+use crate::{activitypub::{jsonld::LD, APOutbox, CreationResult, JsonLD, Pagination}, auth::{AuthIdentity, Identity}, errors::UpubError, model, server::Context, url};
 
 pub async fn get(
 	State(ctx): State<Context>,
@@ -75,219 +75,29 @@ pub async fn post(
 		Identity::Local(uid) => if ctx.uid(id.clone()) == uid {
 			match activity.base_type() {
 				None => Err(StatusCode::BAD_REQUEST.into()),
+
 				Some(BaseType::Link(_)) => Err(StatusCode::UNPROCESSABLE_ENTITY.into()),
 
-				Some(BaseType::Object(ObjectType::Note)) => {
-					let oid = ctx.oid(uuid::Uuid::new_v4().to_string());
-					let aid = ctx.aid(uuid::Uuid::new_v4().to_string());
-					let activity_targets = activity.addressed();
-					let object_model = model::object::Model::new(
-						&activity
-							.set_id(Some(&oid))
-							.set_attributed_to(Node::link(uid.clone()))
-							.set_published(Some(chrono::Utc::now()))
-					)?;
-					let activity_model = model::activity::Model {
-						id: aid.clone(),
-						activity_type: ActivityType::Create,
-						actor: uid.clone(),
-						object: Some(oid.clone()),
-						target: None,
-						cc: object_model.cc.clone(),
-						bcc: object_model.bcc.clone(),
-						to: object_model.to.clone(),
-						bto: object_model.bto.clone(),
-						published: object_model.published,
-					};
+				Some(BaseType::Object(ObjectType::Note)) =>
+					Ok(CreationResult(ctx.post_note(uid, activity).await?)),
 
-					model::object::Entity::insert(object_model.into_active_model())
-						.exec(ctx.db()).await?;
-					model::activity::Entity::insert(activity_model.into_active_model())
-						.exec(ctx.db()).await?;
+				Some(BaseType::Object(ObjectType::Activity(ActivityType::Create))) =>
+					Ok(CreationResult(ctx.post_activity(uid, activity).await?)),
 
-					let addressed = ctx.expand_addressing(&uid, activity_targets).await?;
-					ctx.address_to(&aid, Some(&oid), &addressed).await?;
-					ctx.deliver_to(&aid, &uid, &addressed).await?;
+				Some(BaseType::Object(ObjectType::Activity(ActivityType::Like))) =>
+					Ok(CreationResult(ctx.like(uid, activity).await?)),
 
-					Ok(CreationResult(aid))
-				},
+				Some(BaseType::Object(ObjectType::Activity(ActivityType::Follow))) =>
+					Ok(CreationResult(ctx.follow(uid, activity).await?)),
 
-				Some(BaseType::Object(ObjectType::Activity(ActivityType::Create))) => {
-					let Some(object) = activity.object().extract() else {
-						return Err(StatusCode::BAD_REQUEST.into());
-					};
-					let oid = ctx.oid(uuid::Uuid::new_v4().to_string());
-					let aid = ctx.aid(uuid::Uuid::new_v4().to_string());
-					let activity_targets = activity.addressed();
-					let mut object_model = model::object::Model::new(
-						&object
-							.set_id(Some(&oid))
-							.set_attributed_to(Node::link(uid.clone()))
-							.set_published(Some(chrono::Utc::now()))
-					)?;
-					let mut activity_model = model::activity::Model::new(
-						&activity
-							.set_id(Some(&aid))
-							.set_actor(Node::link(uid.clone()))
-							.set_published(Some(chrono::Utc::now()))
-					)?;
-					object_model.to = activity_model.to.clone();
-					object_model.bto = activity_model.bto.clone();
-					object_model.cc = activity_model.cc.clone();
-					object_model.bcc = activity_model.bcc.clone();
-					activity_model.object = Some(oid.clone());
+				Some(BaseType::Object(ObjectType::Activity(ActivityType::Undo))) =>
+					Ok(CreationResult(ctx.undo(uid, activity).await?)),
 
-					model::object::Entity::insert(object_model.into_active_model())
-						.exec(ctx.db()).await?;
-					model::activity::Entity::insert(activity_model.into_active_model())
-						.exec(ctx.db()).await?;
+				Some(BaseType::Object(ObjectType::Activity(ActivityType::Accept(AcceptType::Accept)))) =>
+					Ok(CreationResult(ctx.accept(uid, activity).await?)),
 
-					let addressed = ctx.expand_addressing(&uid, activity_targets).await?;
-					ctx.address_to(&aid, Some(&oid), &addressed).await?;
-					ctx.deliver_to(&aid, &uid, &addressed).await?;
-					Ok(CreationResult(aid))
-				},
-
-				Some(BaseType::Object(ObjectType::Activity(ActivityType::Like))) => {
-					let aid = ctx.aid(uuid::Uuid::new_v4().to_string());
-					let activity_targets = activity.addressed();
-					let Some(oid) = activity.object().id() else {
-						return Err(StatusCode::BAD_REQUEST.into());
-					};
-					let activity_model = model::activity::Model::new(
-						&activity
-							.set_id(Some(&aid))
-							.set_published(Some(chrono::Utc::now()))
-							.set_actor(Node::link(uid.clone()))
-					)?;
-
-					let like_model = model::like::ActiveModel {
-						actor: Set(uid.clone()),
-						likes: Set(oid),
-						date: Set(chrono::Utc::now()),
-						..Default::default()
-					};
-					model::like::Entity::insert(like_model).exec(ctx.db()).await?;
-					model::activity::Entity::insert(activity_model.into_active_model())
-						.exec(ctx.db()).await?;
-
-					let addressed = ctx.expand_addressing(&uid, activity_targets).await?;
-					ctx.address_to(&aid, None, &addressed).await?;
-					ctx.deliver_to(&aid, &uid, &addressed).await?;
-					Ok(CreationResult(aid))
-				},
-
-				Some(BaseType::Object(ObjectType::Activity(ActivityType::Follow))) => {
-					let aid = ctx.aid(uuid::Uuid::new_v4().to_string());
-					let activity_targets = activity.addressed();
-					if activity.object().id().is_none() {
-						return Err(StatusCode::BAD_REQUEST.into());
-					}
-
-					let activity_model = model::activity::Model::new(
-						&activity
-							.set_id(Some(&aid))
-							.set_actor(Node::link(uid.clone()))
-							.set_published(Some(chrono::Utc::now()))
-					)?;
-					model::activity::Entity::insert(activity_model.into_active_model())
-						.exec(ctx.db()).await?;
-
-					let addressed = ctx.expand_addressing(&uid, activity_targets).await?;
-					ctx.address_to(&aid, None, &addressed).await?;
-					ctx.deliver_to(&aid, &uid, &addressed).await?;
-					Ok(CreationResult(aid))
-				},
-
-				Some(BaseType::Object(ObjectType::Activity(ActivityType::Undo))) => {
-					let aid = ctx.aid(uuid::Uuid::new_v4().to_string());
-					let activity_targets = activity.addressed();
-					{
-						let Some(old_aid) = activity.object().id() else {
-							return Err(StatusCode::BAD_REQUEST.into());
-						};
-						let Some(old_activity) = model::activity::Entity::find_by_id(old_aid)
-							.one(ctx.db()).await?
-						else {
-							return Err(StatusCode::NOT_FOUND.into());
-						};
-						if old_activity.actor != uid {
-							return Err(StatusCode::FORBIDDEN.into());
-						}
-						match old_activity.activity_type {
-							ActivityType::Like => {
-								model::like::Entity::delete(model::like::ActiveModel {
-									actor: Set(old_activity.actor), likes: Set(old_activity.object.unwrap_or("".into())),
-									..Default::default()
-								}).exec(ctx.db()).await?;
-							},
-							ActivityType::Follow => {
-								model::relation::Entity::delete(model::relation::ActiveModel {
-									follower: Set(old_activity.actor), following: Set(old_activity.object.unwrap_or("".into())),
-									..Default::default()
-								}).exec(ctx.db()).await?;
-							},
-							t => tracing::warn!("extra side effects for activity {t:?} not implemented"),
-						}
-					}
-					let activity_model = model::activity::Model::new(
-						&activity
-							.set_id(Some(&aid))
-							.set_actor(Node::link(uid.clone()))
-							.set_published(Some(chrono::Utc::now()))
-					)?;
-					model::activity::Entity::insert(activity_model.into_active_model()).exec(ctx.db()).await?;
-
-					let addressed = ctx.expand_addressing(&uid, activity_targets).await?;
-					ctx.address_to(&aid, None, &addressed).await?;
-					ctx.deliver_to(&aid, &uid, &addressed).await?;
-					Ok(CreationResult(aid))
-				},
-
-				Some(BaseType::Object(ObjectType::Activity(ActivityType::Accept(AcceptType::Accept)))) => {
-					let aid = ctx.aid(uuid::Uuid::new_v4().to_string());
-					let activity_targets = activity.addressed();
-					if activity.object().id().is_none() {
-						return Err(StatusCode::BAD_REQUEST.into());
-					}
-					let Some(accepted_id) = activity.object().id() else {
-						return Err(StatusCode::BAD_REQUEST.into());
-					};
-					let Some(accepted_activity) = model::activity::Entity::find_by_id(accepted_id)
-						.one(ctx.db()).await?
-					else {
-						return Err(StatusCode::NOT_FOUND.into());
-					};
-
-					match accepted_activity.activity_type {
-						ActivityType::Follow => {
-							model::relation::Entity::insert(
-								model::relation::ActiveModel {
-									follower: Set(accepted_activity.actor), following: Set(uid.clone()),
-									..Default::default()
-								}
-							).exec(ctx.db()).await?;
-						},
-						t => tracing::warn!("no side effects implemented for accepting {t:?}"),
-					}
-
-					let activity_model = model::activity::Model::new(
-						&activity
-							.set_id(Some(&aid))
-							.set_actor(Node::link(uid.clone()))
-							.set_published(Some(chrono::Utc::now()))
-					)?;
-					model::activity::Entity::insert(activity_model.into_active_model())
-						.exec(ctx.db()).await?;
-
-					let addressed = ctx.expand_addressing(&uid, activity_targets).await?;
-					ctx.address_to(&aid, None, &addressed).await?;
-					ctx.deliver_to(&aid, &uid, &addressed).await?;
-					Ok(CreationResult(aid))
-				},
-
-				// Some(BaseType::Object(ObjectType::Activity(ActivityType::Reject(RejectType::Reject)))) => {
-				// },
+				Some(BaseType::Object(ObjectType::Activity(ActivityType::Reject(RejectType::Reject)))) =>
+					Ok(CreationResult(ctx.reject(uid, activity).await?)),
 
 				Some(_) => Err(StatusCode::NOT_IMPLEMENTED.into()),
 			}

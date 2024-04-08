@@ -129,3 +129,14 @@ pub async fn auth(State(ctx): State<Context>, Json(login): Json<LoginForm>) -> R
 		}
 	}
 }
+
+#[axum::async_trait]
+pub trait APOutbox {
+	async fn post_note(&self, uid: String, object: serde_json::Value) -> crate::Result<String>;
+	async fn post_activity(&self, uid: String, activity: serde_json::Value) -> crate::Result<String>;
+	async fn like(&self, uid: String, activity: serde_json::Value) -> crate::Result<String>;
+	async fn follow(&self, uid: String, activity: serde_json::Value) -> crate::Result<String>;
+	async fn accept(&self, uid: String, activity: serde_json::Value) -> crate::Result<String>;
+	async fn reject(&self, _uid: String, _activity: serde_json::Value) -> crate::Result<String>;
+	async fn undo(&self, uid: String, activity: serde_json::Value) -> crate::Result<String>;
+}
