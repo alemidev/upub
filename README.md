@@ -19,11 +19,10 @@ a test instance is _usually_ available at [feditest.alemi.dev](https://feditest.
  - [x] process barebones outbox
  - [x] http signatures
  - [ ] privacy, targets, scopes
- - [ ] more optimized database schema
- - [ ] hashtags, discovery
  - [ ] client api (mastodon/pleroma)
- - [ ] full activitystreams/activitypub support
+ - [ ] hashtags, discovery
  - [ ] a custom frontend maybe?
+ - [ ] more optimized database schema
 
 ## what about the name?
 μpub, sometimes stylyzed `upub`, is pronounced `mu-pub` (the `μ` stands for [micro](https://en.wikipedia.org/wiki/International_System_of_Units#Prefixes))
