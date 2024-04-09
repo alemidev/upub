@@ -9,7 +9,7 @@ pub mod router;
 pub mod jsonld;
 pub use jsonld::JsonLD;
 
-use axum::{extract::State, http::StatusCode, response::IntoResponse, Json};
+use axum::{extract::State, http::StatusCode, response::IntoResponse, routing::{get, post}, Json, Router};
 use rand::Rng;
 use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter};
 
@@ -17,6 +17,41 @@ use apb::{PublicKeyMut, ActorMut, ActorType, Link, Object, ObjectMut, BaseMut, N
 use crate::{model, server::Context, url};
 
 use self::jsonld::LD;
+
+pub fn router() -> Router<crate::server::Context> {
+	use crate::routes::activitypub as ap; // TODO use self ?
+
+	Router::new()
+		// core server inbox/outbox, maybe for feeds? TODO do we need these?
+		.route("/", get(ap::view))
+		// TODO shared inboxes and instance stream will come later, just use users *boxes for now
+		.route("/inbox", get(ap::inbox::get))
+		// .route("/inbox", post(ap::inbox::post))
+		// .route("/outbox", get(ap::outbox::get))
+		// .route("/outbox", get(ap::outbox::post))
+		// AUTH routes
+		.route("/auth", post(ap::auth))
+		// .well-known and discovery
+		.route("/.well-known/webfinger", get(ap::well_known::webfinger))
+		.route("/.well-known/host-meta", get(ap::well_known::host_meta))
+		.route("/.well-known/nodeinfo", get(ap::well_known::nodeinfo_discovery))
+		.route("/nodeinfo/:version", get(ap::well_known::nodeinfo))
+		// actor routes
+		.route("/users/:id", get(ap::user::view))
+		.route("/users/:id/inbox", post(ap::user::inbox::post))
+		.route("/users/:id/inbox", get(ap::user::inbox::get))
+		.route("/users/:id/inbox/page", get(ap::user::inbox::page))
+		.route("/users/:id/outbox", post(ap::user::outbox::post))
+		.route("/users/:id/outbox", get(ap::user::outbox::get))
+		.route("/users/:id/outbox/page", get(ap::user::outbox::page))
+		.route("/users/:id/followers", get(ap::user::following::get::<false>))
+		.route("/users/:id/followers/page", get(ap::user::following::page::<false>))
+		.route("/users/:id/following", get(ap::user::following::get::<true>))
+		.route("/users/:id/following/page", get(ap::user::following::page::<true>))
+		// specific object routes
+		.route("/activities/:id", get(ap::activity::view))
+		.route("/objects/:id", get(ap::object::view))
+}
 
 pub trait Addressed : Object {
 	fn addressed(&self) -> Vec<String>;

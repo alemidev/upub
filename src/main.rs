@@ -84,9 +84,6 @@ async fn main() {
 		.await.expect("error connecting to db");
 
 	match args.command {
-		CliCommand::Serve => routes::activitypub::router::serve(db, args.domain)
-			.await,
-
 		#[cfg(feature = "migrations")]
 		CliCommand::Migrate => migrations::Migrator::up(&db, None)
 			.await.expect("error applying migrations"),
@@ -97,6 +94,21 @@ async fn main() {
 
 		CliCommand::Fetch { uri, save } => fetch(&db, &uri, save)
 			.await.expect("error fetching object"),
+
+		CliCommand::Serve => {
+			let ctx = server::Context::new(db, args.domain)
+				.await.expect("failed creating server context");
+
+			let router = routes::activitypub::router().with_state(ctx);
+
+			// run our app with hyper, listening locally on port 3000
+			let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
+				.await.expect("could not bind tcp socket");
+
+			axum::serve(listener, router)
+				.await
+				.expect("failed serving application")
+		},
 	}
 }
 

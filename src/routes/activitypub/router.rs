@@ -2,7 +2,7 @@ use axum::{routing::{get, post}, Router};
 use sea_orm::DatabaseConnection;
 use crate::routes::activitypub as ap;
 
-pub async fn serve(db: DatabaseConnection, domain: String) {
+pub async fn serve(db: DatabaseConnection, domain: String) -> std::io::Result<()> {
 	// build our application with a single route
 	let app = Router::new()
 		// core server inbox/outbox, maybe for feeds? TODO do we need these?
@@ -39,9 +39,8 @@ pub async fn serve(db: DatabaseConnection, domain: String) {
 		);
 
 	// run our app with hyper, listening locally on port 3000
-	let listener = tokio::net::TcpListener::bind("127.0.0.1:3000").await.unwrap();
+	let listener = tokio::net::TcpListener::bind("127.0.0.1:3000").await?;
 
 	axum::serve(listener, app)
 		.await
-		.unwrap();
 }
