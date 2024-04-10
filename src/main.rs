@@ -99,7 +99,13 @@ async fn main() {
 			let ctx = server::Context::new(db, args.domain)
 				.await.expect("failed creating server context");
 
-			let router = routes::activitypub::router().with_state(ctx);
+			use routes::activitypub::ActivityPubRouter;
+			use routes::mastodon::MastodonRouter;
+
+			let router = axum::Router::new()
+				.ap_routes()
+				.mastodon_routes() // no-op if mastodon feature is disabled
+				.with_state(ctx);
 
 			// run our app with hyper, listening locally on port 3000
 			let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
@@ -111,7 +117,6 @@ async fn main() {
 		},
 	}
 }
-
 
 
 async fn fetch(db: &sea_orm::DatabaseConnection, uri: &str, save: bool) -> reqwest::Result<()> {

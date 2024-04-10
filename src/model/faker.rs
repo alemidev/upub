@@ -1,4 +1,4 @@
-use crate::{routes::activitypub::PUBLIC_TARGET, model::{config, credential}};
+use crate::model::{config, credential};
 use super::{activity, object, user, Audience};
 use openssl::rsa::Rsa;
 use sea_orm::IntoActiveModel;
@@ -10,7 +10,7 @@ pub async fn faker(db: &sea_orm::DatabaseConnection, domain: String, count: u64)
 	let test_user = super::user::Model {
 		id: format!("{domain}/users/test"),
 		name: Some("μpub".into()),
-		domain: crate::routes::activitypub::domain(&domain),
+		domain: clean_domain(&domain),
 		preferred_username: "test".to_string(),
 		summary: Some("hello world! i'm manually generated but served dynamically from db! check progress at https://git.alemi.dev/upub.git".to_string()),
 		following: None,
@@ -64,7 +64,7 @@ pub async fn faker(db: &sea_orm::DatabaseConnection, domain: String, count: u64)
 			comments: Set(0),
 			likes: Set(0),
 			shares: Set(0),
-			to: Set(Audience(vec![PUBLIC_TARGET.to_string()])),
+			to: Set(Audience(vec![apb::target::PUBLIC.to_string()])),
 			bto: Set(Audience::default()),
 			cc: Set(Audience(vec![])),
 			bcc: Set(Audience::default()),
@@ -77,7 +77,7 @@ pub async fn faker(db: &sea_orm::DatabaseConnection, domain: String, count: u64)
 			object: Set(Some(format!("{domain}/objects/{oid}"))),
 			target: Set(None),
 			published: Set(chrono::Utc::now() - std::time::Duration::from_secs(60*i)),
-			to: Set(Audience(vec![PUBLIC_TARGET.to_string()])),
+			to: Set(Audience(vec![apb::target::PUBLIC.to_string()])),
 			bto: Set(Audience::default()),
 			cc: Set(Audience(vec![])),
 			bcc: Set(Audience::default()),
@@ -85,4 +85,11 @@ pub async fn faker(db: &sea_orm::DatabaseConnection, domain: String, count: u64)
 	}
 
 	Ok(())
+}
+
+fn clean_domain(domain: &str) -> String {
+	domain
+		.replace("http://", "")
+		.replace("https://", "")
+		.replace('/', "")
 }

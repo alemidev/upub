@@ -1,13 +1,16 @@
-use apb::{Activity, Base, Object};
+use apb::{target::Addressed, Activity, Base, Object};
 use sea_orm::{sea_query::Expr, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, Set};
 
-use crate::{errors::{LoggableError, UpubError}, model, routes::activitypub::{APInbox, Addressed}};
+use crate::{errors::{LoggableError, UpubError}, model};
 
 use super::Context;
 
 
 #[axum::async_trait]
-impl APInbox for Context {
+impl apb::server::Inbox for Context {
+	type Error = UpubError;
+	type Activity = serde_json::Value;
+
 	async fn create(&self, activity: serde_json::Value) -> crate::Result<()> {
 		let activity_model = model::activity::Model::new(&activity)?;
 		let activity_targets = activity.addressed();

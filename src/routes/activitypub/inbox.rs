@@ -3,7 +3,7 @@ use sea_orm::{ColumnTrait, Condition, EntityTrait, Order, QueryFilter, QueryOrde
 
 use crate::{server::auth::{AuthIdentity, Identity}, errors::UpubError, model, server::Context, url};
 
-use super::{activity::ap_activity, jsonld::LD, JsonLD, Pagination, PUBLIC_TARGET};
+use super::{activity::ap_activity, jsonld::LD, JsonLD, Pagination};
 
 
 pub async fn get(
@@ -20,7 +20,7 @@ pub async fn page(
 	let limit = page.batch.unwrap_or(20).min(50);
 	let offset = page.offset.unwrap_or(0);
 	let mut condition = Condition::any()
-		.add(model::addressing::Column::Actor.eq(PUBLIC_TARGET));
+		.add(model::addressing::Column::Actor.eq(apb::target::PUBLIC));
 	if let Identity::Local(user) = auth {
 		condition = condition
 			.add(model::addressing::Column::Actor.eq(user));

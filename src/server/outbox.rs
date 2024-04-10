@@ -1,13 +1,17 @@
-use apb::{Activity, ActivityMut, BaseMut, Node, ObjectMut};
+use apb::{target::Addressed, Activity, ActivityMut, BaseMut, Node, ObjectMut};
 use sea_orm::{EntityTrait, IntoActiveModel, Set};
 
-use crate::{errors::UpubError, model, routes::activitypub::{APOutbox, Addressed}};
+use crate::{errors::UpubError, model};
 
 use super::Context;
 
 
 #[axum::async_trait]
-impl APOutbox for Context {
+impl apb::server::Outbox for Context {
+	type Error = UpubError;
+	type Object = serde_json::Value;
+	type Activity = serde_json::Value;
+
 	async fn create_note(&self, uid: String, object: serde_json::Value) -> crate::Result<String> {
 		let oid = self.oid(uuid::Uuid::new_v4().to_string());
 		let aid = self.aid(uuid::Uuid::new_v4().to_string());

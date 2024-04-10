@@ -4,7 +4,7 @@ use apb::{BaseMut, CollectionMut, CollectionPageMut};
 use openssl::rsa::Rsa;
 use sea_orm::{ColumnTrait, Condition, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect, SelectColumns, Set};
 
-use crate::{model, routes::activitypub::{jsonld::LD, PUBLIC_TARGET}};
+use crate::{model, routes::activitypub::jsonld::LD};
 
 use super::{dispatcher::Dispatcher, fetcher::Fetcher};
 
@@ -176,7 +176,7 @@ impl Context {
 			.iter()
 			.filter(|to| !to.is_empty())
 			.filter(|to| Context::server(to) != self.base())
-			.filter(|to| to != &PUBLIC_TARGET)
+			.filter(|to| to != &apb::target::PUBLIC)
 			.map(|to| model::delivery::ActiveModel {
 				id: sea_orm::ActiveValue::NotSet,
 				actor: Set(from.to_string()),

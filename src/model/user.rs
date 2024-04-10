@@ -1,7 +1,6 @@
 use sea_orm::entity::prelude::*;
 
 use apb::{Collection, Actor, PublicKey, ActorType};
-use crate::routes::activitypub;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "users")]
@@ -40,7 +39,7 @@ pub struct Model {
 impl Model {
 	pub fn new(object: &impl Actor) -> Result<Self, super::FieldError> {
 		let ap_id = object.id().ok_or(super::FieldError("id"))?.to_string();
-		let (domain, preferred_username) = activitypub::split_id(&ap_id);
+		let (domain, preferred_username) = split_user_id(&ap_id);
 		Ok(Model {
 			id: ap_id, preferred_username, domain,
 			actor_type: object.actor_type().ok_or(super::FieldError("type"))?,
@@ -121,3 +120,13 @@ impl Related<super::addressing::Entity> for Entity {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+fn split_user_id(id: &str) -> (String, String) {
+	let clean = id
+		.replace("http://", "")
+		.replace("https://", "");
+	let mut splits = clean.split('/');
+	let first = splits.next().unwrap_or("");
+	let last = splits.last().unwrap_or(first);
+	(first.to_string(), last.to_string())
+}
