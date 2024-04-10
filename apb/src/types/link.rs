@@ -5,7 +5,7 @@ crate::strenum! {
 	};
 }
 
-pub trait Link : super::Base {
+pub trait Link : crate::Base {
 	fn href(&self) -> &str;
 	fn rel(&self) -> Option<&str> { None }
 	fn link_media_type(&self) -> Option<&str> { None } // also in obj
@@ -16,7 +16,7 @@ pub trait Link : super::Base {
 	fn link_preview(&self) -> Option<&str> { None }    // also in obj
 }
 
-pub trait LinkMut : super::BaseMut {
+pub trait LinkMut : crate::BaseMut {
 	fn set_href(self, href: &str) -> Self;
 	fn set_rel(self, val: Option<&str>) -> Self;
 	fn set_link_media_type(self, val: Option<&str>) -> Self; // also in obj

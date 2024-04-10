@@ -1,6 +1,6 @@
 use crate::Node;
 
-use super::{Object, ObjectMut, super::key::PublicKey};
+use crate::{Object, ObjectMut, PublicKey};
 
 crate::strenum! {
 	pub enum ActorType {

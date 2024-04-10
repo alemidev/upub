@@ -1,7 +1,7 @@
 pub mod page;
 pub use page::CollectionPage;
 
-use crate::{Node, Object, object::ObjectMut};
+use crate::{Node, Object, ObjectMut};
 
 crate::strenum! {
 	pub enum CollectionType {

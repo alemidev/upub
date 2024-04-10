@@ -4,7 +4,7 @@ pub mod intransitive;
 pub mod offer;
 pub mod reject;
 
-use crate::{Node, object::{Object, ObjectMut}};
+use crate::{Node, Object, ObjectMut};
 use accept::AcceptType;
 use reject::RejectType;
 use offer::OfferType;

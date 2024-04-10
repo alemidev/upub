@@ -7,7 +7,7 @@ pub mod place;
 pub mod profile;
 pub mod relationship;
 
-use super::{Base, BaseMut, Link, Node};
+use crate::{Base, BaseMut, Link, Node};
 
 use actor::{Actor, ActorType};
 use document::{Document, DocumentType};
