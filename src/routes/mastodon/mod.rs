@@ -1,3 +1,5 @@
+pub mod accounts;
+
 use axum::{http::StatusCode, routing::{delete, get, patch, post}, Router};
 use crate::server::Context;
 
@@ -9,6 +11,7 @@ pub trait MastodonRouter {
 
 impl MastodonRouter for Router<Context> {
 	fn mastodon_routes(self) -> Self {
+		use crate::routes::mastodon as mas;
 		self.nest(
 			// TODO Oauth is just under /oauth
 			"/api/v1", Router::new()
@@ -18,7 +21,7 @@ impl MastodonRouter for Router<Context> {
 				.route("/accounts", post(todo))
 				.route("/accounts/verify_credentials", get(todo))
 				.route("/accounts/update_credentials", patch(todo))
-				.route("/accounts/:id", get(todo))
+				.route("/accounts/:id", get(mas::accounts::view))
 				.route("/accounts/:id/statuses", get(todo))
 				.route("/accounts/:id/followers", get(todo))
 				.route("/accounts/:id/following", get(todo))
