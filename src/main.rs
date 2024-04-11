@@ -2,6 +2,7 @@ pub mod server;
 pub mod model;
 pub mod routes;
 
+pub mod tools;
 pub mod errors;
 
 #[cfg(feature = "migrations")]

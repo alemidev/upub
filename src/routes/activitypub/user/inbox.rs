@@ -1,8 +1,8 @@
 use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
-use sea_orm::{ColumnTrait, Condition, EntityTrait, Order, QueryFilter, QueryOrder, QuerySelect};
+use sea_orm::{ColumnTrait, Condition, EntityTrait, JoinType, Order, QueryFilter, QueryOrder, QuerySelect, RelationTrait};
 
-use apb::{server::Inbox, ActivityType, Base, BaseType, ObjectType};
-use crate::{routes::activitypub::{activity::ap_activity, jsonld::LD, JsonLD, Pagination}, server::{Context, auth::{AuthIdentity, Identity}}, errors::UpubError, model, url};
+use apb::{server::Inbox, ActivityMut, ActivityType, Base, BaseType, ObjectType};
+use crate::{errors::UpubError, model, routes::activitypub::{activity::ap_activity, jsonld::LD, object::ap_object, JsonLD, Pagination}, server::{auth::{AuthIdentity, Identity}, Context}, tools::ActivityWithObject, url};
 
 pub async fn get(
 	State(ctx): State<Context>,
@@ -33,12 +33,20 @@ pub async fn page(
 		Identity::Local(user) => if uid == user {
 			let limit = page.batch.unwrap_or(20).min(50);
 			let offset = page.offset.unwrap_or(0);
-			match model::addressing::Entity::find()
+			let select = model::addressing::Entity::find()
 				.filter(Condition::all().add(model::addressing::Column::Actor.eq(uid)))
 				.order_by(model::addressing::Column::Published, Order::Asc)
-				.find_also_related(model::activity::Entity)
+				.select_only();
+
+			match crate::tools::Prefixer::new(select)
+				.add_columns(model::activity::Entity)
+				.add_columns(model::object::Entity)
+				.selector
+				.join(JoinType::LeftJoin, model::activity::Relation::Addressing.def().rev())
+				.join(JoinType::LeftJoin, model::object::Relation::Activity.def().rev())
 				.limit(limit)
 				.offset(offset)
+				.into_model::<crate::tools::ActivityWithObject>()
 				.all(ctx.db())
 				.await
 			{
@@ -49,7 +57,10 @@ pub async fn page(
 							offset, limit,
 							activities
 								.into_iter()
-								.filter_map(|(_, a)| Some(ap_activity(a?)))
+								.map(|ActivityWithObject { activity, object }| {
+									ap_activity(activity)
+										.set_object(apb::Node::maybe_object(object.map(ap_object)))
+								})
 								.collect::<Vec<serde_json::Value>>()
 						).ld_context()
 					))
