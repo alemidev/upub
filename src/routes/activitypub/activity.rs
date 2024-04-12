@@ -1,6 +1,6 @@
 use axum::{extract::{Path, State}, http::StatusCode};
-use sea_orm::EntityTrait;
-use crate::{model::{self, activity, object}, server::Context};
+use sea_orm::{ColumnTrait, QueryFilter};
+use crate::{model::{self, addressing::EmbeddedActivity}, server::{auth::AuthIdentity, Context}};
 use apb::{ActivityMut, ObjectMut, BaseMut, Node};
 
 use super::{jsonld::LD, JsonLD};
@@ -20,20 +20,19 @@ pub fn ap_activity(activity: model::activity::Model) -> serde_json::Value {
 		.set_bcc(Node::Empty)
 }
 
-pub async fn view(State(ctx) : State<Context>, Path(id): Path<String>) -> Result<JsonLD<serde_json::Value>, StatusCode> {
-	match activity::Entity::find_by_id(ctx.aid(id))
-		.find_also_related(object::Entity)
+pub async fn view(
+	State(ctx): State<Context>,
+	Path(id): Path<String>,
+	AuthIdentity(auth): AuthIdentity,
+) -> Result<JsonLD<serde_json::Value>, StatusCode> {
+	match model::addressing::Entity::find_activities()
+		.filter(model::activity::Column::Id.eq(ctx.aid(id)))
+		.filter(auth.filter_condition())
+		.into_model::<EmbeddedActivity>()
 		.one(ctx.db())
 		.await
 	{
-		Ok(Some((activity, Some(object)))) => Ok(JsonLD(
-			ap_activity(activity)
-				.set_object(Node::object(super::object::ap_object(object)))
-				.ld_context()
-		)),
-		Ok(Some((activity, None))) => Ok(JsonLD(
-			ap_activity(activity).ld_context()
-		)),
+		Ok(Some(activity)) => Ok(JsonLD(serde_json::Value::from(activity).ld_context())),
 		Ok(None) => Err(StatusCode::NOT_FOUND),
 		Err(e) => {
 			tracing::error!("error querying for activity: {e}");

@@ -101,4 +101,18 @@ impl Entity {
 
 		select
 	}
+
+	pub fn find_objects() -> Select<Entity> {
+		let mut select = Entity::find()
+			.select_only()
+			.join(sea_orm::JoinType::InnerJoin, Relation::Object.def());
+			// INNERJOIN: filter out addressings for which we don't have an activity anymore
+			// TODO we could in theory return just the link or fetch them again, just ignoring them is mehh
+
+		for col in crate::model::object::Column::iter() {
+			select = select.select_column_as(col, format!("{}{}", crate::model::object::Entity.table_name(), col.to_string()));
+		}
+
+		select
+	}
 }

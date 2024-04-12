@@ -1,8 +1,8 @@
 use axum::{extract::{Path, State}, http::StatusCode};
-use sea_orm::EntityTrait;
+use sea_orm::{ColumnTrait, QueryFilter};
 
 use apb::{ObjectMut, BaseMut, Node};
-use crate::{model::{self, object}, server::Context};
+use crate::{model, server::{auth::AuthIdentity, Context}};
 
 use super::{jsonld::LD, JsonLD};
 
@@ -23,8 +23,18 @@ pub fn ap_object(object: model::object::Model) -> serde_json::Value {
 		.set_bcc(Node::Empty)
 }
 
-pub async fn view(State(ctx) : State<Context>, Path(id): Path<String>) -> Result<JsonLD<serde_json::Value>, StatusCode> {
-	match object::Entity::find_by_id(ctx.oid(id)).one(ctx.db()).await {
+pub async fn view(
+	State(ctx): State<Context>,
+	Path(id): Path<String>,
+	AuthIdentity(auth): AuthIdentity,
+) -> Result<JsonLD<serde_json::Value>, StatusCode> {
+	match model::addressing::Entity::find_objects()
+		.filter(model::object::Column::Id.eq(ctx.oid(id)))
+		.filter(auth.filter_condition())
+		.into_model::<model::object::Model>()
+		.one(ctx.db())
+		.await
+	{
 		Ok(Some(object)) => Ok(JsonLD(ap_object(object).ld_context())),
 		Ok(None) => Err(StatusCode::NOT_FOUND),
 		Err(e) => {
