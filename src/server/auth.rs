@@ -15,7 +15,7 @@ pub enum Identity {
 
 impl Identity {
 	pub fn filter_condition(&self) -> Condition {
-		let base_cond = Condition::all().add(model::addressing::Column::Actor.eq(apb::target::PUBLIC));
+		let base_cond = Condition::any().add(model::addressing::Column::Actor.eq(apb::target::PUBLIC));
 		match self {
 			Identity::Anonymous => base_cond,
 			Identity::Local(uid) => base_cond.add(model::addressing::Column::Actor.eq(uid)),
