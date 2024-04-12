@@ -26,7 +26,7 @@ pub async fn page(
 	match model::addressing::Entity::find_activities()
 		.filter(Condition::all().add(model::activity::Column::Actor.eq(&uid)))
 		.filter(auth.filter_condition())
-		.order_by(model::addressing::Column::Published, Order::Desc)
+		.order_by(model::addressing::Column::Published, Order::Asc)
 		.limit(limit)
 		.offset(offset)
 		.into_model::<EmbeddedActivity>()

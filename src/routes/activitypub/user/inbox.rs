@@ -1,6 +1,6 @@
 use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
 
-use sea_orm::{ColumnTrait, Condition, QueryFilter, QuerySelect};
+use sea_orm::{ColumnTrait, Condition, Order, QueryFilter, QueryOrder, QuerySelect};
 use crate::{errors::UpubError, model::{self, addressing::EmbeddedActivity}, routes::activitypub::{jsonld::LD, JsonLD, Pagination}, server::{auth::{AuthIdentity, Identity}, Context}, url};
 
 pub async fn get(
@@ -34,6 +34,7 @@ pub async fn page(
 			let offset = page.offset.unwrap_or(0);
 			match model::addressing::Entity::find_activities()
 				.filter(Condition::all().add(model::addressing::Column::Actor.eq(&user)))
+				.order_by(model::addressing::Column::Published, Order::Asc)
 				.offset(offset)
 				.limit(limit)
 				.into_model::<EmbeddedActivity>()
