@@ -1,10 +1,13 @@
 use std::collections::BTreeMap;
 
-use axum::{extract::{FromRef, FromRequestParts}, http::{header, request::Parts, StatusCode}};
-use openssl::hash::MessageDigest;
+use axum::{extract::{FromRef, FromRequestParts}, http::{header, request::Parts, HeaderMap, StatusCode}};
+use base64::Engine;
+use http_signature_normalization::Config;
+use openssl::{hash::MessageDigest, pkey::PKey, sign::Verifier};
+use reqwest::Method;
 use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter};
 
-use crate::{model, server::Context};
+use crate::{errors::UpubError, model, server::Context};
 
 #[derive(Debug, Clone)]
 pub enum Identity {
@@ -33,7 +36,7 @@ where
 	Context: FromRef<S>,
 	S: Send + Sync,
 {
-	type Rejection = StatusCode;
+	type Rejection = UpubError;
 
 	async fn from_request_parts(parts: &mut Parts, state: &S) -> Result<Self, Self::Rejection> {
 		let ctx = Context::from_ref(state);
@@ -52,47 +55,65 @@ where
 				.await
 			{
 				Ok(Some(x)) => identity = Identity::Local(x.actor),
-				Ok(None) => return Err(StatusCode::UNAUTHORIZED),
+				Ok(None) => return Err(UpubError::unauthorized()),
 				Err(e) => {
 					tracing::error!("failed querying user session: {e}");
-					return Err(StatusCode::INTERNAL_SERVER_ERROR)
+					return Err(UpubError::internal_server_error())
 				},
 			}
 		}
 
-		// if let Some(sig) = parts
-		// 	.headers
-		// 	.get("Signature")
-		// 	.map(|v| v.to_str().unwrap_or(""))
-		// {
-		// 	let signature = HttpSignature::try_from(sig)?;
-		// 	let user_id = signature.key_id.split('#').next().unwrap_or("").to_string();
-		// 	let data : String = signature.headers.iter()
-		// 		.map(|header| {
-		// 			if header == "(request-target)" {
-		// 				format!("(request-target): {} {}", parts.method, parts.uri)
-		// 			} else {
-		// 				format!(
-		// 					"{header}: {}",
-		// 					parts.headers.get(header)
-		// 						.map(|h| h.to_str().unwrap_or(""))
-		// 						.unwrap_or("")
-		// 				)
-		// 			}
-		// 		})
-		// 		.collect::<Vec<String>>() // TODO can we avoid this unneeded allocation?
-		// 		.join("\n");
+		if let Some(sig) = parts
+			.headers
+			.get("Signature")
+			.map(|v| v.to_str().unwrap_or(""))
+		{
+			let mut signature_cfg = Config::new()
+				.dont_use_created_field()
+				.require_header("host")
+				.require_header("date");
+			let mut headers : BTreeMap<String, String> = [
+				("Signature".to_string(), sig.to_string()),
+				("Host".to_string(), header_get(&parts.headers, "Host")),
+				("Date".to_string(), header_get(&parts.headers, "Date")),
+			].into();
 
-		// 	let user = ctx.fetch().user(&user_id).await.map_err(|_e| StatusCode::UNAUTHORIZED)?;
-		// 	let pubkey = PKey::public_key_from_pem(user.public_key.as_bytes()).map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)?;
-		// 	let mut verifier = Verifier::new(signature.digest(), &pubkey).map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)?;
-		// 	verifier.update(data.as_bytes()).map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)?;
-		// 	if verifier.verify(signature.signature.as_bytes()).map_err(|_e| StatusCode::INTERNAL_SERVER_ERROR)? {
-		// 		identity = Identity::Remote(user_id);
-		// 	} else {
-		// 		return Err(StatusCode::FORBIDDEN);
-		// 	}
-		// }
+			if parts.method == Method::POST {
+				signature_cfg = signature_cfg.require_header("digest");
+				headers.insert("Digest".to_string(), header_get(&parts.headers, "Digest"));
+			}
+
+			let unverified = match signature_cfg.begin_verify(
+				parts.method.as_str(),
+				parts.uri.path_and_query().map(|x| x.as_str()).unwrap_or("/"),
+				headers
+			) {
+				Ok(x) => x,
+				Err(e) => {
+					tracing::error!("failed preparing signature verification context: {e}");
+					return Err(UpubError::internal_server_error());
+				}
+			};
+
+			let user_id = unverified.key_id().replace("#main-key", "");
+			let user = ctx.fetch().user(&user_id).await?;
+			let pubkey = PKey::public_key_from_pem(user.public_key.as_bytes())?;
+			
+			let valid = unverified.verify(|sig, to_sign| {
+				let mut verifier = Verifier::new(MessageDigest::sha256(), &pubkey).unwrap();
+				verifier.update(to_sign.as_bytes())?;
+				Ok(verifier.verify(&base64::prelude::BASE64_URL_SAFE.decode(sig).unwrap_or_default())?) as crate::Result<bool>
+			})?;
+
+			if !valid {
+				return Err(UpubError::unauthorized());
+			}
+
+			// TODO assert payload's digest is equal to signature's
+
+			// TODO introduce hardened mode which identifies remotes by user and not server
+			identity = Identity::Remote(Context::server(&user_id));
+		}
 
 		Ok(AuthIdentity(identity))
 	}
@@ -146,3 +167,7 @@ impl TryFrom<&str> for HttpSignature {
 	}
 }
 
+
+pub fn header_get(headers: &HeaderMap, k: &str) -> String {
+	headers.get(k).map(|x| x.to_str().unwrap_or("")).unwrap_or("").to_string()
+}
