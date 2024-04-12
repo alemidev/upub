@@ -6,6 +6,7 @@ use crate::{model::{self, object}, server::Context};
 
 use super::{jsonld::LD, JsonLD};
 
+// TODO this is used outside /routes, maybe move in model?
 pub fn ap_object(object: model::object::Model) -> serde_json::Value {
 	serde_json::Value::new_object()
 		.set_id(Some(&object.id))

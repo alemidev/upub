@@ -13,6 +13,18 @@ pub enum Identity {
 	Remote(String),
 }
 
+impl Identity {
+	pub fn filter_condition(&self) -> Condition {
+		let base_cond = Condition::all().add(model::addressing::Column::Actor.eq(apb::target::PUBLIC));
+		match self {
+			Identity::Anonymous => base_cond,
+			Identity::Local(uid) => base_cond.add(model::addressing::Column::Actor.eq(uid)),
+			Identity::Remote(server) => base_cond.add(model::addressing::Column::Server.eq(server)),
+			// TODO should we allow all users on same server to see? or just specific user??
+		}
+	}
+}
+
 pub struct AuthIdentity(pub Identity);
 
 #[axum::async_trait]

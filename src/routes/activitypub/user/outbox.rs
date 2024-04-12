@@ -1,8 +1,8 @@
 use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
-use sea_orm::{EntityTrait, Order, QueryOrder, QuerySelect};
+use sea_orm::{ColumnTrait, Condition, Order, QueryFilter, QueryOrder, QuerySelect};
 
 use apb::{server::Outbox, AcceptType, ActivityMut, ActivityType, Base, BaseType, Node, ObjectType, RejectType};
-use crate::{routes::activitypub::{jsonld::LD, CreationResult, JsonLD, Pagination}, server::auth::{AuthIdentity, Identity}, errors::UpubError, model, server::Context, url};
+use crate::{errors::UpubError, model::{self, addressing::EmbeddedActivity}, routes::activitypub::{jsonld::LD, CreationResult, JsonLD, Pagination}, server::{auth::{AuthIdentity, Identity}, Context}, url};
 
 pub async fn get(
 	State(ctx): State<Context>,
@@ -17,27 +17,19 @@ pub async fn page(
 	State(ctx): State<Context>,
 	Path(id): Path<String>,
 	Query(page): Query<Pagination>,
-	AuthIdentity(_auth): AuthIdentity,
+	AuthIdentity(auth): AuthIdentity,
 ) -> Result<JsonLD<serde_json::Value>, StatusCode> {
+	let uid = ctx.uid(id.clone());
 	let limit = page.batch.unwrap_or(20).min(50);
 	let offset = page.offset.unwrap_or(0);
 
-	// let mut conditions = Condition::any()
-	// 	.add(model::addressing::Column::Actor.eq(PUBLIC_TARGET));
-
-	// if let Identity::User(ref x) = auth {
-	// 	conditions = conditions.add(model::addressing::Column::Actor.eq(x));
-	// }
-
-	// if let Identity::Server(ref x) = auth {
-	// 	conditions = conditions.add(model::addressing::Column::Server.eq(x));
-	// }
-
-	match model::activity::Entity::find()
-		.find_also_related(model::object::Entity)
-		.order_by(model::activity::Column::Published, Order::Desc)
+	match model::addressing::Entity::find_activities()
+		.filter(Condition::all().add(model::activity::Column::Actor.eq(&uid)))
+		.filter(auth.filter_condition())
+		.order_by(model::addressing::Column::Published, Order::Desc)
 		.limit(limit)
 		.offset(offset)
+		.into_model::<EmbeddedActivity>()
 		.all(ctx.db()).await
 	{
 		Err(_e) => Err(StatusCode::INTERNAL_SERVER_ERROR),
@@ -48,10 +40,10 @@ pub async fn page(
 					offset, limit,
 					items
 						.into_iter()
-						.map(|(a, o)| {
-							let oid = a.object.clone();
-							super::super::activity::ap_activity(a)
-								.set_object(match o {
+						.map(|EmbeddedActivity { activity, object }| {
+							let oid = activity.object.clone();
+							super::super::activity::ap_activity(activity)
+								.set_object(match object {
 									Some(o) => Node::object(super::super::object::ap_object(o)),
 									None    => Node::maybe_link(oid),
 								})

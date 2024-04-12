@@ -5,6 +5,7 @@ use apb::{ActivityMut, ObjectMut, BaseMut, Node};
 
 use super::{jsonld::LD, JsonLD};
 
+// TODO this is used outside /routes, maybe move in model?
 pub fn ap_activity(activity: model::activity::Model) -> serde_json::Value {
 	serde_json::Value::new_object()
 		.set_id(Some(&activity.id))

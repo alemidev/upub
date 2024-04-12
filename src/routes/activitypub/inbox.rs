@@ -1,7 +1,7 @@
 use axum::{extract::{Query, State}, http::StatusCode};
-use sea_orm::{ColumnTrait, Condition, EntityTrait, Order, QueryFilter, QueryOrder, QuerySelect};
+use sea_orm::{Order, QueryFilter, QueryOrder, QuerySelect};
 
-use crate::{server::auth::{AuthIdentity, Identity}, errors::UpubError, model, server::Context, url};
+use crate::{server::auth::AuthIdentity, errors::UpubError, model, server::Context, url};
 
 use super::{activity::ap_activity, jsonld::LD, JsonLD, Pagination};
 
@@ -19,14 +19,8 @@ pub async fn page(
 ) -> Result<JsonLD<serde_json::Value>, UpubError> {
 	let limit = page.batch.unwrap_or(20).min(50);
 	let offset = page.offset.unwrap_or(0);
-	let mut condition = Condition::any()
-		.add(model::addressing::Column::Actor.eq(apb::target::PUBLIC));
-	if let Identity::Local(user) = auth {
-		condition = condition
-			.add(model::addressing::Column::Actor.eq(user));
-	}
-	let activities = model::addressing::Entity::find()
-		.filter(condition)
+	let activities = model::addressing::Entity::find_activities()
+		.filter(auth.filter_condition())
 		.order_by(model::addressing::Column::Published, Order::Asc)
 		.find_also_related(model::activity::Entity)
 		.limit(limit)
