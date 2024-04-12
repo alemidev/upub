@@ -1,4 +1,7 @@
-use sea_orm::entity::prelude::*;
+use apb::{ActivityMut, Node};
+use sea_orm::{entity::prelude::*, FromQueryResult, Iterable, QuerySelect, SelectColumns};
+
+use crate::routes::activitypub::{activity::ap_activity, object::ap_object};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "addressing")]
@@ -55,3 +58,47 @@ impl Related<super::object::Entity> for Entity {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+#[derive(Debug)]
+pub struct EmbeddedActivity {
+	pub activity: crate::model::activity::Model,
+	pub object: Option<crate::model::object::Model>,
+}
+
+impl From<EmbeddedActivity> for serde_json::Value {
+	fn from(value: EmbeddedActivity) -> Self {
+		match value.object {
+			Some(o) => ap_activity(value.activity).set_object(Node::object(ap_object(o))),
+			None => ap_activity(value.activity)
+		}
+	}
+}
+
+impl FromQueryResult for EmbeddedActivity {
+	fn from_query_result(res: &sea_orm::QueryResult, _pre: &str) -> Result<Self, sea_orm::DbErr> {
+		let activity = crate::model::activity::Model::from_query_result(res, crate::model::activity::Entity.table_name())?;
+		let object = crate::model::object::Model::from_query_result(res, crate::model::object::Entity.table_name()).ok();
+		Ok(Self { activity, object })
+	}
+}
+
+impl Entity {
+	pub fn find_activities() -> Select<Entity> {
+		let mut select = Entity::find()
+			.select_only()
+			.join(sea_orm::JoinType::InnerJoin, Relation::Activity.def())
+			// INNERJOIN: filter out addressings for which we don't have an activity anymore
+			// TODO we could in theory return just the link or fetch them again, just ignoring them is mehh
+			.join(sea_orm::JoinType::LeftJoin, crate::model::activity::Relation::Object.def());
+
+		for col in crate::model::activity::Column::iter() {
+			select = select.select_column_as(col, format!("{}{}", crate::model::activity::Entity.table_name(), col.to_string()));
+		}
+
+		for col in crate::model::object::Column::iter() {
+			select = select.select_column_as(col, format!("{}{}", crate::model::object::Entity.table_name(), col.to_string()));
+		}
+
+		select
+	}
+}
