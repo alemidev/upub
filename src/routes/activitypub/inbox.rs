@@ -1,8 +1,8 @@
-use apb::{server::Inbox, ActivityType, Base, BaseType, ObjectType};
+use apb::{server::Inbox, target::Addressed, Activity, ActivityType, Base, BaseType, ObjectType};
 use axum::{extract::{Query, State}, http::StatusCode, Json};
 use sea_orm::{Order, QueryFilter, QueryOrder, QuerySelect};
 
-use crate::{errors::UpubError, model::{self, addressing::EmbeddedActivity}, server::{auth::AuthIdentity, Context}, url};
+use crate::{errors::UpubError, model::{self, addressing::EmbeddedActivity}, server::{auth::{AuthIdentity, Identity}, Context}, url};
 
 use super::{jsonld::LD, JsonLD, Pagination};
 
@@ -40,10 +40,18 @@ pub async fn page(
 	))
 }
 
+
+
 pub async fn post(
 	State(ctx): State<Context>,
+	AuthIdentity(auth): AuthIdentity,
 	Json(activity): Json<serde_json::Value>
-) -> Result<(), UpubError> {
+) -> crate::Result<()> {
+	match auth {
+		Identity::Remote(_server) => {},
+		Identity::Local(_user) => return Err(UpubError::forbidden()),
+		Identity::Anonymous => return Err(UpubError::unauthorized()),
+	}
 	match activity.base_type() {
 		None => { Err(StatusCode::BAD_REQUEST.into()) },
 

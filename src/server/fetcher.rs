@@ -11,18 +11,6 @@ use crate::{VERSION, model};
 use super::Context;
 
 
-#[derive(Debug, thiserror::Error)]
-pub enum FetchError {
-	#[error("could not dereference resource: {0}")]
-	Network(#[from] reqwest::Error),
-
-	#[error("error operating on database: {0}")]
-	Database(#[from] sea_orm::DbErr),
-
-	#[error("missing field when constructing object: {0}")]
-	Field(#[from] model::FieldError),
-}
-
 pub struct Fetcher {
 	db: DatabaseConnection,
 	key: PKey<Private>, // TODO store pre-parsed
@@ -94,7 +82,7 @@ impl Fetcher {
 			.await
 	}
 
-	pub async fn user(&self, id: &str) -> Result<model::user::Model, FetchError> {
+	pub async fn user(&self, id: &str) -> crate::Result<model::user::Model> {
 		if let Some(x) = model::user::Entity::find_by_id(id).one(&self.db).await? {
 			return Ok(x); // already in db, easy
 		}
@@ -110,7 +98,7 @@ impl Fetcher {
 		Ok(user_model)
 	}
 
-	pub async fn activity(&self, id: &str) -> Result<model::activity::Model, FetchError> {
+	pub async fn activity(&self, id: &str) -> crate::Result<model::activity::Model> {
 		if let Some(x) = model::activity::Entity::find_by_id(id).one(&self.db).await? {
 			return Ok(x); // already in db, easy
 		}
@@ -126,7 +114,7 @@ impl Fetcher {
 		Ok(activity_model)
 	}
 
-	pub async fn object(&self, id: &str) -> Result<model::object::Model, FetchError> {
+	pub async fn object(&self, id: &str) -> crate::Result<model::object::Model> {
 		if let Some(x) = model::object::Entity::find_by_id(id).one(&self.db).await? {
 			return Ok(x); // already in db, easy
 		}

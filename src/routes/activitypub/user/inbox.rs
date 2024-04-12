@@ -57,8 +57,9 @@ pub async fn page(
 pub async fn post(
 	State(ctx): State<Context>,
 	Path(_id): Path<String>,
-	Json(activity): Json<serde_json::Value>
+	AuthIdentity(_auth): AuthIdentity,
+	Json(activity): Json<serde_json::Value>,
 ) -> Result<(), UpubError> {
 	// POSTing to user inboxes is effectively the same as POSTing to the main inbox
-	super::super::inbox::post(State(ctx), Json(activity)).await
+	super::super::inbox::post(State(ctx), AuthIdentity(_auth), Json(activity)).await
 }

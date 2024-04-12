@@ -36,6 +36,10 @@ impl UpubError {
 		Self::Status(axum::http::StatusCode::FORBIDDEN)
 	}
 
+	pub fn unauthorized() -> Self {
+		Self::Status(axum::http::StatusCode::UNAUTHORIZED)
+	}
+
 	pub fn not_modified() -> Self {
 		Self::Status(axum::http::StatusCode::NOT_MODIFIED)
 	}
