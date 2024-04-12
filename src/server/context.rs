@@ -40,7 +40,7 @@ impl Context {
 		if domain.starts_with("http") {
 			domain = domain.replace("https://", "").replace("http://", "");
 		}
-		let dispatcher = Dispatcher::new();
+		let dispatcher = Dispatcher::default();
 		for _ in 0..1 { // TODO customize delivery workers amount
 			dispatcher.spawn(db.clone(), domain.clone(), 30); // TODO ew don't do it this deep and secretly!!
 		}

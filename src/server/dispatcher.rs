@@ -1,11 +1,10 @@
-use base64::Engine;
-use openssl::{hash::MessageDigest, pkey::{PKey, Private}, sign::Signer};
-use reqwest::header::{CONTENT_TYPE, USER_AGENT};
+use openssl::pkey::PKey;
+use reqwest::Method;
 use sea_orm::{ColumnTrait, Condition, DatabaseConnection, EntityTrait, Order, QueryFilter, QueryOrder};
 use tokio::{sync::broadcast, task::JoinHandle};
 
 use apb::{ActivityMut, Node};
-use crate::{routes::activitypub::{activity::ap_activity, object::ap_object}, errors::UpubError, model, server::Context, VERSION};
+use crate::{errors::UpubError, model, routes::activitypub::{activity::ap_activity, object::ap_object}, server::fetcher::Fetcher};
 
 pub struct Dispatcher {
 	waker: broadcast::Sender<()>,
@@ -99,7 +98,11 @@ async fn worker(db: DatabaseConnection, domain: String, poll_interval: u64, mut 
 			continue;
 		};
 
-		if let Err(e) = deliver(&key, &delivery.target, &delivery.actor, payload, &domain).await {
+		if let Err(e) = Fetcher::request::<()>(
+			Method::POST, &delivery.target,
+			Some(&serde_json::to_string(&payload).unwrap()),
+			&delivery.actor, &key, &domain
+		).await {
 			tracing::warn!("failed delivery of {} to {} : {e}", delivery.activity, delivery.target);
 			let new_delivery = model::delivery::ActiveModel {
 				id: sea_orm::ActiveValue::NotSet,
@@ -114,58 +117,3 @@ async fn worker(db: DatabaseConnection, domain: String, poll_interval: u64, mut 
 		}
 	}
 }
-
-async fn deliver(key: &PKey<Private>, to: &str, from: &str, payload: serde_json::Value, domain: &str) -> Result<(), UpubError> {
-	let payload = serde_json::to_string(&payload).unwrap();
-	let digest = format!("sha-256={}", base64::prelude::BASE64_STANDARD.encode(openssl::sha::sha256(payload.as_bytes())));
-	let host = Context::server(to);
-	let date = chrono::Utc::now().format("%a, %d %b %Y %H:%M:%S GMT").to_string(); // lmao @ "GMT"
-	let path = to.replace("https://", "").replace("http://", "").replace(&host, "");
-
-	// let headers : BTreeMap<String, String> = [
-	// 	("Host".to_string(), host.clone()),
-	// 	("Date".to_string(), date.clone()),
-	// 	("Digest".to_string(), digest.clone()),
-	// ].into();
-
-	// let signature_header = Config::new()
-	// 	.dont_use_created_field()
-	// 	.require_header("host")
-	// 	.require_header("date")
-	// 	.require_header("digest")
-	// 	.begin_sign("POST", &path, headers)
-	// 	.unwrap()
-	// 	.sign(format!("{from}#main-key"), |to_sign| {
-	// 		tracing::info!("signing '{to_sign}'");
-	// 		let mut signer = Signer::new(MessageDigest::sha256(), key)?;
-	// 		signer.update(to_sign.as_bytes())?;
-	// 		let signature = base64::prelude::BASE64_URL_SAFE.encode(signer.sign_to_vec()?);
-	// 		Ok(signature) as Result<_, UpubError>
-	// 	})
-	// 	.unwrap()
-	// 	.signature_header();
-	
-	let signature_header = {
-		let to_sign = format!("(request-target): post {path}\nhost: {host}\ndate: {date}\ndigest: {digest}");
-		let mut signer = Signer::new(MessageDigest::sha256(), key)?;
-		signer.update(to_sign.as_bytes())?;
-		let signature = base64::prelude::BASE64_STANDARD.encode(signer.sign_to_vec()?);
-		format!("keyId=\"{from}#main-key\",algorithm=\"rsa-sha256\",headers=\"(request-target) host date digest\",signature=\"{signature}\"")
-	};
-
-	reqwest::Client::new()
-		.post(to)
-		.header("Host", host)
-		.header("Date", date)
-		.header("Digest", digest)
-		.header("Signature", signature_header)
-		.header(CONTENT_TYPE, "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"")
-		.header(USER_AGENT, format!("upub+{VERSION} ({domain})")) // TODO put instance admin email
-		.body(payload)
-		.send()
-		.await?
-		.error_for_status()?;
-
-	Ok(())
-}
-
