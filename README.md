@@ -18,7 +18,7 @@ a test instance is _usually_ available at [feditest.alemi.dev](https://feditest.
  - [x] process barebones inbox
  - [x] process barebones outbox
  - [x] http signatures
- - [ ] privacy, targets, scopes
+ - [x] privacy, targets, scopes
  - [ ] client api (mastodon/pleroma)
  - [ ] hashtags, discovery
  - [ ] a custom frontend maybe?
