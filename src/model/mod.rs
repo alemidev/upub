@@ -29,15 +29,14 @@ impl From<FieldError> for axum::http::StatusCode {
 #[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize, sea_orm::FromJsonQueryResult)]
 pub struct Audience(pub Vec<String>);
 
-impl From<apb::Node<serde_json::Value>> for Audience {
-	fn from(value: apb::Node<serde_json::Value>) -> Self {
-		use apb::{Base, Link};
+impl<T: apb::Base> From<apb::Node<T>> for Audience {
+	fn from(value: apb::Node<T>) -> Self {
 		Audience(
 			match value {
 				apb::Node::Empty => vec![],
 				apb::Node::Link(l) => vec![l.href().to_string()],
 				apb::Node::Object(o) => if let Some(id) = o.id() { vec![id.to_string()] } else { vec![] },
-				apb::Node::Array(arr) => arr.into_iter().map(|l| l.href().to_string()).collect(),
+				apb::Node::Array(arr) => arr.into_iter().filter_map(|l| Some(l.id()?.to_string())).collect(),
 			}
 		)
 	}
