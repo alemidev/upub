@@ -25,43 +25,33 @@ pub async fn page(
 	AuthIdentity(auth): AuthIdentity,
 	Query(page): Query<Pagination>,
 ) -> crate::Result<JsonLD<serde_json::Value>> {
-	let uid = ctx.uid(id.clone());
-	match auth {
-		Identity::Anonymous => Err(StatusCode::FORBIDDEN.into()),
-		Identity::Remote(_) => Err(StatusCode::FORBIDDEN.into()),
-		Identity::Local(user) => if uid == user {
-			let limit = page.batch.unwrap_or(20).min(50);
-			let offset = page.offset.unwrap_or(0);
-			match model::addressing::Entity::find_activities()
-				.filter(Condition::all().add(model::addressing::Column::Actor.eq(&user)))
-				.order_by(model::addressing::Column::Published, Order::Asc)
-				.offset(offset)
-				.limit(limit)
-				.into_model::<EmbeddedActivity>()
-				.all(ctx.db())
-				.await
-			{
-				Ok(activities) => {
-					Ok(JsonLD(
-						ctx.ap_collection_page(
-							&url!(ctx, "/users/{id}/inbox/page"),
-							offset, limit,
-							activities
-								.into_iter()
-								.map(|x| x.into())
-								.collect()
-						).ld_context()
-					))
-				},
-				Err(e) => {
-					tracing::error!("failed paginating user inbox for {id}: {e}");
-					Err(StatusCode::INTERNAL_SERVER_ERROR.into())
-				},
-			}
-		} else {
-			Err(StatusCode::FORBIDDEN.into())
-		},
+	let Identity::Local(uid) = auth else {
+		// local inbox is only for local users
+		return Err(UpubError::forbidden());
+	};
+	if uid != ctx.uid(id.clone()) {
+		return Err(UpubError::forbidden());
 	}
+	let limit = page.batch.unwrap_or(20).min(50);
+	let offset = page.offset.unwrap_or(0);
+	let activities = model::addressing::Entity::find_activities()
+		.filter(Condition::all().add(model::addressing::Column::Actor.eq(&uid)))
+		.order_by(model::addressing::Column::Published, Order::Asc)
+		.offset(offset)
+		.limit(limit)
+		.into_model::<EmbeddedActivity>()
+		.all(ctx.db())
+		.await?;
+	Ok(JsonLD(
+		ctx.ap_collection_page(
+			&url!(ctx, "/users/{id}/inbox/page"),
+			offset, limit,
+			activities
+				.into_iter()
+				.map(|x| x.into())
+				.collect()
+		).ld_context()
+	))
 }
 
 pub async fn post(

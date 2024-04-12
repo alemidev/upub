@@ -17,7 +17,7 @@ pub async fn page(
 	State(ctx): State<Context>,
 	AuthIdentity(auth): AuthIdentity,
 	Query(page): Query<Pagination>,
-) -> Result<JsonLD<serde_json::Value>, UpubError> {
+) -> crate::Result<JsonLD<serde_json::Value>> {
 	let limit = page.batch.unwrap_or(20).min(50);
 	let offset = page.offset.unwrap_or(0);
 	let activities = model::addressing::Entity::find_activities()
