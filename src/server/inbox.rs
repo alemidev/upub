@@ -13,7 +13,6 @@ impl apb::server::Inbox for Context {
 
 	async fn create(&self, activity: serde_json::Value) -> crate::Result<()> {
 		let activity_model = model::activity::Model::new(&activity)?;
-		let activity_targets = activity.addressed();
 		let Some(object_node) = activity.object().extract() else {
 			// TODO we could process non-embedded activities or arrays but im lazy rn
 			tracing::error!("refusing to process activity without embedded object: {}", serde_json::to_string_pretty(&activity).unwrap());
@@ -24,7 +23,8 @@ impl apb::server::Inbox for Context {
 		let oid = object_model.id.clone();
 		model::object::Entity::insert(object_model.into_active_model()).exec(self.db()).await?;
 		model::activity::Entity::insert(activity_model.into_active_model()).exec(self.db()).await?;
-		self.address_to(&aid, Some(&oid), &activity_targets).await?;
+		let expanded_addressing = self.expand_addressing(activity.addressed()).await?;
+		self.address_to(&aid, Some(&oid), &expanded_addressing).await?;
 		tracing::info!("{} posted {}", aid, oid);
 		Ok(())
 	}
@@ -46,6 +46,12 @@ impl apb::server::Inbox for Context {
 				Err(UpubError::internal_server_error())
 			}
 			Ok(_) => {
+				let activity_model = model::activity::Model::new(&activity)?.into_active_model();
+				model::activity::Entity::insert(activity_model)
+					.exec(self.db())
+					.await?;
+				let expanded_addressing = self.expand_addressing(activity.addressed()).await?;
+				self.address_to(&aid, None, &expanded_addressing).await?;
 				model::object::Entity::update_many()
 					.col_expr(model::object::Column::Likes, Expr::col(model::object::Column::Likes).add(1))
 					.filter(model::object::Column::Id.eq(oid.clone()))
@@ -58,20 +64,20 @@ impl apb::server::Inbox for Context {
 	}
 
 	async fn follow(&self, activity: serde_json::Value) -> crate::Result<()> {
-		let activity_targets = activity.addressed();
 		let activity_model = model::activity::Model::new(&activity)?;
 		let aid = activity_model.id.clone();
 		tracing::info!("{} wants to follow {}", activity_model.actor, activity_model.object.as_deref().unwrap_or("<no-one???>"));
 		model::activity::Entity::insert(activity_model.into_active_model())
 			.exec(self.db()).await?;
-		self.address_to(&aid, None, &activity_targets).await?;
+		let expanded_addressing = self.expand_addressing(activity.addressed()).await?;
+		self.address_to(&aid, None, &expanded_addressing).await?;
 		Ok(())
 	}
 
 	async fn accept(&self, activity: serde_json::Value) -> crate::Result<()> {
 		// TODO what about TentativeAccept
 		let activity_model = model::activity::Model::new(&activity)?;
-		let Some(follow_request_id) = activity_model.object else {
+		let Some(follow_request_id) = &activity_model.object else {
 			return Err(UpubError::bad_request());
 		};
 		let Some(follow_activity) = model::activity::Entity::find_by_id(follow_request_id)
@@ -85,6 +91,9 @@ impl apb::server::Inbox for Context {
 
 		tracing::info!("{} accepted follow request by {}", activity_model.actor, follow_activity.actor);
 
+		model::activity::Entity::insert(activity_model.clone().into_active_model())
+			.exec(self.db())
+			.await?;
 		model::relation::Entity::insert(
 			model::relation::ActiveModel {
 				follower: Set(follow_activity.actor),
@@ -93,14 +102,15 @@ impl apb::server::Inbox for Context {
 			}
 		).exec(self.db()).await?;
 
-		self.address_to(&activity_model.id, None, &activity.addressed()).await?;
+		let expanded_addressing = self.expand_addressing(activity.addressed()).await?;
+		self.address_to(&activity_model.id, None, &expanded_addressing).await?;
 		Ok(())
 	}
 
 	async fn reject(&self, activity: serde_json::Value) -> crate::Result<()> {
 		// TODO what about TentativeReject?
 		let activity_model = model::activity::Model::new(&activity)?;
-		let Some(follow_request_id) = activity_model.object else {
+		let Some(follow_request_id) = &activity_model.object else {
 			return Err(UpubError::bad_request());
 		};
 		let Some(follow_activity) = model::activity::Entity::find_by_id(follow_request_id)
@@ -111,8 +121,15 @@ impl apb::server::Inbox for Context {
 		if follow_activity.object.unwrap_or("".into()) != activity_model.actor {
 			return Err(UpubError::forbidden());
 		}
+
 		tracing::info!("{} rejected follow request by {}", activity_model.actor, follow_activity.actor);
-		self.address_to(&activity_model.id, None, &activity.addressed()).await?;
+
+		model::activity::Entity::insert(activity_model.clone().into_active_model())
+			.exec(self.db())
+			.await?;
+
+		let expanded_addressing = self.expand_addressing(activity.addressed()).await?;
+		self.address_to(&activity_model.id, None, &expanded_addressing).await?;
 		Ok(())
 	}
 
@@ -128,7 +145,6 @@ impl apb::server::Inbox for Context {
 
 	async fn update(&self, activity: serde_json::Value) -> crate::Result<()> {
 		let activity_model = model::activity::Model::new(&activity)?;
-		let activity_targets = activity.addressed();
 		let Some(object_node) = activity.object().extract() else {
 			// TODO we could process non-embedded activities or arrays but im lazy rn
 			tracing::error!("refusing to process activity without embedded object: {}", serde_json::to_string_pretty(&activity).unwrap());
@@ -138,7 +154,6 @@ impl apb::server::Inbox for Context {
 		let Some(oid) = object_node.id().map(|x| x.to_string()) else {
 			return Err(UpubError::bad_request());
 		};
-		model::activity::Entity::insert(activity_model.into_active_model()).exec(self.db()).await?;
 		match object_node.object_type() {
 			Some(apb::ObjectType::Actor(_)) => {
 				// TODO oof here is an example of the weakness of this model, we have to go all the way
@@ -155,8 +170,13 @@ impl apb::server::Inbox for Context {
 			Some(t) => tracing::warn!("no side effects implemented for update type {t:?}"),
 			None => tracing::warn!("empty type on embedded updated object"),
 		}
-		self.address_to(&aid, Some(&oid), &activity_targets).await?;
+
 		tracing::info!("{} updated {}", aid, oid);
+		model::activity::Entity::insert(activity_model.into_active_model())
+			.exec(self.db())
+			.await?;
+		let expanded_addressing = self.expand_addressing(activity.addressed()).await?;
+		self.address_to(&aid, Some(&oid), &expanded_addressing).await?;
 		Ok(())
 	}
 

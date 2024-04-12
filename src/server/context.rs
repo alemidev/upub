@@ -130,28 +130,39 @@ impl Context {
 			.to_string()
 	}
 
-	pub async fn expand_addressing(&self, uid: &str, mut targets: Vec<String>) -> crate::Result<Vec<String>> {
-		let following_addr = format!("{uid}/followers");
-		if let Some(i) = targets.iter().position(|x| x == &following_addr) {
-			targets.remove(i);
-			model::relation::Entity::find()
-				.filter(Condition::all().add(model::relation::Column::Following.eq(uid.to_string())))
-				.select_only()
-				.select_column(model::relation::Column::Follower)
-				.into_tuple::<String>()
-				.all(self.db())
-				.await?
-				.into_iter()
-				.for_each(|x| targets.push(x));
+	pub fn is_local(&self, id: &str) -> bool {
+		// TODO consider precalculating once this format!
+		id.starts_with(&format!("{}{}", self.0.protocol, self.0.domain))
+	}
+
+	pub async fn expand_addressing(&self, targets: Vec<String>) -> crate::Result<Vec<String>> {
+		let mut out = Vec::new();
+		for target in targets {
+			if target.ends_with("/followers") {
+				let target_id = target.replace("/followers", "");
+				model::relation::Entity::find()
+					.filter(Condition::all().add(model::relation::Column::Following.eq(target_id)))
+					.select_only()
+					.select_column(model::relation::Column::Follower)
+					.into_tuple::<String>()
+					.all(self.db())
+					.await?
+					.into_iter()
+					.for_each(|x| out.push(x));
+			} else {
+				out.push(target);
+			}
 		}
-		Ok(targets)
+		Ok(out)
 	}
 
 	pub async fn address_to(&self, aid: &str, oid: Option<&str>, targets: &[String]) -> crate::Result<()> {
+		let local_activity = self.is_local(aid);
 		let addressings : Vec<model::addressing::ActiveModel> = targets
 			.iter()
 			.filter(|to| !to.is_empty())
 			.filter(|to| !to.ends_with("/followers"))
+			.filter(|to| local_activity || self.is_local(to))
 			.map(|to| model::addressing::ActiveModel {
 				id: sea_orm::ActiveValue::NotSet,
 				server: Set(Context::server(to)),
@@ -221,7 +232,7 @@ impl Context {
 	}
 
 	pub async fn dispatch(&self, uid: &str, activity_targets: Vec<String>, aid: &str, oid: Option<&str>) -> crate::Result<()> {
-		let addressed = self.expand_addressing(uid, activity_targets).await?;
+		let addressed = self.expand_addressing(activity_targets).await?;
 		self.address_to(aid, oid, &addressed).await?;
 		self.deliver_to(aid, uid, &addressed).await?;
 		Ok(())
