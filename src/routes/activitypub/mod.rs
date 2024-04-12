@@ -24,10 +24,12 @@ impl ActivityPubRouter for Router<crate::server::Context> {
 			// core server inbox/outbox, maybe for feeds? TODO do we need these?
 			.route("/", get(ap::application::view))
 			// TODO shared inboxes and instance stream will come later, just use users *boxes for now
+			.route("/inbox", post(ap::inbox::post))
 			.route("/inbox", get(ap::inbox::get))
-			// .route("/inbox", post(ap::inbox::post))
-			// .route("/outbox", get(ap::outbox::get))
-			// .route("/outbox", get(ap::outbox::post))
+			.route("/inbox/page", get(ap::inbox::page))
+			.route("/outbox", post(ap::outbox::post))
+			.route("/outbox", get(ap::outbox::get))
+			.route("/outbox/page", get(ap::outbox::page))
 			// AUTH routes
 			.route("/auth", post(ap::auth::login))
 			// .well-known and discovery

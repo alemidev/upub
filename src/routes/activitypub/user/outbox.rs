@@ -1,7 +1,7 @@
 use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
 use sea_orm::{ColumnTrait, Condition, Order, QueryFilter, QueryOrder, QuerySelect};
 
-use apb::{server::Outbox, AcceptType, ActivityMut, ActivityType, Base, BaseType, Node, ObjectType, RejectType};
+use apb::{server::Outbox, AcceptType, ActivityType, Base, BaseType, ObjectType, RejectType};
 use crate::{errors::UpubError, model::{self, addressing::EmbeddedActivity}, routes::activitypub::{jsonld::LD, CreationResult, JsonLD, Pagination}, server::{auth::{AuthIdentity, Identity}, Context}, url};
 
 pub async fn get(
@@ -40,14 +40,7 @@ pub async fn page(
 					offset, limit,
 					items
 						.into_iter()
-						.map(|EmbeddedActivity { activity, object }| {
-							let oid = activity.object.clone();
-							super::super::activity::ap_activity(activity)
-								.set_object(match object {
-									Some(o) => Node::object(super::super::object::ap_object(o)),
-									None    => Node::maybe_link(oid),
-								})
-						})
+						.map(|x| x.into())
 						.collect()
 				).ld_context()
 			))

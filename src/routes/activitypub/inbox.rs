@@ -1,9 +1,10 @@
-use axum::{extract::{Query, State}, http::StatusCode};
+use apb::{server::Inbox, ActivityType, Base, BaseType, ObjectType};
+use axum::{extract::{Query, State}, http::StatusCode, Json};
 use sea_orm::{Order, QueryFilter, QueryOrder, QuerySelect};
 
-use crate::{server::auth::AuthIdentity, errors::UpubError, model, server::Context, url};
+use crate::{errors::UpubError, model::{self, addressing::EmbeddedActivity}, server::{auth::AuthIdentity, Context}, url};
 
-use super::{activity::ap_activity, jsonld::LD, JsonLD, Pagination};
+use super::{jsonld::LD, JsonLD, Pagination};
 
 
 pub async fn get(
@@ -22,9 +23,9 @@ pub async fn page(
 	let activities = model::addressing::Entity::find_activities()
 		.filter(auth.filter_condition())
 		.order_by(model::addressing::Column::Published, Order::Asc)
-		.find_also_related(model::activity::Entity)
 		.limit(limit)
 		.offset(offset)
+		.into_model::<EmbeddedActivity>()
 		.all(ctx.db())
 		.await?;
 	Ok(JsonLD(
@@ -33,8 +34,58 @@ pub async fn page(
 			offset, limit,
 			activities
 				.into_iter()
-				.filter_map(|(_, a)| Some(ap_activity(a?)))
-				.collect::<Vec<serde_json::Value>>()
+				.map(|x| x.into())
+				.collect()
 		).ld_context()
 	))
+}
+
+pub async fn post(
+	State(ctx): State<Context>,
+	Json(activity): Json<serde_json::Value>
+) -> Result<(), UpubError> {
+	match activity.base_type() {
+		None => { Err(StatusCode::BAD_REQUEST.into()) },
+
+		Some(BaseType::Link(_x)) => {
+			tracing::warn!("skipping remote activity: {}", serde_json::to_string_pretty(&activity).unwrap());
+			Err(StatusCode::UNPROCESSABLE_ENTITY.into()) // we could but not yet
+		},
+
+		Some(BaseType::Object(ObjectType::Activity(ActivityType::Activity))) => {
+			tracing::warn!("skipping unprocessable base activity: {}", serde_json::to_string_pretty(&activity).unwrap());
+			Err(StatusCode::UNPROCESSABLE_ENTITY.into()) // won't ingest useless stuff
+		},
+
+		Some(BaseType::Object(ObjectType::Activity(ActivityType::Delete))) =>
+			Ok(ctx.delete(activity).await?),
+
+		Some(BaseType::Object(ObjectType::Activity(ActivityType::Follow))) =>
+			Ok(ctx.follow(activity).await?),
+
+		Some(BaseType::Object(ObjectType::Activity(ActivityType::Accept(_)))) =>
+			Ok(ctx.accept(activity).await?),
+
+		Some(BaseType::Object(ObjectType::Activity(ActivityType::Reject(_)))) =>
+			Ok(ctx.reject(activity).await?),
+
+		Some(BaseType::Object(ObjectType::Activity(ActivityType::Like))) =>
+			Ok(ctx.like(activity).await?),
+
+		Some(BaseType::Object(ObjectType::Activity(ActivityType::Create))) =>
+			Ok(ctx.create(activity).await?),
+
+		Some(BaseType::Object(ObjectType::Activity(ActivityType::Update))) =>
+			Ok(ctx.update(activity).await?),
+
+		Some(BaseType::Object(ObjectType::Activity(_x))) => {
+			tracing::info!("received unimplemented activity on inbox: {}", serde_json::to_string_pretty(&activity).unwrap());
+			Err(StatusCode::NOT_IMPLEMENTED.into())
+		},
+
+		Some(_x) => {
+			tracing::warn!("ignoring non-activity object in inbox: {}", serde_json::to_string_pretty(&activity).unwrap());
+			Err(StatusCode::UNPROCESSABLE_ENTITY.into())
+		}
+	}
 }

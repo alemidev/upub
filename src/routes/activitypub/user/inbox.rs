@@ -1,8 +1,7 @@
 use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
 
-use apb::{server::Inbox, ActivityMut, ActivityType, Base, BaseType, ObjectType};
 use sea_orm::{ColumnTrait, Condition, QueryFilter, QuerySelect};
-use crate::{errors::UpubError, model::{self, addressing::EmbeddedActivity}, routes::activitypub::{activity::ap_activity, jsonld::LD, object::ap_object, JsonLD, Pagination}, server::{auth::{AuthIdentity, Identity}, Context}, url};
+use crate::{errors::UpubError, model::{self, addressing::EmbeddedActivity}, routes::activitypub::{jsonld::LD, JsonLD, Pagination}, server::{auth::{AuthIdentity, Identity}, Context}, url};
 
 pub async fn get(
 	State(ctx): State<Context>,
@@ -48,13 +47,8 @@ pub async fn page(
 							offset, limit,
 							activities
 								.into_iter()
-								.map(|EmbeddedActivity { activity, object }| match object {
-									None => ap_activity(activity),
-									Some(x) => 
-										ap_activity(activity)
-											.set_object(apb::Node::object(ap_object(x))),
-								})
-								.collect::<Vec<serde_json::Value>>()
+								.map(|x| x.into())
+								.collect()
 						).ld_context()
 					))
 				},
@@ -74,48 +68,6 @@ pub async fn post(
 	Path(_id): Path<String>,
 	Json(activity): Json<serde_json::Value>
 ) -> Result<(), UpubError> {
-	match activity.base_type() {
-		None => { Err(StatusCode::BAD_REQUEST.into()) },
-
-		Some(BaseType::Link(_x)) => {
-			tracing::warn!("skipping remote activity: {}", serde_json::to_string_pretty(&activity).unwrap());
-			Err(StatusCode::UNPROCESSABLE_ENTITY.into()) // we could but not yet
-		},
-
-		Some(BaseType::Object(ObjectType::Activity(ActivityType::Activity))) => {
-			tracing::warn!("skipping unprocessable base activity: {}", serde_json::to_string_pretty(&activity).unwrap());
-			Err(StatusCode::UNPROCESSABLE_ENTITY.into()) // won't ingest useless stuff
-		},
-
-		Some(BaseType::Object(ObjectType::Activity(ActivityType::Delete))) =>
-			Ok(ctx.delete(activity).await?),
-
-		Some(BaseType::Object(ObjectType::Activity(ActivityType::Follow))) =>
-			Ok(ctx.follow(activity).await?),
-
-		Some(BaseType::Object(ObjectType::Activity(ActivityType::Accept(_)))) =>
-			Ok(ctx.accept(activity).await?),
-
-		Some(BaseType::Object(ObjectType::Activity(ActivityType::Reject(_)))) =>
-			Ok(ctx.reject(activity).await?),
-
-		Some(BaseType::Object(ObjectType::Activity(ActivityType::Like))) =>
-			Ok(ctx.like(activity).await?),
-
-		Some(BaseType::Object(ObjectType::Activity(ActivityType::Create))) =>
-			Ok(ctx.create(activity).await?),
-
-		Some(BaseType::Object(ObjectType::Activity(ActivityType::Update))) =>
-			Ok(ctx.update(activity).await?),
-
-		Some(BaseType::Object(ObjectType::Activity(_x))) => {
-			tracing::info!("received unimplemented activity on inbox: {}", serde_json::to_string_pretty(&activity).unwrap());
-			Err(StatusCode::NOT_IMPLEMENTED.into())
-		},
-
-		Some(_x) => {
-			tracing::warn!("ignoring non-activity object in inbox: {}", serde_json::to_string_pretty(&activity).unwrap());
-			Err(StatusCode::UNPROCESSABLE_ENTITY.into())
-		}
-	}
+	// POSTing to user inboxes is effectively the same as POSTing to the main inbox
+	super::super::inbox::post(State(ctx), Json(activity)).await
 }
