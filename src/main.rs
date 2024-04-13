@@ -122,20 +122,16 @@ async fn main() {
 
 
 async fn fetch(db: sea_orm::DatabaseConnection, domain: String, uri: String, save: bool) -> crate::Result<()> {
-	use apb::{Base, Object};
+	use apb::Base;
 
 	let ctx = server::Context::new(db, domain)
 		.await.expect("failed creating server context");
 
 	let mut node = apb::Node::link(uri.to_string());
-	tracing::info!("fetching object");
 	node.fetch(&ctx).await?;
-	tracing::info!("fetched node");
 
 	let obj = node.get().expect("node still empty after fetch?");
 
-	tracing::info!("fetched object:{}, name:{}", obj.id().unwrap_or(""), obj.name().unwrap_or(""));
-	
 	if save {
 		match obj.base_type() {
 			Some(apb::BaseType::Object(apb::ObjectType::Actor(_))) => {
@@ -158,6 +154,8 @@ async fn fetch(db: sea_orm::DatabaseConnection, domain: String, uri: String, sav
 			None => tracing::error!("no type on object"),
 		}
 	}
+
+	println!("{}", serde_json::to_string_pretty(&obj).unwrap());
 
 	Ok(())
 }
