@@ -3,7 +3,7 @@
 pub enum Node<T : super::Base> {
 	Array(Vec<T>), // TODO would be cool to make it Box<[T]> so that Node is just a ptr
 	Object(Box<T>),
-	Link(Box<dyn super::Link>),
+	Link(Box<dyn super::Link + Sync + Send>), // TODO feature flag to toggle these maybe?
 	Empty,
 }
 
