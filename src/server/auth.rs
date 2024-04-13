@@ -132,9 +132,14 @@ impl HttpSignature {
 
 	pub fn build_manually(&mut self, method: &str, target: &str, mut headers: BTreeMap<String, String>) -> &mut Self {
 		let mut out = Vec::new();
-		out.push(format!("(request-target): {method} {target}"));
 		for header in &self.headers {
-			out.push(format!("{header}: {}", headers.remove(header).unwrap_or_default()));
+			match header.as_str() {
+				"(request-target)" => out.push(format!("(request-target): {method} {target}")),
+				// TODO other pseudo-headers
+				_ => out.push(
+					format!("{header}: {}", headers.remove(header).unwrap_or_default())
+				),
+			}
 		}
 		self.control = out.join("\n");
 		self
