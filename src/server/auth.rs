@@ -90,7 +90,7 @@ where
 fn verify_control_text(txt: &str, key: &str, control: &str) -> crate::Result<bool> {
 	let pubkey = PKey::public_key_from_pem(key.as_bytes())?;
 	let mut verifier = Verifier::new(MessageDigest::sha256(), &pubkey)?;
-	let signature = base64::prelude::BASE64_URL_SAFE.decode(control)?;
+	let signature = base64::prelude::BASE64_STANDARD.decode(control)?;
 	Ok(verifier.verify_oneshot(&signature, txt.as_bytes())?)
 }
 
