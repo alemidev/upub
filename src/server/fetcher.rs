@@ -6,7 +6,7 @@ use openssl::{hash::MessageDigest, pkey::{PKey, Private}, sign::Signer};
 use reqwest::{header::{CONTENT_TYPE, USER_AGENT}, Method};
 use sea_orm::{DatabaseConnection, EntityTrait, IntoActiveModel};
 
-use crate::{errors::UpubError, model, VERSION};
+use crate::{model, VERSION};
 
 use super::Context;
 
@@ -45,7 +45,7 @@ impl Fetcher {
 			.header("Host", host.clone())
 			.header("Date", date.clone());
 
-		let mut signature_cfg = Config::new();
+		let mut signature_cfg = Config::new().mastodon_compat();
 		let mut to_sign_raw = format!("(request-target): post {path}\nhost: {host}\ndate: {date}");
 		let mut headers_to_inspect = "(request-target) host date";
 
@@ -61,7 +61,6 @@ impl Fetcher {
 		}
 
 		let signature_header_lib = signature_cfg
-			.mastodon_compat()
 			.begin_sign("POST", &path, headers)
 			.unwrap()
 			.sign(format!("{from}#main-key"), |to_sign| {
@@ -72,7 +71,8 @@ impl Fetcher {
 				Ok(signature) as crate::Result<_>
 			})
 			.unwrap()
-			.signature_header();
+			.signature_header()
+			.replace("hs2019", "rsa-sha256"); // TODO what the fuck??? why isn't this customizable???
 
 		let signature_header = {
 			let mut signer = Signer::new(MessageDigest::sha256(), key).unwrap();
