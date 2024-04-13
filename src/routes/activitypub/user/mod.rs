@@ -5,7 +5,7 @@ pub mod outbox;
 pub mod following;
 
 use axum::{extract::{Path, State}, http::StatusCode};
-use sea_orm::EntityTrait;
+use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter};
 
 use apb::{PublicKeyMut, ActorMut, DocumentMut, DocumentType, ObjectMut, BaseMut, Node};
 use crate::{model::{self, user}, server::Context, url};
@@ -60,8 +60,31 @@ pub async fn view(State(ctx) : State<Context>, Path(id): Path<String>) -> Result
 				.ld_context()
 			))
 		},
-		// remote user
+		// remote user TODDO doesn't work?
 		Ok(Some((user, None))) => Ok(JsonLD(ap_user(user).ld_context())),
+		Ok(None) => Err(StatusCode::NOT_FOUND),
+		Err(e) => {
+			tracing::error!("error querying for user: {e}");
+			Err(StatusCode::INTERNAL_SERVER_ERROR)
+		},
+	}
+}
+
+pub async fn remote_view(
+	State(ctx) : State<Context>,
+	Path(server): Path<String>,
+	Path(id): Path<String>,
+) -> Result<JsonLD<serde_json::Value>, StatusCode> {
+	match user::Entity::find()
+		.filter(
+			Condition::all()
+				.add(user::Column::PreferredUsername.eq(id))
+				.add(user::Column::Domain.eq(server))
+		)
+		.one(ctx.db()).await
+	{
+		// local user
+		Ok(Some(user)) => Ok(JsonLD(ap_user(user).ld_context())),
 		Ok(None) => Err(StatusCode::NOT_FOUND),
 		Err(e) => {
 			tracing::error!("error querying for user: {e}");

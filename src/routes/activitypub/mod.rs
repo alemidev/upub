@@ -39,6 +39,7 @@ impl ActivityPubRouter for Router<crate::server::Context> {
 			.route("/nodeinfo/:version", get(ap::well_known::nodeinfo))
 			// actor routes
 			.route("/users/:id", get(ap::user::view))
+			.route("/users/:server/:id", get(ap::user::remote_view))
 			.route("/users/:id/inbox", post(ap::user::inbox::post))
 			.route("/users/:id/inbox", get(ap::user::inbox::get))
 			.route("/users/:id/inbox/page", get(ap::user::inbox::page))
