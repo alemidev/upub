@@ -13,6 +13,8 @@ pub async fn view(State(ctx): State<Context>) -> Result<JsonLD<serde_json::Value
 			.set_actor_type(Some(apb::ActorType::Application))
 			.set_name(Some("μpub"))
 			.set_summary(Some("micro social network, federated"))
+			.set_inbox(apb::Node::link(url!(ctx, "/inbox")))
+			.set_outbox(apb::Node::link(url!(ctx, "/outbox")))
 			.set_published(Some(ctx.app().created))
 			.set_public_key(apb::Node::object(
 				serde_json::Value::new_object()
