@@ -17,6 +17,9 @@ pub enum UpubError {
 
 	#[error("fetch error: {0}")]
 	Reqwest(#[from] reqwest::Error),
+
+	#[error("invalid base64 string: {0}")]
+	Base64(#[from] base64::DecodeError),
 }
 
 impl UpubError {
