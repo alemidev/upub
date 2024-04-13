@@ -6,7 +6,7 @@ use openssl::{hash::MessageDigest, pkey::{PKey, Private}, sign::Signer};
 use reqwest::{header::{CONTENT_TYPE, USER_AGENT}, Method};
 use sea_orm::{DatabaseConnection, EntityTrait, IntoActiveModel};
 
-use crate::{VERSION, model};
+use crate::{errors::UpubError, model, VERSION};
 
 use super::Context;
 
@@ -42,13 +42,17 @@ impl Fetcher {
 			.request(method, url)
 			.header(CONTENT_TYPE, "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"")
 			.header(USER_AGENT, format!("upub+{VERSION} ({domain})"))
-			.header("Host", host)
-			.header("Date", date);
+			.header("Host", host.clone())
+			.header("Date", date.clone());
 
 		let mut signature_cfg = Config::new();
+		let mut to_sign_raw = format!("(request-target): post {path}\nhost: {host}\ndate: {date}");
+		let mut headers_to_inspect = "(request-target) host date";
 
 		if let Some(payload) = payload {
 			let digest = format!("sha-256={}", base64::prelude::BASE64_STANDARD.encode(openssl::sha::sha256(payload.as_bytes())));
+			to_sign_raw = format!("(request-target): post {path}\nhost: {host}\ndate: {date}\ndigest: {digest}");
+			headers_to_inspect = "(request-target) host date digest";
 			headers.insert("Digest".to_string(), digest.clone());
 			signature_cfg = signature_cfg.require_header("digest");
 			client = client
@@ -56,11 +60,12 @@ impl Fetcher {
 				.body(payload.to_string());
 		}
 
-		let signature_header = signature_cfg
+		let signature_header_lib = signature_cfg
 			.mastodon_compat()
 			.begin_sign("POST", &path, headers)
 			.unwrap()
 			.sign(format!("{from}#main-key"), |to_sign| {
+				tracing::info!("signature string:\nlib>> {to_sign}\nraw>> {to_sign_raw}");
 				let mut signer = Signer::new(MessageDigest::sha256(), key)?;
 				signer.update(to_sign.as_bytes())?;
 				let signature = base64::prelude::BASE64_URL_SAFE.encode(signer.sign_to_vec()?);
@@ -68,6 +73,15 @@ impl Fetcher {
 			})
 			.unwrap()
 			.signature_header();
+
+		let signature_header = {
+			let mut signer = Signer::new(MessageDigest::sha256(), key).unwrap();
+			signer.update(to_sign_raw.as_bytes()).unwrap();
+			let signature = base64::prelude::BASE64_STANDARD.encode(signer.sign_to_vec().unwrap());
+			format!("keyId=\"{from}#main-key\",algorithm=\"rsa-sha256\",headers=\"{headers_to_inspect}\",signature=\"{signature}\"")
+		};
+
+		tracing::info!("signature headers:\nlib>> {signature_header_lib}\nraw>> {signature_header}");
 
 		client
 			.header("Signature", signature_header)
