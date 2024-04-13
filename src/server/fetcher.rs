@@ -1,6 +1,6 @@
 use base64::Engine;
 use openssl::{hash::MessageDigest, pkey::{PKey, Private}, sign::Signer};
-use reqwest::{header::{CONTENT_TYPE, USER_AGENT}, Method, Response};
+use reqwest::{header::{ACCEPT, CONTENT_TYPE, USER_AGENT}, Method, Response};
 use sea_orm::{DatabaseConnection, EntityTrait, IntoActiveModel};
 
 use crate::{model, VERSION};
@@ -37,6 +37,7 @@ impl Fetcher {
 
 		let mut client = reqwest::Client::new()
 			.request(method, url)
+			.header(ACCEPT, "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"")
 			.header(CONTENT_TYPE, "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"")
 			.header(USER_AGENT, format!("upub+{VERSION} ({domain})"))
 			.header("Host", host.clone())
