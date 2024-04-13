@@ -8,7 +8,7 @@ use axum::{extract::{Path, State}, http::StatusCode};
 use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter};
 
 use apb::{PublicKeyMut, ActorMut, DocumentMut, DocumentType, ObjectMut, BaseMut, Node};
-use crate::{model::{self, user}, server::Context, url};
+use crate::{errors::UpubError, model::{self, user}, server::Context, url};
 
 use super::{jsonld::LD, JsonLD};
 
@@ -44,13 +44,13 @@ pub fn ap_user(user: model::user::Model) -> serde_json::Value {
 		.set_endpoints(Node::Empty)
 }
 
-pub async fn view(State(ctx) : State<Context>, Path(id): Path<String>) -> Result<JsonLD<serde_json::Value>, StatusCode> {
+pub async fn view(State(ctx) : State<Context>, Path(id): Path<String>) -> crate::Result<JsonLD<serde_json::Value>> {
 	match user::Entity::find_by_id(ctx.uid(id.clone()))
 		.find_also_related(model::config::Entity)
-		.one(ctx.db()).await
+		.one(ctx.db()).await?
 	{
 		// local user
-		Ok(Some((user, Some(_cfg)))) => {
+		Some((user, Some(_cfg))) => {
 			Ok(JsonLD(ap_user(user.clone()) // ew ugly clone TODO
 				.set_inbox(Node::link(url!(ctx, "/users/{id}/inbox")))
 				.set_outbox(Node::link(url!(ctx, "/users/{id}/outbox")))
@@ -61,35 +61,26 @@ pub async fn view(State(ctx) : State<Context>, Path(id): Path<String>) -> Result
 			))
 		},
 		// remote user TODDO doesn't work?
-		Ok(Some((user, None))) => Ok(JsonLD(ap_user(user).ld_context())),
-		Ok(None) => Err(StatusCode::NOT_FOUND),
-		Err(e) => {
-			tracing::error!("error querying for user: {e}");
-			Err(StatusCode::INTERNAL_SERVER_ERROR)
-		},
+		Some((user, None)) => Ok(JsonLD(ap_user(user).ld_context())),
+		None => Err(UpubError::not_found()),
 	}
 }
 
 pub async fn remote_view(
 	State(ctx) : State<Context>,
-	Path(server): Path<String>,
-	Path(id): Path<String>,
-) -> Result<JsonLD<serde_json::Value>, StatusCode> {
+	Path((server, id)): Path<(String, String)>,
+) -> crate::Result<JsonLD<serde_json::Value>> {
 	match user::Entity::find()
 		.filter(
 			Condition::all()
 				.add(user::Column::PreferredUsername.eq(id))
 				.add(user::Column::Domain.eq(server))
 		)
-		.one(ctx.db()).await
+		.one(ctx.db()).await?
 	{
 		// local user
-		Ok(Some(user)) => Ok(JsonLD(ap_user(user).ld_context())),
-		Ok(None) => Err(StatusCode::NOT_FOUND),
-		Err(e) => {
-			tracing::error!("error querying for user: {e}");
-			Err(StatusCode::INTERNAL_SERVER_ERROR)
-		},
+		Some(user) => Ok(JsonLD(ap_user(user).ld_context())),
+		None => Err(UpubError::not_found()),
 	}
 }
 
