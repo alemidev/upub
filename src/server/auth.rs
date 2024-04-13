@@ -133,7 +133,11 @@ impl HttpSignature {
 		for header in self.headers.iter() {
 			match header.as_str() {
 				"(request-target)" => out.push(
-					format!("(request-target): {}", parts.uri.path_and_query().map(|x| x.as_str()).unwrap_or("/"))
+					format!(
+						"(request-target): {} {}",
+						parts.method.to_string().to_lowercase(),
+						parts.uri.path_and_query().map(|x| x.as_str()).unwrap_or("/")
+					)
 				),
 				// TODO other pseudo-headers,
 				_ => out.push(format!("{}: {}",
