@@ -1,4 +1,3 @@
-use openssl::pkey::PKey;
 use reqwest::Method;
 use sea_orm::{ColumnTrait, Condition, DatabaseConnection, EntityTrait, Order, QueryFilter, QueryOrder};
 use tokio::{sync::broadcast, task::JoinHandle};
@@ -89,12 +88,6 @@ async fn worker(db: DatabaseConnection, domain: String, poll_interval: u64, mut 
 			.one(&db).await?
 		else { 
 			tracing::error!("can not dispatch activity for user without private key: {}", delivery.actor);
-			continue;
-		};
-
-		let Ok(key) = PKey::private_key_from_pem(key.as_bytes())
-		else {
-			tracing::error!("failed parsing private key for user {}", delivery.actor);
 			continue;
 		};
 

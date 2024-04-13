@@ -4,7 +4,7 @@ pub mod outbox;
 
 pub mod following;
 
-use axum::{extract::{Path, State}, http::StatusCode};
+use axum::extract::{Path, State};
 use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter};
 
 use apb::{PublicKeyMut, ActorMut, DocumentMut, DocumentType, ObjectMut, BaseMut, Node};

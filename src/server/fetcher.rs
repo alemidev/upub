@@ -1,22 +1,23 @@
+use std::collections::BTreeMap;
+
 use base64::Engine;
-use openssl::{hash::MessageDigest, pkey::{PKey, Private}, sign::Signer};
 use reqwest::{header::{ACCEPT, CONTENT_TYPE, USER_AGENT}, Method, Response};
 use sea_orm::{DatabaseConnection, EntityTrait, IntoActiveModel};
 
 use crate::{model, VERSION};
 
-use super::Context;
+use super::{auth::HttpSignature, Context};
 
 
 pub struct Fetcher {
 	db: DatabaseConnection,
-	key: PKey<Private>, // TODO store pre-parsed
+	key: String, // TODO store pre-parsed
 	domain: String, // TODO merge directly with Context so we don't need to copy this
 }
 
 impl Fetcher {
 	pub fn new(db: DatabaseConnection, domain: String, key: String) -> Self {
-		Fetcher { db, domain, key: PKey::private_key_from_pem(key.as_bytes()).unwrap() }
+		Fetcher { db, domain, key }
 	}
 
 	pub async fn request(
@@ -24,16 +25,18 @@ impl Fetcher {
 		url: &str,
 		payload: Option<&str>,
 		from: &str,
-		key: &PKey<Private>,
+		key: &str,
 		domain: &str,
-	) -> reqwest::Result<Response> {
+	) -> crate::Result<Response> {
 		let host = Context::server(url);
 		let date = chrono::Utc::now().format("%a, %d %b %Y %H:%M:%S GMT").to_string(); // lmao @ "GMT"
 		let path = url.replace("https://", "").replace("http://", "").replace(&host, "");
-		// let mut headers : BTreeMap<String, String> = [
-		// 	("Host".to_string(), host.clone()),
-		// 	("Date".to_string(), date.clone()),
-		// ].into();
+
+		let mut headers = vec!["(request-target)", "host", "date"];
+		let mut headers_map : BTreeMap<String, String> = [
+			("host".to_string(), host.clone()),
+			("date".to_string(), date.clone()),
+		].into();
 
 		let mut client = reqwest::Client::new()
 			.request(method.clone(), url)
@@ -43,30 +46,32 @@ impl Fetcher {
 			.header("Host", host.clone())
 			.header("Date", date.clone());
 
-		let mut to_sign_raw = format!("(request-target): {} {path}\nhost: {host}\ndate: {date}", method.to_string().to_lowercase());
-		let mut headers_to_inspect = "(request-target) host date";
 
 		if let Some(payload) = payload {
 			let digest = format!("sha-256={}", base64::prelude::BASE64_STANDARD.encode(openssl::sha::sha256(payload.as_bytes())));
-			to_sign_raw = format!("(request-target): {} {path}\nhost: {host}\ndate: {date}\ndigest: {digest}", method.to_string().to_lowercase());
-			headers_to_inspect = "(request-target) host date digest";
+			headers_map.insert("digest".to_string(), digest.clone());
+			headers.push("digest");
 			client = client
 				.header("Digest", digest)
 				.body(payload.to_string());
 		}
 
-		let signature_header = {
-			let mut signer = Signer::new(MessageDigest::sha256(), key).unwrap();
-			signer.update(to_sign_raw.as_bytes()).unwrap();
-			let signature = base64::prelude::BASE64_STANDARD.encode(signer.sign_to_vec().unwrap());
-			format!("keyId=\"{from}#main-key\",algorithm=\"rsa-sha256\",headers=\"{headers_to_inspect}\",signature=\"{signature}\"")
-		};
+		let mut signer = HttpSignature::new(
+			format!("{from}#main-key"), // TODO don't hardcode #main-key
+			"rsa-sha256".to_string(),
+			&headers,
+		);
+		
+		signer
+			.build_manually(&method.to_string().to_lowercase(), &path, headers_map)
+			.sign(key)?;
 
-		client
-			.header("Signature", signature_header)
-			.send()
-			.await?
-			.error_for_status()
+		let res = client
+				.header("Signature", signer.header())
+				.send()
+				.await?;
+
+		Ok(res.error_for_status()?)
 	}
 
 	pub async fn user(&self, id: &str) -> crate::Result<model::user::Model> {

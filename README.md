@@ -3,7 +3,7 @@
 
 μpub aims to be a fast, lightweight and secure [ActivityPub](https://www.w3.org/TR/activitypub/) server
 
-μpub is currently being developed and can do some basic things, like posting notes, follows and likes
+μpub is currently being developed and can do most basic things, like posting notes, liking things, following others, deliveries.
 
 all interactions must happen with ActivityPub's client-server methods (basically POST your activities to your outbox)
 

@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use axum::{extract::{FromRef, FromRequestParts}, http::{header, request::Parts}};
 use base64::Engine;
 use openssl::{hash::MessageDigest, pkey::PKey, sign::Verifier};
@@ -64,19 +66,20 @@ where
 			.get("Signature")
 			.map(|v| v.to_str().unwrap_or(""))
 		{
-			let http_signature = HttpSignature::parse(sig);
+			let mut http_signature = HttpSignature::parse(sig);
 
+			// TODO assert payload's digest is equal to signature's
 			let user_id = http_signature.key_id.replace("#main-key", "");
+
 			match ctx.fetch().user(&user_id).await {
-				Ok(user) => {
-					let to_sign = http_signature.build_string(parts);
-					// TODO assert payload's digest is equal to signature's
-					match verify_control_text(&to_sign, &user.public_key, &http_signature.signature) {
+				Ok(user) => match http_signature
+						.build_from_parts(parts)
+						.verify(&user.public_key)
+					{
 						Ok(true) => identity = Identity::Remote(Context::server(&user_id)),
 						Ok(false) => tracing::warn!("invalid signature"),
 						Err(e) => tracing::error!("error verifying signature: {e}"),
-					}
-				},
+					},
 				Err(e) => tracing::warn!("could not fetch user (won't verify): {e}"),
 			}
 		}
@@ -86,33 +89,25 @@ where
 }
 
 
-
-fn verify_control_text(txt: &str, key: &str, control: &str) -> crate::Result<bool> {
-	let pubkey = PKey::public_key_from_pem(key.as_bytes())?;
-	let mut verifier = Verifier::new(MessageDigest::sha256(), &pubkey)?;
-	let signature = base64::prelude::BASE64_STANDARD.decode(control)?;
-	Ok(verifier.verify_oneshot(&signature, txt.as_bytes())?)
-}
-
-
-
-
-
-
-
-
-
-
-
 #[derive(Debug, Clone, Default)]
 pub struct HttpSignature {
-	key_id: String,
-	algorithm: String,
-	headers: Vec<String>,
-	signature: String,
+	pub key_id: String,
+	pub algorithm: String,
+	pub headers: Vec<String>,
+	pub signature: String,
+	pub control: String,
 }
 
 impl HttpSignature {
+	pub fn new(key_id: String, algorithm: String, headers: &[&str]) -> Self {
+		HttpSignature {
+			key_id, algorithm,
+			headers: headers.iter().map(|x| x.to_string()).collect(),
+			signature: String::new(),
+			control: String::new(),
+		}
+	}
+
 	pub fn parse(header: &str) -> Self {
 		let mut sig = HttpSignature::default();
 		header.split(',')
@@ -128,7 +123,24 @@ impl HttpSignature {
 		sig
 	}
 
-	pub fn build_string(&self, parts: &Parts) -> String {
+	pub fn header(&self) -> String {
+		format!(
+			"keyId=\"{}\",algorithm=\"{}\",headers=\"{}\",signature=\"{}\"",
+			self.key_id, self.algorithm, self.headers.join(" "), self.signature,
+		)
+	}
+
+	pub fn build_manually(&mut self, method: &str, target: &str, mut headers: BTreeMap<String, String>) -> &mut Self {
+		let mut out = Vec::new();
+		out.push(format!("(request-target): {method} {target}"));
+		for header in &self.headers {
+			out.push(format!("{header}: {}", headers.remove(header).unwrap_or_default()));
+		}
+		self.control = out.join("\n");
+		self
+	}
+
+	pub fn build_from_parts(&mut self, parts: &Parts) -> &mut Self {
 		let mut out = Vec::new();
 		for header in self.headers.iter() {
 			match header.as_str() {
@@ -146,19 +158,53 @@ impl HttpSignature {
 				)),
 			}
 		}
-		out.join("\n")
+		self.control = out.join("\n");
+		self
 	}
 
-	pub fn digest(&self) -> MessageDigest {
-		match self.algorithm.as_str() {
-			"rsa-sha512" => MessageDigest::sha512(),
-			"rsa-sha384" => MessageDigest::sha384(),
-			"rsa-sha256" => MessageDigest::sha256(),
-			"rsa-sha1" => MessageDigest::sha1(),
-			_ => {
-				tracing::error!("unknown digest algorithm, trying with rsa-sha256");
-				MessageDigest::sha256()
-			}
-		}
+	pub fn verify(&self, key: &str) -> crate::Result<bool> {
+		let pubkey = PKey::public_key_from_pem(key.as_bytes())?;
+		let mut verifier = Verifier::new(MessageDigest::sha256(), &pubkey)?;
+		let signature = base64::prelude::BASE64_STANDARD.decode(&self.signature)?;
+		Ok(verifier.verify_oneshot(&signature, self.control.as_bytes())?)
+	}
+
+	pub fn sign(&mut self, key: &str) -> crate::Result<&str> {
+		let privkey = PKey::private_key_from_pem(key.as_bytes())?;
+		let mut signer = openssl::sign::Signer::new(MessageDigest::sha256(), &privkey)?;
+		signer.update(self.control.as_bytes())?;
+		self.signature = base64::prelude::BASE64_STANDARD.encode(signer.sign_to_vec()?);
+		Ok(&self.signature)
+	}
+}
+
+#[cfg(test)]
+mod test {
+	#[test]
+	fn http_signature_signs_and_verifies() {
+		let key = openssl::rsa::Rsa::generate(2048).unwrap();
+		let private_key = std::str::from_utf8(&key.private_key_to_pem().unwrap()).unwrap().to_string();
+		let public_key = std::str::from_utf8(&key.public_key_to_pem().unwrap()).unwrap().to_string();
+		let mut signer = super::HttpSignature {
+			key_id: "test".to_string(),
+			algorithm: "rsa-sha256".to_string(),
+			headers: vec![
+				"(request-target)".to_string(),
+				"host".to_string(),
+				"date".to_string(),
+			],
+			signature: String::new(),
+			control: String::new(),
+		};
+
+		signer
+			.build_manually("get", "/actor/inbox", [("host".into(), "example.net".into()), ("date".into(), "Sat, 13 Apr 2024 13:36:23 GMT".into())].into())
+			.sign(&private_key)
+			.unwrap();
+
+		let mut verifier = super::HttpSignature::parse(&signer.header());
+		verifier.build_manually("get", "/actor/inbox", [("host".into(), "example.net".into()), ("date".into(), "Sat, 13 Apr 2024 13:36:23 GMT".into())].into());
+
+		assert!(verifier.verify(&public_key).unwrap());
 	}
 }
