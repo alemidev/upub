@@ -37,16 +37,10 @@ impl Link for String {
 impl Link for serde_json::Value {
 	// TODO this can fail, but it should never do!
 	fn href(&self) -> &str {
-		match self {
-			serde_json::Value::String(x) => x,
-			serde_json::Value::Object(map) =>
-				map.get("href")
-					.map(|h| h.as_str().unwrap_or(""))
-					.unwrap_or(""),
-			_ => {
-				tracing::error!("failed getting href on invalid json Link object");
-				""
-			},
+		if self.is_string() {
+			self.as_str().unwrap_or("")
+		} else {
+			self.get("href").map(|x| x.as_str().unwrap_or("")).unwrap_or("")
 		}
 	}
 

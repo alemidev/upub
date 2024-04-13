@@ -32,8 +32,21 @@ impl Base for String {
 
 #[cfg(feature = "unstructured")]
 impl Base for serde_json::Value {
-	crate::getter! { id -> &str }
-	crate::getter! { base_type -> type BaseType }
+	fn base_type(&self) -> Option<BaseType> {
+		if self.is_string() {
+			Some(BaseType::Link(LinkType::Link))
+		} else {
+			self.get("type")?.as_str()?.try_into().ok()
+		}
+	}
+
+	fn id(&self) -> Option<&str> {
+		if self.is_string() {
+			self.as_str()
+		} else {
+			self.get("id").map(|x| x.as_str())?
+		}
+	}
 }
 
 #[cfg(feature = "unstructured")]
