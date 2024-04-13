@@ -59,10 +59,11 @@ impl From<axum::http::StatusCode> for UpubError {
 
 impl axum::response::IntoResponse for UpubError {
 	fn into_response(self) -> axum::response::Response {
-		(
-			axum::http::StatusCode::INTERNAL_SERVER_ERROR,
-			self.to_string()
-		).into_response()
+		let descr = self.to_string();
+		match self {
+			UpubError::Status(status) => (status, descr).into_response(),
+			_ => (axum::http::StatusCode::INTERNAL_SERVER_ERROR, descr).into_response(),
+		}
 	}
 }
 
