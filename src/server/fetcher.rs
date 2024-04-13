@@ -1,7 +1,4 @@
-use std::collections::BTreeMap;
-
 use base64::Engine;
-use http_signature_normalization::Config;
 use openssl::{hash::MessageDigest, pkey::{PKey, Private}, sign::Signer};
 use reqwest::{header::{CONTENT_TYPE, USER_AGENT}, Method, Response};
 use sea_orm::{DatabaseConnection, EntityTrait, IntoActiveModel};
@@ -33,10 +30,10 @@ impl Fetcher {
 		let host = Context::server(url);
 		let date = chrono::Utc::now().format("%a, %d %b %Y %H:%M:%S GMT").to_string(); // lmao @ "GMT"
 		let path = url.replace("https://", "").replace("http://", "").replace(&host, "");
-		let mut headers : BTreeMap<String, String> = [
-			("Host".to_string(), host.clone()),
-			("Date".to_string(), date.clone()),
-		].into();
+		// let mut headers : BTreeMap<String, String> = [
+		// 	("Host".to_string(), host.clone()),
+		// 	("Date".to_string(), date.clone()),
+		// ].into();
 
 		let mut client = reqwest::Client::new()
 			.request(method, url)
@@ -45,41 +42,41 @@ impl Fetcher {
 			.header("Host", host.clone())
 			.header("Date", date.clone());
 
-		let mut signature_cfg = Config::new().mastodon_compat();
-		// let mut to_sign_raw = format!("(request-target): post {path}\nhost: {host}\ndate: {date}");
-		// let mut headers_to_inspect = "(request-target) host date";
+		// let mut signature_cfg = Config::new().mastodon_compat();
+		let mut to_sign_raw = format!("(request-target): post {path}\nhost: {host}\ndate: {date}");
+		let mut headers_to_inspect = "(request-target) host date";
 
 		if let Some(payload) = payload {
 			let digest = format!("sha-256={}", base64::prelude::BASE64_STANDARD.encode(openssl::sha::sha256(payload.as_bytes())));
-			// to_sign_raw = format!("(request-target): post {path}\nhost: {host}\ndate: {date}\ndigest: {digest}");
-			// headers_to_inspect = "(request-target) host date digest";
-			headers.insert("Digest".to_string(), digest.clone());
-			signature_cfg = signature_cfg.require_header("digest");
+			to_sign_raw = format!("(request-target): post {path}\nhost: {host}\ndate: {date}\ndigest: {digest}");
+			headers_to_inspect = "(request-target) host date digest";
+			// headers.insert("Digest".to_string(), digest.clone());
+			// signature_cfg = signature_cfg.require_header("digest");
 			client = client
 				.header("Digest", digest)
 				.body(payload.to_string());
 		}
 
-		let signature_header = signature_cfg
-			.begin_sign("POST", &path, headers)
-			.unwrap()
-			.sign(format!("{from}#main-key"), |to_sign| {
-				// tracing::info!("signature string:\nlib>> {to_sign}\nraw>> {to_sign_raw}");
-				let mut signer = Signer::new(MessageDigest::sha256(), key)?;
-				signer.update(to_sign.as_bytes())?;
-				let signature = base64::prelude::BASE64_URL_SAFE.encode(signer.sign_to_vec()?);
-				Ok(signature) as crate::Result<_>
-			})
-			.unwrap()
-			.signature_header()
-			.replace("hs2019", "rsa-sha256"); // TODO what the fuck??? why isn't this customizable???
+		// let signature_header = signature_cfg
+		// 	.begin_sign("POST", &path, headers)
+		// 	.unwrap()
+		// 	.sign(format!("{from}#main-key"), |to_sign| {
+		// 		// tracing::info!("signature string:\nlib>> {to_sign}\nraw>> {to_sign_raw}");
+		// 		let mut signer = Signer::new(MessageDigest::sha256(), key)?;
+		// 		signer.update(to_sign.as_bytes())?;
+		// 		let signature = base64::prelude::BASE64_URL_SAFE.encode(signer.sign_to_vec()?);
+		// 		Ok(signature) as crate::Result<_>
+		// 	})
+		// 	.unwrap()
+		// 	.signature_header()
+		// 	.replace("hs2019", "rsa-sha256"); // TODO what the fuck??? why isn't this customizable???
 
-		// let signature_header = {
-		// 	let mut signer = Signer::new(MessageDigest::sha256(), key).unwrap();
-		// 	signer.update(to_sign_raw.as_bytes()).unwrap();
-		// 	let signature = base64::prelude::BASE64_STANDARD.encode(signer.sign_to_vec().unwrap());
-		// 	format!("keyId=\"{from}#main-key\",algorithm=\"rsa-sha256\",headers=\"{headers_to_inspect}\",signature=\"{signature}\"")
-		// };
+		let signature_header = {
+			let mut signer = Signer::new(MessageDigest::sha256(), key).unwrap();
+			signer.update(to_sign_raw.as_bytes()).unwrap();
+			let signature = base64::prelude::BASE64_STANDARD.encode(signer.sign_to_vec().unwrap());
+			format!("keyId=\"{from}#main-key\",algorithm=\"rsa-sha256\",headers=\"{headers_to_inspect}\",signature=\"{signature}\"")
+		};
 
 		// tracing::info!("signature headers:\nlib>> {signature_header_lib}\nraw>> {signature_header}");
 
