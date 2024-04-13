@@ -14,6 +14,7 @@ use clap::{Parser, Subcommand};
 use sea_orm::{ConnectOptions, Database, EntityTrait, IntoActiveModel};
 
 pub use errors::UpubResult as Result;
+use tower_http::{cors::CorsLayer, trace::TraceLayer};
 
 use crate::server::fetcher::Fetchable;
 
@@ -107,6 +108,8 @@ async fn main() {
 			let router = axum::Router::new()
 				.ap_routes()
 				.mastodon_routes() // no-op if mastodon feature is disabled
+				.layer(CorsLayer::permissive())
+				.layer(TraceLayer::new_for_http())
 				.with_state(ctx);
 
 			// run our app with hyper, listening locally on port 3000
