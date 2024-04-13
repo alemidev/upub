@@ -68,10 +68,7 @@ where
 			.get("Signature")
 			.map(|v| v.to_str().unwrap_or(""))
 		{
-			let mut signature_cfg = Config::new()
-				.dont_use_created_field()
-				.require_header("host")
-				.require_header("date");
+			let mut signature_cfg = Config::new().mastodon_compat();
 			let mut headers : BTreeMap<String, String> = [
 				("Signature".to_string(), sig.to_string()),
 				("Host".to_string(), header_get(&parts.headers, "Host")),

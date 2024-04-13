@@ -38,11 +38,12 @@ impl Fetcher {
 			("Date".to_string(), date.clone()),
 		].into();
 
-		let mut client = 
-			reqwest::Client::new()
-				.request(method, url)
-				.header("Host", host)
-				.header("Date", date);
+		let mut client = reqwest::Client::new()
+			.request(method, url)
+			.header(CONTENT_TYPE, "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"")
+			.header(USER_AGENT, format!("upub+{VERSION} ({domain})"))
+			.header("Host", host)
+			.header("Date", date);
 
 		let mut signature_cfg = Config::new();
 
@@ -56,13 +57,10 @@ impl Fetcher {
 		}
 
 		let signature_header = signature_cfg
-			.dont_use_created_field()
-			.require_header("host")
-			.require_header("date")
+			.mastodon_compat()
 			.begin_sign("POST", &path, headers)
 			.unwrap()
 			.sign(format!("{from}#main-key"), |to_sign| {
-				tracing::info!("signing '{to_sign}'");
 				let mut signer = Signer::new(MessageDigest::sha256(), key)?;
 				signer.update(to_sign.as_bytes())?;
 				let signature = base64::prelude::BASE64_URL_SAFE.encode(signer.sign_to_vec()?);
@@ -73,8 +71,6 @@ impl Fetcher {
 
 		client
 			.header("Signature", signature_header)
-			.header(CONTENT_TYPE, "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"")
-			.header(USER_AGENT, format!("upub+{VERSION} ({domain})")) // TODO put instance admin email
 			.send()
 			.await?
 			.error_for_status()?

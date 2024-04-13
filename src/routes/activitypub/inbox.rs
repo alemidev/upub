@@ -1,4 +1,4 @@
-use apb::{server::Inbox, target::Addressed, Activity, ActivityType, Base, BaseType, ObjectType};
+use apb::{server::Inbox, ActivityType, Base, BaseType, ObjectType};
 use axum::{extract::{Query, State}, http::StatusCode, Json};
 use sea_orm::{Order, QueryFilter, QueryOrder, QuerySelect};
 
