@@ -1,13 +1,13 @@
 use apb::{ActorMut, BaseMut, ObjectMut, PublicKeyMut};
-use axum::{extract::State, http::StatusCode, Json};
+use axum::{extract::State, http::StatusCode};
 
 use crate::{server::Context, url};
 
-use super::jsonld::LD;
+use super::{jsonld::LD, JsonLD};
 
 
-pub async fn view(State(ctx): State<Context>) -> Result<Json<serde_json::Value>, StatusCode> {
-	Ok(Json(
+pub async fn view(State(ctx): State<Context>) -> Result<JsonLD<serde_json::Value>, StatusCode> {
+	Ok(JsonLD(
 		serde_json::Value::new_object()
 			.set_id(Some(&url!(ctx, "")))
 			.set_actor_type(Some(apb::ActorType::Application))
