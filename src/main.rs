@@ -15,6 +15,8 @@ use sea_orm::{ConnectOptions, Database, EntityTrait, IntoActiveModel};
 
 pub use errors::UpubResult as Result;
 
+use crate::server::fetcher::Fetchable;
+
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Parser)]
@@ -92,7 +94,7 @@ async fn main() {
 		CliCommand::Faker { count } => model::faker::faker(&db, args.domain, count)
 			.await.expect("error creating fake entities"),
 
-		CliCommand::Fetch { uri, save } => fetch(&db, &uri, save)
+		CliCommand::Fetch { uri, save } => fetch(db, args.domain, uri, save)
 			.await.expect("error fetching object"),
 
 		CliCommand::Serve => {
@@ -119,12 +121,15 @@ async fn main() {
 }
 
 
-async fn fetch(db: &sea_orm::DatabaseConnection, uri: &str, save: bool) -> reqwest::Result<()> {
+async fn fetch(db: sea_orm::DatabaseConnection, domain: String, uri: String, save: bool) -> crate::Result<()> {
 	use apb::{Base, Object};
 
-	let mut node = apb::Node::from(uri);
+	let ctx = server::Context::new(db, domain)
+		.await.expect("failed creating server context");
+
+	let mut node = apb::Node::link(uri.to_string());
 	tracing::info!("fetching object");
-	node.fetch().await?;
+	node.fetch(&ctx).await?;
 	tracing::info!("fetched node");
 
 	let obj = node.get().expect("node still empty after fetch?");
@@ -136,17 +141,17 @@ async fn fetch(db: &sea_orm::DatabaseConnection, uri: &str, save: bool) -> reqwe
 			Some(apb::BaseType::Object(apb::ObjectType::Actor(_))) => {
 				model::user::Entity::insert(
 					model::user::Model::new(obj).unwrap().into_active_model()
-				).exec(db).await.unwrap();
+				).exec(ctx.db()).await.unwrap();
 			},
 			Some(apb::BaseType::Object(apb::ObjectType::Activity(_))) => {
 				model::activity::Entity::insert(
 					model::activity::Model::new(obj).unwrap().into_active_model()
-				).exec(db).await.unwrap();
+				).exec(ctx.db()).await.unwrap();
 			},
 			Some(apb::BaseType::Object(apb::ObjectType::Note)) => {
 				model::object::Entity::insert(
 					model::object::Model::new(obj).unwrap().into_active_model()
-				).exec(db).await.unwrap();
+				).exec(ctx.db()).await.unwrap();
 			},
 			Some(apb::BaseType::Object(t)) => tracing::warn!("not implemented: {:?}", t),
 			Some(apb::BaseType::Link(_)) => tracing::error!("fetched another link?"),

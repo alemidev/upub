@@ -122,3 +122,25 @@ impl Fetcher {
 		Ok(object_model)
 	}
 }
+
+#[axum::async_trait]
+pub trait Fetchable : Sync + Send {
+	async fn fetch(&mut self, ctx: &crate::server::Context) -> crate::Result<&mut Self>;
+}
+
+#[axum::async_trait]
+impl Fetchable for apb::Node<serde_json::Value> {
+	async fn fetch(&mut self, ctx: &crate::server::Context) -> crate::Result<&mut Self> {
+		if let apb::Node::Link(uri) = self {
+			let from = format!("{}{}", ctx.protocol(), ctx.base()); // TODO helper to avoid this?
+			let pkey = &ctx.app().private_key;
+			*self = Fetcher::request(Method::GET, uri.href(), None, &from, pkey, ctx.base())
+				.await?
+				.json::<serde_json::Value>()
+				.await?
+				.into();
+		}
+
+		Ok(self)
+	}
+}

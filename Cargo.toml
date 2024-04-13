@@ -32,7 +32,7 @@ tokio = { version = "1.35", features = ["full"] } # TODO slim this down
 sea-orm = { version = "0.12", features = ["macros", "sqlx-sqlite", "runtime-tokio-rustls"] }
 reqwest = { version = "0.12", features = ["json"] }
 axum = "0.7"
-apb = { path = "apb", features = ["unstructured", "fetch", "orm"] }
+apb = { path = "apb", features = ["unstructured", "orm"] }
 # nodeinfo = "0.0.2" # the version on crates.io doesn't re-export necessary types to build the struct!!!
 nodeinfo = { git = "https://codeberg.org/thefederationinfo/nodeinfo-rs", rev = "e865094804" }
 # migrations
