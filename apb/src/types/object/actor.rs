@@ -7,7 +7,8 @@ crate::strenum! {
 		Application,
 		Group,
 		Organization,
-		Person;
+		Person,
+		Service;
 	};
 }
 
