@@ -94,22 +94,23 @@ where
 
 			let user_id = unverified.key_id().replace("#main-key", "");
 			if let Ok(user) = ctx.fetch().user(&user_id).await {
-				let pubkey = PKey::public_key_from_pem(user.public_key.as_bytes())?;
-				
 				let valid = unverified.verify(|sig, to_sign| {
+					let pubkey = PKey::public_key_from_pem(user.public_key.as_bytes())?;
 					let mut verifier = Verifier::new(MessageDigest::sha256(), &pubkey).unwrap();
 					verifier.update(to_sign.as_bytes())?;
 					Ok(verifier.verify(&base64::prelude::BASE64_URL_SAFE.decode(sig).unwrap_or_default())?) as crate::Result<bool>
-				})?;
-
-				if !valid {
-					return Err(UpubError::unauthorized());
-				}
+				});
 
 				// TODO assert payload's digest is equal to signature's
 
-				// TODO introduce hardened mode which identifies remotes by user and not server
-				identity = Identity::Remote(Context::server(&user_id));
+				match valid {
+					// TODO introduce hardened mode which identifies remotes by user and not server
+					Ok(true) => identity = Identity::Remote(Context::server(&user_id)),
+					Ok(false) => return Err(UpubError::unauthorized()),
+					Err(e) => {
+						tracing::error!("failed verifying signature: {e}");
+					},
+				}
 			}
 		}
 
