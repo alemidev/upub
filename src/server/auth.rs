@@ -1,10 +1,6 @@
-use std::collections::BTreeMap;
-
-use axum::{extract::{FromRef, FromRequestParts}, http::{header, request::Parts, HeaderMap, StatusCode}};
+use axum::{extract::{FromRef, FromRequestParts}, http::{header, request::Parts}};
 use base64::Engine;
-use http_signature_normalization::Config;
 use openssl::{hash::MessageDigest, pkey::PKey, sign::Verifier};
-use reqwest::Method;
 use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter};
 
 use crate::{errors::UpubError, model, server::Context};
@@ -68,49 +64,20 @@ where
 			.get("Signature")
 			.map(|v| v.to_str().unwrap_or(""))
 		{
-			let mut signature_cfg = Config::new().mastodon_compat();
-			let mut headers : BTreeMap<String, String> = [
-				("Signature".to_string(), sig.to_string()),
-				("Host".to_string(), header_get(&parts.headers, "Host")),
-				("Date".to_string(), header_get(&parts.headers, "Date")),
-			].into();
+			let http_signature = HttpSignature::parse(sig);
 
-			if parts.method == Method::POST {
-				signature_cfg = signature_cfg.require_header("digest");
-				headers.insert("Digest".to_string(), header_get(&parts.headers, "Digest"));
-			}
-
-			let unverified = match signature_cfg.begin_verify(
-				parts.method.as_str(),
-				parts.uri.path_and_query().map(|x| x.as_str()).unwrap_or("/"),
-				headers
-			) {
-				Ok(x) => x,
-				Err(e) => {
-					tracing::error!("failed preparing signature verification context: {e}");
-					return Err(UpubError::internal_server_error());
-				}
-			};
-
-			let user_id = unverified.key_id().replace("#main-key", "");
-			if let Ok(user) = ctx.fetch().user(&user_id).await {
-				let valid = unverified.verify(|sig, to_sign| {
-					let pubkey = PKey::public_key_from_pem(user.public_key.as_bytes())?;
-					let mut verifier = Verifier::new(MessageDigest::sha256(), &pubkey).unwrap();
-					verifier.update(to_sign.as_bytes())?;
-					Ok(verifier.verify(&base64::prelude::BASE64_URL_SAFE.decode(sig).unwrap_or_default())?) as crate::Result<bool>
-				});
-
-				// TODO assert payload's digest is equal to signature's
-
-				match valid {
-					// TODO introduce hardened mode which identifies remotes by user and not server
-					Ok(true) => identity = Identity::Remote(Context::server(&user_id)),
-					Ok(false) => return Err(UpubError::unauthorized()),
-					Err(e) => {
-						tracing::error!("failed verifying signature: {e}");
-					},
-				}
+			let user_id = http_signature.key_id.replace("#main-key", "");
+			match ctx.fetch().user(&user_id).await {
+				Ok(user) => {
+					let to_sign = http_signature.build_string(parts);
+					// TODO assert payload's digest is equal to signature's
+					match verify_control_text(&to_sign, &user.public_key, &http_signature.signature) {
+						Ok(true) => identity = Identity::Remote(Context::server(&user_id)),
+						Ok(false) => tracing::warn!("invalid signature"),
+						Err(e) => tracing::error!("error verifying signature: {e}"),
+					}
+				},
+				Err(e) => tracing::warn!("could not fetch user (won't verify): {e}"),
 			}
 		}
 
@@ -118,7 +85,26 @@ where
 	}
 }
 
-#[allow(unused)] // TODO am i gonna reimplement http signatures for verification?
+
+
+fn verify_control_text(txt: &str, key: &str, control: &str) -> crate::Result<bool> {
+	let pubkey = PKey::public_key_from_pem(key.as_bytes())?;
+	let mut verifier = Verifier::new(MessageDigest::sha256(), &pubkey).unwrap();
+	verifier.update(txt.as_bytes())?;
+	Ok(verifier.verify(&base64::prelude::BASE64_URL_SAFE.decode(control).unwrap_or_default())?)
+}
+
+
+
+
+
+
+
+
+
+
+
+#[derive(Debug, Clone, Default)]
 pub struct HttpSignature {
 	key_id: String,
 	algorithm: String,
@@ -127,7 +113,38 @@ pub struct HttpSignature {
 }
 
 impl HttpSignature {
-	#[allow(unused)] // TODO am i gonna reimplement http signatures for verification?
+	pub fn parse(header: &str) -> Self {
+		let mut sig = HttpSignature::default();
+		header.split(',')
+			.filter_map(|x| x.split_once('='))
+			.map(|(k, v)| (k, v.trim_end_matches('"').trim_matches('"')))
+			.for_each(|(k, v)| match k {
+				"keyId" => sig.key_id = v.to_string(),
+				"algorithm" => sig.algorithm = v.to_string(),
+				"signature" => sig.signature = v.to_string(),
+				"headers" => sig.headers = v.split(' ').map(|x| x.to_string()).collect(),
+				_ => tracing::warn!("unexpected field in http signature: '{k}=\"{v}\"'"),
+			});
+		sig
+	}
+
+	pub fn build_string(&self, parts: &Parts) -> String {
+		let mut out = Vec::new();
+		for header in self.headers.iter() {
+			match header.as_str() {
+				"(request-target)" => out.push(
+					format!("(request-target): {}", parts.uri.path_and_query().map(|x| x.as_str()).unwrap_or("/"))
+				),
+				// TODO other pseudo-headers,
+				_ => out.push(format!("{}: {}",
+					header.to_lowercase(),
+					parts.headers.get(header).map(|x| x.to_str().unwrap_or("")).unwrap_or("")
+				)),
+			}
+		}
+		out.join("\n")
+	}
+
 	pub fn digest(&self) -> MessageDigest {
 		match self.algorithm.as_str() {
 			"rsa-sha512" => MessageDigest::sha512(),
@@ -140,33 +157,4 @@ impl HttpSignature {
 			}
 		}
 	}
-}
-
-impl TryFrom<&str> for HttpSignature {
-	type Error = StatusCode; // TODO: quite ad hoc...
-
-	fn try_from(value: &str) -> Result<Self, Self::Error> {
-		let parameters : BTreeMap<String, String> = value
-			.split(',')
-			.filter_map(|s| { // TODO kinda ugly, can be made nicer?
-				let (k, v) = s.split_once("=\"")?;
-				let (k, mut v) = (k.to_string(), v.to_string());
-				v.pop();
-				Some((k, v))
-			}).collect();
-
-		let sig = HttpSignature {
-			key_id: parameters.get("keyId").ok_or(StatusCode::BAD_REQUEST)?.to_string(),
-			algorithm: parameters.get("algorithm").ok_or(StatusCode::BAD_REQUEST)?.to_string(),
-			headers: parameters.get("headers").map(|x| x.split(' ').map(|x| x.to_string()).collect()).unwrap_or(vec!["date".to_string()]),
-			signature: parameters.get("signature").ok_or(StatusCode::BAD_REQUEST)?.to_string(),
-		};
-
-		Ok(sig)
-	}
-}
-
-
-pub fn header_get(headers: &HeaderMap, k: &str) -> String {
-	headers.get(k).map(|x| x.to_str().unwrap_or("")).unwrap_or("").to_string()
 }
