@@ -2,7 +2,7 @@ use axum::{extract::{Path, State}, http::StatusCode};
 use sea_orm::{ColumnTrait, QueryFilter};
 
 use apb::{ObjectMut, BaseMut, Node};
-use crate::{model, server::{auth::AuthIdentity, Context}};
+use crate::{model::{self, addressing::EmbeddedActivity}, server::{auth::AuthIdentity, Context}};
 
 use super::{jsonld::LD, JsonLD};
 
@@ -28,14 +28,15 @@ pub async fn view(
 	Path(id): Path<String>,
 	AuthIdentity(auth): AuthIdentity,
 ) -> Result<JsonLD<serde_json::Value>, StatusCode> {
-	match model::addressing::Entity::find_objects()
+	match model::addressing::Entity::find_activities()
 		.filter(model::object::Column::Id.eq(ctx.oid(id)))
 		.filter(auth.filter_condition())
-		.into_model::<model::object::Model>()
+		.into_model::<EmbeddedActivity>()
 		.one(ctx.db())
 		.await
 	{
-		Ok(Some(object)) => Ok(JsonLD(ap_object(object).ld_context())),
+		Ok(Some(EmbeddedActivity { activity: _, object: Some(object) })) => Ok(JsonLD(ap_object(object).ld_context())),
+		Ok(Some(EmbeddedActivity { activity: _, object: None })) => Err(StatusCode::NOT_FOUND),
 		Ok(None) => Err(StatusCode::NOT_FOUND),
 		Err(e) => {
 			tracing::error!("error querying for object: {e}");
