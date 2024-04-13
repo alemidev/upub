@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use base64::Engine;
 use http_signature_normalization::Config;
 use openssl::{hash::MessageDigest, pkey::{PKey, Private}, sign::Signer};
-use reqwest::{header::{CONTENT_TYPE, USER_AGENT}, Method};
+use reqwest::{header::{CONTENT_TYPE, USER_AGENT}, Method, Response};
 use sea_orm::{DatabaseConnection, EntityTrait, IntoActiveModel};
 
 use crate::{model, VERSION};
@@ -22,14 +22,14 @@ impl Fetcher {
 		Fetcher { db, domain, key: PKey::private_key_from_pem(key.as_bytes()).unwrap() }
 	}
 
-	pub async fn request<T: serde::de::DeserializeOwned>(
+	pub async fn request(
 		method: reqwest::Method,
 		url: &str,
 		payload: Option<&str>,
 		from: &str,
 		key: &PKey<Private>,
 		domain: &str,
-	) -> reqwest::Result<T> {
+	) -> reqwest::Result<Response> {
 		let host = Context::server(url);
 		let date = chrono::Utc::now().format("%a, %d %b %Y %H:%M:%S GMT").to_string(); // lmao @ "GMT"
 		let path = url.replace("https://", "").replace("http://", "").replace(&host, "");
@@ -87,9 +87,7 @@ impl Fetcher {
 			.header("Signature", signature_header)
 			.send()
 			.await?
-			.error_for_status()?
-			.json()
-			.await
+			.error_for_status()
 	}
 
 	pub async fn user(&self, id: &str) -> crate::Result<model::user::Model> {
@@ -97,9 +95,9 @@ impl Fetcher {
 			return Ok(x); // already in db, easy
 		}
 
-		let user = Self::request::<serde_json::Value>(
+		let user = Self::request(
 			Method::GET, id, None, &format!("https://{}", self.domain), &self.key, &self.domain,
-		).await?;
+		).await?.json::<serde_json::Value>().await?;
 		let user_model = model::user::Model::new(&user)?;
 
 		model::user::Entity::insert(user_model.clone().into_active_model())
@@ -113,9 +111,9 @@ impl Fetcher {
 			return Ok(x); // already in db, easy
 		}
 
-		let activity = Self::request::<serde_json::Value>(
+		let activity = Self::request(
 			Method::GET, id, None, &format!("https://{}", self.domain), &self.key, &self.domain,
-		).await?;
+		).await?.json::<serde_json::Value>().await?;
 		let activity_model = model::activity::Model::new(&activity)?;
 
 		model::activity::Entity::insert(activity_model.clone().into_active_model())
@@ -129,9 +127,9 @@ impl Fetcher {
 			return Ok(x); // already in db, easy
 		}
 
-		let object = Self::request::<serde_json::Value>(
+		let object = Self::request(
 			Method::GET, id, None, &format!("https://{}", self.domain), &self.key, &self.domain,
-		).await?;
+		).await?.json::<serde_json::Value>().await?;
 		let object_model = model::object::Model::new(&object)?;
 
 		model::object::Entity::insert(object_model.clone().into_active_model())

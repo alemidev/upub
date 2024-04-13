@@ -98,7 +98,7 @@ async fn worker(db: DatabaseConnection, domain: String, poll_interval: u64, mut 
 			continue;
 		};
 
-		if let Err(e) = Fetcher::request::<()>(
+		if let Err(e) = Fetcher::request(
 			Method::POST, &delivery.target,
 			Some(&serde_json::to_string(&payload).unwrap()),
 			&delivery.actor, &key, &domain
