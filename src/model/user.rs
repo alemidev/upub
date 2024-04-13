@@ -24,6 +24,7 @@ pub struct Model {
 
 	pub following_count: i64,
 	pub followers_count: i64,
+	// pub statuses_count: i64,
 
 	pub public_key: String,
 	pub private_key: Option<String>,

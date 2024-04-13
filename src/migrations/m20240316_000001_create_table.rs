@@ -18,11 +18,11 @@ impl MigrationTrait for Migration {
 					)
 					.col(ColumnDef::new(Users::ActorType).string().not_null())
 					.col(ColumnDef::new(Users::Domain).string().not_null())
-					.col(ColumnDef::new(Users::Name).string().not_null())
+					.col(ColumnDef::new(Users::Name).string().null())
 					.col(ColumnDef::new(Users::Summary).string().null())
 					.col(ColumnDef::new(Users::Image).string().null())
 					.col(ColumnDef::new(Users::Icon).string().null())
-					.col(ColumnDef::new(Users::PreferredUsername).string().null())
+					.col(ColumnDef::new(Users::PreferredUsername).string().not_null())
 					.col(ColumnDef::new(Users::Inbox).string().null())
 					.col(ColumnDef::new(Users::SharedInbox).string().null())
 					.col(ColumnDef::new(Users::Outbox).string().null())
@@ -30,6 +30,7 @@ impl MigrationTrait for Migration {
 					.col(ColumnDef::new(Users::Followers).string().null())
 					.col(ColumnDef::new(Users::FollowingCount).integer().not_null().default(0))
 					.col(ColumnDef::new(Users::FollowersCount).integer().not_null().default(0))
+					// .col(ColumnDef::new(Users::StatusesCount).integer().not_null().default(0))
 					.col(ColumnDef::new(Users::PublicKey).string().not_null())
 					.col(ColumnDef::new(Users::PrivateKey).string().null())
 					.col(ColumnDef::new(Users::Created).date_time().not_null())
@@ -125,6 +126,7 @@ enum Users {
 	FollowingCount,
 	Followers,
 	FollowersCount,
+	// StatusesCount,
 	PublicKey,
 	PrivateKey,
 	Created,
