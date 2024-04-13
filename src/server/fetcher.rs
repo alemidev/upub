@@ -35,6 +35,10 @@ impl Fetcher {
 		// 	("Date".to_string(), date.clone()),
 		// ].into();
 
+		// let mut signature_cfg = Config::new().mastodon_compat();
+		let mut to_sign_raw = format!("(request-target): {} {path}\nhost: {host}\ndate: {date}", method.to_string().to_lowercase());
+		let mut headers_to_inspect = "(request-target) host date";
+
 		let mut client = reqwest::Client::new()
 			.request(method, url)
 			.header(ACCEPT, "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"")
@@ -42,10 +46,6 @@ impl Fetcher {
 			.header(USER_AGENT, format!("upub+{VERSION} ({domain})"))
 			.header("Host", host.clone())
 			.header("Date", date.clone());
-
-		// let mut signature_cfg = Config::new().mastodon_compat();
-		let mut to_sign_raw = format!("(request-target): post {path}\nhost: {host}\ndate: {date}");
-		let mut headers_to_inspect = "(request-target) host date";
 
 		if let Some(payload) = payload {
 			let digest = format!("sha-256={}", base64::prelude::BASE64_STANDARD.encode(openssl::sha::sha256(payload.as_bytes())));
