@@ -46,10 +46,10 @@ impl Model {
 			actor_type: object.actor_type().ok_or(super::FieldError("type"))?,
 			name: object.name().map(|x| x.to_string()),
 			summary: object.summary().map(|x| x.to_string()),
-			icon: object.icon().id(),
+			icon: object.icon().get().map(|x| x.url().id().unwrap_or_default()),
 			image: object.image().get().map(|x| x.url().id().unwrap_or_default()),
-			inbox: object.inbox().get().map(|x| x.url().id().unwrap_or_default()),
-			outbox: object.inbox().id(),
+			inbox: object.inbox().id(),
+			outbox: object.outbox().id(),
 			shared_inbox: None, // TODO!!! parse endpoints
 			followers: object.followers().id(),
 			following: object.following().id(),
