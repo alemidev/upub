@@ -3,6 +3,7 @@ use std::collections::BTreeMap;
 use axum::{extract::{FromRef, FromRequestParts}, http::{header, request::Parts}};
 use base64::Engine;
 use openssl::{hash::MessageDigest, pkey::PKey, sign::Verifier};
+use reqwest::StatusCode;
 use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter};
 
 use crate::{errors::UpubError, model, server::Context};
@@ -80,7 +81,17 @@ where
 						Ok(false) => tracing::warn!("invalid signature"),
 						Err(e) => tracing::error!("error verifying signature: {e}"),
 					},
-				Err(e) => tracing::warn!("could not fetch user (won't verify): {e}"),
+				Err(e) => {
+					// since most activities are deletions for users we never saw, let's handle this case
+					// if while fetching we receive a GONE, it means we didn't have this user and it doesn't
+					// exist anymore, so it must be a deletion we can ignore
+					if let UpubError::Reqwest(ref x) = e {
+						if let Some(StatusCode::GONE) = x.status() {
+							return Err(UpubError::not_modified());
+						}
+					}
+					tracing::warn!("could not fetch user (won't verify): {e}");
+				}
 			}
 		}
 
