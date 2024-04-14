@@ -22,7 +22,11 @@ upub's stock frontend is also being developed and can be viewed _usually_ at [fe
  - [x] http signatures
  - [x] privacy, targets, scopes
  - [ ] simple web client
- - [ ] client api (mastodon/pleroma)
+ - [ ] announce (boosts)
+ - [ ] threads
+ - [ ] editing
+ - [ ] searching
+ - [ ] mastodon api
  - [ ] hashtags, discovery
  - [ ] more optimized database schema
 
