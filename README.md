@@ -26,7 +26,10 @@ upub's stock frontend is also being developed and can be viewed _usually_ at [fe
  - [ ] hashtags, discovery
  - [ ] more optimized database schema
 
-![screenshot of upub simple frontend](https://cdn.alemi.dev/proj/upub/fe.png)
-
 ## what about the name?
 μpub, sometimes stylyzed `upub`, is pronounced `mu-pub` (the `μ` stands for [micro](https://en.wikipedia.org/wiki/International_System_of_Units#Prefixes))
+
+## frontend
+upub aims to be compatible with multiple frontends via the mastodon api, but a simple custom ui is also being worked on
+
+![screenshot of upub simple frontend](https://cdn.alemi.dev/proj/upub/fe.png)
