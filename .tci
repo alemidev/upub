@@ -10,4 +10,10 @@ echo "migrating database"
 /opt/bin/upub --db "sqlite:///srv/tci/upub.db" --domain https://feditest.alemi.dev migrate
 echo "restarting service"
 systemctl --user start upub
+echo "rebuilding frontend"
+cd web
+/opt/bin/trunk build --release --public-url 'https://feditest.alemi.dev/web'
+echo "deploying frontend"
+rm /srv/http/feditest/web/*
+mv ./dist/* /srv/http/feditest/web/
 echo "done"
