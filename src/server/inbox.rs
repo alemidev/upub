@@ -1,5 +1,6 @@
 use apb::{target::Addressed, Activity, Base, Object};
-use sea_orm::{sea_query::Expr, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, Set};
+use reqwest::StatusCode;
+use sea_orm::{sea_query::Expr, ColumnTrait, Condition, EntityTrait, IntoActiveModel, QueryFilter, Set};
 
 use crate::{errors::{LoggableError, UpubError}, model};
 
@@ -181,7 +182,48 @@ impl apb::server::Inbox for Context {
 		Ok(())
 	}
 
-	async fn undo(&self, _activity: serde_json::Value) -> crate::Result<()> {
-		todo!()
+	async fn undo(&self, activity: serde_json::Value) -> crate::Result<()> {
+		let uid = activity.actor().id().ok_or_else(UpubError::bad_request)?;
+		// TODO in theory we could work with just object_id but right now only accept embedded
+		let undone_activity = activity.object().extract().ok_or_else(UpubError::bad_request)?;
+		let undone_aid = undone_activity.id().ok_or_else(UpubError::bad_request)?;
+		let undone_object_id = undone_activity.object().id().ok_or_else(UpubError::bad_request)?;
+		let activity_type = undone_activity.activity_type().ok_or_else(UpubError::bad_request)?;
+
+		match activity_type {
+			apb::ActivityType::Like => {
+				model::like::Entity::delete_many()
+					.filter(
+						Condition::all()
+							.add(model::like::Column::Actor.eq(&uid))
+							.add(model::like::Column::Likes.eq(&undone_object_id))
+					)
+					.exec(self.db())
+					.await?;
+				model::object::Entity::update_many()
+					.filter(model::object::Column::Id.eq(&undone_object_id))
+					.col_expr(model::object::Column::Likes, Expr::col(model::object::Column::Likes).sub(1))
+					.exec(self.db())
+					.await?;
+			},
+			apb::ActivityType::Follow => {
+				model::relation::Entity::delete_many()
+					.filter(
+						Condition::all()
+							.add(model::relation::Column::Follower.eq(&uid))
+							.add(model::relation::Column::Following.eq(&undone_object_id))
+					)
+					.exec(self.db())
+					.await?;
+			},
+			_ => {
+				tracing::error!("received 'Undo' for unimplemented activity: {}", serde_json::to_string_pretty(&activity).unwrap());
+				return Err(StatusCode::NOT_IMPLEMENTED.into());
+			},
+		}
+
+		model::activity::Entity::delete_by_id(undone_aid).exec(self.db()).await?;
+
+		Ok(())
 	}
 }

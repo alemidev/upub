@@ -1,4 +1,4 @@
-use apb::{server::Inbox, ActivityType, Base, BaseType, ObjectType};
+use apb::{server::Inbox, Activity, ActivityType, Base, BaseType, ObjectType};
 use axum::{extract::{Query, State}, http::StatusCode, Json};
 use sea_orm::{Order, QueryFilter, QueryOrder, QuerySelect};
 
@@ -52,48 +52,27 @@ pub async fn post(
 		Identity::Local(_user) => return Err(UpubError::forbidden()),
 		Identity::Anonymous => return Err(UpubError::unauthorized()),
 	}
-	match activity.base_type() {
-		None => { Err(StatusCode::BAD_REQUEST.into()) },
 
-		Some(BaseType::Link(_x)) => {
-			tracing::warn!("skipping remote activity: {}", serde_json::to_string_pretty(&activity).unwrap());
-			Err(StatusCode::UNPROCESSABLE_ENTITY.into()) // we could but not yet
-		},
-
-		Some(BaseType::Object(ObjectType::Activity(ActivityType::Activity))) => {
+	// TODO we could process Links and bare Objects maybe, but probably out of AP spec?
+	match activity.activity_type().ok_or_else(UpubError::bad_request)? {
+		ActivityType::Activity => {
 			tracing::warn!("skipping unprocessable base activity: {}", serde_json::to_string_pretty(&activity).unwrap());
 			Err(StatusCode::UNPROCESSABLE_ENTITY.into()) // won't ingest useless stuff
 		},
 
-		Some(BaseType::Object(ObjectType::Activity(ActivityType::Delete))) =>
-			Ok(ctx.delete(activity).await?),
+		ActivityType::Delete => Ok(ctx.delete(activity).await?),
+		ActivityType::Follow => Ok(ctx.follow(activity).await?),
+		ActivityType::Accept(_) => Ok(ctx.accept(activity).await?),
+		ActivityType::Reject(_) => Ok(ctx.reject(activity).await?),
+		ActivityType::Like => Ok(ctx.like(activity).await?),
+		ActivityType::Create => Ok(ctx.create(activity).await?),
+		ActivityType::Update => Ok(ctx.update(activity).await?),
+		ActivityType::Undo => Ok(ctx.undo(activity).await?),
+		// ActivityType::Announce => Ok(ctx.announce(activity).await?),
 
-		Some(BaseType::Object(ObjectType::Activity(ActivityType::Follow))) =>
-			Ok(ctx.follow(activity).await?),
-
-		Some(BaseType::Object(ObjectType::Activity(ActivityType::Accept(_)))) =>
-			Ok(ctx.accept(activity).await?),
-
-		Some(BaseType::Object(ObjectType::Activity(ActivityType::Reject(_)))) =>
-			Ok(ctx.reject(activity).await?),
-
-		Some(BaseType::Object(ObjectType::Activity(ActivityType::Like))) =>
-			Ok(ctx.like(activity).await?),
-
-		Some(BaseType::Object(ObjectType::Activity(ActivityType::Create))) =>
-			Ok(ctx.create(activity).await?),
-
-		Some(BaseType::Object(ObjectType::Activity(ActivityType::Update))) =>
-			Ok(ctx.update(activity).await?),
-
-		Some(BaseType::Object(ObjectType::Activity(_x))) => {
+		_x => {
 			tracing::info!("received unimplemented activity on inbox: {}", serde_json::to_string_pretty(&activity).unwrap());
 			Err(StatusCode::NOT_IMPLEMENTED.into())
 		},
-
-		Some(_x) => {
-			tracing::warn!("ignoring non-activity object in inbox: {}", serde_json::to_string_pretty(&activity).unwrap());
-			Err(StatusCode::UNPROCESSABLE_ENTITY.into())
-		}
 	}
 }
