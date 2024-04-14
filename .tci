@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "building release binary"
-cargo build --release --all-features
+cargo build --release --all-features -j 2 # vps we deploy on has 4 vcpus, don't hog them all!
 echo "stopping service"
 systemctl --user stop upub
 echo "installing new binary"
