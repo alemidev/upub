@@ -1,6 +1,6 @@
-use axum::{extract::{Path, State}, http::StatusCode, Json};
-use mastodon_async_entities::account::{Account, AccountId};
-use sea_orm::EntityTrait;
+use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
+use mastodon_async_entities::{account::{Account, AccountId}, status::Status};
+use sea_orm::{ColumnTrait, Condition, EntityTrait, Order, QueryFilter, QueryOrder};
 
 use crate::{model, server::{auth::AuthIdentity, Context}};
 
@@ -40,4 +40,40 @@ pub async fn view(
 			bot: None,
 		})),
 	}
+}
+
+pub struct StatusesQuery {
+	/// All results returned will be lesser than this ID. In effect, sets an upper bound on results.
+	pub max_id: String,
+	/// All results returned will be greater than this ID. In effect, sets a lower bound on results.
+	pub since_id: String,
+	/// Returns results immediately newer than this ID. In effect, sets a cursor at this ID and paginates forward.
+	pub min_id: String,
+	/// Maximum number of results to return. Defaults to 20 statuses. Max 40 statuses.
+	pub limit: i32,
+	/// Filter out statuses without attachments.
+	pub only_media: bool,
+	/// Filter out statuses in reply to a different account.
+	pub exclude_replies: bool,
+	/// Filter out boosts from the response.
+	pub exclude_reblogs: bool,
+	/// Filter for pinned statuses only. Defaults to false, which includes all statuses. Pinned statuses do not receive special priority in the order of the returned results.
+	pub pinned: bool,
+	/// Filter for statuses using a specific hashtag.
+	pub tagged: String,
+}
+
+pub async fn statuses(
+	State(ctx): State<Context>,
+	AuthIdentity(auth): AuthIdentity,
+	Path(id): Path<String>,
+	Query(_query): Query<StatusesQuery>,
+) -> Result<Json<Vec<Status>>, StatusCode> {
+	let uid = ctx.uid(id);
+	model::addressing::Entity::find_activities()
+		.filter(Condition::all().add(model::activity::Column::Actor.eq(uid)))
+		.filter(auth.filter_condition())
+		.order_by(model::addressing::Column::Published, Order::Desc);
+
+	todo!()
 }
