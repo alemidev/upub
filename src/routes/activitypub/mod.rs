@@ -49,9 +49,19 @@ impl ActivityPubRouter for Router<crate::server::Context> {
 			.route("/users/:id/followers/page", get(ap::user::following::page::<false>))
 			.route("/users/:id/following", get(ap::user::following::get::<true>))
 			.route("/users/:id/following/page", get(ap::user::following::page::<true>))
-			// specific object routes
+			// activities
 			.route("/activities/:id", get(ap::activity::view))
+			// context
+			//.route("/context/:id", get(ap::context::get))
+			//.route("/context/:id/page", get(ap::context::page))
+			// specific object routes
 			.route("/objects/:id", get(ap::object::view))
+			//.route("/objects/:id/likes", get(ap::object::likes::get))
+			//.route("/objects/:id/likes/page", get(ap::object::likes::page))
+			//.route("/objects/:id/announces", get(ap::object::announces::get))
+			//.route("/objects/:id/announces/page", get(ap::object::announces::page))
+			//.route("/objects/:id/replies", get(ap::object::replies::get))
+			//.route("/objects/:id/replies/page", get(ap::object::replies::page))
 	}
 }
 
