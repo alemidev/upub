@@ -36,7 +36,7 @@ pub async fn page(
 	let offset = page.offset.unwrap_or(0);
 	let activities = model::addressing::Entity::find_activities()
 		.filter(Condition::all().add(model::addressing::Column::Actor.eq(&uid)))
-		.order_by(model::addressing::Column::Published, Order::Asc)
+		.order_by(model::addressing::Column::Published, Order::Desc)
 		.offset(offset)
 		.limit(limit)
 		.into_model::<EmbeddedActivity>()
