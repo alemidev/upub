@@ -4,13 +4,13 @@ pub mod outbox;
 
 pub mod following;
 
-use axum::extract::{Path, State};
-use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter};
+use axum::extract::{Path, Query, State};
+use sea_orm::EntityTrait;
 
 use apb::{PublicKeyMut, ActorMut, DocumentMut, DocumentType, ObjectMut, BaseMut, Node};
 use crate::{errors::UpubError, model::{self, user}, server::Context, url};
 
-use super::{jsonld::LD, JsonLD};
+use super::{jsonld::LD, JsonLD, RemoteId};
 
 pub fn ap_user(user: model::user::Model) -> serde_json::Value {
 	serde_json::Value::new_object()
@@ -44,8 +44,22 @@ pub fn ap_user(user: model::user::Model) -> serde_json::Value {
 		.set_endpoints(Node::Empty)
 }
 
-pub async fn view(State(ctx) : State<Context>, Path(id): Path<String>) -> crate::Result<JsonLD<serde_json::Value>> {
-	match user::Entity::find_by_id(ctx.uid(id.clone()))
+pub async fn view(
+	State(ctx) : State<Context>,
+	Path(id): Path<String>,
+	Query(rid): Query<RemoteId>,
+) -> crate::Result<JsonLD<serde_json::Value>> {
+	// TODO can this be made less convoluted???
+	let uid = if id == "+" {
+		if let Some(rid) = rid.id {
+			rid
+		} else {
+			return Err(UpubError::bad_request());
+		}
+	} else {
+		ctx.uid(id.clone())
+	};
+	match user::Entity::find_by_id(uid)
 		.find_also_related(model::config::Entity)
 		.one(ctx.db()).await?
 	{
@@ -62,24 +76,6 @@ pub async fn view(State(ctx) : State<Context>, Path(id): Path<String>) -> crate:
 		},
 		// remote user TODDO doesn't work?
 		Some((user, None)) => Ok(JsonLD(ap_user(user).ld_context())),
-		None => Err(UpubError::not_found()),
-	}
-}
-
-pub async fn remote_view(
-	State(ctx) : State<Context>,
-	Path((server, id)): Path<(String, String)>,
-) -> crate::Result<JsonLD<serde_json::Value>> {
-	match user::Entity::find()
-		.filter(
-			Condition::all()
-				.add(user::Column::PreferredUsername.eq(id))
-				.add(user::Column::Domain.eq(server))
-		)
-		.one(ctx.db()).await?
-	{
-		// local user
-		Some(user) => Ok(JsonLD(ap_user(user).ld_context())),
 		None => Err(UpubError::not_found()),
 	}
 }
