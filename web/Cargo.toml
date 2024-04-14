@@ -15,12 +15,13 @@ repository = "https://git.alemi.dev/upub.git"
 log = "0.4"
 console_log = "1.0"
 console_error_panic_hook = "0.1"
+thiserror = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 dashmap = "5.5"
-web-sys = { version = "0.3", features = ["Window", "Storage", "HtmlDocument"] }
 leptos = { version = "0.6", features = ["csr"] }
-leptos-use = { version = "0.10", features = [] }
+leptos_router = { version = "0.6", features = ["csr"] }
+leptos-use = "0.10"
 reqwest = { version = "0.12", features = ["json"] }
 apb = { path = "../apb", features = ["unstructured"] }
 futures = "0.3.30"

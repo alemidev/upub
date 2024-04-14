@@ -182,12 +182,12 @@ pub fn Activity(activity: serde_json::Value) -> impl IntoView {
 
 #[component]
 pub fn Timeline(
-	feed: ReadSignal<String>,
 	token: Signal<Option<String>>,
 ) -> impl IntoView {
+	let (timeline, set_timeline) = create_signal(format!("{BASE_URL}/inbox/page"));
 	let users : Arc<DashMap<String, serde_json::Value>> = Arc::new(DashMap::new());
 	let _users = users.clone(); // TODO i think there is syntactic sugar i forgot?
-	let items = create_resource(move || feed.get(), move |feed_url| {
+	let items = create_resource(move || timeline.get(), move |feed_url| {
 		let __users = _users.clone(); // TODO lmao this is meme tier
 		async move {
 			let mut req = reqwest::Client::new().get(feed_url);
@@ -234,29 +234,32 @@ pub fn Timeline(
 			out
 		}
 	});
-	move || match items.get() {
-		None => view! { <p>loading...</p> }.into_view(),
-		Some(data) => {
-			view! {
-				<div class="ml-1">
-					<For
-						each=move || data.clone() // TODO wtf this clone??
-						key=|x| x.id().unwrap_or("").to_string()
-						children=move |x: serde_json::Value| {
-							let actor = x.actor().extract().unwrap_or_else(||
-								 serde_json::Value::String(x.actor().id().unwrap_or_default())
-							);
-							view! {
-								<div class="post-card ml-1 mr-1">
-									<Actor object=actor />
-									<Activity activity=x />
-								</div>
-								<hr/ >
+	view! {
+		<div class="ml-1">
+			<TimelinePicker tx=set_timeline rx=timeline />
+			{move || match items.get() {
+				None => view! { <p>loading...</p> }.into_view(),
+				Some(data) => {
+					view! {
+						<For
+							each=move || data.clone() // TODO wtf this clone??
+							key=|x| x.id().unwrap_or("").to_string()
+							children=move |x: serde_json::Value| {
+								let actor = x.actor().extract().unwrap_or_else(||
+									 serde_json::Value::String(x.actor().id().unwrap_or_default())
+								);
+								view! {
+									<div class="post-card ml-1 mr-1">
+										<Actor object=actor />
+										<Activity activity=x />
+									</div>
+									<hr/ >
+								}
 							}
-						}
-					/>
-				</div>
-			}.into_view()
-		},
+						/>
+					}.into_view()
+				},
+			}}
+		</div>
 	}
 }
