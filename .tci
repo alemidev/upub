@@ -12,7 +12,7 @@ echo "restarting service"
 systemctl --user start upub
 echo "rebuilding frontend"
 cd web
-/opt/bin/trunk build --release -j 1 --public-url 'https://feditest.alemi.dev/web'
+/opt/bin/trunk build --release --public-url 'https://feditest.alemi.dev/web' -- -j 1
 echo "deploying frontend"
 rm /srv/http/feditest/web/*
 mv ./dist/* /srv/http/feditest/web/
