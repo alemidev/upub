@@ -1,0 +1,27 @@
+[package]
+name = "upub-web"
+version = "0.1.0"
+edition = "2021"
+authors = [ "alemi <me@alemi.dev>" ]
+description = "web frontend for upub"
+license = "AGPL-3.0"
+keywords = ["activitypub", "upub", "json", "web", "wasm"]
+repository = "https://git.alemi.dev/upub.git"
+#readme = "README.md"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+log = "0.4"
+console_log = "1.0"
+console_error_panic_hook = "0.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+dashmap = "5.5"
+web-sys = { version = "0.3", features = ["Window", "Storage", "HtmlDocument"] }
+leptos = { version = "0.6", features = ["csr"] }
+leptos-use = { version = "0.10", features = [] }
+reqwest = { version = "0.12", features = ["json"] }
+apb = { path = "../apb", features = ["unstructured"] }
+futures = "0.3.30"
+dissolve = "0.2" # TODO strip html without this crate
