@@ -1,6 +1,6 @@
 use sea_orm::entity::prelude::*;
 
-use apb::{Collection, Actor, PublicKey, ActorType};
+use apb::{Collection, Object, Actor, PublicKey, ActorType};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "users")]
@@ -47,8 +47,8 @@ impl Model {
 			name: object.name().map(|x| x.to_string()),
 			summary: object.summary().map(|x| x.to_string()),
 			icon: object.icon().id(),
-			image: object.image().id(),
-			inbox: object.inbox().id(),
+			image: object.image().get().map(|x| x.url().id().unwrap_or_default()),
+			inbox: object.inbox().get().map(|x| x.url().id().unwrap_or_default()),
 			outbox: object.inbox().id(),
 			shared_inbox: None, // TODO!!! parse endpoints
 			followers: object.followers().id(),
