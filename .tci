@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo "building release binary"
-cargo build --release --all-features -j 2 # vps we deploy on has 4 vcpus, don't hog them all!
+cargo build --release --all-features -j 1 # limit memory usage
 echo "stopping service"
 systemctl --user stop upub
 echo "installing new binary"
@@ -12,7 +12,7 @@ echo "restarting service"
 systemctl --user start upub
 echo "rebuilding frontend"
 cd web
-/opt/bin/trunk build --release --public-url 'https://feditest.alemi.dev/web'
+/opt/bin/trunk build --release -j 1 --public-url 'https://feditest.alemi.dev/web'
 echo "deploying frontend"
 rm /srv/http/feditest/web/*
 mv ./dist/* /srv/http/feditest/web/
