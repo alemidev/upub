@@ -1,8 +1,6 @@
 # μpub
 > micro social network, federated
 
-![screenshot of upub simple frontend](https://cdn.alemi.dev/proj/upub/fe.png)
-
 μpub aims to be a fast, lightweight and secure [ActivityPub](https://www.w3.org/TR/activitypub/) server
 
 μpub is currently being developed and can do most basic things, like posting notes, liking things, following others, deliveries and browsing
@@ -27,6 +25,8 @@ upub's stock frontend is also being developed and can be viewed _usually_ at [fe
  - [ ] client api (mastodon/pleroma)
  - [ ] hashtags, discovery
  - [ ] more optimized database schema
+
+![screenshot of upub simple frontend](https://cdn.alemi.dev/proj/upub/fe.png)
 
 ## what about the name?
 μpub, sometimes stylyzed `upub`, is pronounced `mu-pub` (the `μ` stands for [micro](https://en.wikipedia.org/wiki/International_System_of_Units#Prefixes))
