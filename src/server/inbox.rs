@@ -30,11 +30,12 @@ impl apb::server::Inbox for Context {
 	}
 
 	async fn like(&self, activity: serde_json::Value) -> crate::Result<()> {
-		let aid = activity.actor().id().ok_or(UpubError::bad_request())?;
+		let aid = activity.id().ok_or(UpubError::bad_request())?;
+		let uid = activity.actor().id().ok_or(UpubError::bad_request())?;
 		let oid = activity.object().id().ok_or(UpubError::bad_request())?;
 		let like = model::like::ActiveModel {
 			id: sea_orm::ActiveValue::NotSet,
-			actor: sea_orm::Set(aid.clone()),
+			actor: sea_orm::Set(uid.clone()),
 			likes: sea_orm::Set(oid.clone()),
 			date: sea_orm::Set(chrono::Utc::now()),
 		};
@@ -42,7 +43,7 @@ impl apb::server::Inbox for Context {
 			Err(sea_orm::DbErr::RecordNotInserted) => Err(UpubError::not_modified()),
 			Err(sea_orm::DbErr::Exec(_)) => Err(UpubError::not_modified()), // bad fix for sqlite
 			Err(e) => {
-				tracing::error!("unexpected error procesing like from {aid} to {oid}: {e}");
+				tracing::error!("unexpected error procesing like from {uid} to {oid}: {e}");
 				Err(UpubError::internal_server_error())
 			}
 			Ok(_) => {
@@ -51,13 +52,13 @@ impl apb::server::Inbox for Context {
 					.exec(self.db())
 					.await?;
 				let expanded_addressing = self.expand_addressing(activity.addressed()).await?;
-				self.address_to(&aid, None, &expanded_addressing).await?;
+				self.address_to(aid, None, &expanded_addressing).await?;
 				model::object::Entity::update_many()
 					.col_expr(model::object::Column::Likes, Expr::col(model::object::Column::Likes).add(1))
 					.filter(model::object::Column::Id.eq(oid.clone()))
 					.exec(self.db())
 					.await?;
-				tracing::info!("{} liked {}", aid, oid);
+				tracing::info!("{} liked {}", uid, oid);
 				Ok(())
 			},
 		}
