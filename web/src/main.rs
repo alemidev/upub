@@ -37,6 +37,7 @@ fn main() {
 						<Router>
 							<main>
 								<Routes>
+									<Route path="/" view=move || view! { <Redirect path="/web" /> } />
 									<Route path="/web" view=move || view! { <Timeline token=cookie /> } />
 									<Route path="/web/users/:id" view=Actor />
 									// <Route path="/object/:id" view=Object />
