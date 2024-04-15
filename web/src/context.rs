@@ -15,7 +15,7 @@ pub struct Context {
 
 #[derive(Debug, Default)]
 pub struct Cache {
-	pub user: DashMap<String, serde_json::Value>,
+	pub actors: DashMap<String, serde_json::Value>,
 }
 
 #[derive(Debug, Default)]

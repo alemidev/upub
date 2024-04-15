@@ -15,6 +15,14 @@ struct LoginForm {
 	password: String,
 }
 
+fn web_uri(kind: &str, url: &str) -> String {
+	if url.starts_with(URL_BASE) {
+		format!("/web/{kind}/{}", url.split('/').last().unwrap_or_default().to_string())
+	} else {
+		format!("/web/{kind}/+{}", url.replace("https://", "").replace('/', "@"))
+	}
+}
+
 #[component]
 pub fn LoginBox(
 	rx: Signal<Option<String>>,
@@ -114,7 +122,8 @@ pub fn ActorBanner(object: serde_json::Value) -> impl IntoView {
 			<div><b>{id}</b></div>
 		},
 		serde_json::Value::Object(_) => {
-			let uid = object.id().unwrap_or_default().split('/').last().unwrap_or_default().to_string();
+			let uid = object.id().unwrap_or_default().to_string();
+			let uri = web_uri("users", &uid);
 			let avatar_url = object.icon().get().map(|x| x.url().id().unwrap_or_default()).unwrap_or_default();
 			let display_name = object.name().unwrap_or_default().to_string();
 			let username = object.preferred_username().unwrap_or_default().to_string();
@@ -127,7 +136,7 @@ pub fn ActorBanner(object: serde_json::Value) -> impl IntoView {
 						<td><b>{display_name}</b></td>
 					</tr>
 					<tr>
-						<td class="top" ><a class="clean" href={format!("/web/users/{uid}")} ><small>{username}@{domain}</small></a></td>
+						<td class="top" ><a class="clean" href={uri} ><small>{username}@{domain}</small></a></td>
 					</tr>
 					</table>
 				</div>
@@ -145,7 +154,7 @@ pub fn Actor() -> impl IntoView {
 	let actor = create_local_resource(move || params.get().get("id").cloned().unwrap_or_default(), |uid| {
 		async move {
 			let uid = format!("{URL_BASE}/users/{uid}");
-			match CTX.cache.user.get(&uid) {
+			match CTX.cache.actors.get(&uid) {
 				Some(x) => x.clone(),
 				None => reqwest::get(uid)
 				.await
@@ -163,16 +172,16 @@ pub fn Actor() -> impl IntoView {
 				<div class="ml-3 mr-3 mt-3">
 					<ActorBanner object=x.clone() />
 					<p 
-						class="center pb-2 pt-2 pr-2 pl-2"
+						class="pb-2 pt-2 pr-2 pl-2"
 						style={format!(
 							"background-image: url({}); background-size: cover;",
 							x.image().get().map(|x| x.url().id().unwrap_or_default()).unwrap_or_default()
 						)}
 					>
-						<b>{x.actor_type().unwrap_or(apb::ActorType::Person).as_ref().to_string()}</b>
+						{x.summary().unwrap_or("").to_string()}
 					</p>
-					<p><small>{x.summary().unwrap_or("").to_string()}</small></p>
 					<ul>
+						<li><code>type</code>" "<b>{x.actor_type().unwrap_or(apb::ActorType::Person).as_ref().to_string()}</b></li>
 						<li><code>following</code>" "<b>{x.following().get().map(|x| x.total_items().unwrap_or(0))}</b></li>
 						<li><code>followers</code>" "<b>{x.followers().get().map(|x| x.total_items().unwrap_or(0))}</b></li>
 						<li><code>created</code>" "{x.published().map(|x| x.to_rfc3339())}</li>
@@ -184,11 +193,60 @@ pub fn Actor() -> impl IntoView {
 }
 
 #[component]
-pub fn Activity(activity: serde_json::Value) -> impl IntoView {
+pub fn ObjectPage() -> impl IntoView {
+	let params = use_params_map();
+	let object = create_local_resource(move || params.get().get("id").cloned().unwrap_or_default(), |oid| {
+		async move {
+			let uid = format!("{URL_BASE}/objects/{oid}");
+			match CTX.cache.actors.get(&uid) {
+				Some(x) => x.clone(),
+				None => reqwest::get(uid)
+				.await
+				.unwrap()
+				.json::<serde_json::Value>()
+				.await
+				.unwrap(),
+			}
+		}
+	});
+	view! {
+		{move || match object.get() {
+			Some(o) => view!{ <Object object=o /> }.into_view(),
+			None => view! { <p> loading ... </p> }.into_view(),
+		}}
+	}
+}
+
+#[component]
+pub fn Object(object: serde_json::Value) -> impl IntoView {
+	let summary = object.summary().unwrap_or_default().to_string();
+	let content = object.content().unwrap_or_default().to_string();
+	let date = object.published().map(|x| x.to_rfc3339()).unwrap_or_default();
+	let author_id = object.attributed_to().id().unwrap_or_default();
+	let author = CTX.cache.actors.get(&author_id).map(|x| view! { <ActorBanner object=x.clone() /> });
+	view! {
+		{author}
+		<table>
+			<tr>
+				<td>{summary}</td>
+			</tr>
+			<tr>
+				<td>{content}</td>
+			</tr>
+			<tr>
+				<td>{date}</td>
+			</tr>
+		</table>
+	}
+}
+
+#[component]
+pub fn InlineActivity(activity: serde_json::Value) -> impl IntoView {
 	let object = activity.clone().object().extract().unwrap_or_else(||
 		serde_json::Value::String(activity.object().id().unwrap_or_default())
 	);
 	let object_id = object.id().unwrap_or_default().to_string();
+	let object_uri = web_uri("objects", &object_id);
 	let content = dissolve::strip_html_tags(object.content().unwrap_or_default());
 	let addressed = activity.addressed();
 	let audience = format!("[ {} ]", addressed.join(", "));
@@ -200,7 +258,9 @@ pub fn Activity(activity: serde_json::Value) -> impl IntoView {
 		"[private]"
 	};
 	let title = object.summary().unwrap_or_default().to_string();
-	let date = object.published().map(|x| x.to_rfc3339()).unwrap_or_default();
+	let date = object.published().map(|x| x.to_rfc3339()).unwrap_or_else(||
+		activity.published().map(|x| x.to_rfc3339()).unwrap_or_default()
+	);
 	let kind = activity.activity_type().unwrap_or(apb::ActivityType::Activity);
 	view! {
 		{match kind {
@@ -208,16 +268,17 @@ pub fn Activity(activity: serde_json::Value) -> impl IntoView {
 			apb::ActivityType::Create => view! {
 				<div>
 					<p><i>{title}</i></p>
-					<For
-						each=move || content.clone() // TODO wtf this clone??
-						key=|x| x.to_string() // TODO what about this clone?
-						children=move |x: String| view! { <p>{x}</p> }
-					/>
+					{
+						content
+							.into_iter()
+							.map(|x| view! { <p>{x}</p> }.into_view())
+							.collect::<Vec<View>>()
+					}
 				</div>
 			},
 			kind => view! {
 				<div>
-					<b>{kind.as_ref().to_string()}</b>" >> "<i>{object_id}</i>
+					<b>{kind.as_ref().to_string()}</b>" >> "<a href={object_uri}>{object_id}</a>
 				</div>
 			},
 		}}
@@ -240,7 +301,7 @@ pub fn Timeline(
 	view! {
 		<div class="ml-1">
 			<TimelinePicker tx=set_timeline rx=timeline />
-			<div class="boxscroll mt-1" >
+			<div class="boxscroll" >
 				<ErrorBoundary fallback=move |err| view! { <p>{format!("{:?}", err.get())}</p> } >
 					{move || items.with(|x| match x {
 						None => Ok(view! { <p>loading...</p> }.into_view()),
@@ -256,7 +317,7 @@ pub fn Timeline(
 										view! {
 											<div class="ml-1 mr-1 mt-1">
 												<ActorBanner object=actor />
-												<Activity activity=object.clone() />
+												<InlineActivity activity=object.clone() />
 											</div>
 											<hr/ >
 										}
@@ -297,7 +358,7 @@ async fn fetch_activities_with_users(
 	let mut out = Vec::new();
 	for x in activities {
 		if let Some(uid) = x.actor().id() {
-			if let Some(actor) = CTX.cache.user.get(&uid) {
+			if let Some(actor) = CTX.cache.actors.get(&uid) {
 				out.push(x.set_actor(apb::Node::object(actor.clone())))
 			} else {
 				let mut req = reqwest::Client::new()
@@ -309,7 +370,7 @@ async fn fetch_activities_with_users(
 
 				// TODO don't fail whole timeline fetch when one user fails fetching...
 				let actor = req.send().await?.json::<serde_json::Value>().await?;
-				CTX.cache.user.insert(uid, actor.clone());
+				CTX.cache.actors.insert(uid, actor.clone());
 
 				out.push(x.set_actor(apb::Node::object(actor)))
 			}
