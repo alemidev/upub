@@ -180,6 +180,10 @@ pub fn Activity(activity: serde_json::Value) -> impl IntoView {
 	}
 }
 
+#[derive(Debug, thiserror::Error)]
+#[error("{0}")]
+struct OmgReqwestErrorIsNotClonable(String);
+
 #[component]
 pub fn Timeline(
 	token: Signal<Option<String>>,
@@ -187,79 +191,89 @@ pub fn Timeline(
 	let (timeline, set_timeline) = create_signal(format!("{BASE_URL}/inbox/page"));
 	let users : Arc<DashMap<String, serde_json::Value>> = Arc::new(DashMap::new());
 	let _users = users.clone(); // TODO i think there is syntactic sugar i forgot?
-	let items = create_resource(move || timeline.get(), move |feed_url| {
+	let items = create_local_resource(move || timeline.get(), move |feed_url| {
 		let __users = _users.clone(); // TODO lmao this is meme tier
-		async move {
-			let mut req = reqwest::Client::new().get(feed_url);
-
-			if let Some(token) = token.get() {
-				req = req.header("Authorization", format!("Bearer {token}"));
-			}
-
-			let activities : Vec<serde_json::Value> = req
-					.send()
-					.await.unwrap()
-					.json::<serde_json::Value>()
-					.await.unwrap()
-					.ordered_items()
-					.collect();
-
-			// i could make this fancier with iterators and futures::join_all but they would run
-			// concurrently and make a ton of parallel request, we actually want these sequential because
-			// first one may fetch same user as second one
-			// some fancier logic may make a set of all actors and fetch uniques concurrently...
-			let mut out = Vec::new();
-			for x in activities {
-				if let Some(uid) = x.actor().id() {
-					if let Some(actor) = __users.get(&uid) {
-						out.push(x.set_actor(apb::Node::object(actor.clone())))
-					} else {
-						let mut req = reqwest::Client::new()
-							.get(format!("https://feditest.alemi.dev/users/+?id={uid}"));
-
-						if let Some(token) = token.get() {
-							req = req.header("Authorization", format!("Bearer {token}"));
-						}
-
-						let actor = req.send().await.unwrap().json::<serde_json::Value>().await.unwrap();
-						__users.insert(uid, actor.clone());
-
-						out.push(x.set_actor(apb::Node::object(actor)))
-					}
-				} else {
-					out.push(x)
-				}
-			}
-
-			out
-		}
+		async move { fetch_activities_with_users(&feed_url, token, __users).await }
 	});
 	view! {
 		<div class="ml-1">
 			<TimelinePicker tx=set_timeline rx=timeline />
-			{move || match items.get() {
-				None => view! { <p>loading...</p> }.into_view(),
-				Some(data) => {
-					view! {
-						<For
-							each=move || data.clone() // TODO wtf this clone??
-							key=|x| x.id().unwrap_or("").to_string()
-							children=move |x: serde_json::Value| {
-								let actor = x.actor().extract().unwrap_or_else(||
-									 serde_json::Value::String(x.actor().id().unwrap_or_default())
-								);
-								view! {
-									<div class="post-card ml-1 mr-1">
-										<Actor object=actor />
-										<Activity activity=x />
-									</div>
-									<hr/ >
-								}
-							}
-						/>
-					}.into_view()
-				},
-			}}
+			<ErrorBoundary fallback=move |err| view! { <p>{format!("{:?}", err.get())}</p> } >
+				{move || items.with(|x| match x {
+					None => Ok(view! { <p>loading...</p> }.into_view()),
+					Some(data) => match data {
+						Err(e) => Err(OmgReqwestErrorIsNotClonable(e.to_string())),
+						Ok(values) => Ok(
+							values
+								.iter()
+								.map(|object| {
+									let actor = object.actor().extract().unwrap_or_else(||
+										 serde_json::Value::String(object.actor().id().unwrap_or_default())
+									);
+									view! {
+										<div class="post-card ml-1 mr-1">
+											<Actor object=actor />
+											<Activity activity=object.clone() />
+										</div>
+										<hr/ >
+									}
+								})
+								.collect::<Vec<Fragment>>()
+								.into_view()
+						),
+					}
+				})}
+			</ErrorBoundary>
 		</div>
 	}
+}
+
+async fn fetch_activities_with_users(
+	feed_url: &str,
+	token: Signal<Option<String>>,
+	users: Arc<DashMap<String, serde_json::Value>>,
+) -> reqwest::Result<Vec<serde_json::Value>> {
+	let mut req = reqwest::Client::new().get(feed_url);
+
+	if let Some(token) = token.get() {
+		req = req.header("Authorization", format!("Bearer {token}"));
+	}
+
+	let activities : Vec<serde_json::Value> = req
+			.send()
+			.await?
+			.json::<serde_json::Value>()
+			.await?
+			.ordered_items()
+			.collect();
+
+	// i could make this fancier with iterators and futures::join_all but they would run
+	// concurrently and make a ton of parallel request, we actually want these sequential because
+	// first one may fetch same user as second one
+	// some fancier logic may make a set of all actors and fetch uniques concurrently...
+	let mut out = Vec::new();
+	for x in activities {
+		if let Some(uid) = x.actor().id() {
+			if let Some(actor) = users.get(&uid) {
+				out.push(x.set_actor(apb::Node::object(actor.clone())))
+			} else {
+				let mut req = reqwest::Client::new()
+					.get(format!("https://feditest.alemi.dev/users/+?id={uid}"));
+
+				if let Some(token) = token.get() {
+					req = req.header("Authorization", format!("Bearer {token}"));
+				}
+
+				// TODO don't fail whole timeline fetch when one user fails fetching...
+				let actor = req.send().await?.json::<serde_json::Value>().await?;
+				users.insert(uid, actor.clone());
+
+				out.push(x.set_actor(apb::Node::object(actor)))
+			}
+		} else {
+			out.push(x)
+		}
+	}
+
+	Ok(out)
 }
