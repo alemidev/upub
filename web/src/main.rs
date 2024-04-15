@@ -34,7 +34,14 @@ fn main() {
 						<hr />
 					</div>
 					<div class="col-main">
-						<Router>
+						<Router // TODO maybe set base="/web" ?
+							fallback=move || view! { 
+								<div class="center">
+									<h3>nothing to see here!</h3>
+									<p><a href="/web"><button type="button">back to root</button></a></p>
+								</div>
+							}.into_view()
+						>
 							<main>
 								<Routes>
 									<Route path="/" view=move || view! { <Redirect path="/web" /> } />
