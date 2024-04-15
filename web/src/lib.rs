@@ -3,9 +3,10 @@ use std::sync::Arc;
 use apb::{target::Addressed, Activity, ActivityMut, Actor, Base, Collection, Object, ObjectMut};
 use dashmap::DashMap;
 use leptos::{leptos_dom::logging::console_log, *};
-use leptos_router::use_params_map;
+use leptos_router::*;
 
-pub const BASE_URL: &str = "https://feditest.alemi.dev";
+pub const URL_BASE: &str = "https://feditest.alemi.dev";
+pub const URL_PREFIX: &str = "/web";
 
 #[derive(Debug, serde::Serialize)]
 struct LoginForm {
@@ -23,7 +24,7 @@ pub fn LoginBox(
 	view! {
 		<div>
 			<div class="w-100" class:hidden=move || { rx.get().unwrap_or_default().is_empty() }>
-				"Hello "<a href="/users/test" >test</a>
+				"Hello "<a href="/web/users/test" >test</a>
 				<input style="float:right" type="submit" value="logout" on:click=move |_| {
 					tx.set(None);
 				} />
@@ -38,7 +39,7 @@ pub fn LoginBox(
 						let password = password_ref.get().map(|x| x.value()).unwrap_or("".into());
 						spawn_local(async move {
 							let auth = reqwest::Client::new()
-								.post(format!("{BASE_URL}/auth"))
+								.post(format!("{URL_BASE}/auth"))
 								.json(&LoginForm { email, password })
 								.send()
 								.await.unwrap()
@@ -66,7 +67,7 @@ pub fn PostBox(token: Signal<Option<String>>) -> impl IntoView {
 					let summary = summary_ref.get().map(|x| x.value());
 					let content = content_ref.get().map(|x| x.value()).unwrap_or("".into());
 					reqwest::Client::new()
-						.post(format!("{BASE_URL}/users/test/outbox"))
+						.post(format!("{URL_BASE}/users/test/outbox"))
 						.header("Authorization", format!("Bearer {}", token.get().unwrap_or_default()))
 						.json(
 							&serde_json::Value::Object(serde_json::Map::default())
@@ -74,7 +75,7 @@ pub fn PostBox(token: Signal<Option<String>>) -> impl IntoView {
 								.set_summary(summary.as_deref())
 								.set_content(Some(&content))
 								.set_to(apb::Node::links(vec![apb::target::PUBLIC.to_string()]))
-								.set_cc(apb::Node::links(vec![format!("{BASE_URL}/users/test/followers")]))
+								.set_cc(apb::Node::links(vec![format!("{URL_BASE}/users/test/followers")]))
 						)
 						.send()
 						.await.unwrap()
@@ -114,6 +115,7 @@ pub fn ActorBanner(object: serde_json::Value) -> impl IntoView {
 			<div><b>{id}</b></div>
 		},
 		serde_json::Value::Object(_) => {
+			let uid = object.id().unwrap_or_default().split('/').last().unwrap_or_default().to_string();
 			let avatar_url = object.icon().get().map(|x| x.url().id().unwrap_or_default()).unwrap_or_default();
 			let display_name = object.name().unwrap_or_default().to_string();
 			let username = object.preferred_username().unwrap_or_default().to_string();
@@ -126,7 +128,7 @@ pub fn ActorBanner(object: serde_json::Value) -> impl IntoView {
 						<td><b>{display_name}</b></td>
 					</tr>
 					<tr>
-						<td class="top" ><small>{username}@{domain}</small></td>
+						<td class="top" ><a class="clean" href={format!("/web/users/{uid}")} ><small>{username}@{domain}</small></a></td>
 					</tr>
 					</table>
 				</div>
@@ -143,7 +145,7 @@ pub fn Actor() -> impl IntoView {
 	let params = use_params_map();
 	let actor = create_local_resource(move || params.get().get("id").cloned().unwrap_or_default(), |uid| {
 		async move {
-			reqwest::get(format!("{BASE_URL}/users/{uid}"))
+			reqwest::get(format!("{URL_BASE}/users/{uid}"))
 				.await
 				.unwrap()
 				.json::<serde_json::Value>()
@@ -228,7 +230,7 @@ struct OmgReqwestErrorIsNotClonable(String);
 pub fn Timeline(
 	token: Signal<Option<String>>,
 ) -> impl IntoView {
-	let (timeline, set_timeline) = create_signal(format!("{BASE_URL}/inbox/page"));
+	let (timeline, set_timeline) = create_signal(format!("{URL_BASE}/inbox/page"));
 	let users : Arc<DashMap<String, serde_json::Value>> = Arc::new(DashMap::new());
 	let _users = users.clone(); // TODO i think there is syntactic sugar i forgot?
 	let items = create_local_resource(move || timeline.get(), move |feed_url| {
@@ -238,32 +240,34 @@ pub fn Timeline(
 	view! {
 		<div class="ml-1">
 			<TimelinePicker tx=set_timeline rx=timeline />
-			<ErrorBoundary fallback=move |err| view! { <p>{format!("{:?}", err.get())}</p> } >
-				{move || items.with(|x| match x {
-					None => Ok(view! { <p>loading...</p> }.into_view()),
-					Some(data) => match data {
-						Err(e) => Err(OmgReqwestErrorIsNotClonable(e.to_string())),
-						Ok(values) => Ok(
-							values
-								.iter()
-								.map(|object| {
-									let actor = object.actor().extract().unwrap_or_else(||
-										 serde_json::Value::String(object.actor().id().unwrap_or_default())
-									);
-									view! {
-										<div class="post-card ml-1 mr-1 mt-1">
-											<ActorBanner object=actor />
-											<Activity activity=object.clone() />
-										</div>
-										<hr/ >
-									}
-								})
-								.collect::<Vec<Fragment>>()
-								.into_view()
-						),
-					}
-				})}
-			</ErrorBoundary>
+			<div class="boxscroll mt-1" >
+				<ErrorBoundary fallback=move |err| view! { <p>{format!("{:?}", err.get())}</p> } >
+					{move || items.with(|x| match x {
+						None => Ok(view! { <p>loading...</p> }.into_view()),
+						Some(data) => match data {
+							Err(e) => Err(OmgReqwestErrorIsNotClonable(e.to_string())),
+							Ok(values) => Ok(
+								values
+									.iter()
+									.map(|object| {
+										let actor = object.actor().extract().unwrap_or_else(||
+											 serde_json::Value::String(object.actor().id().unwrap_or_default())
+										);
+										view! {
+											<div class="ml-1 mr-1 mt-1">
+												<ActorBanner object=actor />
+												<Activity activity=object.clone() />
+											</div>
+											<hr/ >
+										}
+									})
+									.collect::<Vec<Fragment>>()
+									.into_view()
+							),
+						}
+					})}
+				</ErrorBoundary>
+			</div>
 		</div>
 	}
 }

@@ -20,6 +20,15 @@
 			max-height: 2em;
 			border-radius: 50%;
 		}
+		div.boxscroll {
+			max-height: calc(100vh - 8rem);
+			overflow-y: scroll;
+		}
+		@media screen and (max-width: 786px) {
+			div.boxscroll {
+				max-height: 100%;
+			}
+		}
 		table.align {
 			line-height: 1rem;
 		}

@@ -6,6 +6,7 @@ use upub_web::{
 	Actor, LoginBox, PostBox, Timeline
 };
 
+
 fn main() {
 	_ = console_log::init_with_level(log::Level::Debug);
 	console_error_panic_hook::set_once();
@@ -15,7 +16,7 @@ fn main() {
 			<nav class="w-100">
 				<p>
 					<code>μpub</code>
-					<small class="ml-1 mr-1" ><a class="clean" href="/" >micro social network, federated</a></small>
+					<small class="ml-1 mr-1" ><a class="clean" href="/web" >micro social network, federated</a></small>
 					/* TODO kinda jank with the float but whatever, will do for now */
 					<small style="float: right" ><a href="https://git.alemi.dev/upub.git" >src</a></small>
 				</p>
@@ -36,8 +37,8 @@ fn main() {
 						<Router>
 							<main>
 								<Routes>
-									<Route path="/" view=move || view! { <Timeline token=cookie /> } />
-									<Route path="/users/:id" view=Actor />
+									<Route path="/web" view=move || view! { <Timeline token=cookie /> } />
+									<Route path="/web/users/:id" view=Actor />
 									// <Route path="/object/:id" view=Object />
 								</Routes>
 							</main>
