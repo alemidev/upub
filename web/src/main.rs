@@ -3,7 +3,7 @@ use leptos_router::*;
 
 use leptos_use::{use_cookie, utils::FromToStringCodec};
 use upub_web::{
-	Actor, LoginBox, ObjectPage, PostBox, Timeline
+	LoginBox, ObjectPage, UserPage, PostBox, Timeline
 };
 
 
@@ -44,7 +44,7 @@ fn main() {
 								<Routes>
 									<Route path="/" view=move || view! { <Redirect path="/web" /> } />
 									<Route path="/web" view=move || view! { <Timeline token=cookie /> } />
-									<Route path="/web/users/:id" view=Actor />
+									<Route path="/web/users/:id" view=UserPage />
 									<Route path="/web/objects/:id" view=ObjectPage />
 								</Routes>
 							</main>

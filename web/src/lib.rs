@@ -167,26 +167,31 @@ pub fn ActorBanner(object: serde_json::Value) -> impl IntoView {
 }
 
 #[component]
-pub fn Actor() -> impl IntoView {
+pub fn UserPage() -> impl IntoView {
 	let params = use_params_map();
-	let actor = create_local_resource(move || params.get().get("id").cloned().unwrap_or_default(), |uid| {
+	let actor = create_local_resource(move || params.get().get("id").cloned().unwrap_or_default(), |id| {
 		async move {
-			let uid = format!("{URL_BASE}/users/{uid}");
-			match CTX.cache.actors.get(&uid) {
-				Some(x) => x.clone(),
-				None => reqwest::get(uid)
-				.await
-				.unwrap()
-				.json::<serde_json::Value>()
-				.await
-				.unwrap(),
+			let uri = web_uri("users", &id);
+			match CTX.cache.actors.get(&uri) {
+				Some(x) => Some(x.clone()),
+				None => {
+					let user = reqwest::get(&uri)
+						.await
+						.ok()?
+						.json::<serde_json::Value>()
+						.await
+						.ok()?;
+					CTX.cache.actors.insert(uri, user.clone());
+					Some(user)
+				},
 			}
 		}
 	});
 	view! {
 		{move || match actor.get() {
 			None => view! { <p>loading...</p> }.into_view(),
-			Some(x) => view! {
+			Some(None) => view! { <p><code>error loading</code></p> }.into_view(),
+			Some(Some(x)) => view! {
 				<div class="ml-3 mr-3 mt-3">
 					<ActorBanner object=x.clone() />
 					<p 
@@ -389,7 +394,7 @@ async fn fetch_activities_with_users(
 
 				// TODO don't fail whole timeline fetch when one user fails fetching...
 				let actor = req.send().await?.json::<serde_json::Value>().await?;
-				CTX.cache.actors.insert(uid, actor.clone());
+				CTX.cache.actors.insert(web_uri("users", &uid), actor.clone());
 
 				out.push(x.set_actor(apb::Node::object(actor)))
 			}
