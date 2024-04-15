@@ -17,7 +17,7 @@ struct LoginForm {
 
 fn web_uri(kind: &str, url: &str) -> String {
 	if url.starts_with(URL_BASE) {
-		format!("/web/{kind}/{}", url.split('/').last().unwrap_or_default().to_string())
+		format!("/web/{kind}/{}", url.split('/').last().unwrap_or_default())
 	} else {
 		format!("/web/{kind}/+{}", url.replace("https://", "").replace('/', "@"))
 	}
@@ -31,17 +31,25 @@ fn api_uri(kind: &str, url: &str) -> String {
 	}
 }
 
+#[derive(Debug, serde::Deserialize)]
+struct AuthSuccess {
+	token: String,
+	user: String,
+	expires: chrono::DateTime<chrono::Utc>,
+}
+
 #[component]
 pub fn LoginBox(
 	rx: Signal<Option<String>>,
 	tx: WriteSignal<Option<String>>,
 ) -> impl IntoView {
+	let (username, username_set) = create_signal("".to_string());
 	let username_ref: NodeRef<html::Input> = create_node_ref();
 	let password_ref: NodeRef<html::Input> = create_node_ref();
 	view! {
 		<div>
 			<div class="w-100" class:hidden=move || { rx.get().unwrap_or_default().is_empty() }>
-				"Hello "<a href="/web/users/test" >test</a>
+				"Hello "<a href={move || web_uri("users", &username.get())} >{move || username.get()}</a>
 				<input style="float:right" type="submit" value="logout" on:click=move |_| {
 					tx.set(None);
 				} />
@@ -59,9 +67,11 @@ pub fn LoginBox(
 							.json(&LoginForm { email, password })
 							.send()
 							.await.unwrap()
-							.json::<String>()
+							.json::<AuthSuccess>()
 							.await.unwrap();
-						tx.set(Some(auth));
+						tx.set(Some(auth.token));
+						username_set.set(auth.user);
+						console_log(&format!("logged in until {}", auth.expires));
 					});
 				} />
 			</div>
