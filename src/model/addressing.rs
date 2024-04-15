@@ -85,6 +85,7 @@ impl FromQueryResult for EmbeddedActivity {
 impl Entity {
 	pub fn find_activities() -> Select<Entity> {
 		let mut select = Entity::find()
+			.distinct()
 			.select_only()
 			.join(sea_orm::JoinType::InnerJoin, Relation::Activity.def())
 			// INNERJOIN: filter out addressings for which we don't have an activity anymore
@@ -104,6 +105,7 @@ impl Entity {
 
 	pub fn find_objects() -> Select<Entity> {
 		let mut select = Entity::find()
+			.distinct()
 			.select_only()
 			.join(sea_orm::JoinType::InnerJoin, Relation::Object.def());
 			// INNERJOIN: filter out addressings for which we don't have an activity anymore
