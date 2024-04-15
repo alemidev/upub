@@ -1,9 +1,10 @@
-use std::sync::Arc;
+pub mod context;
 
 use apb::{target::Addressed, Activity, ActivityMut, Actor, Base, Collection, Object, ObjectMut};
-use dashmap::DashMap;
+use context::CTX;
 use leptos::{leptos_dom::logging::console_log, *};
 use leptos_router::*;
+
 
 pub const URL_BASE: &str = "https://feditest.alemi.dev";
 pub const URL_PREFIX: &str = "/web";
@@ -145,12 +146,16 @@ pub fn Actor() -> impl IntoView {
 	let params = use_params_map();
 	let actor = create_local_resource(move || params.get().get("id").cloned().unwrap_or_default(), |uid| {
 		async move {
-			reqwest::get(format!("{URL_BASE}/users/{uid}"))
+			let uid = format!("{URL_BASE}/users/{uid}");
+			match CTX.cache.user.get(&uid) {
+				Some(x) => x.clone(),
+				None => reqwest::get(uid)
 				.await
 				.unwrap()
 				.json::<serde_json::Value>()
 				.await
-				.unwrap()
+				.unwrap(),
+			}
 		}
 	});
 	view! {
@@ -231,11 +236,8 @@ pub fn Timeline(
 	token: Signal<Option<String>>,
 ) -> impl IntoView {
 	let (timeline, set_timeline) = create_signal(format!("{URL_BASE}/inbox/page"));
-	let users : Arc<DashMap<String, serde_json::Value>> = Arc::new(DashMap::new());
-	let _users = users.clone(); // TODO i think there is syntactic sugar i forgot?
-	let items = create_local_resource(move || timeline.get(), move |feed_url| {
-		let __users = _users.clone(); // TODO lmao this is meme tier
-		async move { fetch_activities_with_users(&feed_url, token, __users).await }
+	let items = create_local_resource(move || timeline.get(), move |feed_url| async move {
+		fetch_activities_with_users(&feed_url, token).await
 	});
 	view! {
 		<div class="ml-1">
@@ -275,7 +277,6 @@ pub fn Timeline(
 async fn fetch_activities_with_users(
 	feed_url: &str,
 	token: Signal<Option<String>>,
-	users: Arc<DashMap<String, serde_json::Value>>,
 ) -> reqwest::Result<Vec<serde_json::Value>> {
 	let mut req = reqwest::Client::new().get(feed_url);
 
@@ -298,7 +299,7 @@ async fn fetch_activities_with_users(
 	let mut out = Vec::new();
 	for x in activities {
 		if let Some(uid) = x.actor().id() {
-			if let Some(actor) = users.get(&uid) {
+			if let Some(actor) = CTX.cache.user.get(&uid) {
 				out.push(x.set_actor(apb::Node::object(actor.clone())))
 			} else {
 				let mut req = reqwest::Client::new()
@@ -310,7 +311,7 @@ async fn fetch_activities_with_users(
 
 				// TODO don't fail whole timeline fetch when one user fails fetching...
 				let actor = req.send().await?.json::<serde_json::Value>().await?;
-				users.insert(uid, actor.clone());
+				CTX.cache.user.insert(uid, actor.clone());
 
 				out.push(x.set_actor(apb::Node::object(actor)))
 			}

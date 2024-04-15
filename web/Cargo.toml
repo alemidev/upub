@@ -26,3 +26,4 @@ reqwest = { version = "0.12", features = ["json"] }
 apb = { path = "../apb", features = ["unstructured"] }
 futures = "0.3.30"
 dissolve = "0.2" # TODO strip html without this crate
+lazy_static = "1.4"
