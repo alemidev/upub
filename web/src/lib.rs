@@ -3,6 +3,7 @@ use std::sync::Arc;
 use apb::{target::Addressed, Activity, ActivityMut, Actor, Base, Collection, Object, ObjectMut};
 use dashmap::DashMap;
 use leptos::{leptos_dom::logging::console_log, *};
+use leptos_router::use_params_map;
 
 pub const BASE_URL: &str = "https://feditest.alemi.dev";
 
@@ -21,8 +22,9 @@ pub fn LoginBox(
 	let password_ref: NodeRef<html::Input> = create_node_ref();
 	view! {
 		<div>
-			<div class:hidden=move || { rx.get().unwrap_or_default().is_empty() }>
-				<input type="submit" value="logout" on:click=move |_| {
+			<div class="w-100" class:hidden=move || { rx.get().unwrap_or_default().is_empty() }>
+				"Hello "<a href="/users/test" >test</a>
+				<input style="float:right" type="submit" value="logout" on:click=move |_| {
 					tx.set(None);
 				} />
 			</div>
@@ -98,17 +100,15 @@ pub fn TimelinePicker(
 	let (my_in, my_out, our_in, our_out) = targets.clone();
 	let (my_in_, my_out_, our_in_, our_out_) = targets;
 	view! {
-		<p>
-			<input type="submit" class:active=move || rx.get() == my_in_ on:click=move |_| tx.set(my_in.clone()) value="my inbox" />
-			<input type="submit" class:active=move || rx.get() == my_out_ on:click=move |_| tx.set(my_out.clone()) value="my outbox" />
-			<input type="submit" class:active=move || rx.get() == our_in_ on:click=move |_| tx.set(our_in.clone()) value="global inbox" />
-			<input type="submit" class:active=move || rx.get() == our_out_ on:click=move |_| tx.set(our_out.clone()) value="global outbox" />
-		</p>
+		<input type="submit" class:active=move || rx.get() == my_in_ on:click=move |_| tx.set(my_in.clone()) value="my inbox" />
+		<input type="submit" class:active=move || rx.get() == my_out_ on:click=move |_| tx.set(my_out.clone()) value="my outbox" />
+		<input type="submit" class:active=move || rx.get() == our_in_ on:click=move |_| tx.set(our_in.clone()) value="global inbox" />
+		<input type="submit" class:active=move || rx.get() == our_out_ on:click=move |_| tx.set(our_out.clone()) value="global outbox" />
 	}
 }
 
 #[component]
-pub fn Actor(object: serde_json::Value) -> impl IntoView {
+pub fn ActorBanner(object: serde_json::Value) -> impl IntoView {
 	match object {
 		serde_json::Value::String(id) => view! {
 			<div><b>{id}</b></div>
@@ -135,6 +135,46 @@ pub fn Actor(object: serde_json::Value) -> impl IntoView {
 		_ => view! {
 			<div><b>invalid actor</b></div>
 		}
+	}
+}
+
+#[component]
+pub fn Actor() -> impl IntoView {
+	let params = use_params_map();
+	let actor = create_local_resource(move || params.get().get("id").cloned().unwrap_or_default(), |uid| {
+		async move {
+			reqwest::get(format!("{BASE_URL}/users/{uid}"))
+				.await
+				.unwrap()
+				.json::<serde_json::Value>()
+				.await
+				.unwrap()
+		}
+	});
+	view! {
+		{move || match actor.get() {
+			None => view! { <p>loading...</p> }.into_view(),
+			Some(x) => view! {
+				<div class="ml-3 mr-3 mt-3">
+					<ActorBanner object=x.clone() />
+					<p 
+						class="center pb-2 pt-2 pr-2 pl-2"
+						style={format!(
+							"background-image: url({}); background-size: cover;",
+							x.image().get().map(|x| x.url().id().unwrap_or_default()).unwrap_or_default()
+						)}
+					>
+						<b>{x.actor_type().unwrap_or(apb::ActorType::Person).as_ref().to_string()}</b>
+					</p>
+					<p><small>{x.summary().unwrap_or("").to_string()}</small></p>
+					<ul>
+						<li><code>following</code>" "<b>{x.following().get().map(|x| x.total_items().unwrap_or(0))}</b></li>
+						<li><code>followers</code>" "<b>{x.followers().get().map(|x| x.total_items().unwrap_or(0))}</b></li>
+						<li><code>created</code>" "{x.published().map(|x| x.to_rfc3339())}</li>
+					</ul>
+				</div>
+			}.into_view(),
+		}}
 	}
 }
 
@@ -211,8 +251,8 @@ pub fn Timeline(
 										 serde_json::Value::String(object.actor().id().unwrap_or_default())
 									);
 									view! {
-										<div class="post-card ml-1 mr-1">
-											<Actor object=actor />
+										<div class="post-card ml-1 mr-1 mt-1">
+											<ActorBanner object=actor />
 											<Activity activity=object.clone() />
 										</div>
 										<hr/ >
