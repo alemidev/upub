@@ -23,6 +23,14 @@ fn web_uri(kind: &str, url: &str) -> String {
 	}
 }
 
+fn api_uri(kind: &str, url: &str) -> String {
+	if url.starts_with(URL_BASE) {
+		url.to_string()
+	} else {
+		format!("{URL_BASE}/{kind}/+{}", url.replace("https://", "").replace('/', "@"))
+	}
+}
+
 #[component]
 pub fn LoginBox(
 	rx: Signal<Option<String>>,
@@ -199,19 +207,20 @@ pub fn ObjectPage() -> impl IntoView {
 		async move {
 			let uid = format!("{URL_BASE}/objects/{oid}");
 			match CTX.cache.actors.get(&uid) {
-				Some(x) => x.clone(),
+				Some(x) => Some(x.clone()),
 				None => reqwest::get(uid)
 				.await
-				.unwrap()
+				.ok()?
 				.json::<serde_json::Value>()
 				.await
-				.unwrap(),
+				.ok()
 			}
 		}
 	});
 	view! {
 		{move || match object.get() {
-			Some(o) => view!{ <Object object=o /> }.into_view(),
+			Some(Some(o)) => view!{ <Object object=o /> }.into_view(),
+			Some(None) => view! { <p><code>loading failed</code></p> }.into_view(),
 			None => view! { <p> loading ... </p> }.into_view(),
 		}}
 	}
@@ -362,7 +371,7 @@ async fn fetch_activities_with_users(
 				out.push(x.set_actor(apb::Node::object(actor.clone())))
 			} else {
 				let mut req = reqwest::Client::new()
-					.get(format!("https://feditest.alemi.dev/users/+?id={uid}"));
+					.get(api_uri("users", &uid));
 
 				if let Some(token) = token.get() {
 					req = req.header("Authorization", format!("Bearer {token}"));
