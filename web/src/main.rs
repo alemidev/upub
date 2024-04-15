@@ -15,7 +15,7 @@ fn main() {
 		move || view! {
 			<nav class="w-100">
 				<p>
-					<code>μpub</code>
+					<code><a class="upub-title" href="/web" >μpub</a></code>
 					<small class="ml-1 mr-1" ><a class="clean" href="/web" >micro social network, federated</a></small>
 					/* TODO kinda jank with the float but whatever, will do for now */
 					<small style="float: right" ><a href="https://git.alemi.dev/upub.git" >src</a></small>
