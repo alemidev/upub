@@ -162,7 +162,7 @@ impl Context {
 			.iter()
 			.filter(|to| !to.is_empty())
 			.filter(|to| !to.ends_with("/followers"))
-			.filter(|to| local_activity || self.is_local(to))
+			.filter(|to| local_activity || to.as_str() == apb::target::PUBLIC || self.is_local(to))
 			.map(|to| model::addressing::ActiveModel {
 				id: sea_orm::ActiveValue::NotSet,
 				server: Set(Context::server(to)),
