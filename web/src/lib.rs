@@ -31,25 +31,23 @@ pub fn LoginBox(
 				} />
 			</div>
 			<div class:hidden=move || { !rx.get().unwrap_or_default().is_empty() }>
-				<p>
-					<input type="text" node_ref=username_ref placeholder="username" />
-					<input type="text" node_ref=password_ref placeholder="password" />
-					<input type="submit" value="login" on:click=move |_| {
-						console_log("logging in...");
-						let email = username_ref.get().map(|x| x.value()).unwrap_or("".into());
-						let password = password_ref.get().map(|x| x.value()).unwrap_or("".into());
-						spawn_local(async move {
-							let auth = reqwest::Client::new()
-								.post(format!("{URL_BASE}/auth"))
-								.json(&LoginForm { email, password })
-								.send()
-								.await.unwrap()
-								.json::<String>()
-								.await.unwrap();
-							tx.set(Some(auth));
-						});
-					} />
-				</p>
+				<input class="w-100" type="text" node_ref=username_ref placeholder="username" />
+				<input class="w-100" type="text" node_ref=password_ref placeholder="password" />
+				<input class="w-100" type="submit" value="login" on:click=move |_| {
+					console_log("logging in...");
+					let email = username_ref.get().map(|x| x.value()).unwrap_or("".into());
+					let password = password_ref.get().map(|x| x.value()).unwrap_or("".into());
+					spawn_local(async move {
+						let auth = reqwest::Client::new()
+							.post(format!("{URL_BASE}/auth"))
+							.json(&LoginForm { email, password })
+							.send()
+							.await.unwrap()
+							.json::<String>()
+							.await.unwrap();
+						tx.set(Some(auth));
+					});
+				} />
 			</div>
 		</div>
 	}
@@ -60,7 +58,7 @@ pub fn PostBox(token: Signal<Option<String>>) -> impl IntoView {
 	let summary_ref: NodeRef<html::Input> = create_node_ref();
 	let content_ref: NodeRef<html::Textarea> = create_node_ref();
 	view! {
-		<div>
+		<div class:hidden=move || { token.get().unwrap_or_default().is_empty() }>
 			<input class="w-100" type="text" node_ref=summary_ref placeholder="CW" />
 			<textarea class="w-100" node_ref=content_ref placeholder="hello world!" ></textarea>
 			<button class="w-100" type="button" on:click=move |_| {

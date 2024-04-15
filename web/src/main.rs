@@ -29,9 +29,7 @@ fn main() {
 							tx=set_cookie
 							rx=cookie
 						/>
-						<hr />
 						<PostBox token=cookie />
-						<hr />
 					</div>
 					<div class="col-main">
 						<Router // TODO maybe set base="/web" ?
