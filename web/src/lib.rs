@@ -15,19 +15,31 @@ struct LoginForm {
 	password: String,
 }
 
+/// convert url id to valid frontend view id
+/// accepts:
+///  - https://my.domain.net/users/root
+///  - https://other.domain.net/unexpected/path/root
+///  - +other.domain.net@users@root
+///  - root
 fn web_uri(kind: &str, url: &str) -> String {
 	if url.starts_with(URL_BASE) {
 		format!("/web/{kind}/{}", url.split('/').last().unwrap_or_default())
 	} else {
-		format!("/web/{kind}/+{}", url.replace("https://", "").replace('/', "@"))
+		format!("/web/{kind}/{}", url.replace("https://", "+").replace('/', "@"))
 	}
 }
 
+/// convert url id to valid backend api id
+/// accepts:
+///  - https://my.domain.net/users/root
+///  - https://other.domain.net/unexpected/path/root
+///  - +other.domain.net@users@root
+///  - root
 fn api_uri(kind: &str, url: &str) -> String {
 	if url.starts_with(URL_BASE) {
 		url.to_string()
 	} else {
-		format!("{URL_BASE}/{kind}/+{}", url.replace("https://", "").replace('/', "@"))
+		format!("{URL_BASE}/{kind}/{}", url.replace("https://", "+").replace('/', "@"))
 	}
 }
 
