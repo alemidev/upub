@@ -4,13 +4,13 @@ pub mod outbox;
 
 pub mod following;
 
-use axum::extract::{Path, Query, State};
+use axum::extract::{Path, State};
 use sea_orm::EntityTrait;
 
 use apb::{PublicKeyMut, ActorMut, DocumentMut, DocumentType, ObjectMut, BaseMut, Node};
 use crate::{errors::UpubError, model::{self, user}, server::Context, url};
 
-use super::{jsonld::LD, JsonLD, RemoteId};
+use super::{jsonld::LD, JsonLD};
 
 pub fn ap_user(user: model::user::Model) -> serde_json::Value {
 	serde_json::Value::new_object()
@@ -47,15 +47,9 @@ pub fn ap_user(user: model::user::Model) -> serde_json::Value {
 pub async fn view(
 	State(ctx) : State<Context>,
 	Path(id): Path<String>,
-	Query(rid): Query<RemoteId>,
 ) -> crate::Result<JsonLD<serde_json::Value>> {
-	// TODO can this be made less convoluted???
-	let uid = if id == "+" {
-		if let Some(rid) = rid.id {
-			rid
-		} else {
-			return Err(UpubError::bad_request());
-		}
+	let uid = if id.starts_with('+') {
+		format!("https://{}", id.replacen('+', "", 1).replace('@', "/"))
 	} else {
 		ctx.uid(id.clone())
 	};

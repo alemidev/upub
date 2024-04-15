@@ -25,8 +25,13 @@ pub async fn view(
 	Path(id): Path<String>,
 	AuthIdentity(auth): AuthIdentity,
 ) -> Result<JsonLD<serde_json::Value>, StatusCode> {
+	let aid = if id.starts_with('+') {
+		format!("https://{}", id.replacen('+', "", 1).replace('@', "/"))
+	} else {
+		ctx.aid(id.clone())
+	};
 	match model::addressing::Entity::find_activities()
-		.filter(model::activity::Column::Id.eq(ctx.aid(id)))
+		.filter(model::activity::Column::Id.eq(aid))
 		.filter(auth.filter_condition())
 		.into_model::<EmbeddedActivity>()
 		.one(ctx.db())
