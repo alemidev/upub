@@ -21,7 +21,7 @@ upub's stock frontend is also being developed and can be viewed _usually_ at [fe
  - [x] process barebones outbox
  - [x] http signatures
  - [x] privacy, targets, scopes
- - [ ] simple web client
+ - [x] simple web client
  - [ ] announce (boosts)
  - [ ] threads
  - [ ] editing
