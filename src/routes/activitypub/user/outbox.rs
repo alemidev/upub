@@ -19,7 +19,11 @@ pub async fn page(
 	Query(page): Query<Pagination>,
 	AuthIdentity(auth): AuthIdentity,
 ) -> Result<JsonLD<serde_json::Value>, StatusCode> {
-	let uid = ctx.uid(id.clone());
+	let uid = if id.starts_with('+') {
+		format!("https://{}", id.replacen('+', "", 1).replace('@', "/"))
+	} else {
+		ctx.uid(id.clone())
+	};
 	let limit = page.batch.unwrap_or(20).min(50);
 	let offset = page.offset.unwrap_or(0);
 
