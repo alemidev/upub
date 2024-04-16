@@ -27,6 +27,10 @@ most instances will have "authorized fetch" which kind of makes the issue less b
 
 note that followers get expanded: addressing to example.net/actor/followers will address to anyone following actor that the server knows of, at that time
 
+## contributing
+
+all help is extremely welcome! if [my cgit](https://git.alemi.dev/upub.git/) looks too scary there's a [github mirror](https://github.com/alemidev/upub) you can open issues or PRs on. get in touch with me ([fedi](https://social.alemi.dev/users/alemi) is fine, but a mail works too), i'd be thrilled to showcase the project to you!
+
 ## progress
 
  - [x] barebone actors
