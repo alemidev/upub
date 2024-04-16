@@ -4,7 +4,7 @@ use leptos_router::*;
 use leptos_use::{use_cookie, utils::JsonCodec};
 use upub_web::{
 	URL_BASE, context::Timeline, About, Auth, LoginBox, MaybeToken, ObjectPage, PostBox,
-	TimelineFeed, TimelineNavigation, UserPage
+	TimelinePage, TimelineNavigation, UserPage
 };
 
 fn main() {
@@ -72,8 +72,8 @@ fn main() {
 										<Routes>
 											<Route path="/web" view=About />
 
-											<Route path="/web/home" view=move || view! { <TimelineFeed name="home" tl=home_tl /> } />
-											<Route path="/web/server" view=move || view! { <TimelineFeed name="server" tl=server_tl /> } />
+											<Route path="/web/home" view=move || view! { <TimelinePage name="home" tl=home_tl /> } />
+											<Route path="/web/server" view=move || view! { <TimelinePage name="server" tl=server_tl /> } />
 
 											<Route path="/web/users/:id" view=UserPage />
 											<Route path="/web/objects/:id" view=ObjectPage />

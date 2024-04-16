@@ -213,31 +213,37 @@ pub fn UserPage() -> impl IntoView {
 		}
 	});
 	view! {
-		<div class="tl-header w-100 center mb-s ml-1" >view::user</div>
-		{move || match actor.get() {
-			None => view! { <p>loading...</p> }.into_view(),
-			Some(None) => view! { <p><code>error loading</code></p> }.into_view(),
-			Some(Some(x)) => view! {
-				<div class="ml-3 mr-3 mt-3">
-					<ActorBanner object=x.clone() />
-					<p 
-						class="pb-2 pt-2 pr-2 pl-2"
-						style={format!(
-							"background-image: url({}); background-size: cover;",
-							x.image().get().map(|x| x.url().id().unwrap_or_default()).unwrap_or_default()
-						)}
-					>
-						{x.summary().unwrap_or("").to_string()}
-					</p>
-					<ul>
-						<li><code>type</code>" "<b>{x.actor_type().unwrap_or(apb::ActorType::Person).as_ref().to_string()}</b></li>
-						<li><code>following</code>" "<b>{x.following().get().map(|x| x.total_items().unwrap_or(0))}</b></li>
-						<li><code>followers</code>" "<b>{x.followers().get().map(|x| x.total_items().unwrap_or(0))}</b></li>
-						<li><code>created</code>" "{x.published().map(|x| x.to_rfc3339())}</li>
-					</ul>
-				</div>
-			}.into_view(),
-		}}
+		<div class="ml-1">
+			<div class="tl-header w-100 center mb-s" >view::user</div>
+			<div class="boxscroll" >
+				{move || match actor.get() {
+					None => view! { <p>loading...</p> }.into_view(),
+					Some(None) => view! { <p><code>error loading</code></p> }.into_view(),
+					Some(Some(x)) => view! {
+						<div class="ml-3 mr-3 mt-3">
+							<ActorBanner object=x.clone() />
+							<p 
+								class="pb-2 pt-2 pr-2 pl-2"
+								style={format!(
+									"background-image: url({}); background-size: cover;",
+									x.image().get().map(|x| x.url().id().unwrap_or_default()).unwrap_or_default()
+								)}
+							>
+								{x.summary().unwrap_or("").to_string()}
+							</p>
+							<ul>
+								<li><code>type</code>" "<b>{x.actor_type().unwrap_or(apb::ActorType::Person).as_ref().to_string()}</b></li>
+								<li><code>following</code>" "<b>{x.following().get().map(|x| x.total_items().unwrap_or(0))}</b></li>
+								<li><code>followers</code>" "<b>{x.followers().get().map(|x| x.total_items().unwrap_or(0))}</b></li>
+								<li><code>created</code>" "{x.published().map(|x| x.to_rfc3339())}</li>
+							</ul>
+						</div>
+						<hr />
+						<TimelineFeed tl=Timeline::new(format!("{}/outbox/page", Uri::api("users", x.id().unwrap_or_default()))) />
+					}.into_view(),
+				}}
+			</div>
+		</div>
 	}
 }
 
@@ -258,13 +264,15 @@ pub fn ObjectPage() -> impl IntoView {
 		}
 	});
 	view! {
-		<div class="tl-header w-100 center mb-s ml-1" >view::object</div>
-		<div class="ma-2" >
-			{move || match object.get() {
-				Some(Some(o)) => view!{ <Object object=o /> }.into_view(),
-				Some(None) => view! { <p><code>loading failed</code></p> }.into_view(),
-				None => view! { <p> loading ... </p> }.into_view(),
-			}}
+		<div class="ml-1">
+			<div class="tl-header w-100 center mb-s" >view::object</div>
+			<div class="boxscroll ma-2" >
+				{move || match object.get() {
+					Some(Some(o)) => view!{ <Object object=o /> }.into_view(),
+					Some(None) => view! { <p><code>loading failed</code></p> }.into_view(),
+					None => view! { <p> loading ... </p> }.into_view(),
+				}}
+			</div>
 		</div>
 	}
 }
@@ -365,43 +373,50 @@ pub fn About() -> impl IntoView {
 struct OmgReqwestErrorIsNotClonable(String);
 
 #[component]
-pub fn TimelineFeed(name: &'static str, tl: Timeline) -> impl IntoView {
-	let auth = use_context::<Signal<Option<Auth>>>().expect("missing auth context");
+pub fn TimelinePage(name: &'static str, tl: Timeline) -> impl IntoView {
 	view! {
 		<div class="ml-1">
 			<div class="tl-header w-100 center mb-s" >{name}</div>
 			<div class="boxscroll mt-s mb-s" >
-				<For
-					each=move || tl.feed.get()
-					key=|k| k.to_string()
-					children=move |id: String| {
-						match CACHE.get(&id) {
-							Some(object) => {
-								view! {
-									<div class="ml-1 mr-1 mt-1">
-										<InlineActivity activity=object />
-									</div>
-									<hr/ >
-								}.into_view()
-							},
-							None => view! {
-								<p><code>{id}</code>" "[<a href={uri}>go</a>]</p>
-							}.into_view(),
-						}
-					}
-				/ >
-				<div class="center" >
-					<button type="button"
-						on:click=move |_| {
-							spawn_local(async move {
-								if let Err(e) = tl.more(auth).await {
-									console_error(&format!("error fetching more items for timeline: {e}"));
-								}
-							})
-						}
-					>more</button>
-				</div>
+				<TimelineFeed tl=tl />
 			</div>
+		</div>
+	}
+}
+
+#[component]
+pub fn TimelineFeed(tl: Timeline) -> impl IntoView {
+	let auth = use_context::<Signal<Option<Auth>>>().expect("missing auth context");
+	view! {
+		<For
+			each=move || tl.feed.get()
+			key=|k| k.to_string()
+			children=move |id: String| {
+				match CACHE.get(&id) {
+					Some(object) => {
+						view! {
+							<div class="ml-1 mr-1 mt-1">
+								<InlineActivity activity=object />
+							</div>
+							<hr/ >
+						}.into_view()
+					},
+					None => view! {
+						<p><code>{id}</code>" "[<a href={uri}>go</a>]</p>
+					}.into_view(),
+				}
+			}
+		/ >
+		<div class="center" >
+			<button type="button"
+				on:click=move |_| {
+					spawn_local(async move {
+						if let Err(e) = tl.more(auth).await {
+							console_error(&format!("error fetching more items for timeline: {e}"));
+						}
+					})
+				}
+			>more</button>
 		</div>
 	}
 }
