@@ -34,7 +34,7 @@ fn main() {
 		move || view! {
 			<nav class="w-100">
 				<p>
-					<code><a class="upub-title" href="/web/home" >μpub</a></code>
+					<code><a class="upub-title" href=move || if cookie.get().present() { "/web/home" } else { "/web/server" } >μpub</a></code>
 					<small class="ml-1 mr-1" ><a class="clean" href="/web/server" >micro social network, federated</a></small>
 					/* TODO kinda jank with the float but whatever, will do for now */
 					<small style="float: right" ><a href="https://git.alemi.dev/upub.git" >src</a></small>
@@ -79,6 +79,7 @@ fn main() {
 											<Route path="/web/objects/:id" view=ObjectPage />
 
 											<Route path="/" view=move || view! { <Redirect path="/web" /> } />
+											<Route path="/web/" view=move || view! { <Redirect path="/web" /> } />
 										</Routes>
 									</div>
 								</div>
