@@ -279,9 +279,15 @@ pub fn Object(object: serde_json::Value) -> impl IntoView {
 	view! {
 		<div>
 			<table class="post-table pa-1 mb-s" >
-				<tr class="post-table" >
-					<td class="post-table pa-1" colspan="2" >{summary}</td>
-				</tr>
+				{move || if !summary.is_empty() {
+					view! {
+						<tr class="post-table" >
+							<td class="post-table pa-1" colspan="2" >{summary.clone()}</td>
+						</tr>
+					}.into_view()
+				} else {
+					view! { }.into_view()
+				}}
 				<tr class="post-table" >
 					<td class="post-table pa-1" colspan="2" >{
 						content.into_iter().map(|x| view! { <p>{x}</p> }).collect_view()
