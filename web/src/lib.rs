@@ -213,6 +213,7 @@ pub fn UserPage() -> impl IntoView {
 		}
 	});
 	view! {
+		<div class="tl-header w-100 center mb-s ml-1" >view::user</div>
 		{move || match actor.get() {
 			None => view! { <p>loading...</p> }.into_view(),
 			Some(None) => view! { <p><code>error loading</code></p> }.into_view(),
@@ -257,47 +258,55 @@ pub fn ObjectPage() -> impl IntoView {
 		}
 	});
 	view! {
-		{move || match object.get() {
-			Some(Some(o)) => view!{ <Object object=o /> }.into_view(),
-			Some(None) => view! { <p><code>loading failed</code></p> }.into_view(),
-			None => view! { <p> loading ... </p> }.into_view(),
-		}}
+		<div class="tl-header w-100 center mb-s ml-1" >view::object</div>
+		<div class="ma-2" >
+			{move || match object.get() {
+				Some(Some(o)) => view!{ <Object object=o /> }.into_view(),
+				Some(None) => view! { <p><code>loading failed</code></p> }.into_view(),
+				None => view! { <p> loading ... </p> }.into_view(),
+			}}
+		</div>
 	}
 }
 
 #[component]
 pub fn Object(object: serde_json::Value) -> impl IntoView {
 	let summary = object.summary().unwrap_or_default().to_string();
-	let content = object.content().unwrap_or_default().to_string();
-	let date = object.published().map(|x| x.to_rfc3339()).unwrap_or_default();
+	let content = dissolve::strip_html_tags(object.content().unwrap_or_default());
+	let date = object.published().map(|x| x.to_rfc2822()).unwrap_or_default();
 	let author_id = object.attributed_to().id().unwrap_or_default();
-	let author = CACHE.get(&author_id).map(|x| view! { <ActorBanner object=x.clone() /> });
+	let author = CACHE.get(&author_id).unwrap_or(serde_json::Value::String(author_id.clone()));
 	view! {
-		{author}
-		<table>
-			<tr>
-				<td>{summary}</td>
-			</tr>
-			<tr>
-				<td>{content}</td>
-			</tr>
-			<tr>
-				<td>{date}</td>
-			</tr>
-		</table>
+		<div>
+			<table class="post-table pa-1 mb-s" >
+				<tr class="post-table" >
+					<td class="post-table pa-1" colspan="2" >{summary}</td>
+				</tr>
+				<tr class="post-table" >
+					<td class="post-table pa-1" colspan="2" >{
+						content.into_iter().map(|x| view! { <p>{x}</p> }).collect_view()
+					}</td>
+				</tr>
+				<tr class="post-table" >
+					<td class="post-table pa-1" ><ActorBanner object=author /></td>
+					<td class="post-table pa-1" >{date}</td>
+				</tr>
+			</table>
+		</div>
 	}
 }
 
 #[component]
 pub fn InlineActivity(activity: serde_json::Value) -> impl IntoView {
-	let object = activity.clone().object().extract().unwrap_or_else(||
-		serde_json::Value::String(activity.object().id().unwrap_or_default())
-	);
-	let object_id = object.id().unwrap_or_default().to_string();
-	let object_uri = Uri::web("objects", &object_id);
-	let content = dissolve::strip_html_tags(object.content().unwrap_or_default());
+	let object_id = activity.object().id().unwrap_or_default();
+	let object = CACHE.get(&object_id).unwrap_or(serde_json::Value::String(object_id.clone()));
 	let addressed = activity.addressed();
 	let audience = format!("[ {} ]", addressed.join(", "));
+	let actor_id = activity.actor().id().unwrap_or_default();
+	let actor = match CACHE.get(&actor_id) {
+		Some(a) => a,
+		None => serde_json::Value::String(actor_id.clone()),
+	};
 	let privacy = if addressed.iter().any(|x| x == apb::target::PUBLIC) {
 		"[public]"
 	} else if addressed.iter().any(|x| x.ends_with("/followers")) {
@@ -305,32 +314,36 @@ pub fn InlineActivity(activity: serde_json::Value) -> impl IntoView {
 	} else {
 		"[private]"
 	};
-	let title = object.summary().unwrap_or_default().to_string();
-	let date = object.published().map(|x| x.to_rfc3339()).unwrap_or_else(||
-		activity.published().map(|x| x.to_rfc3339()).unwrap_or_default()
+	let date = object.published().map(|x| x.to_rfc2822()).unwrap_or_else(||
+		activity.published().map(|x| x.to_rfc2822()).unwrap_or_default()
 	);
 	let kind = activity.activity_type().unwrap_or(apb::ActivityType::Activity);
 	view! {
+		<div>
+			<table class="align w-100" >
+			<tr>
+			<td rowspan="2" >
+				<ActorBanner object=actor />
+			</td>
+			<td class="rev" >
+				<code class="color" >{kind.as_ref().to_string()}</code>
+			</td>
+		</tr>
+		<tr>
+			<td class="rev">
+				<a class="clean hover" href={Uri::web("objects", &object_id)} >
+					<small>{Uri::pretty(&object_id)}</small>
+				</a>
+			</td>
+		</tr>
+		</table>
+		</div>
 		{match kind {
 			// post
-			apb::ActivityType::Create => view! {
-				<div>
-					<p><i>{title}</i></p>
-					{
-						content
-							.into_iter()
-							.map(|x| view! { <p>{x}</p> }.into_view())
-							.collect::<Vec<View>>()
-					}
-				</div>
-			},
-			kind => view! {
-				<div>
-					<b>{kind.as_ref().to_string()}</b>" >> "<a href={object_uri}>{object_id}</a>
-				</div>
-			},
+			apb::ActivityType::Create => view! { <Object object=object /> }.into_view(),
+			_ => view! {}.into_view(),
 		}}
-		<small><u title={audience} >{privacy}</u>" "{date}</small>
+		<small>{date}" "<u class="moreinfo" style="float: right" title={audience} >{privacy}</u></small>
 	}
 }
 
@@ -358,15 +371,9 @@ pub fn TimelineFeed(name: &'static str, tl: Timeline) -> impl IntoView {
 					children=move |id: String| {
 						match CACHE.get(&id) {
 							Some(object) => {
-								let actor_id = object.actor().id().unwrap_or_default();
-								let actor = match CACHE.get(&actor_id) {
-									Some(a) => a,
-									None => serde_json::Value::String(id),
-								};
 								view! {
 									<div class="ml-1 mr-1 mt-1">
-										<ActorBanner object=actor />
-										<InlineActivity activity=object.clone() />
+										<InlineActivity activity=object />
 									</div>
 									<hr/ >
 								}.into_view()

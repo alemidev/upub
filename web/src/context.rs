@@ -35,6 +35,14 @@ impl Uri {
 		}
 	}
 
+	pub fn pretty(url: &str) -> String {
+		if url.len() < 50 {
+			url.replace("https://", "")
+		} else {
+			format!("{}..", url.replace("https://", "").get(..50).unwrap_or_default().to_string())
+		}.replace('/', "​/​")
+	}
+
 	pub fn short(url: &str) -> String {
 		if url.starts_with(URL_BASE) {
 			url.split('/').last().unwrap_or_default().to_string()
