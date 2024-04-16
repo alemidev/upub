@@ -229,7 +229,12 @@ pub fn UserPage() -> impl IntoView {
 									x.image().get().map(|x| x.url().id().unwrap_or_default()).unwrap_or_default()
 								)}
 							>
-								{x.summary().unwrap_or("").to_string()}
+								{
+									dissolve::strip_html_tags(x.summary().unwrap_or(""))
+										.into_iter()
+										.map(|x| view! { <p>{x}</p> })
+										.collect_view()
+								}
 							</p>
 							<ul>
 								<li><code>type</code>" "<b>{x.actor_type().unwrap_or(apb::ActorType::Person).as_ref().to_string()}</b></li>
