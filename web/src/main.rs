@@ -8,7 +8,7 @@ use upub_web::{
 };
 
 fn main() {
-	_ = console_log::init_with_level(log::Level::Debug);
+	_ = console_log::init_with_level(log::Level::Info);
 	console_error_panic_hook::set_once();
 	let (cookie, set_cookie) = use_cookie::<Auth, JsonCodec>("token");
 	provide_context(cookie);
