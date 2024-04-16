@@ -3,7 +3,8 @@ use leptos_router::*;
 
 use leptos_use::{use_cookie, utils::JsonCodec};
 use upub_web::{
-	URL_BASE, context::Timeline, About, Auth, LoginBox, MaybeToken, ObjectPage, PostBox, TimelineFeed, UserPage
+	URL_BASE, context::Timeline, About, Auth, LoginBox, MaybeToken, ObjectPage, PostBox,
+	TimelineFeed, TimelineNavigation, UserPage
 };
 
 fn main() {
@@ -63,22 +64,7 @@ fn main() {
 											rx=cookie
 										/>
 										<hr class="mt-1 mb-1" />
-										<a href="/web/home" >
-											<input class="w-100"
-												type="submit"
-												class:hidden=move || !cookie.get().present()
-												class:active=move || use_location().pathname.get().ends_with("/home")
-												value="home timeline"
-											/>
-										</a>
-										<a href="/web/server" >
-											<input
-												class="w-100"
-												class:active=move || use_location().pathname.get().ends_with("/server")
-												type="submit"
-												value="server timeline"
-											/>
-										</a>
+										<TimelineNavigation />
 										<hr class="mt-1 mb-1" />
 										<PostBox />
 									</div>

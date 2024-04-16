@@ -90,6 +90,29 @@ pub fn LoginBox(
 }
 
 #[component]
+pub fn TimelineNavigation() -> impl IntoView {
+	let auth = use_context::<Signal<Option<Auth>>>().expect("missing auth context");
+	view! {	
+		<a href="/web/home" >
+			<input class="w-100"
+				type="submit"
+				class:hidden=move || !auth.get().present()
+				class:active=move || use_location().pathname.get().ends_with("/home")
+				value="home timeline"
+			/>
+		</a>
+		<a href="/web/server" >
+			<input
+				class="w-100"
+				class:active=move || use_location().pathname.get().ends_with("/server")
+				type="submit"
+				value="server timeline"
+			/>
+		</a>
+	}
+}
+
+#[component]
 pub fn PostBox() -> impl IntoView {
 	let auth = use_context::<Signal<Option<Auth>>>().expect("missing auth context");
 	let summary_ref: NodeRef<html::Input> = create_node_ref();
