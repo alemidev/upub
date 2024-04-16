@@ -60,4 +60,4 @@ all help is extremely welcome! if [my cgit](https://git.alemi.dev/upub.git/) loo
 ## frontend
 upub aims to be compatible with multiple frontends via the mastodon api, but a simple custom ui is also being worked on
 
-![screenshot of upub simple frontend](https://cdn.alemi.dev/proj/upub/fe.png)
+![screenshot of upub simple frontend](https://cdn.alemi.dev/proj/upub/fe/20240416.png)
