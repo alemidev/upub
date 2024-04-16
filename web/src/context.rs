@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::BTreeSet, sync::Arc};
 
 use apb::{Activity, ActivityMut, Base, Collection, CollectionPage};
 use dashmap::DashMap;
@@ -166,6 +166,7 @@ impl Timeline {
 	
 		let mut out = self.feed();
 		let mut sub_tasks = Vec::new();
+		let mut gonna_fetch = BTreeSet::new();
 
 		for activity in activities {
 			// save embedded object if present
@@ -175,7 +176,10 @@ impl Timeline {
 				}
 			} else { // try fetching it
 				if let Some(object_id) = activity.object().id() {
-					sub_tasks.push(fetch_and_update("objects", object_id, auth));
+					if !gonna_fetch.contains(&object_id) {
+						gonna_fetch.insert(object_id.clone());
+						sub_tasks.push(fetch_and_update("objects", object_id, auth));
+					}
 				}
 			}
 	
@@ -191,7 +195,10 @@ impl Timeline {
 	
 			if let Some(uid) = activity.actor().id() {
 				if CACHE.get(&uid).is_none() {
-					sub_tasks.push(fetch_and_update("users", uid, auth));
+					if !gonna_fetch.contains(&uid) {
+						gonna_fetch.insert(uid.clone());
+						sub_tasks.push(fetch_and_update("users", uid, auth));
+					}
 				}
 			}
 		}
