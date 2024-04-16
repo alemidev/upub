@@ -43,6 +43,7 @@ fn main() {
 			<hr />
 			<div class="container" >
 				<Router // TODO maybe set base="/web" ?
+					trailing_slash=TrailingSlash::Redirect
 					fallback=move || view! { 
 						<div class="center">
 							<h3>nothing to see here!</h3>
@@ -79,7 +80,6 @@ fn main() {
 											<Route path="/web/objects/:id" view=ObjectPage />
 
 											<Route path="/" view=move || view! { <Redirect path="/web" /> } />
-											<Route path="/web/" view=move || view! { <Redirect path="/web" /> } />
 										</Routes>
 									</div>
 								</div>

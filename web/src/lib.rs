@@ -364,7 +364,12 @@ pub fn InlineActivity(activity: serde_json::Value) -> impl IntoView {
 #[component]
 pub fn About() -> impl IntoView {
 	view! {
-		<p>pick a timeline to start browsing</p>
+		<div class="ml-1">
+			<div class="tl-header w-100 center mb-s" >landing</div>
+			<div class="boxscroll mt-s mb-s" >
+				nothing to see here! pick a timeline to start browsing
+			</div>
+		</div>
 	}
 }
 
