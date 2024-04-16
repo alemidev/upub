@@ -70,7 +70,10 @@ where
 			let mut http_signature = HttpSignature::parse(sig);
 
 			// TODO assert payload's digest is equal to signature's
-			let user_id = http_signature.key_id.replace("#main-key", "");
+			let user_id = http_signature.key_id
+				.split('#')
+				.next().ok_or(UpubError::bad_request())?
+				.to_string();
 
 			match ctx.fetch().user(&user_id).await {
 				Ok(user) => match http_signature
