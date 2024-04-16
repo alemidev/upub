@@ -26,8 +26,12 @@ upub's stock frontend is also being developed and can be viewed _usually_ at [fe
  - [ ] threads
  - [ ] editing
  - [ ] searching
+ - [ ] media
+ - [ ] user fields
  - [ ] mastodon api
  - [ ] hashtags, discovery
+ - [ ] polls
+ - [ ] lists
  - [ ] more optimized database schema
 
 ## what about the name?
