@@ -19,7 +19,7 @@ thiserror = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 dashmap = "5.5"
-leptos = { version = "0.6", features = ["csr"] }
+leptos = { version = "0.6", features = ["csr", "tracing"] }
 leptos_router = { version = "0.6", features = ["csr"] }
 leptos-use = { version = "0.10", features = ["serde"] }
 reqwest = { version = "0.12", features = ["json"] }
