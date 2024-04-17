@@ -1,4 +1,4 @@
-use crate::model::{config, credential};
+use crate::model::{addressing, config, credential};
 use super::{activity, object, user, Audience};
 use openssl::rsa::Rsa;
 use sea_orm::IntoActiveModel;
@@ -52,6 +52,16 @@ pub async fn faker(db: &sea_orm::DatabaseConnection, domain: String, count: u64)
 	for i in (0..count).rev() {
 		let oid = uuid::Uuid::new_v4();
 		let aid = uuid::Uuid::new_v4();
+
+		addressing::Entity::insert(addressing::ActiveModel {
+			actor: Set(apb::target::PUBLIC.to_string()),
+			server: Set("www.w3.org".to_string()),
+			activity: Set(format!("{domain}/activities/{aid}")),
+			object: Set(Some(format!("{domain}/objects/{oid}"))),
+			published: Set(chrono::Utc::now()),
+			..Default::default()
+		}).exec(db).await?;
+
 		object::Entity::insert(object::ActiveModel {
 			id: Set(format!("{domain}/objects/{oid}")),
 			name: Set(None),
