@@ -2,6 +2,13 @@ use leptos::*;
 use crate::prelude::*;
 
 
+pub type Auth = Signal<Option<String>>;
+pub trait AuthToken {
+	fn present(&self) -> bool;
+	fn token(&self) -> String;
+}
+
+
 #[component]
 pub fn LoginBox(
 	token_tx: WriteSignal<Option<String>>,
@@ -82,12 +89,6 @@ struct AuthResponse {
 	token: String,
 	user: String,
 	expires: chrono::DateTime<chrono::Utc>,
-}
-
-pub type Auth = Signal<Option<String>>;
-pub trait AuthToken {
-	fn present(&self) -> bool;
-	fn token(&self) -> String;
 }
 
 impl AuthToken for Signal<Option<String>> {
