@@ -4,7 +4,7 @@ use apb::{Activity, ActivityMut, Base, Collection, CollectionPage};
 use dashmap::DashMap;
 use leptos::{create_signal, leptos_dom::logging::console_warn, ReadSignal, Signal, SignalGet, SignalSet, WriteSignal};
 
-use crate::{Auth, URL_BASE};
+use crate::URL_BASE;
 
 lazy_static::lazy_static! {
 	pub static ref CACHE: ObjectCache = ObjectCache::default();
@@ -39,8 +39,8 @@ impl Uri {
 		if url.len() < 50 {
 			url.replace("https://", "")
 		} else {
-			format!("{}..", url.replace("https://", "").get(..50).unwrap_or_default().to_string())
-		}.replace('/', "​/​")
+			format!("{}..", url.replace("https://", "").get(..50).unwrap_or_default())
+		}.replace('/', "\u{200B}/\u{200B}")
 	}
 
 	pub fn short(url: &str) -> String {
@@ -103,12 +103,17 @@ impl Uri {
 pub struct Http;
 
 impl Http {
-	pub async fn request<T: serde::de::DeserializeOwned>(method: reqwest::Method, url: &str, data: Option<&serde_json::Value>, token: &Signal<Option<Auth>>) -> reqwest::Result<T> {
+	pub async fn request<T: serde::de::DeserializeOwned>(
+		method: reqwest::Method,
+		url: &str,
+		data: Option<&serde_json::Value>,
+		token: Signal<Option<String>>
+	) -> reqwest::Result<T> {
 		let mut req = reqwest::Client::new()
 			.request(method, url);
 
 		if let Some(auth) = token.get() {
-			req = req.header("Authorization", format!("Bearer {}", auth.token));
+			req = req.header("Authorization", format!("Bearer {}", auth));
 		}
 
 		if let Some(data) = data {
@@ -122,11 +127,11 @@ impl Http {
 			.await
 	}
 
-	pub async fn fetch<T: serde::de::DeserializeOwned>(url: &str, token: &Signal<Option<Auth>>) -> reqwest::Result<T> {
+	pub async fn fetch<T: serde::de::DeserializeOwned>(url: &str, token: Signal<Option<String>>) -> reqwest::Result<T> {
 		Self::request(reqwest::Method::GET, url, None, token).await
 	}
 
-	pub async fn post<T: serde::de::DeserializeOwned>(url: &str, data: &serde_json::Value, token: &Signal<Option<Auth>>) -> reqwest::Result<T> {
+	pub async fn post<T: serde::de::DeserializeOwned>(url: &str, data: &serde_json::Value, token: Signal<Option<String>>) -> reqwest::Result<T> {
 		Self::request(reqwest::Method::POST, url, Some(data), token).await
 	}
 }
@@ -162,10 +167,10 @@ impl Timeline {
 		self.set_next.set(feed);
 	}
 
-	pub async fn more(&self, auth: Signal<Option<Auth>>) -> reqwest::Result<()> {
+	pub async fn more(&self, auth: Signal<Option<String>>) -> reqwest::Result<()> {
 		let feed_url = self.next();
 
-		let collection : serde_json::Value = Http::fetch(&feed_url, &auth).await?;
+		let collection : serde_json::Value = Http::fetch(&feed_url, auth).await?;
 	
 	
 		let activities : Vec<serde_json::Value> = collection
@@ -202,11 +207,9 @@ impl Timeline {
 			}
 	
 			if let Some(uid) = activity.actor().id() {
-				if CACHE.get(&uid).is_none() {
-					if !gonna_fetch.contains(&uid) {
-						gonna_fetch.insert(uid.clone());
-						sub_tasks.push(fetch_and_update("users", uid, auth));
-					}
+				if CACHE.get(&uid).is_none() && !gonna_fetch.contains(&uid) {
+					gonna_fetch.insert(uid.clone());
+					sub_tasks.push(fetch_and_update("users", uid, auth));
 				}
 			}
 		}
@@ -223,8 +226,8 @@ impl Timeline {
 	}
 }
 
-async fn fetch_and_update(kind: &'static str, id: String, auth: Signal<Option<Auth>>) {
-	match Http::fetch(&Uri::api(kind, &id), &auth).await {
+async fn fetch_and_update(kind: &'static str, id: String, auth: Signal<Option<String>>) {
+	match Http::fetch(&Uri::api(kind, &id), auth).await {
 		Ok(data) => CACHE.put(id, data),
 		Err(e) => console_warn(&format!("could not fetch '{id}': {e}")),
 	}

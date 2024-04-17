@@ -26,46 +26,42 @@ pub struct Auth {
 pub trait MaybeToken {
 	fn present(&self) -> bool;
 	fn token(&self) -> String;
-	fn username(&self) -> String;
 }
 
-impl MaybeToken for Option<Auth> {
+impl MaybeToken for Option<String> {
 	fn token(&self) -> String {
 		match self {
 			None => String::new(),
-			Some(x) => x.token.clone(),
+			Some(x) => x.clone(),
 		}
 	}
 	fn present(&self) -> bool {
 		match self {
 			None => false,
-			Some(x) => !x.token.is_empty(),
-		}
-	}
-	fn username(&self) -> String {
-		match self {
-			None => "anon".to_string(),
-			Some(x) => x.user.split('/').last().unwrap_or_default().to_string()
+			Some(x) => !x.is_empty(),
 		}
 	}
 }
 
 #[component]
 pub fn LoginBox(
-	rx: Signal<Option<Auth>>,
-	tx: WriteSignal<Option<Auth>>,
+	token_tx: WriteSignal<Option<String>>,
+	token: Signal<Option<String>>,
+	username: Signal<Option<String>>,
+	username_tx: WriteSignal<Option<String>>,
+	home_tl: Timeline,
 ) -> impl IntoView {
 	let username_ref: NodeRef<html::Input> = create_node_ref();
 	let password_ref: NodeRef<html::Input> = create_node_ref();
 	view! {
 		<div>
-			<div class="w-100" class:hidden=move || !rx.get().present() >
-				"Hello "<a href={move || Uri::web("users", &rx.get().username())} >{move || rx.get().username()}</a>
+			<div class="w-100" class:hidden=move || !token.get().present() >
+				"Hello "<a href={move || Uri::web("users", &username.get().unwrap_or_default() )} >{move || username.get().unwrap_or_default() }</a>
 				<input style="float:right" type="submit" value="logout" on:click=move |_| {
-					tx.set(None);
+					token_tx.set(None);
 				} />
 			</div>
-			<div class:hidden=move || rx.get().present() >
+			<div class:hidden=move || token.get().present() >
 				<input class="w-100" type="text" node_ref=username_ref placeholder="username" />
 				<input class="w-100" type="text" node_ref=password_ref placeholder="password" />
 				<input class="w-100" type="submit" value="login" on:click=move |_| {
@@ -81,7 +77,13 @@ pub fn LoginBox(
 							.json::<Auth>()
 							.await.unwrap();
 						console_log(&format!("logged in until {}", auth.expires));
-						tx.set(Some(auth));
+						let username = auth.user.split('/').last().unwrap_or_default().to_string();
+						// reset home feed and point it to our user's inbox
+						home_tl.set_feed(vec![]);
+						home_tl.set_next(format!("{URL_BASE}/users/{}/inbox/page", username));
+						// update our username and token cookies
+						username_tx.set(Some(username));
+						token_tx.set(Some(auth.token));
 					});
 				} />
 			</div>
@@ -91,7 +93,7 @@ pub fn LoginBox(
 
 #[component]
 pub fn TimelineNavigation() -> impl IntoView {
-	let auth = use_context::<Signal<Option<Auth>>>().expect("missing auth context");
+	let auth = use_context::<Signal<Option<String>>>().expect("missing auth context");
 	view! {	
 		<a href="/web/home" >
 			<input class="w-100"
@@ -114,7 +116,7 @@ pub fn TimelineNavigation() -> impl IntoView {
 
 #[component]
 pub fn PostBox() -> impl IntoView {
-	let auth = use_context::<Signal<Option<Auth>>>().expect("missing auth context");
+	let auth = use_context::<Signal<Option<String>>>().expect("missing auth context");
 	let summary_ref: NodeRef<html::Input> = create_node_ref();
 	let content_ref: NodeRef<html::Textarea> = create_node_ref();
 	view! {
@@ -133,7 +135,7 @@ pub fn PostBox() -> impl IntoView {
 							.set_content(Some(&content))
 							.set_to(apb::Node::links(vec![apb::target::PUBLIC.to_string()]))
 							.set_cc(apb::Node::links(vec![format!("{URL_BASE}/users/test/followers")])),
-						&auth
+						auth
 					)
 						.await.unwrap()
 				})
@@ -199,13 +201,13 @@ pub fn ActorBanner(object: serde_json::Value) -> impl IntoView {
 #[component]
 pub fn UserPage() -> impl IntoView {
 	let params = use_params_map();
-	let auth = use_context::<Signal<Option<Auth>>>().expect("missing auth context");
+	let auth = use_context::<Signal<Option<String>>>().expect("missing auth context");
 	let actor = create_local_resource(move || params.get().get("id").cloned().unwrap_or_default(), move |id| {
 		async move {
 			match CACHE.get(&Uri::full("users", &id)) {
 				Some(x) => Some(x.clone()),
 				None => {
-					let user : serde_json::Value = Http::fetch(&Uri::api("users", &id), &auth).await.ok()?;
+					let user : serde_json::Value = Http::fetch(&Uri::api("users", &id), auth).await.ok()?;
 					CACHE.put(Uri::full("users", &id), user.clone());
 					Some(user)
 				},
@@ -255,13 +257,13 @@ pub fn UserPage() -> impl IntoView {
 #[component]
 pub fn ObjectPage() -> impl IntoView {
 	let params = use_params_map();
-	let auth = use_context::<Signal<Option<Auth>>>().expect("missing auth context");
+	let auth = use_context::<Signal<Option<String>>>().expect("missing auth context");
 	let object = create_local_resource(move || params.get().get("id").cloned().unwrap_or_default(), move |oid| {
 		async move {
 			match CACHE.get(&Uri::full("objects", &oid)) {
 				Some(x) => Some(x.clone()),
 				None => {
-					let obj = Http::fetch::<serde_json::Value>(&Uri::api("objects", &oid), &auth).await.ok()?;
+					let obj = Http::fetch::<serde_json::Value>(&Uri::api("objects", &oid), auth).await.ok()?;
 					CACHE.put(Uri::full("objects", &oid), obj.clone());
 					Some(obj)
 				}
@@ -396,7 +398,7 @@ pub fn TimelinePage(name: &'static str, tl: Timeline) -> impl IntoView {
 
 #[component]
 pub fn TimelineFeed(tl: Timeline) -> impl IntoView {
-	let auth = use_context::<Signal<Option<Auth>>>().expect("missing auth context");
+	let auth = use_context::<Signal<Option<String>>>().expect("missing auth context");
 	view! {
 		<For
 			each=move || tl.feed.get()

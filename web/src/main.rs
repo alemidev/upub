@@ -1,19 +1,20 @@
 use leptos::{leptos_dom::logging::console_error, *};
 use leptos_router::*;
 
-use leptos_use::{use_cookie, utils::JsonCodec};
+use leptos_use::{use_cookie, utils::FromToStringCodec};
 use upub_web::{
-	URL_BASE, context::Timeline, About, Auth, LoginBox, MaybeToken, ObjectPage, PostBox,
+	URL_BASE, context::Timeline, About, LoginBox, MaybeToken, ObjectPage, PostBox,
 	TimelinePage, TimelineNavigation, UserPage
 };
 
 fn main() {
 	_ = console_log::init_with_level(log::Level::Info);
 	console_error_panic_hook::set_once();
-	let (cookie, set_cookie) = use_cookie::<Auth, JsonCodec>("token");
+	let (cookie, set_cookie) = use_cookie::<String, FromToStringCodec>("token");
+	let (username, set_username) = use_cookie::<String, FromToStringCodec>("username");
 	provide_context(cookie);
 
-	let home_tl = Timeline::new(format!("{URL_BASE}/users/{}/inbox/page", cookie.get().username()));
+	let home_tl = Timeline::new(format!("{URL_BASE}/users/{}/inbox/page", username.get().unwrap_or_default()));
 	let server_tl = Timeline::new(format!("{URL_BASE}/inbox/page"));
 
 	spawn_local(async move {
@@ -61,8 +62,11 @@ fn main() {
 								<div class="two-col" >
 									<div class="col-side" >
 										<LoginBox
-											tx=set_cookie
-											rx=cookie
+											token_tx=set_cookie
+											token=cookie
+											username_tx=set_username
+											username=username
+											home_tl=home_tl
 										/>
 										<hr class="mt-1 mb-1" />
 										<TimelineNavigation />
