@@ -293,7 +293,7 @@ pub fn Object(object: serde_json::Value) -> impl IntoView {
 	let author = CACHE.get(&author_id).unwrap_or(serde_json::Value::String(author_id.clone()));
 	view! {
 		<div>
-			<table class="post-table pa-1 mb-s" >
+			<table class="w-100 post-table pa-1 mb-s" >
 				{move || if !summary.is_empty() {
 					view! {
 						<tr class="post-table" >
