@@ -92,7 +92,7 @@ pub fn LoginBox(
 }
 
 #[component]
-pub fn TimelineNavigation() -> impl IntoView {
+pub fn Navigator() -> impl IntoView {
 	let auth = use_context::<Signal<Option<String>>>().expect("missing auth context");
 	view! {	
 		<a href="/web/home" >
@@ -109,6 +109,14 @@ pub fn TimelineNavigation() -> impl IntoView {
 				// class:active=move || use_location().pathname.get().ends_with("/server")
 				type="submit"
 				value="server timeline"
+			/>
+		</a>
+		<a href="/web/about" >
+			<input
+				class="w-100"
+				// class:active=move || use_location().pathname.get().ends_with("/server")
+				type="submit"
+				value="about"
 			/>
 		</a>
 	}
@@ -250,7 +258,7 @@ pub fn UserPage() -> impl IntoView {
 	view! {
 		<div>
 			<div class="tl-header w-100 center mb-s" >view::user</div>
-			<div class="boxscroll" >
+			<div>
 				{move || match actor.get() {
 					None => view! { <p>loading...</p> }.into_view(),
 					Some(None) => view! { <p><code>error loading</code></p> }.into_view(),
@@ -306,7 +314,7 @@ pub fn ObjectPage() -> impl IntoView {
 	view! {
 		<div>
 			<div class="tl-header w-100 center mb-s" >view::object</div>
-			<div class="boxscroll ma-2" >
+			<div class="ma-2" >
 				{move || match object.get() {
 					Some(Some(o)) => view!{ <Object object=o /> }.into_view(),
 					Some(None) => view! { <p><code>loading failed</code></p> }.into_view(),
@@ -418,9 +426,9 @@ pub fn InlineActivity(activity: serde_json::Value) -> impl IntoView {
 pub fn About() -> impl IntoView {
 	view! {
 		<div>
-			<div class="tl-header w-100 center mb-s" >landing</div>
-			<div class="boxscroll mt-s mb-s" >
-				nothing to see here! pick a timeline to start browsing
+			<div class="tl-header w-100 center mb-s" >about</div>
+			<div class="mt-s mb-s" >
+				<p><code>μpub</code>" is a micro social network powered by "<a href="">ActivityPub</a></p>
 			</div>
 		</div>
 	}
@@ -435,7 +443,7 @@ pub fn TimelinePage(name: &'static str, tl: Timeline) -> impl IntoView {
 	view! {
 		<div>
 			<div class="tl-header w-100 center mb-s" >{name}</div>
-			<div class="boxscroll mt-s mb-s" >
+			<div class="mt-s mb-s" >
 				<TimelineFeed tl=tl />
 			</div>
 		</div>
