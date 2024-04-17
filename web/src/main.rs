@@ -33,16 +33,14 @@ fn main() {
 
 	mount_to_body(
 		move || view! {
-			<nav class="w-100">
-				<p>
-					<code><a class="upub-title" href=move || if cookie.get().present() { "/web/home" } else { "/web/server" } >μpub</a></code>
-					<small class="ml-1 mr-1" ><a class="clean" href="/web/server" >micro social network, federated</a></small>
-					/* TODO kinda jank with the float but whatever, will do for now */
-					<small style="float: right" ><a href="https://git.alemi.dev/upub.git" >src</a></small>
-				</p>
+			<nav class="w-100 mt-1 mb-1 pb-s">
+				<code class="color ml-3" ><a class="upub-title" href=move || if cookie.get().present() { "/web/home" } else { "/web/server" } >μpub</a></code>
+				<small class="ml-1 mr-1" ><a class="clean" href="/web/server" >micro social network, federated</a></small>
+				/* TODO kinda jank with the float but whatever, will do for now */
+				<small class="mr-1" style="float: right" ><a href="https://git.alemi.dev/upub.git" >src</a></small>
 			</nav>
-			<hr />
-			<div class="container" >
+			<hr class="nav" />
+			<div class="container mt-2 pt-2" >
 				<Router // TODO maybe set base="/web" ?
 					trailing_slash=TrailingSlash::Redirect
 					fallback=move || view! { 
@@ -60,7 +58,7 @@ fn main() {
 						view! {
 							<main>
 								<div class="two-col" >
-									<div class="col-side" >
+									<div class="col-side sticky" >
 										<LoginBox
 											token_tx=set_cookie
 											token=cookie

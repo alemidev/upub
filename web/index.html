@@ -17,6 +17,26 @@
 		:root {
 			--main-col-percentage: 70%;
 		}
+		body {
+			margin: 0;
+		}
+		nav {
+			top: 0;
+			position: sticky;
+			background-color: var(--background);
+			padding-top: .05em;
+		}
+		hr.nav {
+			margin-top: 0;
+			padding-top: 0;
+			border: 1px solid #bf616a70;
+			top: 1.65rem;
+			position: sticky;
+		}
+		div.sticky {
+			top: 4em;
+			position: sticky;
+		}
 		.hidden { display: none; }
 		a.upub-title {
 			color: var(--primary);
@@ -34,8 +54,6 @@
 			border-radius: 50%;
 		}
 		div.boxscroll {
-			max-height: calc(100vh - 7rem);
-			overflow-y: scroll;
 		}
 		div.tl-header {
 			background-color: #bf616a55;
