@@ -103,12 +103,12 @@ impl Uri {
 pub struct Http;
 
 impl Http {
-	pub async fn request<T: serde::de::DeserializeOwned>(
+	pub async fn request<T: serde::ser::Serialize>(
 		method: reqwest::Method,
 		url: &str,
-		data: Option<&serde_json::Value>,
+		data: Option<&T>,
 		token: Signal<Option<String>>
-	) -> reqwest::Result<T> {
+	) -> reqwest::Result<reqwest::Response> {
 		let mut req = reqwest::Client::new()
 			.request(method, url);
 
@@ -122,17 +122,20 @@ impl Http {
 
 		req.send()
 			.await?
-			.error_for_status()?
+			.error_for_status()
+	}
+
+	pub async fn fetch<T: serde::de::DeserializeOwned>(url: &str, token: Signal<Option<String>>) -> reqwest::Result<T> {
+		Self::request::<()>(reqwest::Method::GET, url, None, token)
+			.await?
 			.json::<T>()
 			.await
 	}
 
-	pub async fn fetch<T: serde::de::DeserializeOwned>(url: &str, token: Signal<Option<String>>) -> reqwest::Result<T> {
-		Self::request(reqwest::Method::GET, url, None, token).await
-	}
-
-	pub async fn post<T: serde::de::DeserializeOwned>(url: &str, data: &serde_json::Value, token: Signal<Option<String>>) -> reqwest::Result<T> {
-		Self::request(reqwest::Method::POST, url, Some(data), token).await
+	pub async fn post<T: serde::ser::Serialize>(url: &str, data: &T, token: Signal<Option<String>>) -> reqwest::Result<()> {
+		Self::request(reqwest::Method::POST, url, Some(data), token)
+			.await?;
+		Ok(())
 	}
 }
 

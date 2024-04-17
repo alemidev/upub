@@ -71,7 +71,7 @@ fn main() {
 										<hr class="mt-1 mb-1" />
 										<TimelineNavigation />
 										<hr class="mt-1 mb-1" />
-										<PostBox />
+										<PostBox username=username />
 									</div>
 									<div class="col-main" class:w-100=move || menu.get() >
 										<Routes>
