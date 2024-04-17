@@ -13,6 +13,7 @@ repository = "https://git.alemi.dev/upub.git"
 
 [dependencies]
 log = "0.4"
+tracing = "0.1"
 console_log = "1.0"
 console_error_panic_hook = "0.1"
 thiserror = "1"
