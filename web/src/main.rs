@@ -17,6 +17,8 @@ fn main() {
 	let home_tl = Timeline::new(format!("{URL_BASE}/users/{}/inbox/page", username.get().unwrap_or_default()));
 	let server_tl = Timeline::new(format!("{URL_BASE}/inbox/page"));
 
+	let (menu, set_menu) = create_signal(false);
+
 	spawn_local(async move {
 		if let Err(e) = server_tl.more(cookie).await {
 			console_error(&format!("error populating timeline: {e}"));
@@ -37,9 +39,9 @@ fn main() {
 				<code class="color ml-3" ><a class="upub-title" href=move || if cookie.get().present() { "/web/home" } else { "/web/server" } >μpub</a></code>
 				<small class="ml-1 mr-1" ><a class="clean" href="/web/server" >micro social network, federated</a></small>
 				/* TODO kinda jank with the float but whatever, will do for now */
-				<small class="mr-1" style="float: right" ><a href="https://git.alemi.dev/upub.git" >src</a></small>
+				<input type="submit" class="mr-2 rev" on:click=move |_| set_menu.set(!menu.get()) value="menu" style="float: right" />
 			</nav>
-			<hr class="nav" />
+			<hr class="sep" />
 			<div class="container mt-2 pt-2" >
 				<Router // TODO maybe set base="/web" ?
 					trailing_slash=TrailingSlash::Redirect
@@ -58,7 +60,7 @@ fn main() {
 						view! {
 							<main>
 								<div class="two-col" >
-									<div class="col-side sticky" >
+									<div class="col-side sticky" class:hidden=move || menu.get() >
 										<LoginBox
 											token_tx=set_cookie
 											token=cookie
@@ -71,7 +73,7 @@ fn main() {
 										<hr class="mt-1 mb-1" />
 										<PostBox />
 									</div>
-									<div class="col-main" >
+									<div class="col-main" class:w-100=move || menu.get() >
 										<Routes>
 											<Route path="/web" view=About />
 
@@ -90,6 +92,12 @@ fn main() {
 					}}
 				</Router>
 			</div>
+			<footer>
+				<div>
+					<hr class="sep" />
+					<span class="footer" >"\u{26fc} woven under moonlight  :: "<a href="https://git.alemi.dev/upub.git" target="_blank" >src</a>" :: wip by alemi "</span>
+				</div>
+			</footer>
 		}
 	);
 }
