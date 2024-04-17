@@ -43,54 +43,54 @@ fn main() {
 			</nav>
 			<hr class="sep" />
 			<div class="container mt-2 pt-2" >
-				<Router // TODO maybe set base="/web" ?
-					trailing_slash=TrailingSlash::Redirect
-					fallback=move || view! { 
-						<div class="center">
-							<h3>nothing to see here!</h3>
-							<p><a href="/web"><button type="button">back to root</button></a></p>
-						</div>
-					}.into_view()
-				>
-					// TODO this is kind of ugly: the whole router gets rebuilt every time we log in/out
-					// in a sense it's what we want: refreshing the home tl is main purpose, but also
-					// server tl may contain stuff we can no longer see, or otherwise we may now be
-					// entitled to see new posts. so while being ugly it's techically correct ig?
-					{move || {
-						view! {
-							<main>
-								<div class="two-col" >
-									<div class="col-side sticky" class:hidden=move || menu.get() >
-										<LoginBox
-											token_tx=set_cookie
-											token=cookie
-											username_tx=set_username
-											username=username
-											home_tl=home_tl
-										/>
-										<hr class="mt-1 mb-1" />
-										<TimelineNavigation />
-										<hr class="mt-1 mb-1" />
-										<PostBox username=username />
-									</div>
-									<div class="col-main" class:w-100=move || menu.get() >
-										<Routes>
-											<Route path="/web" view=About />
-
-											<Route path="/web/home" view=move || view! { <TimelinePage name="home" tl=home_tl /> } />
-											<Route path="/web/server" view=move || view! { <TimelinePage name="server" tl=server_tl /> } />
-
-											<Route path="/web/users/:id" view=UserPage />
-											<Route path="/web/objects/:id" view=ObjectPage />
-
-											<Route path="/" view=move || view! { <Redirect path="/web" /> } />
-										</Routes>
-									</div>
+				<div class="two-col" >
+					<div class="col-side sticky" class:hidden=move || menu.get() >
+						<LoginBox
+							token_tx=set_cookie
+							token=cookie
+							username_tx=set_username
+							username=username
+							home_tl=home_tl
+						/>
+						<hr class="mt-1 mb-1" />
+						<TimelineNavigation />
+						<hr class="mt-1 mb-1" />
+						<PostBox username=username />
+					</div>
+					<div class="col-main" class:w-100=move || menu.get() >
+						<Router // TODO maybe set base="/web" ?
+							trailing_slash=TrailingSlash::Redirect
+							fallback=move || view! { 
+								<div class="center">
+									<h3>nothing to see here!</h3>
+									<p><a href="/web"><button type="button">back to root</button></a></p>
 								</div>
-							</main>
-						}
-					}}
-				</Router>
+							}.into_view()
+						>
+							// TODO this is kind of ugly: the whole router gets rebuilt every time we log in/out
+							// in a sense it's what we want: refreshing the home tl is main purpose, but also
+							// server tl may contain stuff we can no longer see, or otherwise we may now be
+							// entitled to see new posts. so while being ugly it's techically correct ig?
+							{move || {
+								view! {
+									<main>
+											<Routes>
+												<Route path="/web" view=About />
+
+												<Route path="/web/home" view=move || view! { <TimelinePage name="home" tl=home_tl /> } />
+												<Route path="/web/server" view=move || view! { <TimelinePage name="server" tl=server_tl /> } />
+
+												<Route path="/web/users/:id" view=UserPage />
+												<Route path="/web/objects/:id" view=ObjectPage />
+
+												<Route path="/" view=move || view! { <Redirect path="/web" /> } />
+											</Routes>
+									</main>
+								}
+							}}
+						</Router>
+					</div>
+				</div>
 			</div>
 			<footer>
 				<div>

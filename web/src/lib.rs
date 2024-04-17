@@ -99,14 +99,14 @@ pub fn TimelineNavigation() -> impl IntoView {
 			<input class="w-100"
 				type="submit"
 				class:hidden=move || !auth.get().present()
-				class:active=move || use_location().pathname.get().ends_with("/home")
+				// class:active=move || use_location().pathname.get().ends_with("/home")
 				value="home timeline"
 			/>
 		</a>
 		<a href="/web/server" >
 			<input
 				class="w-100"
-				class:active=move || use_location().pathname.get().ends_with("/server")
+				// class:active=move || use_location().pathname.get().ends_with("/server")
 				type="submit"
 				value="server timeline"
 			/>
