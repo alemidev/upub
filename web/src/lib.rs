@@ -8,6 +8,7 @@ use crate::context::{Http, Timeline, Uri, CACHE};
 
 pub const URL_BASE: &str = "https://feditest.alemi.dev";
 pub const URL_PREFIX: &str = "/web";
+pub const NAME: &str = "μ";
 
 #[derive(Debug, serde::Serialize)]
 struct LoginForm {
@@ -50,15 +51,23 @@ pub fn LoginBox(
 	username: Signal<Option<String>>,
 	username_tx: WriteSignal<Option<String>>,
 	home_tl: Timeline,
+	server_tl: Timeline,
 ) -> impl IntoView {
 	let username_ref: NodeRef<html::Input> = create_node_ref();
 	let password_ref: NodeRef<html::Input> = create_node_ref();
 	view! {
 		<div>
 			<div class="w-100" class:hidden=move || !token.get().present() >
-				"Hello "<a href={move || Uri::web("users", &username.get().unwrap_or_default() )} >{move || username.get().unwrap_or_default() }</a>
+				"hi "<a href={move || Uri::web("users", &username.get().unwrap_or_default() )} >{move || username.get().unwrap_or_default() }</a>
 				<input style="float:right" type="submit" value="logout" on:click=move |_| {
 					token_tx.set(None);
+					home_tl.reset(format!("{URL_BASE}/outbox/page"));
+					server_tl.reset(format!("{URL_BASE}/inbox/page"));
+					spawn_local(async move {
+						if let Err(e) = server_tl.more(token).await {
+							console_error(&format!("failed refreshing server timeline: {e}"));
+						}
+					});
 				} />
 			</div>
 			<div class:hidden=move || token.get().present() >
@@ -79,8 +88,19 @@ pub fn LoginBox(
 						console_log(&format!("logged in until {}", auth.expires));
 						let username = auth.user.split('/').last().unwrap_or_default().to_string();
 						// reset home feed and point it to our user's inbox
-						home_tl.set_feed(vec![]);
-						home_tl.set_next(format!("{URL_BASE}/users/{}/inbox/page", username));
+						home_tl.reset(format!("{URL_BASE}/users/{}/inbox/page", username));
+						spawn_local(async move {
+							if let Err(e) = home_tl.more(token).await {
+								console_error(&format!("failed refreshing home timeline: {e}"));
+							}
+						});
+						// reset server feed: there may be more content now that we're authed
+						server_tl.reset(format!("{URL_BASE}/inbox/page"));
+						spawn_local(async move {
+							if let Err(e) = server_tl.more(token).await {
+								console_error(&format!("failed refreshing server timeline: {e}"));
+							}
+						});
 						// update our username and token cookies
 						username_tx.set(Some(username));
 						token_tx.set(Some(auth.token));
@@ -139,7 +159,7 @@ pub fn PostBox(username: Signal<Option<String>>) -> impl IntoView {
 				</tr>
 				<tr>
 					<td colspan="3">
-						<textarea rows="5" class="w-100" node_ref=content_ref placeholder="leptos is kinda fun!" ></textarea>
+						<textarea rows="5" class="w-100" node_ref=content_ref title="content" ></textarea>
 					</td>
 				</tr>
 				<tr>
@@ -257,7 +277,7 @@ pub fn UserPage() -> impl IntoView {
 	});
 	view! {
 		<div>
-			<div class="tl-header w-100 center mb-s" >view::user</div>
+			<Breadcrumb back=true >users::view</Breadcrumb>
 			<div>
 				{move || match actor.get() {
 					None => view! { <p>loading...</p> }.into_view(),
@@ -313,7 +333,7 @@ pub fn ObjectPage() -> impl IntoView {
 	});
 	view! {
 		<div>
-			<div class="tl-header w-100 center mb-s" >view::object</div>
+			<Breadcrumb back=true >objects::view</Breadcrumb>
 			<div class="ma-2" >
 				{move || match object.get() {
 					Some(Some(o)) => view!{ <Object object=o /> }.into_view(),
@@ -426,7 +446,7 @@ pub fn InlineActivity(activity: serde_json::Value) -> impl IntoView {
 pub fn About() -> impl IntoView {
 	view! {
 		<div>
-			<div class="tl-header w-100 center mb-s" >about</div>
+			<Breadcrumb>about</Breadcrumb>
 			<div class="mt-s mb-s" >
 				<p><code>μpub</code>" is a micro social network powered by "<a href="">ActivityPub</a></p>
 			</div>
@@ -434,15 +454,40 @@ pub fn About() -> impl IntoView {
 	}
 }
 
-#[derive(Debug, thiserror::Error)]
-#[error("{0}")]
-struct OmgReqwestErrorIsNotClonable(String);
+#[component]
+pub fn Breadcrumb(
+	#[prop(optional)]
+	back: bool,
+	children: Children,
+) -> impl IntoView {
+	view! {
+		<div class="tl-header w-100 center mb-s" >
+			{if back { Some(view! {
+				<a class="breadcrumb mr-1" href="javascript:history.back()" ><b>"<<"</b></a>
+			})} else { None }}
+			<b>{NAME}</b>" :: "{children()}
+		</div>
+	}
+}
 
 #[component]
 pub fn TimelinePage(name: &'static str, tl: Timeline) -> impl IntoView {
+	let auth = use_context::<Signal<Option<String>>>().expect("missing auth context");
 	view! {
 		<div>
-			<div class="tl-header w-100 center mb-s" >{name}</div>
+			<Breadcrumb back=false>
+				{name}
+				<a class="clean ml-1" href="#" on:click=move |_| {
+					tl.reset(tl.next.get().split('?').next().unwrap_or_default().to_string());
+					spawn_local(async move {
+						if let Err(e) = tl.more(auth).await {
+							console_error(&format!("error fetching more items for timeline: {e}"));
+						}
+					})
+				}><span class="emoji">
+					"\u{1f5d8}"
+				</span></a>
+			</Breadcrumb>
 			<div class="mt-s mb-s" >
 				<TimelineFeed tl=tl />
 			</div>
@@ -461,9 +506,7 @@ pub fn TimelineFeed(tl: Timeline) -> impl IntoView {
 				match CACHE.get(&id) {
 					Some(object) => {
 						view! {
-							<div class="ml-1 mr-1 mt-1">
-								<InlineActivity activity=object />
-							</div>
+							<InlineActivity activity=object />
 							<hr/ >
 						}.into_view()
 					},
@@ -473,7 +516,7 @@ pub fn TimelineFeed(tl: Timeline) -> impl IntoView {
 				}
 			}
 		/ >
-		<div class="center" >
+		<div class="center mt-1 mb-1" >
 			<button type="button"
 				on:click=move |_| {
 					spawn_local(async move {

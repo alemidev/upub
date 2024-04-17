@@ -60,10 +60,16 @@
 			padding-bottom: 0;
 			line-height: 1rem;
 		}
+		main {
+			margin: 0em 1em;
+		}
 		blockquote {
 			margin-left: 1.25em;
 			margin-top: 0;
 			margin-bottom: 0;
+		}
+		blockquote p {
+			margin: .5em 1em;
 		}
 		span.footer {
 			padding: .1em;
@@ -80,10 +86,15 @@
 			position: sticky;
 		}
 		div.sticky {
-			top: 1.75rem;
+			top: 2rem;
 			position: sticky;
 			background-color: var(--background);
-			padding-top: .5em;
+		}
+		@media screen and (max-width: 786px) {
+			div.sticky {
+				top: 1.75rem;
+				padding-top: .25rem;
+			}
 		}
 		a.upub-title {
 			color: var(--primary);
@@ -97,6 +108,14 @@
 		}
 		a.hover:hover {
 			text-decoration: underline;
+		}
+		a.breadcrumb {
+			text-decoration: none;
+			color: var(--secondary);
+		}
+		a.breadcrumb:hover {
+			font-weight: bold;
+			color: var(--primary);
 		}
 		img.avatar-circle {
 			display: inline;
@@ -126,9 +145,6 @@
 			border-color: var(--accent);
 			color: var(--background);
 			cursor: pointer;
-		}
-		main {
-			margin: 1em;
 		}
 		@media screen and (max-width: 786px) {
 			.hidden-on-mobile {

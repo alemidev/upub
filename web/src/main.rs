@@ -4,7 +4,7 @@ use leptos_router::*;
 use leptos_use::{use_cookie, utils::FromToStringCodec};
 use upub_web::{
 	URL_BASE, context::Timeline, About, LoginBox, MaybeToken, ObjectPage, PostBox,
-	TimelinePage, Navigator, UserPage
+	TimelinePage, Navigator, UserPage, Breadcrumb
 };
 
 fn main() {
@@ -53,6 +53,7 @@ fn main() {
 							username_tx=set_username
 							username=username
 							home_tl=home_tl
+							server_tl=server_tl
 						/>
 						<hr class="mt-1 mb-1" />
 						<Navigator />

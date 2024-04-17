@@ -2,7 +2,7 @@ use std::{collections::BTreeSet, sync::Arc};
 
 use apb::{Activity, ActivityMut, Base, Collection, CollectionPage};
 use dashmap::DashMap;
-use leptos::{create_signal, leptos_dom::logging::console_warn, ReadSignal, Signal, SignalGet, SignalSet, WriteSignal};
+use leptos::{create_rw_signal, create_signal, leptos_dom::logging::console_warn, ReadSignal, RwSignal, Signal, SignalGet, SignalSet, WriteSignal};
 
 use crate::URL_BASE;
 
@@ -141,92 +141,86 @@ impl Http {
 
 #[derive(Debug, Clone, Copy)]
 pub struct Timeline {
-	pub(crate) feed: ReadSignal<Vec<String>>,
-	pub(crate) set_feed: WriteSignal<Vec<String>>,
-	pub(crate) next: ReadSignal<String>,
-	pub(crate) set_next: WriteSignal<String>,
+	pub feed: RwSignal<Vec<String>>,
+	pub next: RwSignal<String>,
 }
 
 impl Timeline {
 	pub fn new(url: String) -> Self {
-		let (feed, set_feed) = create_signal(vec![]);
-		let (next, set_next) = create_signal(url);
-		Timeline { feed, set_feed, next, set_next }
+		let feed = create_rw_signal(vec![]);
+		let next = create_rw_signal(url);
+		Timeline { feed, next }
 	}
 
-	pub fn feed(&self) -> Vec<String> {
-		self.feed.get()
-	}
-
-	pub fn set_feed(&self, feed: Vec<String>) {
-		self.set_feed.set(feed);
-	}
-
-	pub fn next(&self) -> String {
-		self.next.get()
-	}
-
-	pub fn set_next(&self, feed: String) {
-		self.set_next.set(feed);
+	pub fn reset(&self, url: String) {
+		self.feed.set(vec![]);
+		self.next.set(url);
 	}
 
 	pub async fn more(&self, auth: Signal<Option<String>>) -> reqwest::Result<()> {
-		let feed_url = self.next();
-
+		let feed_url = self.next.get();
 		let collection : serde_json::Value = Http::fetch(&feed_url, auth).await?;
-	
-	
 		let activities : Vec<serde_json::Value> = collection
 			.ordered_items()
 			.collect();
 	
-		let mut out = self.feed();
-		let mut sub_tasks = Vec::new();
-		let mut gonna_fetch = BTreeSet::new();
-
-		for activity in activities {
-			// save embedded object if present
-			if let Some(object) = activity.object().get() {
-				if let Some(object_uri) = object.id() {
-					CACHE.put(object_uri.to_string(), object.clone());
-				}
-			} else { // try fetching it
-				if let Some(object_id) = activity.object().id() {
-					if !gonna_fetch.contains(&object_id) {
-						gonna_fetch.insert(object_id.clone());
-						sub_tasks.push(fetch_and_update("objects", object_id, auth));
-					}
-				}
-			}
-	
-			// save activity, removing embedded object
-			let object_id = activity.object().id();
-			if let Some(activity_id) = activity.id() {
-				out.push(activity_id.to_string());
-				CACHE.put(
-					activity_id.to_string(),
-					activity.clone().set_object(apb::Node::maybe_link(object_id))
-				);
-			}
-	
-			if let Some(uid) = activity.actor().id() {
-				if CACHE.get(&uid).is_none() && !gonna_fetch.contains(&uid) {
-					gonna_fetch.insert(uid.clone());
-					sub_tasks.push(fetch_and_update("users", uid, auth));
-				}
-			}
-		}
-
-		futures::future::join_all(sub_tasks).await;
-	
-		self.set_feed(out);
+		let mut feed = self.feed.get();
+		let mut older = process_activities(activities, auth).await;
+		feed.append(&mut older);
+		self.feed.set(feed);
 
 		if let Some(next) = collection.next().id() {
-			self.set_next(next);
+			self.next.set(next);
 		}
-	
+
 		Ok(())
 	}
+}
+
+async fn process_activities(
+	activities: Vec<serde_json::Value>,
+	auth: Signal<Option<String>>,
+) -> Vec<String> {
+	let mut sub_tasks = Vec::new();
+	let mut gonna_fetch = BTreeSet::new();
+	let mut out = Vec::new();
+
+	for activity in activities {
+		// save embedded object if present
+		if let Some(object) = activity.object().get() {
+			if let Some(object_uri) = object.id() {
+				CACHE.put(object_uri.to_string(), object.clone());
+			}
+		} else { // try fetching it
+			if let Some(object_id) = activity.object().id() {
+				if !gonna_fetch.contains(&object_id) {
+					gonna_fetch.insert(object_id.clone());
+					sub_tasks.push(fetch_and_update("objects", object_id, auth));
+				}
+			}
+		}
+	
+		// save activity, removing embedded object
+		let object_id = activity.object().id();
+		if let Some(activity_id) = activity.id() {
+			out.push(activity_id.to_string());
+			CACHE.put(
+				activity_id.to_string(),
+				activity.clone().set_object(apb::Node::maybe_link(object_id))
+			);
+		}
+	
+		if let Some(uid) = activity.actor().id() {
+			if CACHE.get(&uid).is_none() && !gonna_fetch.contains(&uid) {
+				gonna_fetch.insert(uid.clone());
+				sub_tasks.push(fetch_and_update("users", uid, auth));
+			}
+		}
+	}
+
+	futures::future::join_all(sub_tasks).await;
+
+	out
 }
 
 async fn fetch_and_update(kind: &'static str, id: String, auth: Signal<Option<String>>) {
