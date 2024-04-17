@@ -248,7 +248,7 @@ pub fn UserPage() -> impl IntoView {
 		}
 	});
 	view! {
-		<div class="ml-1">
+		<div>
 			<div class="tl-header w-100 center mb-s" >view::user</div>
 			<div class="boxscroll" >
 				{move || match actor.get() {
@@ -304,7 +304,7 @@ pub fn ObjectPage() -> impl IntoView {
 		}
 	});
 	view! {
-		<div class="ml-1">
+		<div>
 			<div class="tl-header w-100 center mb-s" >view::object</div>
 			<div class="boxscroll ma-2" >
 				{move || match object.get() {
@@ -375,11 +375,11 @@ pub fn InlineActivity(activity: serde_json::Value) -> impl IntoView {
 		None => serde_json::Value::String(actor_id.clone()),
 	};
 	let privacy = if addressed.iter().any(|x| x == apb::target::PUBLIC) {
-		"[public]"
+		"🌐"
 	} else if addressed.iter().any(|x| x.ends_with("/followers")) {
-		"[followers]"
+		"👥"
 	} else {
-		"[private]"
+		"🔒"
 	};
 	let date = object.published().map(|x| x.format("%Y/%m/%d %H:%M:%S").to_string()).unwrap_or_else(||
 		activity.published().map(|x| x.format("%Y/%m/%d %H:%M:%S").to_string()).unwrap_or_default()
@@ -393,8 +393,8 @@ pub fn InlineActivity(activity: serde_json::Value) -> impl IntoView {
 				<ActorBanner object=actor />
 			</td>
 			<td class="rev" >
-				<small><u class="moreinfo" title={audience} >{privacy}</u></small>
-				<code class="color ml-1 moreinfo" title={object_id.clone()} >{kind.as_ref().to_string()}</code>
+				<code class="color moreinfo" title={object_id.clone()} >{kind.as_ref().to_string()}</code>
+				<span class="emoji ml-s moreinfo" title={audience} >{privacy}</span>
 			</td>
 		</tr>
 		<tr>
@@ -417,7 +417,7 @@ pub fn InlineActivity(activity: serde_json::Value) -> impl IntoView {
 #[component]
 pub fn About() -> impl IntoView {
 	view! {
-		<div class="ml-1">
+		<div>
 			<div class="tl-header w-100 center mb-s" >landing</div>
 			<div class="boxscroll mt-s mb-s" >
 				nothing to see here! pick a timeline to start browsing
@@ -433,7 +433,7 @@ struct OmgReqwestErrorIsNotClonable(String);
 #[component]
 pub fn TimelinePage(name: &'static str, tl: Timeline) -> impl IntoView {
 	view! {
-		<div class="ml-1">
+		<div>
 			<div class="tl-header w-100 center mb-s" >{name}</div>
 			<div class="boxscroll mt-s mb-s" >
 				<TimelineFeed tl=tl />
