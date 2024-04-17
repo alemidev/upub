@@ -321,7 +321,8 @@ pub fn ObjectPage() -> impl IntoView {
 pub fn Object(object: serde_json::Value) -> impl IntoView {
 	let summary = object.summary().unwrap_or_default().to_string();
 	let content = dissolve::strip_html_tags(object.content().unwrap_or_default());
-	let date = object.published().map(|x| x.to_rfc2822()).unwrap_or_default();
+	let date = object.published().map(|x| x.format("%Y/%m/%d %H:%M:%S").to_string()).unwrap_or_default();
+	let date_rfc = object.published().map(|x| x.to_rfc3339()).unwrap_or_default();
 	let author_id = object.attributed_to().id().unwrap_or_default();
 	let author = CACHE.get(&author_id).unwrap_or(serde_json::Value::String(author_id.clone()));
 	view! {
@@ -343,7 +344,7 @@ pub fn Object(object: serde_json::Value) -> impl IntoView {
 				</tr>
 				<tr class="post-table" >
 					<td class="post-table pa-1" ><ActorBanner object=author /></td>
-					<td class="post-table pa-1" >{date}</td>
+					<td class="post-table pa-1 center" ><small title={date_rfc} >{date}</small></td>
 				</tr>
 			</table>
 		</div>
@@ -368,8 +369,8 @@ pub fn InlineActivity(activity: serde_json::Value) -> impl IntoView {
 	} else {
 		"[private]"
 	};
-	let date = object.published().map(|x| x.to_rfc2822()).unwrap_or_else(||
-		activity.published().map(|x| x.to_rfc2822()).unwrap_or_default()
+	let date = object.published().map(|x| x.format("%Y/%m/%d %H:%M:%S").to_string()).unwrap_or_else(||
+		activity.published().map(|x| x.format("%Y/%m/%d %H:%M:%S").to_string()).unwrap_or_default()
 	);
 	let kind = activity.activity_type().unwrap_or(apb::ActivityType::Activity);
 	view! {
@@ -380,13 +381,14 @@ pub fn InlineActivity(activity: serde_json::Value) -> impl IntoView {
 				<ActorBanner object=actor />
 			</td>
 			<td class="rev" >
-				<code class="color" >{kind.as_ref().to_string()}</code>
+				<small><u class="moreinfo" title={audience} >{privacy}</u></small>
+				<code class="color ml-1 moreinfo" title={object_id.clone()} >{kind.as_ref().to_string()}</code>
 			</td>
 		</tr>
 		<tr>
 			<td class="rev">
 				<a class="hover" href={Uri::web("objects", &object_id)} >
-					<small>{Uri::pretty(&object_id)}</small>
+					<small>{date}</small>
 				</a>
 			</td>
 		</tr>
@@ -397,7 +399,6 @@ pub fn InlineActivity(activity: serde_json::Value) -> impl IntoView {
 			apb::ActivityType::Create => view! { <Object object=object /> }.into_view(),
 			_ => view! {}.into_view(),
 		}}
-		<small>{date}" "<u class="moreinfo" style="float: right" title={audience} >{privacy}</u></small>
 	}
 }
 
