@@ -182,11 +182,11 @@ pub fn ActorBanner(object: serde_json::Value) -> impl IntoView {
 				<div>
 					<table class="align" >
 					<tr>
-						<td rowspan="2" ><img class="avatar-circle" src={avatar_url} /></td>
+						<td rowspan="2" ><a href={uri.clone()} ><img class="avatar-circle" src={avatar_url} /></a></td>
 						<td><b>{display_name}</b></td>
 					</tr>
 					<tr>
-						<td class="top" ><a class="clean" href={uri} ><small>{username}@{domain}</small></a></td>
+						<td class="top" ><a class="hover" href={uri} ><small>{username}@{domain}</small></a></td>
 					</tr>
 					</table>
 				</div>
@@ -352,7 +352,7 @@ pub fn InlineActivity(activity: serde_json::Value) -> impl IntoView {
 		</tr>
 		<tr>
 			<td class="rev">
-				<a class="clean hover" href={Uri::web("objects", &object_id)} >
+				<a class="hover" href={Uri::web("objects", &object_id)} >
 					<small>{Uri::pretty(&object_id)}</small>
 				</a>
 			</td>
