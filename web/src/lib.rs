@@ -352,6 +352,18 @@ pub fn Object(object: serde_json::Value) -> impl IntoView {
 }
 
 #[component]
+pub fn ObjectInline(object: serde_json::Value) -> impl IntoView {
+	let summary = object.summary().unwrap_or_default().to_string();
+	let content = dissolve::strip_html_tags(object.content().unwrap_or_default());
+	view! {
+		{if summary.is_empty() { None } else { Some(view! { <code class="color">{summary}</code> })}}
+		<blockquote>
+			{content.into_iter().map(|x| view! { <p>{x}</p> }).collect_view()}
+		</blockquote>
+	}
+}
+
+#[component]
 pub fn InlineActivity(activity: serde_json::Value) -> impl IntoView {
 	let object_id = activity.object().id().unwrap_or_default();
 	let object = CACHE.get(&object_id).unwrap_or(serde_json::Value::String(object_id.clone()));
@@ -396,7 +408,7 @@ pub fn InlineActivity(activity: serde_json::Value) -> impl IntoView {
 		</div>
 		{match kind {
 			// post
-			apb::ActivityType::Create => view! { <Object object=object /> }.into_view(),
+			apb::ActivityType::Create => view! { <ObjectInline object=object /> }.into_view(),
 			_ => view! {}.into_view(),
 		}}
 	}
