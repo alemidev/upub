@@ -17,7 +17,9 @@ fn main() {
 	let home_tl = Timeline::new(format!("{URL_BASE}/users/{}/inbox/page", username.get().unwrap_or_default()));
 	let server_tl = Timeline::new(format!("{URL_BASE}/inbox/page"));
 
-	let (menu, set_menu) = create_signal(false);
+	let screen_width = window().screen().map(|x| x.avail_width().unwrap_or_default()).unwrap_or_default();
+
+	let (menu, set_menu) = create_signal(screen_width <= 786);
 
 	spawn_local(async move {
 		if let Err(e) = server_tl.more(token).await {
