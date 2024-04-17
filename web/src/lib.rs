@@ -377,9 +377,9 @@ pub fn InlineActivity(activity: serde_json::Value) -> impl IntoView {
 	let privacy = if addressed.iter().any(|x| x == apb::target::PUBLIC) {
 		"🌐"
 	} else if addressed.iter().any(|x| x.ends_with("/followers")) {
-		"👥"
-	} else {
 		"🔒"
+	} else {
+		"🔗"
 	};
 	let date = object.published().map(|x| x.format("%Y/%m/%d %H:%M:%S").to_string()).unwrap_or_else(||
 		activity.published().map(|x| x.format("%Y/%m/%d %H:%M:%S").to_string()).unwrap_or_default()
