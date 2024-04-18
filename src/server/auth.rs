@@ -25,6 +25,27 @@ impl Identity {
 			// TODO should we allow all users on same server to see? or just specific user??
 		}
 	}
+
+	pub fn is_anon(&self) -> bool {
+		match self {
+			Self::Anonymous => true,
+			_ => false,
+		}
+	}
+
+	pub fn is_user(&self, uid: &str) -> bool {
+		match self {
+			Self::Local(x) => x == uid,
+			_ => false,
+		}
+	}
+
+	pub fn is_server(&self, uid: &str) -> bool {
+		match self {
+			Self::Remote(x) => x == uid,
+			_ => false,
+		}
+	}
 }
 
 pub struct AuthIdentity(pub Identity);
