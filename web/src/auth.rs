@@ -51,7 +51,10 @@ pub fn LoginBox(
 							.json::<AuthResponse>()
 							.await.unwrap();
 						logging::log!("logged in until {}", auth.expires);
+						// update our username and token cookies
 						let username = auth.user.split('/').last().unwrap_or_default().to_string();
+						username_tx.set(Some(username.clone()));
+						token_tx.set(Some(auth.token));
 						// reset home feed and point it to our user's inbox
 						home_tl.reset(format!("{URL_BASE}/users/{}/inbox/page", username));
 						spawn_local(async move {
@@ -66,9 +69,6 @@ pub fn LoginBox(
 								tracing::error!("failed refreshing server timeline: {e}");
 							}
 						});
-						// update our username and token cookies
-						username_tx.set(Some(username));
-						token_tx.set(Some(auth.token));
 					});
 				} />
 			</div>
