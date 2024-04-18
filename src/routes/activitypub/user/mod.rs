@@ -4,13 +4,13 @@ pub mod outbox;
 
 pub mod following;
 
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use sea_orm::EntityTrait;
 
 use apb::{ActorMut, BaseMut, CollectionMut, DocumentMut, DocumentType, Node, ObjectMut, PublicKeyMut};
 use crate::{errors::UpubError, model::{self, user}, server::{auth::AuthIdentity, Context}, url};
 
-use super::{jsonld::LD, JsonLD};
+use super::{jsonld::LD, JsonLD, TryFetch};
 
 pub fn ap_user(user: model::user::Model) -> serde_json::Value {
 	serde_json::Value::new_object()
@@ -48,13 +48,14 @@ pub async fn view(
 	State(ctx) : State<Context>,
 	AuthIdentity(auth): AuthIdentity,
 	Path(id): Path<String>,
+	Query(query): Query<TryFetch>,
 ) -> crate::Result<JsonLD<serde_json::Value>> {
 	let uid = if id.starts_with('+') {
 		format!("https://{}", id.replacen('+', "", 1).replace('@', "/"))
 	} else {
 		ctx.uid(id.clone())
 	};
-	match user::Entity::find_by_id(uid)
+	match user::Entity::find_by_id(&uid)
 		.find_also_related(model::config::Entity)
 		.one(ctx.db()).await?
 	{
@@ -75,7 +76,7 @@ pub async fn view(
 						.set_collection_type(Some(apb::CollectionType::OrderedCollection))
 						.set_first(Node::link(url!(ctx, "/users/{id}/following/page")))
 						.set_total_items(
-							if auth.is_user(&user.id) || cfg.show_following {
+							if auth.is_local_user(&user.id) || cfg.show_following {
 								Some(user.following_count as u64)
 							} else {
 								None
@@ -88,7 +89,7 @@ pub async fn view(
 						.set_collection_type(Some(apb::CollectionType::OrderedCollection))
 						.set_first(Node::link(url!(ctx, "/users/{id}/followers/page")))
 						.set_total_items(
-							if auth.is_user(&user.id) || cfg.show_followers {
+							if auth.is_local_user(&user.id) || cfg.show_followers {
 								Some(user.followers_count as u64)
 							} else {
 								None
@@ -101,7 +102,11 @@ pub async fn view(
 		},
 		// remote user TODDO doesn't work?
 		Some((user, None)) => Ok(JsonLD(ap_user(user).ld_context())),
-		None => Err(UpubError::not_found()),
+		None => if auth.is_local() && query.fetch {
+			Ok(JsonLD(ap_user(ctx.fetch().user(&uid).await?).ld_context()))
+		} else {
+			Err(UpubError::not_found())
+		},
 	}
 }
 

@@ -66,6 +66,12 @@ impl ActivityPubRouter for Router<crate::server::Context> {
 }
 
 #[derive(Debug, serde::Deserialize)]
+pub struct TryFetch {
+	#[serde(default)]
+	pub fetch: bool,
+}
+
+#[derive(Debug, serde::Deserialize)]
 // TODO i don't really like how pleroma/mastodon do it actually, maybe change this?
 pub struct Pagination {
 	pub offset: Option<u64>,

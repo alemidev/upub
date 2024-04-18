@@ -30,14 +30,22 @@ impl Identity {
 		matches!(self, Self::Anonymous)
 	}
 
-	pub fn is_user(&self, uid: &str) -> bool {
+	pub fn is_local(&self) -> bool {
+		matches!(self, Self::Local(_))
+	}
+
+	pub fn is_remote(&self) -> bool {
+		matches!(self, Self::Remote(_))
+	}
+
+	pub fn is_local_user(&self, uid: &str) -> bool {
 		match self {
 			Self::Local(x) => x == uid,
 			_ => false,
 		}
 	}
 
-	pub fn is_server(&self, uid: &str) -> bool {
+	pub fn is_remote_server(&self, uid: &str) -> bool {
 		match self {
 			Self::Remote(x) => x == uid,
 			_ => false,

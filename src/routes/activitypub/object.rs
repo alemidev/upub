@@ -1,10 +1,10 @@
-use axum::{extract::{Path, State}, http::StatusCode};
+use axum::extract::{Path, Query, State};
 use sea_orm::{ColumnTrait, QueryFilter};
 
 use apb::{ObjectMut, BaseMut, Node};
-use crate::{model::{self, addressing::EmbeddedActivity}, server::{auth::AuthIdentity, Context}};
+use crate::{errors::UpubError, model::{self, addressing::EmbeddedActivity}, server::{auth::AuthIdentity, Context}};
 
-use super::{jsonld::LD, JsonLD};
+use super::{jsonld::LD, JsonLD, TryFetch};
 
 // TODO this is used outside /routes, maybe move in model?
 pub fn ap_object(object: model::object::Model) -> serde_json::Value {
@@ -28,25 +28,26 @@ pub async fn view(
 	State(ctx): State<Context>,
 	Path(id): Path<String>,
 	AuthIdentity(auth): AuthIdentity,
-) -> Result<JsonLD<serde_json::Value>, StatusCode> {
+	Query(query): Query<TryFetch>,
+) -> crate::Result<JsonLD<serde_json::Value>> {
 	let oid = if id.starts_with('+') {
 		format!("https://{}", id.replacen('+', "", 1).replace('@', "/"))
 	} else {
 		ctx.oid(id.clone())
 	};
 	match model::addressing::Entity::find_activities()
-		.filter(model::object::Column::Id.eq(oid))
+		.filter(model::object::Column::Id.eq(&oid))
 		.filter(auth.filter_condition())
 		.into_model::<EmbeddedActivity>()
 		.one(ctx.db())
-		.await
+		.await?
 	{
-		Ok(Some(EmbeddedActivity { activity: _, object: Some(object) })) => Ok(JsonLD(ap_object(object).ld_context())),
-		Ok(Some(EmbeddedActivity { activity: _, object: None })) => Err(StatusCode::NOT_FOUND),
-		Ok(None) => Err(StatusCode::NOT_FOUND),
-		Err(e) => {
-			tracing::error!("error querying for object: {e}");
-			Err(StatusCode::INTERNAL_SERVER_ERROR)
+		Some(EmbeddedActivity { activity: _, object: Some(object) }) => Ok(JsonLD(ap_object(object).ld_context())),
+		Some(EmbeddedActivity { activity: _, object: None }) => Err(UpubError::not_found()),
+		None => if auth.is_local() && query.fetch {
+			Ok(JsonLD(ap_object(ctx.fetch().object(&oid).await?).ld_context()))
+		} else {
+			Err(UpubError::not_found())
 		},
 	}
 }
