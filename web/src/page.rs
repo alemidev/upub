@@ -41,7 +41,7 @@ pub fn UserPage() -> impl IntoView {
 			match CACHE.get(&Uri::full("users", &id)) {
 				Some(x) => Some(x.clone()),
 				None => {
-					let user : serde_json::Value = Http::fetch(&Uri::api("users", &id), auth).await.ok()?;
+					let user : serde_json::Value = Http::fetch(&Uri::api("users", &id, true), auth).await.ok()?;
 					CACHE.put(Uri::full("users", &id), user.clone());
 					Some(user)
 				},
@@ -116,7 +116,7 @@ pub fn UserPage() -> impl IntoView {
 									}</blockquote>
 								</div>
 							</div>
-							<TimelineFeed tl=Timeline::new(format!("{}/outbox/page", Uri::api("users", &id.clone()))) />
+							<TimelineFeed tl=Timeline::new(format!("{}/outbox/page", Uri::api("users", &id.clone(), false))) />
 						}.into_view()
 					},
 				}}
@@ -134,7 +134,7 @@ pub fn ObjectPage() -> impl IntoView {
 			match CACHE.get(&Uri::full("objects", &oid)) {
 				Some(x) => Some(x.clone()),
 				None => {
-					let obj = Http::fetch::<serde_json::Value>(&Uri::api("objects", &oid), auth).await.ok()?;
+					let obj = Http::fetch::<serde_json::Value>(&Uri::api("objects", &oid, true), auth).await.ok()?;
 					CACHE.put(Uri::full("objects", &oid), obj.clone());
 					Some(obj)
 				}

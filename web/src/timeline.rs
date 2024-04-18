@@ -126,7 +126,7 @@ async fn process_activities(
 }
 
 async fn fetch_and_update(kind: &'static str, id: String, auth: Signal<Option<String>>) {
-	match Http::fetch(&Uri::api(kind, &id), auth).await {
+	match Http::fetch(&Uri::api(kind, &id, false), auth).await {
 		Ok(data) => CACHE.put(id, data),
 		Err(e) => console_warn(&format!("could not fetch '{id}': {e}")),
 	}

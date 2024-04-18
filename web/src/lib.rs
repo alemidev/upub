@@ -126,7 +126,7 @@ impl Uri {
 	///  - https://other.domain.net/unexpected/path/root
 	///  - +other.domain.net@users@root
 	///  - root
-	pub fn api(kind: &str, url: &str) -> String {
-		format!("{URL_BASE}/{kind}/{}", Self::short(url))
+	pub fn api(kind: &str, url: &str, fetch: bool) -> String {
+		format!("{URL_BASE}/{kind}/{}{}", Self::short(url), if fetch { "?fetch=true" } else { "" })
 	}
 }
