@@ -92,6 +92,8 @@ pub fn ActorBanner(
 
 #[component]
 pub fn Object(object: serde_json::Value) -> impl IntoView {
+	let oid = object.id().unwrap_or_default().to_string();
+	let in_reply_to = object.in_reply_to().id().unwrap_or_default();
 	let summary = object.summary().unwrap_or_default().to_string();
 	let content = dissolve::strip_html_tags(object.content().unwrap_or_default());
 	let date = object.published();
@@ -100,15 +102,22 @@ pub fn Object(object: serde_json::Value) -> impl IntoView {
 	view! {
 		<div>
 			<table class="w-100 post-table pa-1 mb-s" >
+				{move || if !in_reply_to.is_empty() {
+					Some(view! {
+						<tr class="post-table" >
+							<td class="post-table pa-1" colspan="2" >
+								"in reply to "<small><a class="clean hover" href={in_reply_to.clone()} target="_blank">{Uri::pretty(&in_reply_to)}</a></small>
+							</td>
+						</tr>
+					})
+				} else { None }}
 				{move || if !summary.is_empty() {
-					view! {
+					Some(view! {
 						<tr class="post-table" >
 							<td class="post-table pa-1" colspan="2" >{summary.clone()}</td>
 						</tr>
-					}.into_view()
-				} else {
-					view! { }.into_view()
-				}}
+					})
+				} else { None }}
 				<tr class="post-table" >
 					<td class="post-table pa-1" colspan="2" >{
 						content.into_iter().map(|x| view! { <p>{x}</p> }).collect_view()
@@ -116,7 +125,11 @@ pub fn Object(object: serde_json::Value) -> impl IntoView {
 				</tr>
 				<tr class="post-table" >
 					<td class="post-table pa-1" ><ActorBanner object=author tiny=true /></td>
-					<td class="post-table pa-1 center" ><DateTime t=date /></td>
+					<td class="post-table pa-1 center" >
+						<a class="clean hover" href={oid} target="_blank">
+							<DateTime t=date />
+						</a>
+					</td>
 				</tr>
 			</table>
 		</div>
