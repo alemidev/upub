@@ -34,7 +34,9 @@ pub fn ConfigPage() -> impl IntoView {
 pub fn UserPage() -> impl IntoView {
 	let params = use_params_map();
 	let auth = use_context::<Auth>().expect("missing auth context");
-	let actor = create_local_resource(move || params.get().get("id").cloned().unwrap_or_default(), move |id| {
+	let id = params.get().get("id").cloned().unwrap_or_default();
+	let _id = id.clone(); // wtf triple clone??? TODO!!
+	let actor = create_local_resource(move || _id.clone(), move |id| {
 		async move {
 			match CACHE.get(&Uri::full("users", &id)) {
 				Some(x) => Some(x.clone()),
@@ -53,33 +55,70 @@ pub fn UserPage() -> impl IntoView {
 				{move || match actor.get() {
 					None => view! { <p>loading...</p> }.into_view(),
 					Some(None) => view! { <p><code>error loading</code></p> }.into_view(),
-					Some(Some(x)) => view! {
-						<div class="ml-3 mr-3 mt-3">
-							<ActorBanner object=x.clone() />
-							<p 
-								class="pb-2 pt-2 pr-2 pl-2"
-								style={format!(
-									"background-image: url({}); background-size: cover;",
-									x.image().get().map(|x| x.url().id().unwrap_or_default()).unwrap_or_default()
-								)}
-							>
-								{
-									dissolve::strip_html_tags(x.summary().unwrap_or(""))
+					Some(Some(object)) => {
+						let uid = object.id().unwrap_or_default().to_string();
+						let avatar_url = object.icon().get().map(|x| x.url().id().unwrap_or_default()).unwrap_or_default();
+						let background_url = object.image().get().map(|x| x.url().id().unwrap_or_default()).unwrap_or_default();
+						let display_name = object.name().unwrap_or_default().to_string();
+						let username = object.preferred_username().unwrap_or_default().to_string();
+						let summary = object.summary().unwrap_or_default().to_string();
+						let domain = object.id().unwrap_or_default().replace("https://", "").split('/').next().unwrap_or_default().to_string();
+						let actor_type = object.actor_type().unwrap_or(apb::ActorType::Person);
+						let actor_type_tag = if actor_type == apb::ActorType::Person { None } else {
+							Some(view! { <sup class="ml-s"><small>"["{actor_type.as_ref().to_lowercase()}"]"</small></sup> } )
+						};
+						let created = object.published();
+						let following = object.following().get().map(|x| x.total_items().unwrap_or(0)).unwrap_or_default();
+						let followers = object.followers().get().map(|x| x.total_items().unwrap_or(0)).unwrap_or_default();
+						view! {
+							<div class="ml-3 mr-3">
+								<div 
+									class="banner"
+									style={format!("background: center / cover url({background_url});")}
+								>
+									// <table class="align w-100">
+									// <tr><td rowspan=3>
+									// 	<img src=
+
+									// </table>
+									<div style="height: 10em"></div>
+								</div>
+								<div class="overlap">
+									<table class="pl-2 pr-2 align w-100" style="table-layout: fixed">
+										<tr>
+											<td rowspan=4 style="width: 8em">
+												<img class="avatar-circle avatar-border mr-s" src={avatar_url} style="height: 7em; width: 7em"/>
+											</td>
+											<td rowspan=2 class="bottom">
+												<b class="big">{display_name}</b>{actor_type_tag}
+											</td>
+											<td rowspan=2 class="bottom rev"><span class="emoji" title="statuses">"\u{1f582}"</span>" : "0</td>
+										</tr>
+										<tr></tr>
+										<tr>
+											<td class="top">
+												<small><a class="clean hover" href={uid} target="_blank">{username.clone()}@{domain}</a></small>
+											</td>
+											<td class="rev"><span class="emoji" title="following">"👥"</span>" : "{following}</td>
+										</tr>
+										<tr>
+											<td>
+												<DateTime t=created />
+											</td>
+											<td class="rev"><span class="emoji" title="followers">"📢"</span>" : "{followers}</td>
+										</tr>
+									</table>
+									<blockquote class="ml-2 mt-1">{
+									dissolve::strip_html_tags(&summary)
 										.into_iter()
-										.map(|x| view! { <p>{x}</p> })
+										.map(|x| view! { <div>{x}</div> })
 										.collect_view()
-								}
-							</p>
-							<ul>
-								<li><code>type</code>" "<b>{x.actor_type().unwrap_or(apb::ActorType::Person).as_ref().to_string()}</b></li>
-								<li><code>following</code>" "<b>{x.following().get().map(|x| x.total_items().unwrap_or(0))}</b></li>
-								<li><code>followers</code>" "<b>{x.followers().get().map(|x| x.total_items().unwrap_or(0))}</b></li>
-								<li><code>created</code>" "{x.published().map(|x| x.to_rfc3339())}</li>
-							</ul>
-						</div>
-						<hr />
-						<TimelineFeed tl=Timeline::new(format!("{}/outbox/page", Uri::api("users", x.id().unwrap_or_default()))) />
-					}.into_view(),
+									}</blockquote>
+								</div>
+							</div>
+							<TimelineFeed tl=Timeline::new(format!("{}/outbox/page", Uri::api("users", &id.clone()))) />
+						}.into_view()
+					},
 				}}
 			</div>
 		</div>

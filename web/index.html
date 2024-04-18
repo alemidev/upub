@@ -18,7 +18,7 @@
 	<link crossorigin rel="stylesheet" href="https://cdn.alemi.dev/web/alemi.css">
 	<style>
 		:root {
-			--main-col-percentage: 70%;
+			--main-col-percentage: 75%;
 		}
 		@font-face {
 			font-family: 'Fira Code';
@@ -46,6 +46,7 @@
 			font-size: 11pt;
 		}
 		nav {
+			z-index: 90;
 			top: 0;
 			position: sticky;
 			padding-top: .05em;
@@ -63,13 +64,18 @@
 		main {
 			margin: 0em 1em;
 		}
-		blockquote {
+		blockquote.tl {
 			margin-left: 1.25em;
+			padding-left: .3em;
+		}
+		blockquote.tl p {
+			margin: 0 .5em;
+		}
+		blockquote {
+			margin-left: .5em;
+			padding-left: .5em;
 			margin-top: 0;
 			margin-bottom: 0;
-		}
-		blockquote p {
-			margin: .5em 1em;
 		}
 		span.footer {
 			padding: .1em;
@@ -77,6 +83,7 @@
 			color: var(--secondary);
 		}
 		hr.sep {
+			z-index: 100;
 			margin-top: 0;
 			padding-top: 0;
 			margin-bottom: 0;
@@ -86,6 +93,7 @@
 			position: sticky;
 		}
 		div.sticky {
+			z-index: 100;
 			top: 2rem;
 			position: sticky;
 			background-color: var(--background);
@@ -117,10 +125,27 @@
 			font-weight: bold;
 			color: var(--primary);
 		}
+		b.big {
+			font-size: 18pt;
+		}
+		div.banner {
+			margin-top: .3em;
+			outline: .3em solid #bf616a55;
+		}
+		div.overlap {
+			position: relative;
+			bottom: 3em;
+		}
 		img.avatar-circle {
 			display: inline;
-			max-height: 2em;
 			border-radius: 50%;
+		}
+		img.avatar-border {
+			background-color: var(--background);
+			border: .3em solid #BF616A;
+		}
+		img.inline-avatar {
+			max-height: 2em;
 		}
 		div.tl-header {
 			background-color: #bf616a55;
@@ -139,6 +164,9 @@
 		}
 		td.top {
 			vertical-align: top;
+		}
+		td.bottom {
+			vertical-align: bottom;
 		}
 		input[type="submit"].active {
 			background-color: var(--accent);

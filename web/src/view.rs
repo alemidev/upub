@@ -22,16 +22,14 @@ pub fn InlineActivity(activity: serde_json::Value) -> impl IntoView {
 	} else {
 		"🔗"
 	};
-	let date = object.published().map(|x| x.format("%Y/%m/%d %H:%M:%S").to_string()).unwrap_or_else(||
-		activity.published().map(|x| x.format("%Y/%m/%d %H:%M:%S").to_string()).unwrap_or_default()
-	);
+	let date = object.published().or(activity.published());
 	let kind = activity.activity_type().unwrap_or(apb::ActivityType::Activity);
 	view! {
 		<div>
 			<table class="align w-100" >
 			<tr>
 			<td rowspan="2" >
-				<ActorBanner object=actor />
+				<ActorBanner object=actor tiny=true />
 			</td>
 			<td class="rev" >
 				<code class="color moreinfo" title={object_id.clone()} >{kind.as_ref().to_string()}</code>
@@ -41,7 +39,7 @@ pub fn InlineActivity(activity: serde_json::Value) -> impl IntoView {
 		<tr>
 			<td class="rev">
 				<a class="hover" href={Uri::web("objects", &object_id)} >
-					<small>{date}</small>
+					<DateTime t=date />
 				</a>
 			</td>
 		</tr>
@@ -56,7 +54,11 @@ pub fn InlineActivity(activity: serde_json::Value) -> impl IntoView {
 }
 
 #[component]
-pub fn ActorBanner(object: serde_json::Value) -> impl IntoView {
+pub fn ActorBanner(
+	object: serde_json::Value,
+	#[prop(optional)]
+	tiny: bool
+) -> impl IntoView {
 	match object {
 		serde_json::Value::String(id) => view! {
 			<div><b>{id}</b></div>
@@ -72,7 +74,7 @@ pub fn ActorBanner(object: serde_json::Value) -> impl IntoView {
 				<div>
 					<table class="align" >
 					<tr>
-						<td rowspan="2" ><a href={uri.clone()} ><img class="avatar-circle" src={avatar_url} /></a></td>
+						<td rowspan="2" ><a href={uri.clone()} ><img class="avatar-circle" class:inline-avatar=move|| tiny src={avatar_url} /></a></td>
 						<td><b>{display_name}</b></td>
 					</tr>
 					<tr>
@@ -92,8 +94,7 @@ pub fn ActorBanner(object: serde_json::Value) -> impl IntoView {
 pub fn Object(object: serde_json::Value) -> impl IntoView {
 	let summary = object.summary().unwrap_or_default().to_string();
 	let content = dissolve::strip_html_tags(object.content().unwrap_or_default());
-	let date = object.published().map(|x| x.format("%Y/%m/%d %H:%M:%S").to_string()).unwrap_or_default();
-	let date_rfc = object.published().map(|x| x.to_rfc3339()).unwrap_or_default();
+	let date = object.published();
 	let author_id = object.attributed_to().id().unwrap_or_default();
 	let author = CACHE.get(&author_id).unwrap_or(serde_json::Value::String(author_id.clone()));
 	view! {
@@ -114,8 +115,8 @@ pub fn Object(object: serde_json::Value) -> impl IntoView {
 					}</td>
 				</tr>
 				<tr class="post-table" >
-					<td class="post-table pa-1" ><ActorBanner object=author /></td>
-					<td class="post-table pa-1 center" ><small title={date_rfc} >{date}</small></td>
+					<td class="post-table pa-1" ><ActorBanner object=author tiny=true /></td>
+					<td class="post-table pa-1 center" ><DateTime t=date /></td>
 				</tr>
 			</table>
 		</div>
@@ -128,8 +129,22 @@ pub fn ObjectInline(object: serde_json::Value) -> impl IntoView {
 	let content = dissolve::strip_html_tags(object.content().unwrap_or_default());
 	view! {
 		{if summary.is_empty() { None } else { Some(view! { <code class="color">{summary}</code> })}}
-		<blockquote>
+		<blockquote class="tl">
 			{content.into_iter().map(|x| view! { <p>{x}</p> }).collect_view()}
 		</blockquote>
+	}
+}
+
+#[component]
+pub fn DateTime(t: Option<chrono::DateTime<chrono::Utc>>) -> impl IntoView {
+	match t {
+		Some(t) => {
+			let pretty = t.format("%Y/%m/%d %H:%M:%S").to_string();
+			let rfc = t.to_rfc3339();
+			Some(view! {
+				<small title={rfc}>{pretty}</small>
+			})
+		},
+		None => None,
 	}
 }
