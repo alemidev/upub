@@ -2,7 +2,7 @@ use axum::extract::{Path, Query, State};
 use sea_orm::{ColumnTrait, QueryFilter};
 
 use apb::{ObjectMut, BaseMut, Node};
-use crate::{errors::UpubError, model::{self, addressing::EmbeddedActivity}, server::{auth::AuthIdentity, Context}};
+use crate::{errors::UpubError, model::{self, addressing::EmbeddedActivity}, server::{auth::AuthIdentity, fetcher::Fetcher, Context}};
 
 use super::{jsonld::LD, JsonLD, TryFetch};
 
@@ -45,7 +45,7 @@ pub async fn view(
 		Some(EmbeddedActivity { activity: _, object: Some(object) }) => Ok(JsonLD(ap_object(object).ld_context())),
 		Some(EmbeddedActivity { activity: _, object: None }) => Err(UpubError::not_found()),
 		None => if auth.is_local() && query.fetch && !ctx.is_local(&oid) {
-			Ok(JsonLD(ap_object(ctx.fetch().object(&oid).await?).ld_context()))
+			Ok(JsonLD(ap_object(ctx.fetch_object(&oid).await?).ld_context()))
 		} else {
 			Err(UpubError::not_found())
 		},

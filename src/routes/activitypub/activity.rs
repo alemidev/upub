@@ -1,6 +1,6 @@
 use axum::extract::{Path, Query, State};
 use sea_orm::{ColumnTrait, QueryFilter};
-use crate::{errors::UpubError, model::{self, addressing::EmbeddedActivity}, server::{auth::AuthIdentity, Context}};
+use crate::{errors::UpubError, model::{self, addressing::EmbeddedActivity}, server::{auth::AuthIdentity, fetcher::Fetcher, Context}};
 use apb::{ActivityMut, ObjectMut, BaseMut, Node};
 
 use super::{jsonld::LD, JsonLD, TryFetch};
@@ -40,7 +40,7 @@ pub async fn view(
 	{
 		Some(activity) => Ok(JsonLD(serde_json::Value::from(activity).ld_context())),
 		None => if auth.is_local() && query.fetch && !ctx.is_local(&aid) {
-			Ok(JsonLD(ap_activity(ctx.fetch().activity(&aid).await?).ld_context()))
+			Ok(JsonLD(ap_activity(ctx.fetch_activity(&aid).await?).ld_context()))
 		} else {
 			Err(UpubError::not_found())
 		},

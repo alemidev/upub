@@ -4,7 +4,7 @@ use sea_orm::{sea_query::Expr, ColumnTrait, Condition, EntityTrait, IntoActiveMo
 
 use crate::{errors::{LoggableError, UpubError}, model};
 
-use super::Context;
+use super::{fetcher::Fetcher, Context};
 
 
 #[axum::async_trait]
@@ -34,7 +34,7 @@ impl apb::server::Inbox for Context {
 		let aid = activity.id().ok_or(UpubError::bad_request())?;
 		let uid = activity.actor().id().ok_or(UpubError::bad_request())?;
 		let oid = activity.object().id().ok_or(UpubError::bad_request())?;
-		if let Err(e) = self.fetch().object(&oid).await {
+		if let Err(e) = self.fetch_object(&oid).await {
 			tracing::warn!("failed fetching liked object: {e}");
 		}
 		let like = model::like::ActiveModel {

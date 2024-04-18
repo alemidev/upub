@@ -6,7 +6,7 @@ use sea_orm::{ColumnTrait, Condition, DatabaseConnection, EntityTrait, QueryFilt
 
 use crate::{model, routes::activitypub::jsonld::LD};
 
-use super::{dispatcher::Dispatcher, fetcher::Fetcher};
+use super::dispatcher::Dispatcher;
 
 
 #[derive(Clone)]
@@ -15,7 +15,6 @@ struct ContextInner {
 	db: DatabaseConnection,
 	domain: String,
 	protocol: String,
-	fetcher: Fetcher,
 	dispatcher: Dispatcher,
 	// TODO keep these pre-parsed
 	app: model::application::Model,
@@ -63,10 +62,8 @@ impl Context {
 			}
 		};
 
-		let fetcher = Fetcher::new(db.clone(), domain.clone(), app.private_key.clone());
-
 		Ok(Context(Arc::new(ContextInner {
-			db, domain, protocol, app, fetcher, dispatcher,
+			db, domain, protocol, app, dispatcher,
 		})))
 	}
 
@@ -90,10 +87,6 @@ impl Context {
 		if id.starts_with("http") { id } else {
 			format!("{}{}/{}/{}", self.0.protocol, self.0.domain, entity, id)
 		}
-	}
-
-	pub fn fetch(&self) -> &Fetcher {
-		&self.0.fetcher
 	}
 
 	/// get full user id uri

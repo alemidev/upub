@@ -8,7 +8,7 @@ use axum::extract::{Path, Query, State};
 use sea_orm::EntityTrait;
 
 use apb::{ActorMut, BaseMut, CollectionMut, DocumentMut, DocumentType, Node, ObjectMut, PublicKeyMut};
-use crate::{errors::UpubError, model::{self, user}, server::{auth::AuthIdentity, Context}, url};
+use crate::{errors::UpubError, model::{self, user}, server::{auth::AuthIdentity, fetcher::Fetcher, Context}, url};
 
 use super::{jsonld::LD, JsonLD, TryFetch};
 
@@ -103,7 +103,7 @@ pub async fn view(
 		// remote user TODDO doesn't work?
 		Some((user, None)) => Ok(JsonLD(ap_user(user).ld_context())),
 		None => if auth.is_local() && query.fetch && !ctx.is_local(&uid) {
-			Ok(JsonLD(ap_user(ctx.fetch().user(&uid).await?).ld_context()))
+			Ok(JsonLD(ap_user(ctx.fetch_user(&uid).await?).ld_context()))
 		} else {
 			Err(UpubError::not_found())
 		},

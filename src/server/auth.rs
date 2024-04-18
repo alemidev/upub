@@ -8,6 +8,8 @@ use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter};
 
 use crate::{errors::UpubError, model, server::Context};
 
+use super::fetcher::Fetcher;
+
 #[derive(Debug, Clone)]
 pub enum Identity {
 	Anonymous,
@@ -101,7 +103,7 @@ where
 				.next().ok_or(UpubError::bad_request())?
 				.to_string();
 
-			match ctx.fetch().user(&user_id).await {
+			match ctx.fetch_user(&user_id).await {
 				Ok(user) => match http_signature
 						.build_from_parts(parts)
 						.verify(&user.public_key)

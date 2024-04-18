@@ -3,7 +3,7 @@ use sea_orm::{ColumnTrait, Condition, DatabaseConnection, EntityTrait, Order, Qu
 use tokio::{sync::broadcast, task::JoinHandle};
 
 use apb::{ActivityMut, Node};
-use crate::{errors::UpubError, model, routes::activitypub::{activity::ap_activity, object::ap_object}, server::fetcher::Fetcher};
+use crate::{errors::UpubError, model, routes::activitypub::{activity::ap_activity, object::ap_object}, server::{fetcher::Fetcher, Context}};
 
 pub struct Dispatcher {
 	waker: broadcast::Sender<()>,
@@ -91,7 +91,7 @@ async fn worker(db: DatabaseConnection, domain: String, poll_interval: u64, mut 
 			continue;
 		};
 
-		if let Err(e) = Fetcher::request(
+		if let Err(e) = Context::request(
 			Method::POST, &delivery.target,
 			Some(&serde_json::to_string(&payload).unwrap()),
 			&delivery.actor, &key, &domain
