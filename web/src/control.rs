@@ -6,31 +6,11 @@ use crate::prelude::*;
 #[component]
 pub fn Navigator() -> impl IntoView {
 	let auth = use_context::<Auth>().expect("missing auth context");
-	view! {	
-		<a href="/web/home" >
-			<input class="w-100"
-				type="submit"
-				class:hidden=move || !auth.present()
-				// class:active=move || use_location().pathname.get().ends_with("/home")
-				value="home timeline"
-			/>
-		</a>
-		<a href="/web/server" >
-			<input
-				class="w-100"
-				// class:active=move || use_location().pathname.get().ends_with("/server")
-				type="submit"
-				value="server timeline"
-			/>
-		</a>
-		<a href="/web/about" >
-			<input
-				class="w-100"
-				// class:active=move || use_location().pathname.get().ends_with("/server")
-				type="submit"
-				value="about"
-			/>
-		</a>
+	view! {
+		<a href="/web/home"><input class="w-100" type="submit" class:hidden=move || !auth.present() value="home timeline" /></a>
+		<a href="/web/server"><input class="w-100" type="submit" value="server timeline" /></a>
+		<a href="/web/about"><input class="w-100" type="submit" value="about" /></a>
+		<a href="/web/config"><input class="w-100" type="submit" value="config" class:hidden=move|| !auth.present() /></a>
 	}
 }
 
@@ -104,7 +84,7 @@ pub fn Breadcrumb(
 	children: Children,
 ) -> impl IntoView {
 	view! {
-		<div class="tl-header w-100 center mb-s" >
+		<div class="tl-header w-100 center" >
 			{if back { Some(view! {
 				<a class="breadcrumb mr-1" href="javascript:history.back()" ><b>"<<"</b></a>
 			})} else { None }}
