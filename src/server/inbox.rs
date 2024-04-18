@@ -34,6 +34,9 @@ impl apb::server::Inbox for Context {
 		let aid = activity.id().ok_or(UpubError::bad_request())?;
 		let uid = activity.actor().id().ok_or(UpubError::bad_request())?;
 		let oid = activity.object().id().ok_or(UpubError::bad_request())?;
+		if let Err(e) = self.fetch().object(&oid).await {
+			tracing::warn!("failed fetching liked object: {e}");
+		}
 		let like = model::like::ActiveModel {
 			id: sea_orm::ActiveValue::NotSet,
 			actor: sea_orm::Set(uid.clone()),
