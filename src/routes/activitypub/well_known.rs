@@ -2,7 +2,7 @@ use axum::{extract::{Path, Query, State}, http::StatusCode, response::{IntoRespo
 use jrd::{JsonResourceDescriptor, JsonResourceDescriptorLink};
 use sea_orm::{EntityTrait, PaginatorTrait};
 
-use crate::{model, server::Context, VERSION};
+use crate::{model, server::Context, url, VERSION};
 
 #[derive(serde::Serialize)]
 pub struct NodeInfoDiscovery {
@@ -143,4 +143,39 @@ pub async fn host_meta(State(ctx): State<Context>) -> Response {
 			</XRD>"#,
 			ctx.protocol(), ctx.base())
 	).into_response()
+}
+
+#[derive(Debug, serde::Serialize)]
+pub struct OauthAuthorizationServerResponse {
+	issuer: String,
+	authorization_endpoint: String,
+	token_endpoint: String,
+	scopes_supported: Vec<String>,
+	response_types_supported: Vec<String>,
+	grant_types_supported: Vec<String>,
+	service_documentation: String,
+	code_challenge_methods_supported: Vec<String>,
+	authorization_response_iss_parameter_supported: bool,
+}
+
+pub async fn oauth_authorization_server(State(ctx): State<Context>) -> crate::Result<Json<OauthAuthorizationServerResponse>> {
+	Ok(Json(OauthAuthorizationServerResponse {
+		issuer: url!(ctx, ""),
+		authorization_endpoint: url!(ctx, "/auth"),
+		token_endpoint: "".to_string(),
+		scopes_supported: vec![
+			"read:account".to_string(),
+			"write:account".to_string(),
+			"read:favorites".to_string(),
+			"write:favorites".to_string(),
+			"read:following".to_string(),
+			"write:following".to_string(),
+			"write:notes".to_string(),
+		],
+		response_types_supported: vec!["code".to_string()],
+		grant_types_supported: vec!["authorization_code".to_string()],
+		service_documentation: "".to_string(),
+		code_challenge_methods_supported: vec![],
+		authorization_response_iss_parameter_supported: false,
+	}))
 }
