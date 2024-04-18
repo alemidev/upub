@@ -102,7 +102,7 @@ pub async fn view(
 		},
 		// remote user TODDO doesn't work?
 		Some((user, None)) => Ok(JsonLD(ap_user(user).ld_context())),
-		None => if auth.is_local() && query.fetch {
+		None => if auth.is_local() && query.fetch && !ctx.is_local(&uid) {
 			Ok(JsonLD(ap_user(ctx.fetch().user(&uid).await?).ld_context()))
 		} else {
 			Err(UpubError::not_found())

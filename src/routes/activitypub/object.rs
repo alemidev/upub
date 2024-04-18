@@ -44,7 +44,7 @@ pub async fn view(
 	{
 		Some(EmbeddedActivity { activity: _, object: Some(object) }) => Ok(JsonLD(ap_object(object).ld_context())),
 		Some(EmbeddedActivity { activity: _, object: None }) => Err(UpubError::not_found()),
-		None => if auth.is_local() && query.fetch {
+		None => if auth.is_local() && query.fetch && !ctx.is_local(&oid) {
 			Ok(JsonLD(ap_object(ctx.fetch().object(&oid).await?).ld_context()))
 		} else {
 			Err(UpubError::not_found())

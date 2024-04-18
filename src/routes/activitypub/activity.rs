@@ -39,7 +39,7 @@ pub async fn view(
 		.await?
 	{
 		Some(activity) => Ok(JsonLD(serde_json::Value::from(activity).ld_context())),
-		None => if auth.is_local() && query.fetch {
+		None => if auth.is_local() && query.fetch && !ctx.is_local(&aid) {
 			Ok(JsonLD(ap_activity(ctx.fetch().activity(&aid).await?).ld_context()))
 		} else {
 			Err(UpubError::not_found())
