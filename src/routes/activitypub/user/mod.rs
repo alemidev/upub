@@ -7,8 +7,8 @@ pub mod following;
 use axum::extract::{Path, State};
 use sea_orm::EntityTrait;
 
-use apb::{PublicKeyMut, ActorMut, DocumentMut, DocumentType, ObjectMut, BaseMut, Node};
-use crate::{errors::UpubError, model::{self, user}, server::Context, url};
+use apb::{ActorMut, BaseMut, CollectionMut, DocumentMut, DocumentType, Node, ObjectMut, PublicKeyMut};
+use crate::{errors::UpubError, model::{self, user}, server::{auth::AuthIdentity, Context}, url};
 
 use super::{jsonld::LD, JsonLD};
 
@@ -46,6 +46,7 @@ pub fn ap_user(user: model::user::Model) -> serde_json::Value {
 
 pub async fn view(
 	State(ctx) : State<Context>,
+	AuthIdentity(auth): AuthIdentity,
 	Path(id): Path<String>,
 ) -> crate::Result<JsonLD<serde_json::Value>> {
 	let uid = if id.starts_with('+') {
@@ -58,12 +59,36 @@ pub async fn view(
 		.one(ctx.db()).await?
 	{
 		// local user
-		Some((user, Some(_cfg))) => {
+		Some((user, Some(cfg))) => {
 			Ok(JsonLD(ap_user(user.clone()) // ew ugly clone TODO
 				.set_inbox(Node::link(url!(ctx, "/users/{id}/inbox")))
 				.set_outbox(Node::link(url!(ctx, "/users/{id}/outbox")))
-				.set_following(Node::link(url!(ctx, "/users/{id}/following")))
-				.set_followers(Node::link(url!(ctx, "/users/{id}/followers")))
+				.set_following(Node::object(
+					serde_json::Value::new_object()
+						.set_id(Some(&url!(ctx, "/users/{id}/following")))
+						.set_collection_type(Some(apb::CollectionType::OrderedCollection))
+						.set_first(Node::link(url!(ctx, "/users/{id}/following/page")))
+						.set_total_items(
+							if auth.is_user(&user.id) || cfg.show_following {
+								Some(user.following_count as u64)
+							} else {
+								None
+							}
+						)
+				))
+				.set_followers(Node::object(
+					serde_json::Value::new_object()
+						.set_id(Some(&url!(ctx, "/users/{id}/followers")))
+						.set_collection_type(Some(apb::CollectionType::OrderedCollection))
+						.set_first(Node::link(url!(ctx, "/users/{id}/followers/page")))
+						.set_total_items(
+							if auth.is_user(&user.id) || cfg.show_followers {
+								Some(user.followers_count as u64)
+							} else {
+								None
+							}
+						)
+				))
 				// .set_public_key(user.public_key) // TODO
 				.ld_context()
 			))
