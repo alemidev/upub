@@ -68,8 +68,9 @@ pub fn UserPage() -> impl IntoView {
 							Some(view! { <sup class="ml-s"><small>"["{actor_type.as_ref().to_lowercase()}"]"</small></sup> } )
 						};
 						let created = object.published();
-						let following = object.following().get().map(|x| x.total_items().unwrap_or(0)).unwrap_or_default();
-						let followers = object.followers().get().map(|x| x.total_items().unwrap_or(0)).unwrap_or_default();
+						let following = object.following().get().map(|x| x.total_items().unwrap_or(0)).unwrap_or(0);
+						let followers = object.followers().get().map(|x| x.total_items().unwrap_or(0)).unwrap_or(0);
+						let statuses = object.outbox().get().map(|x| x.total_items().unwrap_or(0)).unwrap_or(0);
 						view! {
 							<div class="ml-3 mr-3">
 								<div 
@@ -92,20 +93,20 @@ pub fn UserPage() -> impl IntoView {
 											<td rowspan=2 class="bottom">
 												<b class="big">{display_name}</b>{actor_type_tag}
 											</td>
-											<td rowspan=2 class="bottom rev"><span class="emoji" title="statuses">"\u{1f582}"</span>" : "0</td>
+											<td rowspan=2 class="bottom rev" title="statuses">{statuses}" "<span class="emoji">"\u{1f582}"</span></td>
 										</tr>
 										<tr></tr>
 										<tr>
 											<td class="top">
 												<small><a class="clean hover" href={uid} target="_blank">{username.clone()}@{domain}</a></small>
 											</td>
-											<td class="rev"><span class="emoji" title="following">"👥"</span>" : "{following}</td>
+											<td class="rev" title="following">{following}" "<span class="emoji">"👥"</span></td>
 										</tr>
 										<tr>
 											<td>
 												<DateTime t=created />
 											</td>
-											<td class="rev"><span class="emoji" title="followers">"📢"</span>" : "{followers}</td>
+											<td class="rev" title="followers">{followers}" "<span class="emoji">"📢"</span></td>
 										</tr>
 									</table>
 									<blockquote class="ml-2 mt-1">{
