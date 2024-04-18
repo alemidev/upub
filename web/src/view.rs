@@ -61,7 +61,7 @@ pub fn ActorBanner(
 ) -> impl IntoView {
 	match object {
 		serde_json::Value::String(id) => view! {
-			<div><b>{id}</b></div>
+			<div><b>?</b>" "<a class="clean hover" href={Uri::web("users", &id)}>{Uri::pretty(&id)}</a></div>
 		},
 		serde_json::Value::Object(_) => {
 			let uid = object.id().unwrap_or_default().to_string();
@@ -106,7 +106,7 @@ pub fn Object(object: serde_json::Value) -> impl IntoView {
 					Some(view! {
 						<tr class="post-table" >
 							<td class="post-table pa-1" colspan="2" >
-								"in reply to "<small><a class="clean hover" href={in_reply_to.clone()} target="_blank">{Uri::pretty(&in_reply_to)}</a></small>
+								"in reply to "<small><a class="clean hover" href={Uri::web("objects", &in_reply_to)}>{Uri::pretty(&in_reply_to)}</a></small>
 							</td>
 						</tr>
 					})
