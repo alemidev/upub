@@ -149,6 +149,7 @@ impl apb::server::Inbox for Context {
 	async fn delete(&self, activity: serde_json::Value) -> crate::Result<()> {
 		// TODO verify the signature before just deleting lmao
 		let oid = activity.object().id().ok_or(UpubError::bad_request())?;
+		tracing::info!("deleting '{oid}'");
 		// TODO maybe we should keep the tombstone?
 		model::user::Entity::delete_by_id(&oid).exec(self.db()).await.info_failed("failed deleting from users");
 		model::activity::Entity::delete_by_id(&oid).exec(self.db()).await.info_failed("failed deleting from activities");

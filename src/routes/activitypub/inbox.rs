@@ -40,6 +40,11 @@ pub async fn page(
 	))
 }
 
+macro_rules! pretty_json {
+	($json:ident) => {
+		serde_json::to_string_pretty(&$json).expect("failed serializing to string serde_json::Value")
+	}
+}
 
 
 pub async fn post(
@@ -47,16 +52,19 @@ pub async fn post(
 	AuthIdentity(auth): AuthIdentity,
 	Json(activity): Json<serde_json::Value>
 ) -> crate::Result<()> {
-	match auth {
-		Identity::Remote(_server) => {},
-		Identity::Local(_user) => return Err(UpubError::forbidden()),
-		Identity::Anonymous => return Err(UpubError::unauthorized()),
+	if !matches!(auth, Identity::Remote(_)) {
+		tracing::warn!("refusing unauthorized activity: {}", pretty_json!(activity));
+		match auth {
+			Identity::Local(_user) => return Err(UpubError::forbidden()),
+			Identity::Anonymous => return Err(UpubError::unauthorized()),
+			_ => {},
+		}
 	}
 
 	// TODO we could process Links and bare Objects maybe, but probably out of AP spec?
 	match activity.activity_type().ok_or_else(UpubError::bad_request)? {
 		ActivityType::Activity => {
-			tracing::warn!("skipping unprocessable base activity: {}", serde_json::to_string_pretty(&activity).unwrap());
+			tracing::warn!("skipping unprocessable base activity: {}", pretty_json!(activity));
 			Err(StatusCode::UNPROCESSABLE_ENTITY.into()) // won't ingest useless stuff
 		},
 
@@ -71,7 +79,7 @@ pub async fn post(
 		// ActivityType::Announce => Ok(ctx.announce(activity).await?),
 
 		_x => {
-			tracing::info!("received unimplemented activity on inbox: {}", serde_json::to_string_pretty(&activity).unwrap());
+			tracing::info!("received unimplemented activity on inbox: {}", pretty_json!(activity));
 			Err(StatusCode::NOT_IMPLEMENTED.into())
 		},
 	}
