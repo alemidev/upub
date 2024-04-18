@@ -1,5 +1,5 @@
 use apb::{target::Addressed, Activity, ActivityMut, BaseMut, Node, ObjectMut};
-use sea_orm::{EntityTrait, IntoActiveModel, Set};
+use sea_orm::{sea_query::Expr, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, Set};
 
 use crate::{errors::UpubError, model};
 
@@ -148,6 +148,14 @@ impl apb::server::Outbox for Context {
 
 		match accepted_activity.activity_type {
 			apb::ActivityType::Follow => {
+				model::user::Entity::update_many()
+					.col_expr(
+						model::user::Column::FollowersCount,
+						Expr::col(model::user::Column::FollowersCount).add(1)
+					)
+					.filter(model::user::Column::Id.eq(&uid))
+					.exec(self.db())
+					.await?;
 				model::relation::Entity::insert(
 					model::relation::ActiveModel {
 						follower: Set(accepted_activity.actor), following: Set(uid.clone()),

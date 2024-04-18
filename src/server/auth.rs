@@ -27,10 +27,7 @@ impl Identity {
 	}
 
 	pub fn is_anon(&self) -> bool {
-		match self {
-			Self::Anonymous => true,
-			_ => false,
-		}
+		matches!(self, Self::Anonymous)
 	}
 
 	pub fn is_user(&self, uid: &str) -> bool {

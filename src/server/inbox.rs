@@ -96,6 +96,14 @@ impl apb::server::Inbox for Context {
 		model::activity::Entity::insert(activity_model.clone().into_active_model())
 			.exec(self.db())
 			.await?;
+		model::user::Entity::update_many()
+			.col_expr(
+				model::user::Column::FollowingCount,
+				Expr::col(model::user::Column::FollowingCount).add(1)
+			)
+			.filter(model::user::Column::Id.eq(&follow_activity.actor))
+			.exec(self.db())
+			.await?;
 		model::relation::Entity::insert(
 			model::relation::ActiveModel {
 				follower: Set(follow_activity.actor),
