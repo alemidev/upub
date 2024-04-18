@@ -87,6 +87,7 @@ pub fn App() -> impl IntoView {
 											<Route path="/web/home" view=move || view! { <TimelinePage name="home" tl=home_tl /> } />
 											<Route path="/web/server" view=move || view! { <TimelinePage name="server" tl=server_tl /> } />
 
+											<Route path="/web/config" view=ConfigPage />
 											<Route path="/web/about" view=AboutPage />
 
 											<Route path="/web/users/:id" view=UserPage />
