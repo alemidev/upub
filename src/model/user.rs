@@ -24,7 +24,7 @@ pub struct Model {
 
 	pub following_count: i64,
 	pub followers_count: i64,
-	// pub statuses_count: i64,
+	pub statuses_count: i64,
 
 	pub public_key: String,
 	pub private_key: Option<String>,
@@ -57,6 +57,7 @@ impl Model {
 			updated: chrono::Utc::now(),
 			following_count: object.following().get().map(|f| f.total_items().unwrap_or(0)).unwrap_or(0) as i64,
 			followers_count: object.followers().get().map(|f| f.total_items().unwrap_or(0)).unwrap_or(0) as i64,
+			statuses_count: object.outbox().get().map(|o| o.total_items().unwrap_or(0)).unwrap_or(0) as i64,
 			public_key: object.public_key().get().ok_or(super::FieldError("publicKey"))?.public_key_pem().to_string(),
 			private_key: None, // there's no way to transport privkey over AP json, must come from DB
 		})
