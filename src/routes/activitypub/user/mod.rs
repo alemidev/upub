@@ -61,8 +61,14 @@ pub async fn view(
 		// local user
 		Some((user, Some(cfg))) => {
 			Ok(JsonLD(ap_user(user.clone()) // ew ugly clone TODO
-				.set_inbox(Node::link(url!(ctx, "/users/{id}/inbox")))
-				.set_outbox(Node::link(url!(ctx, "/users/{id}/outbox")))
+				.set_inbox(Node::link(url!(ctx, "/users/{id}/inbox"))) // TODO unread activities as count
+				.set_outbox(Node::object(
+					serde_json::Value::new_object()
+						.set_id(Some(&url!(ctx, "/users/{id}/outbox")))
+						.set_collection_type(Some(apb::CollectionType::OrderedCollection))
+						.set_first(Node::link(url!(ctx, "/users/{id}/outbox/page")))
+						.set_total_items(Some(user.statuses_count as u64))
+				))
 				.set_following(Node::object(
 					serde_json::Value::new_object()
 						.set_id(Some(&url!(ctx, "/users/{id}/following")))

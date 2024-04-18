@@ -16,6 +16,7 @@ pub fn ap_object(object: model::object::Model) -> serde_json::Value {
 		.set_summary(object.summary.as_deref())
 		.set_content(object.content.as_deref())
 		.set_context(Node::maybe_link(object.context.clone()))
+		.set_in_reply_to(Node::maybe_link(object.in_reply_to.clone()))
 		.set_published(Some(object.published))
 		.set_to(Node::links(object.to.0.clone()))
 		.set_bto(Node::Empty)
