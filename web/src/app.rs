@@ -11,8 +11,6 @@ pub fn App() -> impl IntoView {
 		"token",
 		UseCookieOptions::default()
 			.max_age(1000 * 60 * 60 * 6)
-			.readonly(false)
-			.domain(URL_BASE)
 	);
 	let (username, set_username) = use_cookie::<String, FromToStringCodec>("username");
 	provide_context(auth);
