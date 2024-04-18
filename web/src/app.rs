@@ -2,12 +2,18 @@ use leptos::*;
 use leptos_router::*;
 use crate::prelude::*;
 
-use leptos_use::{use_cookie, utils::FromToStringCodec};
+use leptos_use::{use_cookie, use_cookie_with_options, utils::FromToStringCodec, UseCookieOptions};
 
 
 #[component]
 pub fn App() -> impl IntoView {
-	let (auth, set_auth) = use_cookie::<String, FromToStringCodec>("token");
+	let (auth, set_auth) = use_cookie_with_options::<String, FromToStringCodec>(
+		"token",
+		UseCookieOptions::default()
+			.max_age(1000 * 60 * 60 * 6)
+			.readonly(false)
+			.domain(URL_BASE)
+	);
 	let (username, set_username) = use_cookie::<String, FromToStringCodec>("username");
 	provide_context(auth);
 
