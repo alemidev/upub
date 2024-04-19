@@ -19,23 +19,18 @@ pub async fn view(
 	} else {
 		ctx.oid(id.clone())
 	};
+	if auth.is_local() && query.fetch && !ctx.is_local(&oid) {
+		ctx.fetch_object(&oid).await?;
+	}
 
-	let result = model::addressing::Entity::find_objects()
+	let Some(object) = model::addressing::Entity::find_objects()
 		.filter(model::object::Column::Id.eq(&oid))
 		.filter(auth.filter_condition())
-		.into_model::<EmbeddedActivity>()
+		.into_model::<model::object::Model>()
 		.one(ctx.db())
-		.await?;
-
-	let object = match result {
-		Some(EmbeddedActivity { activity: _, object: Some(obj) }) => obj,
-		_ => {
-			if auth.is_local() && query.fetch && !ctx.is_local(&oid) {
-				ctx.fetch_object(&oid).await?
-			} else {
-				return Err(UpubError::not_found()) 
-			}
-		},
+		.await?
+	else {
+		return Err(UpubError::not_found());
 	};
 
 	let replies = 
@@ -44,7 +39,6 @@ pub async fn view(
 			.set_collection_type(Some(apb::CollectionType::OrderedCollection))
 			.set_first(apb::Node::link(crate::url!(ctx, "/objects/{id}/replies/page")))
 			.set_total_items(Some(object.comments as u64));
-
 
 	Ok(JsonLD(
 		object.ap()

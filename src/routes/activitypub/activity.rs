@@ -15,6 +15,10 @@ pub async fn view(
 	} else {
 		ctx.aid(id.clone())
 	};
+	if auth.is_local() && query.fetch && !ctx.is_local(&aid) {
+		ctx.fetch_activity(&aid).await?;
+	}
+
 	match model::addressing::Entity::find_activities()
 		.filter(model::activity::Column::Id.eq(&aid))
 		.filter(auth.filter_condition())
@@ -23,11 +27,7 @@ pub async fn view(
 		.await?
 	{
 		Some(activity) => Ok(JsonLD(serde_json::Value::from(activity).ld_context())),
-		None => if auth.is_local() && query.fetch && !ctx.is_local(&aid) {
-			Ok(JsonLD(ctx.fetch_activity(&aid).await?.ap().ld_context()))
-		} else {
-			Err(UpubError::not_found())
-		},
+		None => Err(UpubError::not_found()),
 	}
 }
 

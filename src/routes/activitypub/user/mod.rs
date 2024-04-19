@@ -24,6 +24,9 @@ pub async fn view(
 	} else {
 		ctx.uid(id.clone())
 	};
+	if auth.is_local() && query.fetch && !ctx.is_local(&uid) {
+		ctx.fetch_user(&uid).await?;
+	}
 	match user::Entity::find_by_id(&uid)
 		.find_also_related(model::config::Entity)
 		.one(ctx.db()).await?
@@ -71,11 +74,7 @@ pub async fn view(
 		},
 		// remote user TODDO doesn't work?
 		Some((user, None)) => Ok(JsonLD(user.ap().ld_context())),
-		None => if auth.is_local() && query.fetch && !ctx.is_local(&uid) {
-			Ok(JsonLD(ctx.fetch_user(&uid).await?.ap().ld_context()))
-		} else {
-			Err(UpubError::not_found())
-		},
+		None => Err(UpubError::not_found()),
 	}
 }
 
