@@ -53,7 +53,9 @@ pub async fn post(
 	Json(activity): Json<serde_json::Value>
 ) -> crate::Result<()> {
 	if !matches!(auth, Identity::Remote(_)) {
-		tracing::warn!("refusing unauthorized activity: {}", pretty_json!(activity));
+		if activity.activity_type() != Some(ActivityType::Delete) { // this is spammy af, ignore them!
+			tracing::warn!("refusing unauthorized activity: {}", pretty_json!(activity));
+		}
 		match auth {
 			Identity::Local(_user) => return Err(UpubError::forbidden()),
 			Identity::Anonymous => return Err(UpubError::unauthorized()),
