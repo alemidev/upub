@@ -2,6 +2,7 @@ pub mod user;
 pub mod inbox;
 pub mod outbox;
 pub mod object;
+pub mod context;
 pub mod activity;
 pub mod application;
 pub mod auth;
@@ -53,8 +54,8 @@ impl ActivityPubRouter for Router<crate::server::Context> {
 			// activities
 			.route("/activities/:id", get(ap::activity::view))
 			// context
-			//.route("/context/:id", get(ap::context::get))
-			//.route("/context/:id/page", get(ap::context::page))
+			.route("/context/:id", get(ap::context::get))
+			.route("/context/:id/page", get(ap::context::page))
 			// specific object routes
 			.route("/objects/:id", get(ap::object::view))
 			//.route("/objects/:id/likes", get(ap::object::likes::get))
