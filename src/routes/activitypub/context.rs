@@ -45,7 +45,7 @@ pub async fn page(
 		.order_by(model::addressing::Column::Published, Order::Desc)
 		.limit(limit)
 		.offset(offset)
-		.into_model::<EmbeddedActivity>()
+		.into_model::<model::object::Model>()
 		.all(ctx.db())
 		.await?;
 
@@ -55,7 +55,7 @@ pub async fn page(
 			offset, limit,
 			items
 				.into_iter()
-				.filter_map(|x| Some(x.object?.ap()))
+				.map(|x| x.ap())
 				.collect()
 		).ld_context()
 	))
