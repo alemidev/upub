@@ -20,7 +20,7 @@ pub async fn view(
 		ctx.oid(id.clone())
 	};
 
-	let result = model::addressing::Entity::find_activities()
+	let result = model::addressing::Entity::find_objects()
 		.filter(model::object::Column::Id.eq(&oid))
 		.filter(auth.filter_condition())
 		.into_model::<EmbeddedActivity>()
