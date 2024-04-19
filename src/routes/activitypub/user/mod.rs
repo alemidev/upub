@@ -32,7 +32,7 @@ pub async fn view(
 		.one(ctx.db()).await?
 	{
 		// local user
-		Some((user, Some(cfg))) => {
+		Some((user, Some(_cfg))) => {
 			Ok(JsonLD(user.clone().ap() // ew ugly clone TODO
 				.set_inbox(Node::link(url!(ctx, "/users/{id}/inbox"))) // TODO unread activities as count
 				.set_outbox(Node::object(
@@ -42,33 +42,8 @@ pub async fn view(
 						.set_first(Node::link(url!(ctx, "/users/{id}/outbox/page")))
 						.set_total_items(Some(user.statuses_count as u64))
 				))
-				.set_following(Node::object(
-					serde_json::Value::new_object()
-						.set_id(Some(&url!(ctx, "/users/{id}/following")))
-						.set_collection_type(Some(apb::CollectionType::OrderedCollection))
-						.set_first(Node::link(url!(ctx, "/users/{id}/following/page")))
-						.set_total_items(
-							if auth.is_local_user(&user.id) || cfg.show_following {
-								Some(user.following_count as u64)
-							} else {
-								None
-							}
-						)
-				))
-				.set_followers(Node::object(
-					serde_json::Value::new_object()
-						.set_id(Some(&url!(ctx, "/users/{id}/followers")))
-						.set_collection_type(Some(apb::CollectionType::OrderedCollection))
-						.set_first(Node::link(url!(ctx, "/users/{id}/followers/page")))
-						.set_total_items(
-							if auth.is_local_user(&user.id) || cfg.show_followers {
-								Some(user.followers_count as u64)
-							} else {
-								None
-							}
-						)
-				))
-				// .set_public_key(user.public_key) // TODO
+				.set_following(Node::link(url!(ctx, "/users/{id}/following")))
+				.set_followers(Node::link(url!(ctx, "/users/{id}/followers")))
 				.ld_context()
 			))
 		},
