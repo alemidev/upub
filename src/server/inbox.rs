@@ -20,6 +20,15 @@ impl apb::server::Inbox for Context {
 			return Err(UpubError::unprocessable());
 		};
 		let object_model = model::object::Model::new(&object_node)?;
+		if let Some(ref in_reply_to) = object_model.in_reply_to {
+			if self.fetch_object(in_reply_to).await.is_ok() {
+				model::object::Entity::update_many()
+					.filter(model::object::Column::Id.eq(in_reply_to))
+					.col_expr(model::object::Column::Comments, Expr::col(model::object::Column::Comments).add(1))
+					.exec(self.db())
+					.await?;
+			}
+		}
 		let aid = activity_model.id.clone();
 		let oid = object_model.id.clone();
 		model::object::Entity::insert(object_model.into_active_model()).exec(self.db()).await?;
