@@ -1,8 +1,6 @@
 use apb::{ActivityMut, Node};
 use sea_orm::{entity::prelude::*, FromQueryResult, Iterable, QuerySelect, SelectColumns};
 
-use crate::routes::activitypub::{activity::ap_activity, object::ap_object};
-
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "addressing")]
 pub struct Model {
@@ -67,9 +65,10 @@ pub struct EmbeddedActivity {
 
 impl From<EmbeddedActivity> for serde_json::Value {
 	fn from(value: EmbeddedActivity) -> Self {
+		let a = value.activity.ap();
 		match value.object {
-			Some(o) => ap_activity(value.activity).set_object(Node::object(ap_object(o))),
-			None => ap_activity(value.activity)
+			None => a,
+			Some(o) => a.set_object(Node::object(o.ap())),
 		}
 	}
 }

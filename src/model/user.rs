@@ -1,6 +1,8 @@
 use sea_orm::entity::prelude::*;
 
-use apb::{Collection, Object, Actor, PublicKey, ActorType};
+use apb::{Actor, ActorMut, ActorType, BaseMut, Collection, DocumentMut, Object, ObjectMut, PublicKey, PublicKeyMut};
+
+use crate::routes::activitypub::jsonld::LD;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "users")]
@@ -61,6 +63,38 @@ impl Model {
 			public_key: object.public_key().get().ok_or(super::FieldError("publicKey"))?.public_key_pem().to_string(),
 			private_key: None, // there's no way to transport privkey over AP json, must come from DB
 		})
+	}
+
+	pub fn ap(self) -> serde_json::Value {
+		serde_json::Value::new_object()
+			.set_id(Some(&self.id))
+			.set_actor_type(Some(self.actor_type))
+			.set_name(self.name.as_deref())
+			.set_summary(self.summary.as_deref())
+			.set_icon(apb::Node::maybe_object(self.icon.map(|i|
+				serde_json::Value::new_object()
+					.set_document_type(Some(apb::DocumentType::Image))
+					.set_url(apb::Node::link(i.clone()))
+			)))
+			.set_image(apb::Node::maybe_object(self.image.map(|i|
+				serde_json::Value::new_object()
+					.set_document_type(Some(apb::DocumentType::Image))
+					.set_url(apb::Node::link(i.clone()))
+			)))
+			.set_published(Some(self.created))
+			.set_preferred_username(Some(&self.preferred_username))
+			.set_inbox(apb::Node::maybe_link(self.inbox))
+			.set_outbox(apb::Node::maybe_link(self.outbox))
+			.set_following(apb::Node::maybe_link(self.following))
+			.set_followers(apb::Node::maybe_link(self.followers))
+			.set_public_key(apb::Node::object(
+				serde_json::Value::new_object()
+					.set_id(Some(&format!("{}#main-key", self.id)))
+					.set_owner(Some(&self.id))
+					.set_public_key_pem(&self.public_key)
+			))
+			.set_discoverable(Some(true))
+			.set_endpoints(apb::Node::Empty)
 	}
 }
 

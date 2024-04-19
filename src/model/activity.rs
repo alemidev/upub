@@ -1,4 +1,7 @@
+use apb::{ActivityMut, BaseMut, ObjectMut};
 use sea_orm::entity::prelude::*;
+
+use crate::routes::activitypub::jsonld::LD;
 
 use super::Audience;
 
@@ -36,6 +39,20 @@ impl Model {
 			cc: activity.cc().into(),
 			bcc: activity.bcc().into(),
 		})
+	}
+
+	pub fn ap(self) -> serde_json::Value {
+		serde_json::Value::new_object()
+			.set_id(Some(&self.id))
+			.set_activity_type(Some(self.activity_type))
+			.set_actor(apb::Node::link(self.actor))
+			.set_object(apb::Node::maybe_link(self.object))
+			.set_target(apb::Node::maybe_link(self.target))
+			.set_published(Some(self.published))
+			.set_to(apb::Node::links(self.to.0.clone()))
+			.set_bto(apb::Node::Empty)
+			.set_cc(apb::Node::links(self.cc.0.clone()))
+			.set_bcc(apb::Node::Empty)
 	}
 }
 

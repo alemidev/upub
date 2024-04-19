@@ -1,4 +1,7 @@
+use apb::{BaseMut, ObjectMut};
 use sea_orm::entity::prelude::*;
+
+use crate::routes::activitypub::jsonld::LD;
 
 use super::Audience;
 
@@ -44,6 +47,23 @@ impl Model {
 			cc: object.cc().into(),
 			bcc: object.bcc().into(),
 		})
+	}
+	// TODO this is used outside /routes, maybe move in model?
+	pub fn ap(self) -> serde_json::Value {
+		serde_json::Value::new_object()
+			.set_id(Some(&self.id))
+			.set_object_type(Some(self.object_type))
+			.set_attributed_to(apb::Node::maybe_link(self.attributed_to))
+			.set_name(self.name.as_deref())
+			.set_summary(self.summary.as_deref())
+			.set_content(self.content.as_deref())
+			.set_context(apb::Node::maybe_link(self.context.clone()))
+			.set_in_reply_to(apb::Node::maybe_link(self.in_reply_to.clone()))
+			.set_published(Some(self.published))
+			.set_to(apb::Node::links(self.to.0.clone()))
+			.set_bto(apb::Node::Empty)
+			.set_cc(apb::Node::links(self.cc.0.clone()))
+			.set_bcc(apb::Node::Empty)
 	}
 }
 

@@ -77,7 +77,7 @@ where
 
 		if auth_header.starts_with("Bearer ") {
 			match model::session::Entity::find_by_id(auth_header.replace("Bearer ", ""))
-				.filter(Condition::all().add(model::session::Column::Expires.gt(chrono::Utc::now())))
+				.filter(model::session::Column::Expires.gt(chrono::Utc::now()))
 				.one(ctx.db())
 				.await
 			{

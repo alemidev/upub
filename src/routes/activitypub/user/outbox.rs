@@ -1,5 +1,5 @@
 use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
-use sea_orm::{ColumnTrait, Condition, Order, QueryFilter, QueryOrder, QuerySelect};
+use sea_orm::{ColumnTrait, Order, QueryFilter, QueryOrder, QuerySelect};
 
 use apb::{server::Outbox, AcceptType, ActivityType, Base, BaseType, ObjectType, RejectType};
 use crate::{errors::UpubError, model::{self, addressing::EmbeddedActivity}, routes::activitypub::{jsonld::LD, CreationResult, JsonLD, Pagination}, server::{auth::{AuthIdentity, Identity}, Context}, url};
@@ -28,7 +28,7 @@ pub async fn page(
 	let offset = page.offset.unwrap_or(0);
 
 	match model::addressing::Entity::find_activities()
-		.filter(Condition::all().add(model::activity::Column::Actor.eq(&uid)))
+		.filter(model::activity::Column::Actor.eq(&uid))
 		.filter(auth.filter_condition())
 		.order_by(model::addressing::Column::Published, Order::Desc)
 		.limit(limit)

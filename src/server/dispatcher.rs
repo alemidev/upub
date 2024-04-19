@@ -1,9 +1,9 @@
 use reqwest::Method;
-use sea_orm::{ColumnTrait, Condition, DatabaseConnection, EntityTrait, Order, QueryFilter, QueryOrder};
+use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, Order, QueryFilter, QueryOrder};
 use tokio::{sync::broadcast, task::JoinHandle};
 
 use apb::{ActivityMut, Node};
-use crate::{errors::UpubError, model, routes::activitypub::{activity::ap_activity, object::ap_object}, server::{fetcher::Fetcher, Context}};
+use crate::{errors::UpubError, model, server::{fetcher::Fetcher, Context}};
 
 pub struct Dispatcher {
 	waker: broadcast::Sender<()>,
@@ -39,7 +39,7 @@ impl Dispatcher {
 async fn worker(db: DatabaseConnection, domain: String, poll_interval: u64, mut waker: broadcast::Receiver<()>) -> Result<(), UpubError> {
 	loop {
 		let Some(delivery) = model::delivery::Entity::find()
-			.filter(Condition::all().add(model::delivery::Column::NotBefore.lte(chrono::Utc::now())))
+			.filter(model::delivery::Column::NotBefore.lte(chrono::Utc::now()))
 			.order_by(model::delivery::Column::NotBefore, Order::Asc)
 			.one(&db)
 			.await?
@@ -76,8 +76,8 @@ async fn worker(db: DatabaseConnection, domain: String, poll_interval: u64, mut 
 			.one(&db)
 			.await? // TODO probably should not fail here and at least re-insert the delivery
 		{
-			Some((activity, Some(object))) => ap_activity(activity).set_object(Node::object(ap_object(object))),
-			Some((activity, None)) => ap_activity(activity),
+			Some((activity, Some(object))) => activity.ap().set_object(Node::object(object.ap())),
+			Some((activity, None)) => activity.ap(),
 			None => {
 				tracing::warn!("skipping dispatch for deleted object {}", delivery.activity);
 				continue;

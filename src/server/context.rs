@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use apb::{BaseMut, CollectionMut, CollectionPageMut};
 use openssl::rsa::Rsa;
-use sea_orm::{ColumnTrait, Condition, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect, SelectColumns, Set};
+use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect, SelectColumns, Set};
 
 use crate::{model, routes::activitypub::jsonld::LD};
 
@@ -134,7 +134,7 @@ impl Context {
 			if target.ends_with("/followers") {
 				let target_id = target.replace("/followers", "");
 				model::relation::Entity::find()
-					.filter(Condition::all().add(model::relation::Column::Following.eq(target_id)))
+					.filter(model::relation::Column::Following.eq(target_id))
 					.select_only()
 					.select_column(model::relation::Column::Follower)
 					.into_tuple::<String>()

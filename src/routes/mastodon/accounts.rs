@@ -1,6 +1,6 @@
 use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
 use mastodon_async_entities::{account::{Account, AccountId}, status::Status};
-use sea_orm::{ColumnTrait, Condition, EntityTrait, Order, QueryFilter, QueryOrder};
+use sea_orm::{ColumnTrait, EntityTrait, Order, QueryFilter, QueryOrder};
 
 use crate::{model, server::{auth::AuthIdentity, Context}};
 
@@ -71,7 +71,7 @@ pub async fn statuses(
 ) -> Result<Json<Vec<Status>>, StatusCode> {
 	let uid = ctx.uid(id);
 	model::addressing::Entity::find_activities()
-		.filter(Condition::all().add(model::activity::Column::Actor.eq(uid)))
+		.filter(model::activity::Column::Actor.eq(uid))
 		.filter(auth.filter_condition())
 		.order_by(model::addressing::Column::Published, Order::Desc);
 

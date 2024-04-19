@@ -7,42 +7,11 @@ pub mod following;
 use axum::extract::{Path, Query, State};
 use sea_orm::EntityTrait;
 
-use apb::{ActorMut, BaseMut, CollectionMut, DocumentMut, DocumentType, Node, ObjectMut, PublicKeyMut};
+use apb::{ActorMut, BaseMut, CollectionMut, Node};
 use crate::{errors::UpubError, model::{self, user}, server::{auth::AuthIdentity, fetcher::Fetcher, Context}, url};
 
 use super::{jsonld::LD, JsonLD, TryFetch};
 
-pub fn ap_user(user: model::user::Model) -> serde_json::Value {
-	serde_json::Value::new_object()
-		.set_id(Some(&user.id))
-		.set_actor_type(Some(user.actor_type))
-		.set_name(user.name.as_deref())
-		.set_summary(user.summary.as_deref())
-		.set_icon(Node::maybe_object(user.icon.map(|i|
-			serde_json::Value::new_object()
-				.set_document_type(Some(DocumentType::Image))
-				.set_url(Node::link(i.clone()))
-		)))
-		.set_image(Node::maybe_object(user.image.map(|i|
-			serde_json::Value::new_object()
-				.set_document_type(Some(DocumentType::Image))
-				.set_url(Node::link(i.clone()))
-		)))
-		.set_published(Some(user.created))
-		.set_preferred_username(Some(&user.preferred_username))
-		.set_inbox(Node::maybe_link(user.inbox))
-		.set_outbox(Node::maybe_link(user.outbox))
-		.set_following(Node::maybe_link(user.following))
-		.set_followers(Node::maybe_link(user.followers))
-		.set_public_key(Node::object(
-			serde_json::Value::new_object()
-				.set_id(Some(&format!("{}#main-key", user.id)))
-				.set_owner(Some(&user.id))
-				.set_public_key_pem(&user.public_key)
-		))
-		.set_discoverable(Some(true))
-		.set_endpoints(Node::Empty)
-}
 
 pub async fn view(
 	State(ctx) : State<Context>,
@@ -61,7 +30,7 @@ pub async fn view(
 	{
 		// local user
 		Some((user, Some(cfg))) => {
-			Ok(JsonLD(ap_user(user.clone()) // ew ugly clone TODO
+			Ok(JsonLD(user.clone().ap() // ew ugly clone TODO
 				.set_inbox(Node::link(url!(ctx, "/users/{id}/inbox"))) // TODO unread activities as count
 				.set_outbox(Node::object(
 					serde_json::Value::new_object()
@@ -101,9 +70,9 @@ pub async fn view(
 			))
 		},
 		// remote user TODDO doesn't work?
-		Some((user, None)) => Ok(JsonLD(ap_user(user).ld_context())),
+		Some((user, None)) => Ok(JsonLD(user.ap().ld_context())),
 		None => if auth.is_local() && query.fetch && !ctx.is_local(&uid) {
-			Ok(JsonLD(ap_user(ctx.fetch_user(&uid).await?).ld_context()))
+			Ok(JsonLD(ctx.fetch_user(&uid).await?.ap().ld_context()))
 		} else {
 			Err(UpubError::not_found())
 		},
