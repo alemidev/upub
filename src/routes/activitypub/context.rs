@@ -51,7 +51,7 @@ pub async fn page(
 
 	Ok(JsonLD(
 		ctx.ap_collection_page(
-			&url!(ctx, "/context/{id}"),
+			&url!(ctx, "/context/{id}/page"),
 			offset, limit,
 			items
 				.into_iter()

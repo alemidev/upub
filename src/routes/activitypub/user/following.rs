@@ -48,7 +48,7 @@ pub async fn page<const OUTGOING: bool>(
 		Ok(following) => {
 			Ok(JsonLD(
 				ctx.ap_collection_page(
-					&url!(ctx, "/users/{id}/{follow___}"),
+					&url!(ctx, "/users/{id}/{follow___}/page"),
 					offset,
 					limit,
 					following.into_iter().map(serde_json::Value::String).collect()
