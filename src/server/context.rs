@@ -4,7 +4,7 @@ use apb::{BaseMut, CollectionMut, CollectionPageMut};
 use openssl::rsa::Rsa;
 use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect, SelectColumns, Set};
 
-use crate::{model, routes::activitypub::jsonld::LD};
+use crate::{model, routes::activitypub::jsonld::LD, server::fetcher::Fetcher};
 
 use super::dispatcher::Dispatcher;
 
@@ -176,23 +176,31 @@ impl Context {
 	}
 
 	pub async fn deliver_to(&self, aid: &str, from: &str, targets: &[String]) -> crate::Result<()> {
-		let deliveries : Vec<model::delivery::ActiveModel> = targets
-			.iter()
+		let mut deliveries = Vec::new();
+		for target in targets.iter()
 			.filter(|to| !to.is_empty())
 			.filter(|to| Context::server(to) != self.base())
 			.filter(|to| to != &apb::target::PUBLIC)
-			.map(|to| model::delivery::ActiveModel {
-				id: sea_orm::ActiveValue::NotSet,
-				actor: Set(from.to_string()),
-				// TODO we should resolve each user by id and check its inbox because we can't assume
-				// it's /users/{id}/inbox for every software, but oh well it's waaaaay easier now
-				target: Set(format!("{}/inbox", to)),
-				activity: Set(aid.to_string()),
-				created: Set(chrono::Utc::now()),
-				not_before: Set(chrono::Utc::now()),
-				attempt: Set(0),
-			})
-			.collect();
+		{
+			// TODO fetch concurrently
+			match self.fetch_user(target).await {
+				Ok(model::user::Model { inbox: Some(inbox), .. }) => deliveries.push(
+					model::delivery::ActiveModel {
+						id: sea_orm::ActiveValue::NotSet,
+						actor: Set(from.to_string()),
+						// TODO we should resolve each user by id and check its inbox because we can't assume
+						// it's /users/{id}/inbox for every software, but oh well it's waaaaay easier now
+						target: Set(inbox),
+						activity: Set(aid.to_string()),
+						created: Set(chrono::Utc::now()),
+						not_before: Set(chrono::Utc::now()),
+						attempt: Set(0),
+					}
+				),
+				Ok(_) => tracing::error!("resolved target but missing inbox: '{target}', skipping delivery"),
+				Err(e) => tracing::error!("failed resolving target inbox: {e}, skipping delivery to '{target}'"),
+			}
+		}
 
 		if !deliveries.is_empty() {
 			model::delivery::Entity::insert_many(deliveries)
