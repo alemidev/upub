@@ -3,7 +3,7 @@ use sea_orm::{sea_query::Expr, ColumnTrait, EntityTrait, IntoActiveModel, QueryF
 
 use crate::{errors::UpubError, model};
 
-use super::Context;
+use super::{fetcher::Fetcher, Context};
 
 
 #[axum::async_trait]
@@ -16,12 +16,20 @@ impl apb::server::Outbox for Context {
 		let oid = self.oid(uuid::Uuid::new_v4().to_string());
 		let aid = self.aid(uuid::Uuid::new_v4().to_string());
 		let activity_targets = object.addressed();
-		let object_model = model::object::Model::new(
+		let mut object_model = model::object::Model::new(
 			&object
 				.set_id(Some(&oid))
 				.set_attributed_to(Node::link(uid.clone()))
 				.set_published(Some(chrono::Utc::now()))
 		)?;
+		match (&object_model.in_reply_to, &object_model.context) {
+			(Some(reply_id), None) => // get context from replied object
+				object_model.context = self.fetch_object(reply_id).await?.context,
+			(None, None) => // generate a new context
+				object_model.context = Some(crate::url!(self, "/context/{}", uuid::Uuid::new_v4().to_string())),
+			(_, Some(_)) => {}, // leave it as set by user
+		}
+
 		let activity_model = model::activity::Model {
 			id: aid.clone(),
 			activity_type: apb::ActivityType::Create,
@@ -65,11 +73,18 @@ impl apb::server::Outbox for Context {
 				.set_actor(Node::link(uid.clone()))
 				.set_published(Some(chrono::Utc::now()))
 		)?;
+		activity_model.object = Some(oid.clone());
 		object_model.to = activity_model.to.clone();
 		object_model.bto = activity_model.bto.clone();
 		object_model.cc = activity_model.cc.clone();
 		object_model.bcc = activity_model.bcc.clone();
-		activity_model.object = Some(oid.clone());
+		match (&object_model.in_reply_to, &object_model.context) {
+			(Some(reply_id), None) => // get context from replied object
+				object_model.context = self.fetch_object(reply_id).await?.context,
+			(None, None) => // generate a new context
+				object_model.context = Some(crate::url!(self, "/context/{}", uuid::Uuid::new_v4().to_string())),
+			(_, Some(_)) => {}, // leave it as set by user
+		}
 
 		model::object::Entity::insert(object_model.into_active_model())
 			.exec(self.db()).await?;
