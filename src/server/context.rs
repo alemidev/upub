@@ -105,11 +105,14 @@ impl Context {
 	}
 
 	/// get bare id, usually an uuid but unspecified
-	pub fn id(&self, id: String) -> String {
-		if id.starts_with(&self.0.domain) {
-			id.split('/').last().unwrap_or("").to_string()
+	pub fn id(&self, uri: &str) -> String {
+		if uri.starts_with(&self.0.domain) {
+			uri.split('/').last().unwrap_or("").to_string()
 		} else {
-			id
+			uri
+				.replace("https://", "+")
+				.replace("http://", "+")
+				.replace('/', "@")
 		}
 	}
 

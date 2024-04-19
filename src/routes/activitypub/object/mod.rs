@@ -1,5 +1,6 @@
 pub mod replies;
 
+use apb::{BaseMut, CollectionMut, ObjectMut};
 use axum::extract::{Path, Query, State};
 use sea_orm::{ColumnTrait, QueryFilter};
 
@@ -18,19 +19,36 @@ pub async fn view(
 	} else {
 		ctx.oid(id.clone())
 	};
-	match model::addressing::Entity::find_activities()
+
+	let result = model::addressing::Entity::find_activities()
 		.filter(model::object::Column::Id.eq(&oid))
 		.filter(auth.filter_condition())
 		.into_model::<EmbeddedActivity>()
 		.one(ctx.db())
-		.await?
-	{
-		Some(EmbeddedActivity { activity: _, object: Some(object) }) => Ok(JsonLD(object.ap().ld_context())),
-		Some(EmbeddedActivity { activity: _, object: None }) => Err(UpubError::not_found()),
-		None => if auth.is_local() && query.fetch && !ctx.is_local(&oid) {
-			Ok(JsonLD(ctx.fetch_object(&oid).await?.ap().ld_context()))
-		} else {
-			Err(UpubError::not_found())
+		.await?;
+
+	let object = match result {
+		Some(EmbeddedActivity { activity: _, object: Some(obj) }) => obj,
+		_ => {
+			if auth.is_local() && query.fetch && !ctx.is_local(&oid) {
+				ctx.fetch_object(&oid).await?
+			} else {
+				return Err(UpubError::not_found()) 
+			}
 		},
-	}
+	};
+
+	let replies = 
+		serde_json::Value::new_object()
+			.set_id(Some(&crate::url!(ctx, "/objects/{id}/replies")))
+			.set_collection_type(Some(apb::CollectionType::OrderedCollection))
+			.set_first(apb::Node::link(crate::url!(ctx, "/objects/{id}/replies/page")))
+			.set_total_items(Some(object.comments as u64));
+
+
+	Ok(JsonLD(
+		object.ap()
+			.set_replies(apb::Node::object(replies))
+			.ld_context()
+	))
 }

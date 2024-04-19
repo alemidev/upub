@@ -1,4 +1,4 @@
-use apb::{BaseMut, CollectionMut, ObjectMut};
+use apb::{BaseMut, ObjectMut};
 use sea_orm::entity::prelude::*;
 
 use crate::routes::activitypub::jsonld::LD;
@@ -59,13 +59,6 @@ impl Model {
 			.set_content(self.content.as_deref())
 			.set_context(apb::Node::maybe_link(self.context.clone()))
 			.set_in_reply_to(apb::Node::maybe_link(self.in_reply_to.clone()))
-			.set_replies(apb::Node::object(
-				serde_json::Value::new_object()
-					.set_id(Some(&format!("{}/replies", self.id)))
-					.set_collection_type(Some(apb::CollectionType::OrderedCollection))
-					.set_first(apb::Node::link(format!("{}/replies/page", self.id)))
-					.set_total_items(Some(self.comments as u64))
-			))
 			.set_published(Some(self.published))
 			.set_to(apb::Node::links(self.to.0.clone()))
 			.set_bto(apb::Node::Empty)
