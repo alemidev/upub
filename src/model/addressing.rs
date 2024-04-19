@@ -92,11 +92,11 @@ impl Entity {
 			.join(sea_orm::JoinType::LeftJoin, crate::model::activity::Relation::Object.def());
 
 		for col in crate::model::activity::Column::iter() {
-			select = select.select_column(col);
+			select = select.select_column_as(col, format!("{}{}", crate::model::activity::Entity.table_name(), col.to_string()));
 		}
 
 		for col in crate::model::object::Column::iter() {
-			select = select.select_column(col);
+			select = select.select_column_as(col, format!("{}{}", crate::model::object::Entity.table_name(), col.to_string()));
 		}
 
 		select
