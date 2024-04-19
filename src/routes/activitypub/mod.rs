@@ -58,12 +58,12 @@ impl ActivityPubRouter for Router<crate::server::Context> {
 			.route("/context/:id/page", get(ap::context::page))
 			// specific object routes
 			.route("/objects/:id", get(ap::object::view))
+			.route("/objects/:id/replies", get(ap::object::replies::get))
+			.route("/objects/:id/replies/page", get(ap::object::replies::page))
 			//.route("/objects/:id/likes", get(ap::object::likes::get))
 			//.route("/objects/:id/likes/page", get(ap::object::likes::page))
 			//.route("/objects/:id/announces", get(ap::object::announces::get))
 			//.route("/objects/:id/announces/page", get(ap::object::announces::page))
-			//.route("/objects/:id/replies", get(ap::object::replies::get))
-			//.route("/objects/:id/replies/page", get(ap::object::replies::page))
 	}
 }
 
