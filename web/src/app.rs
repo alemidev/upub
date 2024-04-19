@@ -17,6 +17,7 @@ pub fn App() -> impl IntoView {
 
 	let home_tl = Timeline::new(format!("{URL_BASE}/users/{}/inbox/page", username.get().unwrap_or_default()));
 	let server_tl = Timeline::new(format!("{URL_BASE}/inbox/page"));
+	let user_tl = Timeline::new(format!("{URL_BASE}/users/{}/outbox/page", username.get().unwrap_or_default()));
 
 	let screen_width = window().screen().map(|x| x.avail_width().unwrap_or_default()).unwrap_or_default();
 
@@ -94,8 +95,8 @@ pub fn App() -> impl IntoView {
 											<Route path="/web/config" view=ConfigPage />
 											<Route path="/web/about" view=AboutPage />
 
-											<Route path="/web/users/:id" view=UserPage />
 											<Route path="/web/objects/:id" view=ObjectPage />
+											<Route path="/web/users/:id" view=move || view! { <UserPage tl=user_tl /> } />
 
 											<Route path="/" view=move || view! { <Redirect path="/web" /> } />
 										</Routes>

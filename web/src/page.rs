@@ -31,7 +31,7 @@ pub fn ConfigPage() -> impl IntoView {
 }
 
 #[component]
-pub fn UserPage() -> impl IntoView {
+pub fn UserPage(tl: Timeline) -> impl IntoView {
 	let params = use_params_map();
 	let auth = use_context::<Auth>().expect("missing auth context");
 	let id = params.get().get("id").cloned().unwrap_or_default();
@@ -71,6 +71,10 @@ pub fn UserPage() -> impl IntoView {
 						let following = object.following().get().map(|x| x.total_items().unwrap_or(0)).unwrap_or(0);
 						let followers = object.followers().get().map(|x| x.total_items().unwrap_or(0)).unwrap_or(0);
 						let statuses = object.outbox().get().map(|x| x.total_items().unwrap_or(0)).unwrap_or(0);
+						let tl_url = format!("{}/outbox/page", Uri::api("users", &id.clone(), false));
+						if !tl.next.get().starts_with(&tl_url) {
+							tl.reset(tl_url);
+						}
 						view! {
 							<div class="ml-3 mr-3">
 								<div 
@@ -117,7 +121,7 @@ pub fn UserPage() -> impl IntoView {
 									}</blockquote>
 								</div>
 							</div>
-							<TimelineFeed tl=Timeline::new(format!("{}/outbox/page", Uri::api("users", &id.clone(), false))) />
+							<TimelineFeed tl=tl />
 						}.into_view()
 					},
 				}}
