@@ -1,5 +1,6 @@
 use std::collections::BTreeSet;
 
+use apb::Base;
 use leptos::*;
 use crate::prelude::*;
 
@@ -52,11 +53,16 @@ pub fn TimelineFeed(tl: Timeline) -> impl IntoView {
 			key=|k| k.to_string()
 			children=move |id: String| {
 				match CACHE.get(&id) {
-					Some(object) => {
-						view! {
-							<InlineActivity activity=object />
-							<hr/ >
-						}.into_view()
+					Some(object) => match object.base_type() {
+						Some(apb::BaseType::Object(apb::ObjectType::Activity(_))) => view! {
+								<InlineActivity activity=object />
+								<hr/ >
+							}.into_view(),
+						Some(apb::BaseType::Object(apb::ObjectType::Note)) => view! {
+								<Object object=object />
+								<hr/ >
+							}.into_view(),
+						_ => view! { <p><code>type not implemented</code></p><hr /> }.into_view(),
 					},
 					None => view! {
 						<p><code>{id}</code>" "[<a href={uri}>go</a>]</p>
@@ -82,7 +88,7 @@ async fn process_activities(
 	activities: Vec<serde_json::Value>,
 	auth: Signal<Option<String>>,
 ) -> Vec<String> {
-	use apb::{Base, Activity, ActivityMut};
+	use apb::{Activity, ActivityMut};
 	let mut sub_tasks = Vec::new();
 	let mut gonna_fetch = BTreeSet::new();
 	let mut out = Vec::new();

@@ -131,7 +131,7 @@ pub fn UserPage(tl: Timeline) -> impl IntoView {
 }
 
 #[component]
-pub fn ObjectPage() -> impl IntoView {
+pub fn ObjectPage(tl: Timeline) -> impl IntoView {
 	let params = use_params_map();
 	let auth = use_context::<Auth>().expect("missing auth context");
 	let object = create_local_resource(move || params.get().get("id").cloned().unwrap_or_default(), move |oid| {
@@ -151,9 +151,20 @@ pub fn ObjectPage() -> impl IntoView {
 			<Breadcrumb back=true >objects::view</Breadcrumb>
 			<div class="ma-2" >
 				{move || match object.get() {
-					Some(Some(o)) => view!{ <Object object=o /> }.into_view(),
-					Some(None) => view! { <p><code>loading failed</code></p> }.into_view(),
 					None => view! { <p> loading ... </p> }.into_view(),
+					Some(None) => view! { <p><code>loading failed</code></p> }.into_view(),
+					Some(Some(o)) => {
+						let tl_url = format!("{}/page", Uri::api("context", &o.context().id().unwrap_or_default(), false));
+						if !tl.next.get().starts_with(&tl_url) {
+							tl.reset(tl_url);
+						}
+						view!{
+							<Object object=o.clone() />
+							<div class="ml-1 mr-1 mt-2">
+								<TimelineFeed tl=tl />
+							</div>
+						}.into_view()
+					},
 				}}
 			</div>
 		</div>
