@@ -78,7 +78,7 @@ pub async fn post(
 		ActivityType::Create => Ok(ctx.create(activity).await?),
 		ActivityType::Update => Ok(ctx.update(activity).await?),
 		ActivityType::Undo => Ok(ctx.undo(activity).await?),
-		// ActivityType::Announce => Ok(ctx.announce(activity).await?),
+		ActivityType::Announce => Ok(ctx.announce(activity).await?),
 
 		_x => {
 			tracing::info!("received unimplemented activity on inbox: {}", pretty_json!(activity));

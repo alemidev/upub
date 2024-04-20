@@ -21,6 +21,7 @@ pub trait Inbox {
 	async fn create(&self, activity: Self::Activity) -> Result<(), Self::Error>;
 	async fn like(&self, activity: Self::Activity) -> Result<(), Self::Error>;
 	async fn follow(&self, activity: Self::Activity) -> Result<(), Self::Error>;
+	async fn announce(&self, activity: Self::Activity) -> Result<(), Self::Error>;
 	async fn accept(&self, activity: Self::Activity) -> Result<(), Self::Error>;
 	async fn reject(&self, activity: Self::Activity) -> Result<(), Self::Error>;
 	async fn undo(&self, activity: Self::Activity) -> Result<(), Self::Error>;

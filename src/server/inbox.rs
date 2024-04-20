@@ -2,7 +2,7 @@ use apb::{target::Addressed, Activity, Base, Object};
 use reqwest::StatusCode;
 use sea_orm::{sea_query::Expr, ColumnTrait, Condition, EntityTrait, IntoActiveModel, QueryFilter, Set};
 
-use crate::{errors::{LoggableError, UpubError}, model};
+use crate::{errors::{LoggableError, UpubError}, model::{self, object, FieldError}};
 
 use super::{fetcher::Fetcher, Context};
 
@@ -50,7 +50,7 @@ impl apb::server::Inbox for Context {
 			id: sea_orm::ActiveValue::NotSet,
 			actor: sea_orm::Set(uid.clone()),
 			likes: sea_orm::Set(oid.clone()),
-			date: sea_orm::Set(chrono::Utc::now()),
+			date: sea_orm::Set(activity.published().unwrap_or(chrono::Utc::now())),
 		};
 		match model::like::Entity::insert(like).exec(self.db()).await {
 			Err(sea_orm::DbErr::RecordNotInserted) => Err(UpubError::not_modified()),
@@ -245,6 +245,37 @@ impl apb::server::Inbox for Context {
 
 		model::activity::Entity::delete_by_id(undone_aid).exec(self.db()).await?;
 
+		Ok(())
+
+	}
+	
+	async fn announce(&self, activity: serde_json::Value) -> crate::Result<()> {
+		let activity_model = model::activity::Model::new(&activity)?;
+		let Some(oid) = &activity_model.object else {
+			return Err(FieldError("object").into());
+		};
+		self.fetch_object(oid).await?;
+		let share = model::share::ActiveModel {
+			id: sea_orm::ActiveValue::NotSet,
+			actor: sea_orm::Set(activity_model.actor.clone()),
+			shares: sea_orm::Set(oid.clone()),
+			date: sea_orm::Set(activity.published().unwrap_or(chrono::Utc::now())),
+		};
+
+		let expanded_addressing = self.expand_addressing(activity.addressed()).await?;
+		self.address_to(&activity_model.id, None, &expanded_addressing).await?;
+		model::share::Entity::insert(share)
+			.exec(self.db()).await?;
+		model::activity::Entity::insert(activity_model.clone().into_active_model())
+			.exec(self.db())
+			.await?;
+		model::object::Entity::update_many()
+			.col_expr(model::object::Column::Shares, Expr::col(model::object::Column::Shares).add(1))
+			.filter(model::object::Column::Id.eq(oid.clone()))
+			.exec(self.db())
+			.await?;
+
+		tracing::info!("{} shared {}", activity_model.actor, oid);
 		Ok(())
 	}
 }
