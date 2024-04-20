@@ -1,4 +1,4 @@
-use apb::{BaseMut, ObjectMut};
+use apb::{BaseMut, ObjectMut, Collection};
 use sea_orm::entity::prelude::*;
 
 use crate::routes::activitypub::jsonld::LD;
@@ -39,7 +39,7 @@ impl Model {
 			context: object.context().id(),
 			in_reply_to: object.in_reply_to().id(),
 			published: object.published().ok_or(super::FieldError("published"))?,
-			comments: 0,
+			comments: object.replies().get().map(|x| x.total_items().unwrap_or(0)).unwrap_or(0) as i64,
 			likes: 0,
 			shares: 0,
 			to: object.to().into(),
