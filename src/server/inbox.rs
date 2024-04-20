@@ -2,7 +2,7 @@ use apb::{target::Addressed, Activity, Base, Object};
 use reqwest::StatusCode;
 use sea_orm::{sea_query::Expr, ColumnTrait, Condition, EntityTrait, IntoActiveModel, QueryFilter, Set};
 
-use crate::{errors::{LoggableError, UpubError}, model::{self, object, FieldError}};
+use crate::{errors::{LoggableError, UpubError}, model::{self, FieldError}};
 
 use super::{fetcher::Fetcher, Context};
 

@@ -1,7 +1,7 @@
 use axum::extract::{Path, Query, State};
 use sea_orm::{ColumnTrait, Order, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect};
 
-use crate::{model::{self, addressing::EmbeddedActivity}, routes::activitypub::{jsonld::LD, JsonLD, Pagination}, server::{auth::AuthIdentity, Context}, url};
+use crate::{model, routes::activitypub::{jsonld::LD, JsonLD, Pagination}, server::{auth::AuthIdentity, Context}, url};
 
 pub async fn get(
 	State(ctx): State<Context>,
