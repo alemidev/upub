@@ -88,7 +88,7 @@ impl Fetcher for Context {
 		}
 
 		let user = Self::request(
-			Method::GET, id, None, &format!("https://{}", self.base()), &self.app().private_key, self.base(),
+			Method::GET, id, None, &format!("https://{}", self.domain()), &self.app().private_key, self.domain(),
 		).await?.json::<serde_json::Value>().await?;
 		let user_model = model::user::Model::new(&user)?;
 
@@ -104,7 +104,7 @@ impl Fetcher for Context {
 		}
 
 		let activity = Self::request(
-			Method::GET, id, None, &format!("https://{}", self.base()), &self.app().private_key, self.base(),
+			Method::GET, id, None, &format!("https://{}", self.domain()), &self.app().private_key, self.domain(),
 		).await?.json::<serde_json::Value>().await?;
 
 		let addressed = activity.addressed();
@@ -125,7 +125,7 @@ impl Fetcher for Context {
 		}
 
 		let object = Self::request(
-			Method::GET, id, None, &format!("https://{}", self.base()), &self.app().private_key, self.base(),
+			Method::GET, id, None, &format!("https://{}", self.domain()), &self.app().private_key, self.domain(),
 		).await?.json::<serde_json::Value>().await?;
 
 		let addressed = object.addressed();
@@ -170,9 +170,9 @@ pub trait Fetchable : Sync + Send {
 impl Fetchable for apb::Node<serde_json::Value> {
 	async fn fetch(&mut self, ctx: &crate::server::Context) -> crate::Result<&mut Self> {
 		if let apb::Node::Link(uri) = self {
-			let from = format!("{}{}", ctx.protocol(), ctx.base()); // TODO helper to avoid this?
+			let from = format!("{}{}", ctx.protocol(), ctx.domain()); // TODO helper to avoid this?
 			let pkey = &ctx.app().private_key;
-			*self = Context::request(Method::GET, uri.href(), None, &from, pkey, ctx.base())
+			*self = Context::request(Method::GET, uri.href(), None, &from, pkey, ctx.domain())
 				.await?
 				.json::<serde_json::Value>()
 				.await?

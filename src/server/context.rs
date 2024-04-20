@@ -23,7 +23,7 @@ struct ContextInner {
 #[macro_export]
 macro_rules! url {
 	($ctx:expr, $($args: tt)*) => {
-		format!("{}{}{}", $ctx.protocol(), $ctx.base(), format!($($args)*))
+		format!("{}{}{}", $ctx.protocol(), $ctx.domain(), format!($($args)*))
 	};
 }
 
@@ -75,12 +75,16 @@ impl Context {
 		&self.0.db
 	}
 
-	pub fn base(&self) -> &str {
+	pub fn domain(&self) -> &str {
 		&self.0.domain
 	}
 
 	pub fn protocol(&self) -> &str {
 		&self.0.protocol
+	}
+
+	pub fn base(&self) -> String {
+		format!("{}{}", self.0.protocol, self.0.domain)
 	}
 
 	pub fn uri(&self, entity: &str, id: String) -> String {
@@ -182,7 +186,7 @@ impl Context {
 		let mut deliveries = Vec::new();
 		for target in targets.iter()
 			.filter(|to| !to.is_empty())
-			.filter(|to| Context::server(to) != self.base())
+			.filter(|to| Context::server(to) != self.domain())
 			.filter(|to| to != &apb::target::PUBLIC)
 		{
 			// TODO fetch concurrently
