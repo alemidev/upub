@@ -4,7 +4,7 @@ use apb::{BaseMut, CollectionMut, ObjectMut};
 use axum::extract::{Path, Query, State};
 use sea_orm::{ColumnTrait, QueryFilter};
 
-use crate::{errors::UpubError, model, server::{auth::AuthIdentity, fetcher::Fetcher, Context}};
+use crate::{errors::UpubError, model::{self, addressing::WrappedObject}, server::{auth::AuthIdentity, fetcher::Fetcher, Context}};
 
 use super::{jsonld::LD, JsonLD, TryFetch};
 
@@ -26,7 +26,7 @@ pub async fn view(
 	let Some(object) = model::addressing::Entity::find_objects()
 		.filter(model::object::Column::Id.eq(&oid))
 		.filter(auth.filter_condition())
-		.into_model::<model::object::Model>()
+		.into_model::<WrappedObject>()
 		.one(ctx.db())
 		.await?
 	else {
@@ -38,10 +38,10 @@ pub async fn view(
 			.set_id(Some(&crate::url!(ctx, "/objects/{id}/replies")))
 			.set_collection_type(Some(apb::CollectionType::OrderedCollection))
 			.set_first(apb::Node::link(crate::url!(ctx, "/objects/{id}/replies/page")))
-			.set_total_items(Some(object.comments as u64));
+			.set_total_items(Some(object.object.comments as u64));
 
 	Ok(JsonLD(
-		object.ap()
+		object.object.ap()
 			.set_replies(apb::Node::object(replies))
 			.ld_context()
 	))
