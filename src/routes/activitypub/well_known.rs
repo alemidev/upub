@@ -102,6 +102,23 @@ pub async fn webfinger(State(ctx): State<Context>, Query(query): Query<Webfinger
 		.replace("acct:", "")
 		.split_once('@')
 	{
+		if user == ctx.domain() && domain == ctx.domain() {
+			return Ok(JsonRD(JsonResourceDescriptor {
+				subject: format!("acct:{user}@{domain}"),
+				aliases: vec![ctx.base()],
+				links: vec![
+					JsonResourceDescriptorLink {
+						rel: "self".to_string(),
+						link_type: Some("application/ld+json".to_string()),
+						href: Some(ctx.base()),
+						properties: jrd::Map::default(),
+						titles: jrd::Map::default(),
+					},
+				],
+				expires: None,
+				properties: jrd::Map::default(),
+			}));
+		}
 		let uid = ctx.uid(user.to_string());
 		match model::user::Entity::find_by_id(uid)
 			.one(ctx.db())
