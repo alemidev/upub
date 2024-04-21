@@ -10,7 +10,7 @@ pub fn Navigator() -> impl IntoView {
 		<a href="/web/home"><input class="w-100" type="submit" class:hidden=move || !auth.present() value="home timeline" /></a>
 		<a href="/web/server"><input class="w-100" type="submit" value="server timeline" /></a>
 		<a href="/web/about"><input class="w-100" type="submit" value="about" /></a>
-		<a href="/web/config"><input class="w-100" type="submit" value="config" class:hidden=move|| !auth.present() /></a>
+		<a href="/web/debug"><input class="w-100" type="submit" value="debug" class:hidden=move|| !auth.present() /></a>
 	}
 }
 

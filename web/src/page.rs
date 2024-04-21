@@ -196,3 +196,39 @@ pub fn TimelinePage(name: &'static str, tl: Timeline) -> impl IntoView {
 		</div>
 	}
 }
+
+#[component]
+pub fn DebugPage() -> impl IntoView {
+	let url_ref: NodeRef<html::Input> = create_node_ref();
+	let (object, set_object) = create_signal(serde_json::Value::String(
+		"use this view to fetch remote AP objects and inspect their content".into())
+	);
+	let auth = use_context::<Auth>().expect("missing auth context");
+	view! {
+		<div>
+			<Breadcrumb back=true>debug</Breadcrumb>
+			<div class="mt-1" >
+				<table class="align w-100" >
+					<tr>
+						<td><input class="w-100" type="text" node_ref=url_ref placeholder="AP id" /></td>
+						<td>
+							<input type="submit" class="w-100" value="fetch" on:click=move |_| {
+								let fetch_url = url_ref.get().map(|x| x.value()).unwrap_or("".into());
+								let url = format!("{URL_BASE}/dbg?id={fetch_url}");
+								spawn_local(async move {
+									match Http::fetch::<serde_json::Value>(&url, auth).await {
+										Ok(x) => set_object.set(x),
+										Err(e) => set_object.set(serde_json::Value::String(e.to_string())),
+									}
+								});
+							} />
+						</td>
+					</tr>
+				</table>
+			</div>
+			<pre class="ma-1" >
+				{move || serde_json::to_string_pretty(&object.get()).unwrap_or("unserializable".to_string())}
+			</pre>
+		</div>
+	}
+}
