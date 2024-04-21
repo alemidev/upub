@@ -20,11 +20,11 @@ pub async fn nodeinfo_discovery(State(ctx): State<Context>) -> Json<NodeInfoDisc
 		links: vec![
 			NodeInfoDiscoveryRel {
 				rel: "http://nodeinfo.diaspora.software/ns/schema/2.0".into(),
-				href: format!("{}/nodeinfo/2.0.json", ctx.base()),
+				href: format!("{}/nodeinfo/2.0.json", ctx.domain()),
 			},
 			NodeInfoDiscoveryRel {
 				rel: "http://nodeinfo.diaspora.software/ns/schema/2.1".into(),
-				href: format!("{}/nodeinfo/2.1.json", ctx.base()),
+				href: format!("{}/nodeinfo/2.1.json", ctx.domain()),
 			},
 		],
 	})
@@ -141,7 +141,7 @@ pub async fn host_meta(State(ctx): State<Context>) -> Response {
 			<XRD xmlns="http://docs.oasis-open.org/ns/xri/xrd-1.0">
 				<Link type="application/xrd+xml" template="{}{}/.well-known/webfinger?resource={{uri}}" rel="lrdd" />
 			</XRD>"#,
-			ctx.protocol(), ctx.base())
+			ctx.protocol(), ctx.domain())
 	).into_response()
 }
 
