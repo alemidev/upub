@@ -1,5 +1,5 @@
 pub use crate::{
-	Http, Uri,
+	Http, Uri, FetchKind,
 	CACHE, URL_BASE,
 	auth::{Auth, AuthToken},
 	page::*,

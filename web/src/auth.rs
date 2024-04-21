@@ -23,7 +23,7 @@ pub fn LoginBox(
 	view! {
 		<div>
 			<div class="w-100" class:hidden=move || !token.present() >
-				"hi "<a href={move || Uri::web("users", &username.get().unwrap_or_default() )} >{move || username.get().unwrap_or_default() }</a>
+				"hi "<a href={move || Uri::web(FetchKind::User, &username.get().unwrap_or_default() )} >{move || username.get().unwrap_or_default() }</a>
 				<input style="float:right" type="submit" value="logout" on:click=move |_| {
 					token_tx.set(None);
 					home_tl.reset(format!("{URL_BASE}/outbox/page"));

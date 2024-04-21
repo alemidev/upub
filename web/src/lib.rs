@@ -28,12 +28,48 @@ impl ObjectCache {
 		self.0.get(k).map(|x| x.clone())
 	}
 
+	pub fn get_or(&self, k: &str, or: serde_json::Value) -> serde_json::Value {
+		self.get(k).unwrap_or(or)
+	}
+
 	pub fn put(&self, k: String, v: serde_json::Value) {
 		self.0.insert(k, v);
+	}
+
+	pub async fn fetch(&self, k: &str, kind: FetchKind) -> reqwest::Result<serde_json::Value> {
+		match self.get(k) {
+			Some(x) => Ok(x),
+			None => {
+				let obj = reqwest::get(Uri::api(kind, k, true))
+					.await?
+					.json::<serde_json::Value>()
+					.await?;
+				self.put(k.to_string(), obj);
+				Ok(self.get(k).expect("not found in cache after insertion"))
+			}
+		}
 	}
 }
 
 
+#[derive(Debug, Clone)]
+pub enum FetchKind {
+	User,
+	Object,
+	Activity,
+	Context,
+}
+
+impl AsRef<str> for FetchKind {
+	fn as_ref(&self) -> &str {
+		match self {
+			Self::User => "users",
+			Self::Object => "objects",
+			Self::Activity => "activities",
+			Self::Context => "context",
+		}
+	}
+}
 
 pub struct Http;
 
@@ -79,7 +115,8 @@ impl Http {
 pub struct Uri;
 
 impl Uri {
-	pub fn full(kind: &str, id: &str) -> String {
+	pub fn full(kind: FetchKind, id: &str) -> String {
+		let kind = kind.as_ref();
 		if id.starts_with('+') {
 			id.replace('+', "https://").replace('@', "/")
 		} else {
@@ -111,7 +148,8 @@ impl Uri {
 	///  - https://other.domain.net/unexpected/path/root
 	///  - +other.domain.net@users@root
 	///  - root
-	pub fn web(kind: &str, url: &str) -> String {
+	pub fn web(kind: FetchKind, url: &str) -> String {
+		let kind = kind.as_ref();
 		format!("/web/{kind}/{}", Self::short(url))
 	}
 	
@@ -123,7 +161,8 @@ impl Uri {
 	///  - https://other.domain.net/unexpected/path/root
 	///  - +other.domain.net@users@root
 	///  - root
-	pub fn api(kind: &str, url: &str, fetch: bool) -> String {
+	pub fn api(kind: FetchKind, url: &str, fetch: bool) -> String {
+		let kind = kind.as_ref();
 		format!("{URL_BASE}/{kind}/{}{}", Self::short(url), if fetch { "?fetch=true" } else { "" })
 	}
 }

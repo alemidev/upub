@@ -1,6 +1,6 @@
-use std::collections::BTreeSet;
+use std::{collections::BTreeSet, pin::Pin};
 
-use apb::{Activity, Base};
+use apb::{Activity, Base, Object};
 use leptos::*;
 use crate::prelude::*;
 
@@ -55,10 +55,10 @@ pub fn TimelineFeed(tl: Timeline) -> impl IntoView {
 				match CACHE.get(&id) {
 					Some(item) => match item.base_type() {
 						Some(apb::BaseType::Object(apb::ObjectType::Activity(_))) => {
-							let author_id = item.actor().id().unwrap_or_default();
-							let author = CACHE.get(&author_id).unwrap_or(serde_json::Value::String(author_id.clone()));
 							let object_id = item.object().id().unwrap_or_default();
-							let object = CACHE.get(&object_id).map(|obj| view! { <ObjectInline object=obj author=author /> });
+							let object = CACHE.get(&object_id).map(|obj| {
+								view! { <ObjectInline object=obj /> }
+							});
 							view! {
 								<ActivityLine activity=item />
 								{object}
@@ -66,7 +66,7 @@ pub fn TimelineFeed(tl: Timeline) -> impl IntoView {
 							}.into_view()
 						},
 						Some(apb::BaseType::Object(apb::ObjectType::Note)) => view! {
-								<Object object=item />
+								<Object object=item.clone() />
 								<hr/ >
 							}.into_view(),
 						_ => view! { <p><code>type not implemented</code></p><hr /> }.into_view(),
@@ -96,21 +96,28 @@ async fn process_activities(
 	auth: Signal<Option<String>>,
 ) -> Vec<String> {
 	use apb::ActivityMut;
-	let mut sub_tasks = Vec::new();
+	let mut sub_tasks : Vec<Pin<Box<dyn futures::Future<Output = ()>>>> = Vec::new();
 	let mut gonna_fetch = BTreeSet::new();
+	let mut actors_seen = BTreeSet::new();
 	let mut out = Vec::new();
 
 	for activity in activities {
 		// save embedded object if present
 		if let Some(object) = activity.object().get() {
+			// also fetch actor attributed to
+			if let Some(attributed_to) = object.attributed_to().id() {
+				actors_seen.insert(attributed_to);
+			}
 			if let Some(object_uri) = object.id() {
 				CACHE.put(object_uri.to_string(), object.clone());
+			} else {
+				tracing::warn!("embedded object without id: {object:?}");
 			}
 		} else { // try fetching it
 			if let Some(object_id) = activity.object().id() {
 				if !gonna_fetch.contains(&object_id) {
 					gonna_fetch.insert(object_id.clone());
-					sub_tasks.push(fetch_and_update("objects", object_id, auth));
+					sub_tasks.push(Box::pin(fetch_and_update_with_user(FetchKind::Object, object_id, auth)));
 				}
 			}
 		}
@@ -128,9 +135,13 @@ async fn process_activities(
 		if let Some(uid) = activity.actor().id() {
 			if CACHE.get(&uid).is_none() && !gonna_fetch.contains(&uid) {
 				gonna_fetch.insert(uid.clone());
-				sub_tasks.push(fetch_and_update("users", uid, auth));
+				sub_tasks.push(Box::pin(fetch_and_update(FetchKind::User, uid, auth)));
 			}
 		}
+	}
+
+	for user in actors_seen {
+		sub_tasks.push(Box::pin(fetch_and_update(FetchKind::User, user, auth)));
 	}
 
 	futures::future::join_all(sub_tasks).await;
@@ -138,10 +149,22 @@ async fn process_activities(
 	out
 }
 
-async fn fetch_and_update(kind: &'static str, id: String, auth: Signal<Option<String>>) {
+async fn fetch_and_update(kind: FetchKind, id: String, auth: Signal<Option<String>>) {
 	match Http::fetch(&Uri::api(kind, &id, false), auth).await {
 		Ok(data) => CACHE.put(id, data),
 		Err(e) => console_warn(&format!("could not fetch '{id}': {e}")),
 	}
 }
 
+async fn fetch_and_update_with_user(kind: FetchKind, id: String, auth: Signal<Option<String>>) {
+	fetch_and_update(kind.clone(), id.clone(), auth).await;
+	if let Some(obj) = CACHE.get(&id) {
+		if let Some(actor_id) = match kind {
+			FetchKind::Object => obj.attributed_to().id(),
+			FetchKind::Activity => obj.actor().id(),
+			FetchKind::User | FetchKind::Context => None,
+		} {
+			fetch_and_update(FetchKind::User, actor_id, auth).await;
+		}
+	}
+}

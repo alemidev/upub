@@ -38,11 +38,11 @@ pub fn UserPage(tl: Timeline) -> impl IntoView {
 	let _id = id.clone(); // wtf triple clone??? TODO!!
 	let actor = create_local_resource(move || _id.clone(), move |id| {
 		async move {
-			match CACHE.get(&Uri::full("users", &id)) {
+			match CACHE.get(&Uri::full(FetchKind::User, &id)) {
 				Some(x) => Some(x.clone()),
 				None => {
-					let user : serde_json::Value = Http::fetch(&Uri::api("users", &id, true), auth).await.ok()?;
-					CACHE.put(Uri::full("users", &id), user.clone());
+					let user : serde_json::Value = Http::fetch(&Uri::api(FetchKind::User, &id, true), auth).await.ok()?;
+					CACHE.put(Uri::full(FetchKind::User, &id), user.clone());
 					Some(user)
 				},
 			}
@@ -71,7 +71,7 @@ pub fn UserPage(tl: Timeline) -> impl IntoView {
 						let following = object.following().get().map(|x| x.total_items().unwrap_or(0)).unwrap_or(0);
 						let followers = object.followers().get().map(|x| x.total_items().unwrap_or(0)).unwrap_or(0);
 						let statuses = object.outbox().get().map(|x| x.total_items().unwrap_or(0)).unwrap_or(0);
-						let tl_url = format!("{}/outbox/page", Uri::api("users", &id.clone(), false));
+						let tl_url = format!("{}/outbox/page", Uri::api(FetchKind::User, &id.clone(), false));
 						if !tl.next.get().starts_with(&tl_url) {
 							tl.reset(tl_url);
 						}
@@ -136,11 +136,11 @@ pub fn ObjectPage(tl: Timeline) -> impl IntoView {
 	let auth = use_context::<Auth>().expect("missing auth context");
 	let object = create_local_resource(move || params.get().get("id").cloned().unwrap_or_default(), move |oid| {
 		async move {
-			match CACHE.get(&Uri::full("objects", &oid)) {
+			match CACHE.get(&Uri::full(FetchKind::Object, &oid)) {
 				Some(x) => Some(x.clone()),
 				None => {
-					let obj = Http::fetch::<serde_json::Value>(&Uri::api("objects", &oid, true), auth).await.ok()?;
-					CACHE.put(Uri::full("objects", &oid), obj.clone());
+					let obj = Http::fetch::<serde_json::Value>(&Uri::api(FetchKind::Object, &oid, true), auth).await.ok()?;
+					CACHE.put(Uri::full(FetchKind::Object, &oid), obj.clone());
 					Some(obj)
 				}
 			}
@@ -154,12 +154,13 @@ pub fn ObjectPage(tl: Timeline) -> impl IntoView {
 					None => view! { <p> loading ... </p> }.into_view(),
 					Some(None) => view! { <p><code>loading failed</code></p> }.into_view(),
 					Some(Some(o)) => {
-						let tl_url = format!("{}/page", Uri::api("context", &o.context().id().unwrap_or_default(), false));
+						let object = o.clone();
+						let tl_url = format!("{}/page", Uri::api(FetchKind::Context, &o.context().id().unwrap_or_default(), false));
 						if !tl.next.get().starts_with(&tl_url) {
 							tl.reset(tl_url);
 						}
 						view!{
-							<Object object=o.clone() />
+							<Object object=object />
 							<div class="ml-1 mr-1 mt-2">
 								<TimelineFeed tl=tl />
 							</div>

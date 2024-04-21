@@ -1,22 +1,18 @@
 use leptos::*;
 use crate::prelude::*;
 
-use apb::{target::Addressed, Activity, Actor, Base, Object};
+use apb::{Actor, Base, Object};
 
 
 #[component]
-pub fn ActorBanner(
-	object: serde_json::Value,
-	#[prop(optional)]
-	tiny: bool
-) -> impl IntoView {
+pub fn ActorBanner(object: serde_json::Value) -> impl IntoView {
 	match object {
 		serde_json::Value::String(id) => view! {
-			<div><b>?</b>" "<a class="clean hover" href={Uri::web("users", &id)}>{Uri::pretty(&id)}</a></div>
+			<div><b>?</b>" "<a class="clean hover" href={Uri::web(FetchKind::User, &id)}>{Uri::pretty(&id)}</a></div>
 		},
 		serde_json::Value::Object(_) => {
 			let uid = object.id().unwrap_or_default().to_string();
-			let uri = Uri::web("users", &uid);
+			let uri = Uri::web(FetchKind::User, &uid);
 			let avatar_url = object.icon().get().map(|x| x.url().id().unwrap_or_default()).unwrap_or_default();
 			let display_name = object.name().unwrap_or_default().to_string();
 			let username = object.preferred_username().unwrap_or_default().to_string();

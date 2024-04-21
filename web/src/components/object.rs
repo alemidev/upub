@@ -1,7 +1,7 @@
 use leptos::*;
 use crate::prelude::*;
 
-use apb::{target::Addressed, Activity, Actor, Base, Object};
+use apb::{target::Addressed, Base, Object};
 
 
 #[component]
@@ -10,9 +10,8 @@ pub fn Object(object: serde_json::Value) -> impl IntoView {
 	let in_reply_to = object.in_reply_to().id().unwrap_or_default();
 	let summary = object.summary().unwrap_or_default().to_string();
 	let content = dissolve::strip_html_tags(object.content().unwrap_or_default());
-	let date = object.published();
 	let author_id = object.attributed_to().id().unwrap_or_default();
-	let author = CACHE.get(&author_id).unwrap_or(serde_json::Value::String(author_id.clone()));
+	let author = CACHE.get_or(&author_id, serde_json::Value::String(author_id.clone()));
 	view! {
 		<div>
 			<table class="w-100 post-table pa-1 mb-s" >
@@ -20,7 +19,7 @@ pub fn Object(object: serde_json::Value) -> impl IntoView {
 					Some(view! {
 						<tr class="post-table" >
 							<td class="post-table pa-1" colspan="2" >
-								"in reply to "<small><a class="clean hover" href={Uri::web("objects", &in_reply_to)}>{Uri::pretty(&in_reply_to)}</a></small>
+								"in reply to "<small><a class="clean hover" href={Uri::web(FetchKind::Object, &in_reply_to)}>{Uri::pretty(&in_reply_to)}</a></small>
 							</td>
 						</tr>
 					})
@@ -38,7 +37,7 @@ pub fn Object(object: serde_json::Value) -> impl IntoView {
 					}</td>
 				</tr>
 				<tr class="post-table" >
-					<td class="post-table pa-1" ><ActorBanner object=author tiny=true /></td>
+					<td class="post-table pa-1" ><ActorBanner object=author /></td>
 					<td class="post-table pa-1 center" >
 						<a class="clean hover" href={oid} target="_blank">
 							<DateTime t=object.published() />
@@ -52,15 +51,17 @@ pub fn Object(object: serde_json::Value) -> impl IntoView {
 }
 
 #[component]
-pub fn ObjectInline(object: serde_json::Value, author: serde_json::Value) -> impl IntoView {
+pub fn ObjectInline(object: serde_json::Value) -> impl IntoView {
 	let summary = object.summary().unwrap_or_default().to_string();
 	let content = dissolve::strip_html_tags(object.content().unwrap_or_default());
+	let author_id = object.attributed_to().id().unwrap_or_default();
+	let author = CACHE.get_or(&author_id, serde_json::Value::String(author_id.clone()));
 	view! {
 		<table class="align w-100">
 			<tr>
 				<td><ActorBanner object=author /></td>
 				<td class="rev" >
-					<a class="clean hover" href={Uri::web("objects", object.id().unwrap_or_default())}>
+					<a class="clean hover" href={Uri::web(FetchKind::Object, object.id().unwrap_or_default())}>
 						<DateTime t=object.published() />
 					</a>
 					<PrivacyMarker addressed=object.addressed() />
