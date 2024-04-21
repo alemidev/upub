@@ -51,14 +51,15 @@ pub async fn page(
 		.all(ctx.db())
 		.await?;
 
+	let mut out = Vec::new();
+	for item in items {
+		out.push(item.ap_filled(ctx.db()).await?);
+	}
+
 	Ok(JsonLD(
 		ctx.ap_collection_page(
 			&url!(ctx, "/context/{id}/page"),
-			offset, limit,
-			items
-				.into_iter()
-				.map(|x| x.object.ap())
-				.collect()
+			offset, limit, out,
 		).ld_context()
 	))
 }
