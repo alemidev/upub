@@ -36,9 +36,8 @@ pub fn LoginBox(
 				} />
 			</div>
 			<div class:hidden=move || token.present() >
-				<input class="w-100" type="text" node_ref=username_ref placeholder="username" />
-				<input class="w-100" type="text" node_ref=password_ref placeholder="password" />
-				<input class="w-100" type="submit" value="login" on:click=move |_| {
+				<form on:submit=move|ev| {
+					ev.prevent_default();
 					logging::log!("logging in...");
 					let email = username_ref.get().map(|x| x.value()).unwrap_or("".into());
 					let password = password_ref.get().map(|x| x.value()).unwrap_or("".into());
@@ -70,7 +69,11 @@ pub fn LoginBox(
 							}
 						});
 					});
-				} />
+				} >
+					<input class="w-100" type="text" node_ref=username_ref placeholder="username" />
+					<input class="w-100" type="text" node_ref=password_ref placeholder="password" />
+					<input class="w-100" type="submit" value="login" />
+				</form>
 			</div>
 		</div>
 	}

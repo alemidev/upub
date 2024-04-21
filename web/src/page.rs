@@ -208,23 +208,24 @@ pub fn DebugPage() -> impl IntoView {
 		<div>
 			<Breadcrumb back=true>debug</Breadcrumb>
 			<div class="mt-1" >
+				<form on:submit=move|ev| {
+					ev.prevent_default();
+					let fetch_url = url_ref.get().map(|x| x.value()).unwrap_or("".into());
+					let url = format!("{URL_BASE}/dbg?id={fetch_url}");
+					spawn_local(async move {
+						match Http::fetch::<serde_json::Value>(&url, auth).await {
+							Ok(x) => set_object.set(x),
+							Err(e) => set_object.set(serde_json::Value::String(e.to_string())),
+						}
+					});
+				} >
 				<table class="align w-100" >
 					<tr>
 						<td><input class="w-100" type="text" node_ref=url_ref placeholder="AP id" /></td>
-						<td>
-							<input type="submit" class="w-100" value="fetch" on:click=move |_| {
-								let fetch_url = url_ref.get().map(|x| x.value()).unwrap_or("".into());
-								let url = format!("{URL_BASE}/dbg?id={fetch_url}");
-								spawn_local(async move {
-									match Http::fetch::<serde_json::Value>(&url, auth).await {
-										Ok(x) => set_object.set(x),
-										Err(e) => set_object.set(serde_json::Value::String(e.to_string())),
-									}
-								});
-							} />
-						</td>
+						<td><input type="submit" class="w-100" value="fetch" /></td>
 					</tr>
 				</table>
+				</form>
 			</div>
 			<pre class="ma-1" >
 				{move || serde_json::to_string_pretty(&object.get()).unwrap_or("unserializable".to_string())}
