@@ -135,7 +135,7 @@ impl Object for serde_json::Value {
 	crate::getter! { bto -> node Self::Link }
 	crate::getter! { cc -> node Self::Link }
 	crate::getter! { bcc -> node Self::Link }
-	crate::getter! { media_type -> &str }
+	crate::getter! { media_type::mediaType -> &str }
 	crate::getter! { duration -> &str }
 	crate::getter! { url -> node Self::Link }
 
@@ -182,21 +182,8 @@ impl ObjectMut for serde_json::Value {
 	crate::setter! { bto -> node Self::Link}
 	crate::setter! { cc -> node Self::Link }
 	crate::setter! { bcc -> node Self::Link }
-	crate::setter! { media_type -> &str }
+	crate::setter! { media_type::mediaType -> &str }
 	crate::setter! { duration -> &str }
 	crate::setter! { url -> node Self::Link }
-
-	// TODO Mastodon doesn't use a "context" field on the object but makes up a new one!!
-	fn set_context(mut self, ctx: Node<<Self as Object>::Object>) -> Self {
-		if let Some(conversation) = ctx.id() {
-			crate::macros::set_maybe_value(
-				&mut self, "conversation", Some(serde_json::Value::String(conversation)),
-			);
-		}
-		crate::macros::set_maybe_node(
-			&mut self, "context", ctx
-		);
-		self
-	}
-
+	crate::setter! { context -> node <Self as Object>::Object }
 }
