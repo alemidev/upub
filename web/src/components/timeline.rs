@@ -1,6 +1,6 @@
 use std::collections::BTreeSet;
 
-use apb::Base;
+use apb::{Activity, Base};
 use leptos::*;
 use crate::prelude::*;
 
@@ -53,13 +53,20 @@ pub fn TimelineFeed(tl: Timeline) -> impl IntoView {
 			key=|k| k.to_string()
 			children=move |id: String| {
 				match CACHE.get(&id) {
-					Some(object) => match object.base_type() {
-						Some(apb::BaseType::Object(apb::ObjectType::Activity(_))) => view! {
-								<InlineActivity activity=object />
+					Some(item) => match item.base_type() {
+						Some(apb::BaseType::Object(apb::ObjectType::Activity(_))) => {
+							let author_id = item.actor().id().unwrap_or_default();
+							let author = CACHE.get(&author_id).unwrap_or(serde_json::Value::String(author_id.clone()));
+							let object_id = item.object().id().unwrap_or_default();
+							let object = CACHE.get(&object_id).map(|obj| view! { <ObjectInline object=obj author=author /> });
+							view! {
+								<ActivityLine activity=item />
+								{object}
 								<hr/ >
-							}.into_view(),
+							}.into_view()
+						},
 						Some(apb::BaseType::Object(apb::ObjectType::Note)) => view! {
-								<Object object=object />
+								<Object object=item />
 								<hr/ >
 							}.into_view(),
 						_ => view! { <p><code>type not implemented</code></p><hr /> }.into_view(),
@@ -88,7 +95,7 @@ async fn process_activities(
 	activities: Vec<serde_json::Value>,
 	auth: Signal<Option<String>>,
 ) -> Vec<String> {
-	use apb::{Activity, ActivityMut};
+	use apb::ActivityMut;
 	let mut sub_tasks = Vec::new();
 	let mut gonna_fetch = BTreeSet::new();
 	let mut out = Vec::new();

@@ -1,13 +1,10 @@
 mod app;
 mod auth;
-mod timeline;
-mod view;
+mod components;
 mod page;
 mod control;
 
 pub use app::App;
-pub use timeline::Timeline;
-pub use auth::{Auth, AuthToken};
 
 pub mod prelude;
 
