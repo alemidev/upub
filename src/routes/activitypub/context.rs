@@ -33,7 +33,7 @@ pub async fn page(
 	let offset = page.offset.unwrap_or(0);
 
 	let context = if id.starts_with('+') {
-		format!("https://{}", id.replacen('+', "", 1).replace('@', "/"))
+		id.replacen('+', "https://", 1).replace('@', "/")
 	} else if id.starts_with("tag:") {
 		id.clone()
 	} else {
@@ -43,7 +43,6 @@ pub async fn page(
 	let items = model::addressing::Entity::find_objects()
 		.filter(auth.filter_condition())
 		.filter(model::object::Column::Context.eq(context))
-		// TODO also limit to only local activities
 		.order_by(model::addressing::Column::Published, Order::Desc)
 		.limit(limit)
 		.offset(offset)
