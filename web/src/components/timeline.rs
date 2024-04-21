@@ -50,18 +50,24 @@ pub fn TimelineRepliesRecursive(tl: Timeline, root: String) -> impl IntoView {
 		.get()
 		.into_iter()
 		.filter_map(|x| CACHE.get(&x))
-		.filter(|x| x.object().get().map(|o| o.in_reply_to().id().map(|r| r == root).unwrap_or(false)).unwrap_or(false))
+		.filter(|x| match x.object_type() {
+			Some(apb::ObjectType::Activity(_)) => x.object().get().map(|o| o.in_reply_to().id().map(|r| r == root).unwrap_or(false))
+				.unwrap_or_else(|| x.object().id().map(|i| i == root).unwrap_or(false)),
+			_ => x.in_reply_to().id().map(|r| r == root).unwrap_or(false),
+		})
 		.collect::<Vec<serde_json::Value>>();
 
 	view! {
 		<For
-			each=move || root_values()
+			each=root_values
 			key=|k| k.id().unwrap_or_default().to_string()
 			children=move |object: serde_json::Value| {
 				let oid = object.id().unwrap_or_default().to_string();
 				view! {
 					<Object object=object />
-					<TimelineRepliesRecursive tl=tl root=oid />
+					<div class="ml-1">
+						<TimelineRepliesRecursive tl=tl root=oid />
+					</div>
 				}
 			}
 		/ >
