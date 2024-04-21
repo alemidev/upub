@@ -19,7 +19,7 @@ impl MigrationTrait for Migration {
 					)
 					.col(ColumnDef::new(Addressing::Actor).string().not_null())
 					.col(ColumnDef::new(Addressing::Server).string().not_null())
-					.col(ColumnDef::new(Addressing::Activity).string().not_null())
+					.col(ColumnDef::new(Addressing::Activity).string().null())
 					.col(ColumnDef::new(Addressing::Object).string().null())
 					.col(ColumnDef::new(Addressing::Published).date_time().not_null())
 					.to_owned()
