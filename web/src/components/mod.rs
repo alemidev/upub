@@ -2,13 +2,13 @@ mod activity;
 pub use activity::ActivityLine;
 
 mod object;
-pub use object::{Object, ObjectInline};
+pub use object::Object;
 
 mod user;
 pub use user::ActorBanner;
 
 mod timeline;
-pub use timeline::{TimelineFeed, Timeline};
+pub use timeline::{TimelineFeed, TimelineReplies, Timeline};
 
 use leptos::*;
 

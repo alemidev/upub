@@ -162,7 +162,7 @@ pub fn ObjectPage(tl: Timeline) -> impl IntoView {
 						view!{
 							<Object object=object />
 							<div class="ml-1 mr-1 mt-2">
-								<TimelineFeed tl=tl />
+								<TimelineReplies tl=tl root=o.id().unwrap_or_default().to_string() />
 							</div>
 						}.into_view()
 					},
@@ -203,6 +203,7 @@ pub fn DebugPage() -> impl IntoView {
 	let (object, set_object) = create_signal(serde_json::Value::String(
 		"use this view to fetch remote AP objects and inspect their content".into())
 	);
+	let cached_ref: NodeRef<html::Input> = create_node_ref();
 	let auth = use_context::<Auth>().expect("missing auth context");
 	view! {
 		<div>
@@ -210,19 +211,28 @@ pub fn DebugPage() -> impl IntoView {
 			<div class="mt-1" >
 				<form on:submit=move|ev| {
 					ev.prevent_default();
+					let cached = cached_ref.get().map(|x| x.checked()).unwrap_or_default();
 					let fetch_url = url_ref.get().map(|x| x.value()).unwrap_or("".into());
-					let url = format!("{URL_BASE}/dbg?id={fetch_url}");
-					spawn_local(async move {
-						match Http::fetch::<serde_json::Value>(&url, auth).await {
-							Ok(x) => set_object.set(x),
-							Err(e) => set_object.set(serde_json::Value::String(e.to_string())),
+					if cached {
+						match CACHE.get(&fetch_url) {
+							Some(x) => set_object.set(x),
+							None => set_object.set(serde_json::Value::String("not in cache!".into())),
 						}
-					});
+					} else {
+						let url = format!("{URL_BASE}/dbg?id={fetch_url}");
+						spawn_local(async move {
+							match Http::fetch::<serde_json::Value>(&url, auth).await {
+								Ok(x) => set_object.set(x),
+								Err(e) => set_object.set(serde_json::Value::String(e.to_string())),
+							}
+						});
+					}
 				} >
 				<table class="align w-100" >
 					<tr>
 						<td><input class="w-100" type="text" node_ref=url_ref placeholder="AP id" /></td>
 						<td><input type="submit" class="w-100" value="fetch" /></td>
+						<td><input type="checkbox" title="cached" value="cached" node_ref=cached_ref /></td>
 					</tr>
 				</table>
 				</form>

@@ -45,6 +45,52 @@ impl Timeline {
 }
 
 #[component]
+pub fn TimelineRepliesRecursive(tl: Timeline, root: String) -> impl IntoView {
+	let root_values = move || tl.feed
+		.get()
+		.into_iter()
+		.filter_map(|x| CACHE.get(&x))
+		.filter(|x| x.object().get().map(|o| o.in_reply_to().id().map(|r| r == root).unwrap_or(false)).unwrap_or(false))
+		.collect::<Vec<serde_json::Value>>();
+
+	view! {
+		<For
+			each=move || root_values()
+			key=|k| k.id().unwrap_or_default().to_string()
+			children=move |object: serde_json::Value| {
+				let oid = object.id().unwrap_or_default().to_string();
+				view! {
+					<Object object=object />
+					<TimelineRepliesRecursive tl=tl root=oid />
+				}
+			}
+		/ >
+	}
+}
+
+#[component]
+pub fn TimelineReplies(tl: Timeline, root: String) -> impl IntoView {
+	let auth = use_context::<Auth>().expect("missing auth context");
+
+	view! {
+		<div>
+			<TimelineRepliesRecursive tl=tl root=root />
+		</div>
+		<div class="center mt-1 mb-1" >
+			<button type="button"
+				on:click=move |_| {
+					spawn_local(async move {
+						if let Err(e) = tl.more(auth).await {
+							tracing::error!("error fetching more items for timeline: {e}");
+						}
+					})
+				}
+			>more</button>
+		</div>
+	}
+}
+
+#[component]
 pub fn TimelineFeed(tl: Timeline) -> impl IntoView {
 	let auth = use_context::<Auth>().expect("missing auth context");
 	view! {
@@ -57,7 +103,7 @@ pub fn TimelineFeed(tl: Timeline) -> impl IntoView {
 						Some(apb::BaseType::Object(apb::ObjectType::Activity(_))) => {
 							let object_id = item.object().id().unwrap_or_default();
 							let object = CACHE.get(&object_id).map(|obj| {
-								view! { <ObjectInline object=obj /> }
+								view! { <Object object=obj /> }
 							});
 							view! {
 								<ActivityLine activity=item />
