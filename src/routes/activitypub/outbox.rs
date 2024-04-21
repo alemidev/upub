@@ -11,33 +11,31 @@ pub async fn page(
 	State(ctx): State<Context>,
 	Query(page): Query<Pagination>,
 	AuthIdentity(auth): AuthIdentity,
-) -> Result<JsonLD<serde_json::Value>, StatusCode> {
+) -> crate::Result<JsonLD<serde_json::Value>> {
 	let limit = page.batch.unwrap_or(20).min(50);
 	let offset = page.offset.unwrap_or(0);
 
-	match model::addressing::Entity::find_activities()
+	let items = model::addressing::Entity::find_activities()
 		.filter(auth.filter_condition())
 		// TODO also limit to only local activities
 		.order_by(model::addressing::Column::Published, Order::Desc)
 		.limit(limit)
 		.offset(offset)
 		.into_model::<EmbeddedActivity>()
-		.all(ctx.db()).await
-	{
-		Err(_e) => Err(StatusCode::INTERNAL_SERVER_ERROR),
-		Ok(items) => {
-			Ok(JsonLD(
-				ctx.ap_collection_page(
-					&url!(ctx, "/outbox/page"),
-					offset, limit,
-					items
-						.into_iter()
-						.map(|x| x.into())
-						.collect()
-				).ld_context()
-			))
-		},
+		.all(ctx.db()).await?;
+	
+	let mut out = Vec::new();
+	for item in items {
+		out.push(item.ap_filled(ctx.db()).await?);
 	}
+
+	Ok(JsonLD(
+		ctx.ap_collection_page(
+			&url!(ctx, "/outbox/page"),
+			offset, limit,
+			out,
+		).ld_context()
+	))
 }
 
 pub async fn post(

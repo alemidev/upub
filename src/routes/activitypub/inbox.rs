@@ -28,14 +28,14 @@ pub async fn page(
 		.into_model::<EmbeddedActivity>()
 		.all(ctx.db())
 		.await?;
+	let mut out = Vec::new();
+	for activity in activities {
+		out.push(activity.ap_filled(ctx.db()).await?);
+	}
 	Ok(JsonLD(
 		ctx.ap_collection_page(
 			&url!(ctx, "/inbox/page"),
-			offset, limit,
-			activities
-				.into_iter()
-				.map(|x| x.into())
-				.collect()
+			offset, limit, out,
 		).ld_context()
 	))
 }

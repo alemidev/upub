@@ -2,7 +2,7 @@ pub mod replies;
 
 use apb::{BaseMut, CollectionMut, ObjectMut};
 use axum::extract::{Path, Query, State};
-use sea_orm::{ColumnTrait, QueryFilter};
+use sea_orm::{ColumnTrait, ModelTrait, QueryFilter};
 
 use crate::{errors::UpubError, model::{self, addressing::WrappedObject}, server::{auth::AuthIdentity, fetcher::Fetcher, Context}};
 
@@ -33,6 +33,13 @@ pub async fn view(
 		return Err(UpubError::not_found());
 	};
 
+	let attachments = object.object.find_related(model::attachment::Entity)
+		.all(ctx.db())
+		.await?
+		.into_iter()
+		.map(|x| x.ap())
+		.collect::<Vec<serde_json::Value>>();
+
 	let replies = 
 		serde_json::Value::new_object()
 			.set_id(Some(&crate::url!(ctx, "/objects/{id}/replies")))
@@ -43,6 +50,7 @@ pub async fn view(
 	Ok(JsonLD(
 		object.object.ap()
 			.set_replies(apb::Node::object(replies))
+			.set_attachment(apb::Node::Array(attachments))
 			.ld_context()
 	))
 }

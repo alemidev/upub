@@ -1,4 +1,4 @@
-use apb::{ActivityMut, Node};
+use apb::{ActivityMut, ObjectMut};
 use sea_orm::{entity::prelude::*, FromQueryResult, Iterable, QuerySelect, SelectColumns};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
@@ -67,12 +67,22 @@ pub struct EmbeddedActivity {
 	pub object: Option<crate::model::object::Model>,
 }
 
-impl From<EmbeddedActivity> for serde_json::Value {
-	fn from(value: EmbeddedActivity) -> Self {
-		let a = value.activity.ap();
-		match value.object {
-			None => a,
-			Some(o) => a.set_object(Node::object(o.ap())),
+impl EmbeddedActivity {
+	pub async fn ap_filled(self, db: &DatabaseConnection) -> crate::Result<serde_json::Value> {
+		let a = self.activity.ap();
+		match self.object {
+			None => Ok(a),
+			Some(o) => {
+				let attachments = o.find_related(crate::model::attachment::Entity)
+					.all(db)
+					.await?
+					.into_iter()
+					.map(|x| x.ap())
+					.collect();
+				Ok(a.set_object(
+					apb::Node::object(o.ap().set_attachment(apb::Node::array(attachments)))
+				))
+			}
 		}
 	}
 }
@@ -91,13 +101,20 @@ pub struct WrappedObject {
 	pub object: crate::model::object::Model,
 }
 
-impl From<WrappedObject> for serde_json::Value {
-	fn from(value: WrappedObject) -> Self {
-		match value.activity {
-			None => value.object.ap(),
-			Some(a) => a.ap().set_object(
-				Node::object(value.object.ap())
-			),
+
+impl WrappedObject {
+	pub async fn ap_filled(self, db: &DatabaseConnection) -> crate::Result<serde_json::Value> {
+		let attachments = self.object.find_related(crate::model::attachment::Entity)
+			.all(db)
+			.await?
+			.into_iter()
+			.map(|x| x.ap())
+			.collect();
+		let o = self.object.ap()
+			.set_attachment(apb::Node::Array(attachments));
+		match self.activity {
+			None => Ok(o),
+			Some(a) => Ok(a.ap().set_object(apb::Node::object(o))),
 		}
 	}
 }

@@ -26,7 +26,9 @@ pub async fn view(
 		.one(ctx.db())
 		.await?
 	{
-		Some(activity) => Ok(JsonLD(serde_json::Value::from(activity).ld_context())),
+		Some(activity) => Ok(JsonLD(
+			activity.ap_filled(ctx.db()).await?.ld_context()
+		)),
 		None => Err(UpubError::not_found()),
 	}
 }
