@@ -120,32 +120,45 @@ impl Fetcher for Context {
 	}
 
 	async fn fetch_object(&self, id: &str) -> crate::Result<model::object::Model> {
-		if let Some(x) = model::object::Entity::find_by_id(id).one(self.db()).await? {
-			return Ok(x); // already in db, easy
-		}
-
-		let object = Self::request(
-			Method::GET, id, None, &format!("https://{}", self.domain()), &self.app().private_key, self.domain(),
-		).await?.json::<serde_json::Value>().await?;
-
-		let addressed = object.addressed();
-		let object_model = model::object::Model::new(&object)?;
-
-		for attachment in object.attachment() {
-			let attachment_model = model::attachment::ActiveModel::new(&attachment, object_model.id.clone())?;
-			model::attachment::Entity::insert(attachment_model)
-				.exec(self.db())
-				.await?;
-		}
-
-		let expanded_addresses = self.expand_addressing(addressed).await?;
-		self.address_to(None, Some(&object_model.id), &expanded_addresses).await?;
-
-		model::object::Entity::insert(object_model.clone().into_active_model())
-			.exec(self.db()).await?;
-
-		Ok(object_model)
+		fetch_object_inner(self, id, 0).await
 	}
+}
+
+#[async_recursion::async_recursion]
+async fn fetch_object_inner(ctx: &Context, id: &str, depth: usize) -> crate::Result<model::object::Model> {
+	if let Some(x) = model::object::Entity::find_by_id(id).one(ctx.db()).await? {
+		return Ok(x); // already in db, easy
+	}
+
+	let object = Context::request(
+		Method::GET, id, None, &format!("https://{}", ctx.domain()), &ctx.app().private_key, ctx.domain(),
+	).await?.json::<serde_json::Value>().await?;
+
+	let addressed = object.addressed();
+	let object_model = model::object::Model::new(&object)?;
+
+	if let Some(reply) = &object_model.in_reply_to {
+		if depth <= 16 {
+			fetch_object_inner(ctx, reply, depth + 1).await?;
+		} else {
+			tracing::warn!("thread deeper than 16, giving up fetching more replies");
+		}
+	}
+
+	for attachment in object.attachment() {
+		let attachment_model = model::attachment::ActiveModel::new(&attachment, object_model.id.clone())?;
+		model::attachment::Entity::insert(attachment_model)
+			.exec(ctx.db())
+			.await?;
+	}
+
+	let expanded_addresses = ctx.expand_addressing(addressed).await?;
+	ctx.address_to(None, Some(&object_model.id), &expanded_addresses).await?;
+
+	model::object::Entity::insert(object_model.clone().into_active_model())
+		.exec(ctx.db()).await?;
+
+	Ok(object_model)
 }
 
 #[axum::async_trait]
