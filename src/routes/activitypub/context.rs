@@ -1,7 +1,7 @@
 use axum::extract::{Path, Query, State};
 use sea_orm::{ColumnTrait, Order, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect};
 
-use crate::{model, routes::activitypub::{jsonld::LD, JsonLD, Pagination}, server::{auth::AuthIdentity, Context}, url};
+use crate::{model::{self, addressing::WrappedObject}, routes::activitypub::{jsonld::LD, JsonLD, Pagination}, server::{auth::AuthIdentity, Context}, url};
 
 pub async fn get(
 	State(ctx): State<Context>,
@@ -45,7 +45,7 @@ pub async fn page(
 		.order_by(model::addressing::Column::Published, Order::Desc)
 		.limit(limit)
 		.offset(offset)
-		.into_model::<model::object::Model>()
+		.into_model::<WrappedObject>()
 		.all(ctx.db())
 		.await?;
 
@@ -55,7 +55,7 @@ pub async fn page(
 			offset, limit,
 			items
 				.into_iter()
-				.map(|x| x.ap())
+				.map(|x| x.object.ap())
 				.collect()
 		).ld_context()
 	))
