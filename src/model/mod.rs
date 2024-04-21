@@ -10,6 +10,7 @@ pub mod like;
 pub mod credential;
 pub mod session;
 pub mod delivery;
+pub mod attachment;
 pub mod application;
 
 #[cfg(feature = "faker")]

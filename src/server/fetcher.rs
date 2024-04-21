@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use apb::target::Addressed;
+use apb::{target::Addressed, Object};
 use base64::Engine;
 use reqwest::{header::{ACCEPT, CONTENT_TYPE, USER_AGENT}, Method, Response};
 use sea_orm::{EntityTrait, IntoActiveModel};
@@ -130,6 +130,13 @@ impl Fetcher for Context {
 
 		let addressed = object.addressed();
 		let object_model = model::object::Model::new(&object)?;
+
+		for attachment in object.attachment() {
+			let attachment_model = model::attachment::ActiveModel::new(&attachment, object_model.id.clone())?;
+			model::attachment::Entity::insert(attachment_model)
+				.exec(self.db())
+				.await?;
+		}
 
 		let expanded_addresses = self.expand_addressing(addressed).await?;
 		self.address_to(None, Some(&object_model.id), &expanded_addresses).await?;

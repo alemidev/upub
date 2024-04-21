@@ -33,6 +33,12 @@ impl apb::server::Inbox for Context {
 		let oid = object_model.id.clone();
 		model::object::Entity::insert(object_model.into_active_model()).exec(self.db()).await?;
 		model::activity::Entity::insert(activity_model.into_active_model()).exec(self.db()).await?;
+		for attachment in object_node.attachment() {
+			let attachment_model = model::attachment::ActiveModel::new(&attachment, oid.clone())?;
+			model::attachment::Entity::insert(attachment_model)
+				.exec(self.db())
+				.await?;
+		}
 		let expanded_addressing = self.expand_addressing(activity.addressed()).await?;
 		self.address_to(Some(&aid), Some(&oid), &expanded_addressing).await?;
 		tracing::info!("{} posted {}", aid, oid);

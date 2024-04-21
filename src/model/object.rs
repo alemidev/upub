@@ -48,7 +48,7 @@ impl Model {
 			bcc: object.bcc().into(),
 		})
 	}
-	// TODO this is used outside /routes, maybe move in model?
+
 	pub fn ap(self) -> serde_json::Value {
 		serde_json::Value::new_object()
 			.set_id(Some(&self.id))
@@ -81,6 +81,9 @@ pub enum Relation {
 
 	#[sea_orm(has_many = "super::addressing::Entity")]
 	Addressing,
+
+	#[sea_orm(has_many = "super::attachment::Entity")]
+	Attachment,
 }
 
 impl Related<super::activity::Entity> for Entity {
@@ -98,6 +101,12 @@ impl Related<super::user::Entity> for Entity {
 impl Related<super::addressing::Entity> for Entity {
 	fn to() -> RelationDef {
 		Relation::Addressing.def()
+	}
+}
+
+impl Related<super::attachment::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Attachment.def()
 	}
 }
 
