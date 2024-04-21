@@ -27,6 +27,8 @@ pub async fn view(
 			.set_inbox(apb::Node::link(url!(ctx, "/inbox")))
 			.set_outbox(apb::Node::link(url!(ctx, "/outbox")))
 			.set_published(Some(ctx.app().created))
+			.set_endpoints(apb::Node::Empty)
+			.set_preferred_username(Some(ctx.domain()))
 			.set_public_key(apb::Node::object(
 				serde_json::Value::new_object()
 					.set_id(Some(&url!(ctx, "#main-key")))
