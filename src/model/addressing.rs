@@ -120,8 +120,6 @@ impl Entity {
 			.distinct()
 			.select_only()
 			.join(sea_orm::JoinType::InnerJoin, Relation::Activity.def())
-			// INNERJOIN: filter out addressings for which we don't have an activity anymore
-			// TODO we could in theory return just the link or fetch them again, just ignoring them is mehh
 			.join(sea_orm::JoinType::LeftJoin, crate::model::activity::Relation::Object.def());
 
 		for col in crate::model::activity::Column::iter() {
@@ -140,9 +138,7 @@ impl Entity {
 			.distinct()
 			.select_only()
 			.join(sea_orm::JoinType::InnerJoin, Relation::Object.def())
-			// INNERJOIN: filter out addressings for which we don't have an object anymore
-			// TODO we could in theory return just the link or fetch them again, just ignoring them is mehh
-			.join(sea_orm::JoinType::LeftJoin, crate::model::object::Relation::Activity.def().rev());
+			.join(sea_orm::JoinType::LeftJoin, crate::model::object::Relation::Activity.def());
 
 		for col in crate::model::object::Column::iter() {
 			select = select.select_column_as(col, format!("{}{}", crate::model::object::Entity.table_name(), col.to_string()));
