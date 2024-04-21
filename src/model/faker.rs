@@ -57,7 +57,7 @@ pub async fn faker(db: &sea_orm::DatabaseConnection, domain: String, count: u64)
 		addressing::Entity::insert(addressing::ActiveModel {
 			actor: Set(apb::target::PUBLIC.to_string()),
 			server: Set("www.w3.org".to_string()),
-			activity: Set(format!("{domain}/activities/{aid}")),
+			activity: Set(Some(format!("{domain}/activities/{aid}"))),
 			object: Set(Some(format!("{domain}/objects/{oid}"))),
 			published: Set(chrono::Utc::now()),
 			..Default::default()

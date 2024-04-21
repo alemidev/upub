@@ -8,7 +8,7 @@ pub struct Model {
 	pub id: i64,
 	pub actor: String,
 	pub server: String,
-	pub activity: String,
+	pub activity: Option<String>,
 	pub object: Option<String>,
 	pub published: ChronoDateTimeUtc,
 }
@@ -57,6 +57,10 @@ impl Related<super::object::Entity> for Entity {
 
 impl ActiveModelBehavior for ActiveModel {}
 
+
+
+
+
 #[derive(Debug)]
 pub struct EmbeddedActivity {
 	pub activity: crate::model::activity::Model,
@@ -80,6 +84,35 @@ impl FromQueryResult for EmbeddedActivity {
 		Ok(Self { activity, object })
 	}
 }
+
+#[derive(Debug)]
+pub struct WrappedObject {
+	pub activity: Option<crate::model::activity::Model>,
+	pub object: crate::model::object::Model,
+}
+
+impl From<WrappedObject> for serde_json::Value {
+	fn from(value: WrappedObject) -> Self {
+		match value.activity {
+			None => value.object.ap(),
+			Some(a) => a.ap().set_object(
+				Node::object(value.object.ap())
+			),
+		}
+	}
+}
+
+impl FromQueryResult for WrappedObject {
+	fn from_query_result(res: &sea_orm::QueryResult, _pre: &str) -> Result<Self, sea_orm::DbErr> {
+		let activity = crate::model::activity::Model::from_query_result(res, crate::model::activity::Entity.table_name()).ok();
+		let object = crate::model::object::Model::from_query_result(res, crate::model::object::Entity.table_name())?;
+		Ok(Self { activity, object })
+	}
+}
+
+
+
+
 
 impl Entity {
 	pub fn find_activities() -> Select<Entity> {
@@ -106,12 +139,17 @@ impl Entity {
 		let mut select = Entity::find()
 			.distinct()
 			.select_only()
-			.join(sea_orm::JoinType::InnerJoin, Relation::Object.def());
+			.join(sea_orm::JoinType::InnerJoin, Relation::Object.def())
 			// INNERJOIN: filter out addressings for which we don't have an object anymore
 			// TODO we could in theory return just the link or fetch them again, just ignoring them is mehh
+			.join(sea_orm::JoinType::LeftJoin, crate::model::object::Relation::Activity.def().rev());
 
 		for col in crate::model::object::Column::iter() {
-			select = select.select_column(col);
+			select = select.select_column_as(col, format!("{}{}", crate::model::object::Entity.table_name(), col.to_string()));
+		}
+
+		for col in crate::model::activity::Column::iter() {
+			select = select.select_column_as(col, format!("{}{}", crate::model::activity::Entity.table_name(), col.to_string()));
 		}
 
 		select

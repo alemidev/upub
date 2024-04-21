@@ -114,7 +114,7 @@ impl Fetcher for Context {
 			.exec(self.db()).await?;
 
 		let expanded_addresses = self.expand_addressing(addressed).await?;
-		self.address_to(&activity_model.id, activity_model.object.as_deref(), &expanded_addresses).await?;
+		self.address_to(Some(&activity_model.id), None, &expanded_addresses).await?;
 
 		Ok(activity_model)
 	}
@@ -131,29 +131,9 @@ impl Fetcher for Context {
 		let addressed = object.addressed();
 		let object_model = model::object::Model::new(&object)?;
 
-		// since bare objects make no sense in our representation, we create a mock activity attributed to
-		// our server actor which creates this object. we respect all addressing we were made aware of
-		// and claim no ownership of this object, pointing to the original author if it's given.
-		// TODO it may be cool to make a system that, when the "true" activity is discovered, deletes
-		// this and replaces the addressing entries? idk kinda lot of work
-		let wrapper_activity_model = model::activity::Model {
-			id: self.aid(uuid::Uuid::new_v4().to_string()),
-			activity_type: apb::ActivityType::Create,
-			actor: self.base(),
-			object: Some(object_model.id.clone()),
-			target: object_model.attributed_to.clone(),
-			cc: object_model.cc.clone(),
-			bcc: object_model.bcc.clone(),
-			to: object_model.to.clone(),
-			bto: object_model.bto.clone(),
-			published: chrono::Utc::now(),
-		};
-
 		let expanded_addresses = self.expand_addressing(addressed).await?;
-		self.address_to(&wrapper_activity_model.id, Some(&object_model.id), &expanded_addresses).await?;
+		self.address_to(None, Some(&object_model.id), &expanded_addresses).await?;
 
-		model::activity::Entity::insert(wrapper_activity_model.into_active_model())
-			.exec(self.db()).await?;
 		model::object::Entity::insert(object_model.clone().into_active_model())
 			.exec(self.db()).await?;
 

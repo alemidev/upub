@@ -34,7 +34,7 @@ impl apb::server::Inbox for Context {
 		model::object::Entity::insert(object_model.into_active_model()).exec(self.db()).await?;
 		model::activity::Entity::insert(activity_model.into_active_model()).exec(self.db()).await?;
 		let expanded_addressing = self.expand_addressing(activity.addressed()).await?;
-		self.address_to(&aid, Some(&oid), &expanded_addressing).await?;
+		self.address_to(Some(&aid), Some(&oid), &expanded_addressing).await?;
 		tracing::info!("{} posted {}", aid, oid);
 		Ok(())
 	}
@@ -65,7 +65,7 @@ impl apb::server::Inbox for Context {
 					.exec(self.db())
 					.await?;
 				let expanded_addressing = self.expand_addressing(activity.addressed()).await?;
-				self.address_to(aid, None, &expanded_addressing).await?;
+				self.address_to(Some(aid), None, &expanded_addressing).await?;
 				model::object::Entity::update_many()
 					.col_expr(model::object::Column::Likes, Expr::col(model::object::Column::Likes).add(1))
 					.filter(model::object::Column::Id.eq(oid.clone()))
@@ -84,7 +84,7 @@ impl apb::server::Inbox for Context {
 		model::activity::Entity::insert(activity_model.into_active_model())
 			.exec(self.db()).await?;
 		let expanded_addressing = self.expand_addressing(activity.addressed()).await?;
-		self.address_to(&aid, None, &expanded_addressing).await?;
+		self.address_to(Some(&aid), None, &expanded_addressing).await?;
 		Ok(())
 	}
 
@@ -125,7 +125,7 @@ impl apb::server::Inbox for Context {
 		).exec(self.db()).await?;
 
 		let expanded_addressing = self.expand_addressing(activity.addressed()).await?;
-		self.address_to(&activity_model.id, None, &expanded_addressing).await?;
+		self.address_to(Some(&activity_model.id), None, &expanded_addressing).await?;
 		Ok(())
 	}
 
@@ -151,7 +151,7 @@ impl apb::server::Inbox for Context {
 			.await?;
 
 		let expanded_addressing = self.expand_addressing(activity.addressed()).await?;
-		self.address_to(&activity_model.id, None, &expanded_addressing).await?;
+		self.address_to(Some(&activity_model.id), None, &expanded_addressing).await?;
 		Ok(())
 	}
 
@@ -199,7 +199,7 @@ impl apb::server::Inbox for Context {
 			.exec(self.db())
 			.await?;
 		let expanded_addressing = self.expand_addressing(activity.addressed()).await?;
-		self.address_to(&aid, Some(&oid), &expanded_addressing).await?;
+		self.address_to(Some(&aid), Some(&oid), &expanded_addressing).await?;
 		Ok(())
 	}
 
@@ -263,7 +263,7 @@ impl apb::server::Inbox for Context {
 		};
 
 		let expanded_addressing = self.expand_addressing(activity.addressed()).await?;
-		self.address_to(&activity_model.id, None, &expanded_addressing).await?;
+		self.address_to(Some(&activity_model.id), None, &expanded_addressing).await?;
 		model::share::Entity::insert(share)
 			.exec(self.db()).await?;
 		model::activity::Entity::insert(activity_model.clone().into_active_model())

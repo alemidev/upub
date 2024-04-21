@@ -156,18 +156,19 @@ impl Context {
 		Ok(out)
 	}
 
-	pub async fn address_to(&self, aid: &str, oid: Option<&str>, targets: &[String]) -> crate::Result<()> {
-		let local_activity = self.is_local(aid);
+	pub async fn address_to(&self, aid: Option<&str>, oid: Option<&str>, targets: &[String]) -> crate::Result<()> {
+		let local_activity = aid.map(|x| self.is_local(x)).unwrap_or(false);
+		let local_object = oid.map(|x| self.is_local(x)).unwrap_or(false);
 		let addressings : Vec<model::addressing::ActiveModel> = targets
 			.iter()
 			.filter(|to| !to.is_empty())
 			.filter(|to| !to.ends_with("/followers"))
-			.filter(|to| local_activity || to.as_str() == apb::target::PUBLIC || self.is_local(to))
+			.filter(|to| local_activity || local_object || to.as_str() == apb::target::PUBLIC || self.is_local(to))
 			.map(|to| model::addressing::ActiveModel {
 				id: sea_orm::ActiveValue::NotSet,
 				server: Set(Context::server(to)),
 				actor: Set(to.to_string()),
-				activity: Set(aid.to_string()),
+				activity: Set(aid.map(|x| x.to_string())),
 				object: Set(oid.map(|x| x.to_string())),
 				published: Set(chrono::Utc::now()),
 			})
@@ -241,7 +242,7 @@ impl Context {
 
 	pub async fn dispatch(&self, uid: &str, activity_targets: Vec<String>, aid: &str, oid: Option<&str>) -> crate::Result<()> {
 		let addressed = self.expand_addressing(activity_targets).await?;
-		self.address_to(aid, oid, &addressed).await?;
+		self.address_to(Some(aid), oid, &addressed).await?;
 		self.deliver_to(aid, uid, &addressed).await?;
 		Ok(())
 	}
