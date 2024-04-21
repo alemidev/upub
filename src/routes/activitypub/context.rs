@@ -34,8 +34,10 @@ pub async fn page(
 
 	let context = if id.starts_with('+') {
 		format!("https://{}", id.replacen('+', "", 1).replace('@', "/"))
+	} else if id.starts_with("tag:") {
+		id.clone()
 	} else {
-		url!(ctx, "/context/{id}")
+		url!(ctx, "/context/{id}") // TODO need a better way to figure out which ones are our contexts
 	};
 
 	let items = model::addressing::Entity::find_objects()
