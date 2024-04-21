@@ -42,9 +42,11 @@ pub struct Model {
 impl Model {
 	pub fn new(object: &impl Actor) -> Result<Self, super::FieldError> {
 		let ap_id = object.id().ok_or(super::FieldError("id"))?.to_string();
-		let (domain, preferred_username) = split_user_id(&ap_id);
+		let (domain, fallback_preferred_username) = split_user_id(&ap_id);
 		Ok(Model {
-			id: ap_id, preferred_username, domain,
+			id: ap_id,
+			domain,
+			preferred_username: object.preferred_username().unwrap_or(&fallback_preferred_username).to_string(),
 			actor_type: object.actor_type().ok_or(super::FieldError("type"))?,
 			name: object.name().map(|x| x.to_string()),
 			summary: object.summary().map(|x| x.to_string()),
