@@ -1,7 +1,8 @@
 use apb::{ActorMut, BaseMut, ObjectMut, PublicKeyMut};
-use axum::{extract::State, http::HeaderMap, response::{IntoResponse, Redirect, Response}};
+use axum::{extract::{Query, State}, http::HeaderMap, response::{IntoResponse, Redirect, Response}, Json};
+use reqwest::Method;
 
-use crate::{server::Context, url};
+use crate::{errors::UpubError, server::{auth::{AuthIdentity, Identity}, fetcher::Fetcher, Context}, url};
 
 use super::{jsonld::LD, JsonLD};
 
@@ -34,4 +35,33 @@ pub async fn view(
 			))
 			.ld_context()
 	).into_response())
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct FetchPath {
+	id: String,
+}
+
+pub async fn debug(
+	State(ctx): State<Context>,
+	Query(query): Query<FetchPath>,
+	AuthIdentity(auth): AuthIdentity,
+) -> crate::Result<Json<serde_json::Value>> {
+	// only local users can request debug fetches
+	if !matches!(auth, Identity::Local(_)) {
+		return Err(UpubError::unauthorized());
+	}
+	Ok(Json(
+		Context::request(
+			Method::GET,
+			&query.id,
+			None,
+			&ctx.base(),
+			&ctx.app().private_key,
+			ctx.domain(),
+		)
+			.await?
+			.json::<serde_json::Value>()
+			.await?
+	))
 }
