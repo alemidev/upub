@@ -199,12 +199,12 @@ pub fn TimelinePage(name: &'static str, tl: Timeline) -> impl IntoView {
 
 #[component]
 pub fn DebugPage() -> impl IntoView {
-	let url_ref: NodeRef<html::Input> = create_node_ref();
 	let (object, set_object) = create_signal(serde_json::Value::String(
 		"use this view to fetch remote AP objects and inspect their content".into())
 	);
 	let cached_ref: NodeRef<html::Input> = create_node_ref();
 	let auth = use_context::<Auth>().expect("missing auth context");
+	let (query, set_query) = create_signal("".to_string());
 	view! {
 		<div>
 			<Breadcrumb back=true>debug</Breadcrumb>
@@ -212,7 +212,7 @@ pub fn DebugPage() -> impl IntoView {
 				<form on:submit=move|ev| {
 					ev.prevent_default();
 					let cached = cached_ref.get().map(|x| x.checked()).unwrap_or_default();
-					let fetch_url = url_ref.get().map(|x| x.value()).unwrap_or("".into());
+					let fetch_url = query.get();
 					if cached {
 						match CACHE.get(&fetch_url) {
 							Some(x) => set_object.set(x),
@@ -230,7 +230,16 @@ pub fn DebugPage() -> impl IntoView {
 				} >
 				<table class="align w-100" >
 					<tr>
-						<td><input class="w-100" type="text" node_ref=url_ref placeholder="AP id" /></td>
+						<td class="w-100"><input class="w-100" type="text" on:input=move|ev| set_query.set(event_target_value(&ev)) placeholder="AP id" /></td>
+						<td>
+							<small><a
+								href={move|| Uri::web(FetchKind::Object, &query.get())}
+							>obj</a>
+								" "
+							<a
+								href={move|| Uri::web(FetchKind::User, &query.get())}
+							>usr</a></small>
+						</td>
 						<td><input type="submit" class="w-100" value="fetch" /></td>
 						<td><input type="checkbox" title="cached" value="cached" node_ref=cached_ref /></td>
 					</tr>
