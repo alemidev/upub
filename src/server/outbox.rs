@@ -244,4 +244,119 @@ impl apb::server::Outbox for Context {
 
 		Ok(aid)
 	}
+
+	async fn delete(&self, uid: String, activity: serde_json::Value) -> crate::Result<String> {
+		let aid = self.aid(uuid::Uuid::new_v4().to_string());
+		let oid = activity.object().id().ok_or_else(UpubError::bad_request)?;
+
+		let object = model::object::Entity::find_by_id(&oid)
+			.one(self.db())
+			.await?
+			.ok_or_else(UpubError::not_found)?;
+
+		let Some(author_id) = object.attributed_to else {
+			// can't change local objects attributed to nobody
+			return Err(UpubError::forbidden())
+		};
+
+		if author_id != uid {
+			// can't change objects of others
+			return Err(UpubError::forbidden());
+		}
+
+		let addressed = activity.addressed();
+		let activity_model = model::activity::Model::new(
+			&activity
+				.set_id(Some(&aid))
+				.set_actor(Node::link(uid.clone()))
+				.set_published(Some(chrono::Utc::now()))
+		)?;
+
+		model::object::Entity::delete_by_id(&oid)
+			.exec(self.db())
+			.await?;
+
+		model::activity::Entity::insert(activity_model.into_active_model())
+			.exec(self.db())
+			.await?;
+
+		self.dispatch(&uid, addressed, &aid, None).await?;
+
+		Ok(aid)
+	}
+
+	async fn update(&self, uid: String, activity: serde_json::Value) -> crate::Result<String> {
+		let aid = self.aid(uuid::Uuid::new_v4().to_string());
+		let object_node = activity.object().extract().ok_or_else(UpubError::bad_request)?;
+		let mut object_model = model::object::Model::new(&object_node)?;
+
+		let old_object_model = model::object::Entity::find_by_id(&object_model.id)
+			.one(self.db())
+			.await?
+			.ok_or_else(UpubError::not_found)?;
+
+		// can't change local objects attributed to nobody
+		let author_id = old_object_model.attributed_to.ok_or_else(UpubError::forbidden)?;
+		if author_id != uid {
+			// can't change objects of others
+			return Err(UpubError::forbidden());
+		}
+
+		object_model.id = old_object_model.id;
+		object_model.attributed_to = Some(uid.clone());
+		object_model.context = old_object_model.context;
+		object_model.likes = old_object_model.likes;
+		object_model.shares = old_object_model.shares;
+		object_model.comments = old_object_model.comments;
+		object_model.bto = old_object_model.bto;
+		object_model.to = old_object_model.to;
+		object_model.bcc = old_object_model.bcc;
+		object_model.cc = old_object_model.cc;
+
+		let addressed = activity.addressed();
+		let activity_model = model::activity::Model::new(
+			&activity
+				.set_id(Some(&aid))
+				.set_actor(Node::link(uid.clone()))
+				.set_published(Some(chrono::Utc::now()))
+		)?;
+
+		model::object::Entity::update(object_model.into_active_model())
+			.exec(self.db())
+			.await?;
+
+		model::activity::Entity::insert(activity_model.into_active_model())
+			.exec(self.db())
+			.await?;
+
+		self.dispatch(&uid, addressed, &aid, None).await?;
+
+		Ok(aid)
+	}
+
+	async fn announce(&self, uid: String, activity: serde_json::Value) -> crate::Result<String> {
+		let aid = self.aid(uuid::Uuid::new_v4().to_string());
+		let activity_targets = activity.addressed();
+		let oid = activity.object().id().ok_or_else(UpubError::bad_request)?;
+		let activity_model = model::activity::Model::new(
+			&activity
+				.set_id(Some(&aid))
+				.set_published(Some(chrono::Utc::now()))
+				.set_actor(Node::link(uid.clone()))
+		)?;
+
+		let share_model = model::share::ActiveModel {
+			actor: Set(uid.clone()),
+			shares: Set(oid),
+			date: Set(chrono::Utc::now()),
+			..Default::default()
+		};
+		model::share::Entity::insert(share_model).exec(self.db()).await?;
+		model::activity::Entity::insert(activity_model.into_active_model())
+			.exec(self.db()).await?;
+
+		self.dispatch(&uid, activity_targets, &aid, None).await?;
+
+		Ok(aid)
+	}
 }
