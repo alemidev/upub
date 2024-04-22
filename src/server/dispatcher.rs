@@ -76,8 +76,16 @@ async fn worker(db: DatabaseConnection, domain: String, poll_interval: u64, mut 
 			.one(&db)
 			.await? // TODO probably should not fail here and at least re-insert the delivery
 		{
-			Some((activity, Some(object))) => activity.ap().set_object(Node::object(object.ap())),
 			Some((activity, None)) => activity.ap(),
+			Some((activity, Some(object))) => {
+				// embed local object when dispatching
+				// TODO this .contains() is jank, could trick us into embedding remote activities
+				if object.id.contains(&domain) {
+					activity.ap().set_object(Node::object(object.ap()))
+				} else {
+					activity.ap()
+				}
+			},
 			None => {
 				tracing::warn!("skipping dispatch for deleted object {}", delivery.activity);
 				continue;
