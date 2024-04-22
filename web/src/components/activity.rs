@@ -16,22 +16,18 @@ pub fn ActivityLine(activity: serde_json::Value) -> impl IntoView {
 	let kind = activity.activity_type().unwrap_or(apb::ActivityType::Activity);
 	view! {
 		<div>
-			<table class="align w-100" style="table-layout: fixed">
-				<tr>
-					<td>
-						<a href={Uri::web(FetchKind::User, &actor_id)} class="clean hover">
-							<img src={avatar} class="avatar-inline mr-s ml-1" /><b>{username}</b><small>@{domain}</small>
-						</a>
-					</td>
-					<td class="rev" >
-						<code class="color moreinfo" title={object_id.clone()} >{kind.as_ref().to_string()}</code>
-						<a class="hover ml-1" href={Uri::web(FetchKind::Object, &object_id)} >
-							<DateTime t=activity.published() />
-						</a>
-						<PrivacyMarker addressed=activity.addressed() />
-					</td>
-				</tr>
-			</table>
+			<a href={Uri::web(FetchKind::User, &actor_id)} class="clean hover">
+				<img src={avatar} class="avatar-inline mr-s ml-1-r" /><b>{username}</b><small>@{domain}</small>
+			</a>
+			<span style="float:right">
+				<a class="upub-title clean" href={Uri::web(FetchKind::Object, &object_id)} ><code class="color moreinfo" title={object_id.clone()} >{kind.as_ref().to_string()}</code></a>
+				<a class="hover ml-1 hidden-on-mobile" href={Uri::web(FetchKind::Object, &object_id)} >
+					<DateTime t=activity.published() />
+				</a>
+				<span class="hidden-on-mobile">
+				<PrivacyMarker addressed=activity.addressed() />
+				</span>
+			</span>
 		</div>
 	}
 }

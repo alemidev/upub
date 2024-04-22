@@ -154,6 +154,7 @@
 		}
 		img.attachment {
 			max-height: 15em;
+			max-width: 90%;
 			border: 5px solid #bf616a;
 			padding: 5px;
 		}
@@ -184,7 +185,13 @@
 			color: var(--background);
 			cursor: pointer;
 		}
+		.ml-1-r {
+			margin-left: 1em;
+		}
 		@media screen and (max-width: 786px) {
+			.ml-1-r {
+				margin-left: 0;
+			}
 			.hidden-on-mobile {
 				display: none;
 			}
