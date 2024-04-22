@@ -14,6 +14,7 @@ use clap::{Parser, Subcommand};
 use sea_orm::{ConnectOptions, Database, EntityTrait, IntoActiveModel};
 
 pub use errors::UpubResult as Result;
+use server::fetcher::Fetcher;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 
 use crate::server::fetcher::Fetchable;
@@ -65,6 +66,12 @@ enum CliCommand {
 		/// store fetched object in local db
 		save: bool,
 	},
+
+	/// follow a remote relay
+	Relay {
+		/// actor url, same as with pleroma
+		actor: String,
+	}
 }
 
 #[tokio::main]
@@ -97,6 +104,35 @@ async fn main() {
 
 		CliCommand::Fetch { uri, save } => fetch(db, args.domain, uri, save)
 			.await.expect("error fetching object"),
+
+		CliCommand::Relay { actor } => {
+			let ctx = server::Context::new(db, args.domain)
+				.await.expect("failed creating server context");
+
+			let relay = ctx.fetch_user(&actor)
+				.await.expect("could not fetch relay actor");
+			let inbox = relay.inbox.expect("relay has no inbox to deliver to");
+
+			let aid = ctx.aid(uuid::Uuid::new_v4().to_string());
+
+			let activity_model = model::activity::Model {
+				id: aid.clone(),
+				activity_type: apb::ActivityType::Follow,
+				actor: ctx.base(),
+				object: Some(actor),
+				target: None,
+				published: chrono::Utc::now(),
+				cc: model::Audience::default(),
+				bcc: model::Audience::default(),
+				to: model::Audience::default(),
+				bto: model::Audience::default(),
+			};
+			model::activity::Entity::insert(activity_model.into_active_model())
+				.exec(ctx.db()).await.expect("could not insert activity in db");
+
+			ctx.dispatch(&ctx.base(), vec![inbox], &aid, None).await
+				.expect("could not dispatch follow");
+		},
 
 		CliCommand::Serve => {
 			let ctx = server::Context::new(db, args.domain)
