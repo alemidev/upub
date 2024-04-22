@@ -256,7 +256,6 @@ pub fn DebugPage() -> impl IntoView {
 				} >
 				<table class="align w-100" >
 					<tr>
-						<td class="w-100"><input class="w-100" type="text" on:input=move|ev| set_query.set(event_target_value(&ev)) placeholder="AP id" /></td>
 						<td>
 							<small><a
 								href={move|| Uri::web(FetchKind::Object, &query.get())}
@@ -266,6 +265,7 @@ pub fn DebugPage() -> impl IntoView {
 								href={move|| Uri::web(FetchKind::User, &query.get())}
 							>usr</a></small>
 						</td>
+						<td class="w-100"><input class="w-100" type="text" on:input=move|ev| set_query.set(event_target_value(&ev)) placeholder="AP id" /></td>
 						<td><input type="submit" class="w-100" value="fetch" /></td>
 						<td><input type="checkbox" title="cached" value="cached" node_ref=cached_ref /></td>
 					</tr>
