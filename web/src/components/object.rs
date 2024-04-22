@@ -13,7 +13,7 @@ pub fn Object(object: serde_json::Value) -> impl IntoView {
 	let author = CACHE.get_or(&author_id, serde_json::Value::String(author_id.clone()));
 	let attachments = object.attachment()
 		.map(|x| view! {
-			<p><img class="attachment" src={x.url().id().unwrap_or_default()} /></p>
+			<p class="center"><img class="attachment" src={x.url().id().unwrap_or_default()} title={x.name().unwrap_or_default().to_string()} /></p>
 		})
 		.collect_view();
 	view! {
