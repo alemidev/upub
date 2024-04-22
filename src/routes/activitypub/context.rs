@@ -43,7 +43,6 @@ pub async fn page(
 	let items = model::addressing::Entity::find_objects()
 		.filter(auth.filter_condition())
 		.filter(model::object::Column::Context.eq(context))
-		.order_by(model::addressing::Column::Published, Order::Desc)
 		.limit(limit)
 		.offset(offset)
 		.into_model::<WrappedObject>()

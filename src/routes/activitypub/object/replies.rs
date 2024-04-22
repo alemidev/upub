@@ -42,7 +42,6 @@ pub async fn page(
 		.filter(auth.filter_condition())
 		.filter(model::object::Column::InReplyTo.eq(oid))
 		// TODO also limit to only local activities
-		.order_by(model::addressing::Column::Published, Order::Desc)
 		.limit(limit)
 		.offset(offset)
 		.into_model::<WrappedObject>()

@@ -30,7 +30,6 @@ pub async fn page(
 	let activities = model::addressing::Entity::find_activities()
 		.filter(model::activity::Column::Actor.eq(&uid))
 		.filter(auth.filter_condition())
-		.order_by(model::addressing::Column::Published, Order::Desc)
 		.limit(limit)
 		.offset(offset)
 		.into_model::<EmbeddedActivity>()

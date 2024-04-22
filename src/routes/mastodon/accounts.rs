@@ -72,8 +72,7 @@ pub async fn statuses(
 	let uid = ctx.uid(id);
 	model::addressing::Entity::find_activities()
 		.filter(model::activity::Column::Actor.eq(uid))
-		.filter(auth.filter_condition())
-		.order_by(model::addressing::Column::Published, Order::Desc);
+		.filter(auth.filter_condition());
 
 	todo!()
 }

@@ -18,7 +18,6 @@ pub async fn page(
 	let items = model::addressing::Entity::find_activities()
 		.filter(auth.filter_condition())
 		// TODO also limit to only local activities
-		.order_by(model::addressing::Column::Published, Order::Desc)
 		.limit(limit)
 		.offset(offset)
 		.into_model::<EmbeddedActivity>()

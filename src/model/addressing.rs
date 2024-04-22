@@ -1,5 +1,5 @@
 use apb::{ActivityMut, ObjectMut};
-use sea_orm::{entity::prelude::*, FromQueryResult, Iterable, QuerySelect, SelectColumns};
+use sea_orm::{entity::prelude::*, FromQueryResult, Iterable, Order, QueryOrder, QuerySelect, SelectColumns};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "addressing")]
@@ -137,7 +137,8 @@ impl Entity {
 			.distinct()
 			.select_only()
 			.join(sea_orm::JoinType::InnerJoin, Relation::Activity.def())
-			.join(sea_orm::JoinType::LeftJoin, crate::model::activity::Relation::Object.def());
+			.join(sea_orm::JoinType::LeftJoin, crate::model::activity::Relation::Object.def())
+			.order_by(crate::model::activity::Column::Published, Order::Desc);
 
 		for col in crate::model::activity::Column::iter() {
 			select = select.select_column_as(col, format!("{}{}", crate::model::activity::Entity.table_name(), col.to_string()));
@@ -155,7 +156,8 @@ impl Entity {
 			.distinct()
 			.select_only()
 			.join(sea_orm::JoinType::InnerJoin, Relation::Object.def())
-			.join(sea_orm::JoinType::LeftJoin, crate::model::object::Relation::Activity.def());
+			.join(sea_orm::JoinType::LeftJoin, crate::model::object::Relation::Activity.def())
+			.order_by(crate::model::object::Column::Published, Order::Desc);
 
 		for col in crate::model::object::Column::iter() {
 			select = select.select_column_as(col, format!("{}{}", crate::model::object::Entity.table_name(), col.to_string()));
