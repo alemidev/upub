@@ -109,17 +109,13 @@ async fn main() {
 			let ctx = server::Context::new(db, args.domain)
 				.await.expect("failed creating server context");
 
-			let relay = ctx.fetch_user(&actor)
-				.await.expect("could not fetch relay actor");
-			let inbox = relay.inbox.expect("relay has no inbox to deliver to");
-
 			let aid = ctx.aid(uuid::Uuid::new_v4().to_string());
 
 			let activity_model = model::activity::Model {
 				id: aid.clone(),
 				activity_type: apb::ActivityType::Follow,
 				actor: ctx.base(),
-				object: Some(actor),
+				object: Some(actor.clone()),
 				target: None,
 				published: chrono::Utc::now(),
 				cc: model::Audience::default(),
@@ -130,7 +126,7 @@ async fn main() {
 			model::activity::Entity::insert(activity_model.into_active_model())
 				.exec(ctx.db()).await.expect("could not insert activity in db");
 
-			ctx.dispatch(&ctx.base(), vec![inbox], &aid, None).await
+			ctx.dispatch(&ctx.base(), vec![actor], &aid, None).await
 				.expect("could not dispatch follow");
 		},
 
