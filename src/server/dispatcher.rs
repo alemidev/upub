@@ -84,12 +84,24 @@ async fn worker(db: DatabaseConnection, domain: String, poll_interval: u64, mut 
 			},
 		};
 
-		let Some(model::user::Model{ private_key: Some(key), .. }) = model::user::Entity::find_by_id(&delivery.actor)
-			.one(&db).await?
-		else { 
-			tracing::error!("can not dispatch activity for user without private key: {}", delivery.actor);
-			continue;
+		let key = if delivery.actor.ends_with(&domain) {
+			let Some(model::application::Model { private_key: key, .. }) = model::application::Entity::find()
+				.one(&db).await?
+			else {
+				tracing::error!("no private key configured for application");
+				continue;
+			};
+			key
+		} else {
+			let Some(model::user::Model{ private_key: Some(key), .. }) = model::user::Entity::find_by_id(&delivery.actor)
+				.one(&db).await?
+			else { 
+				tracing::error!("can not dispatch activity for user without private key: {}", delivery.actor);
+				continue;
+			};
+			key
 		};
+
 
 		if let Err(e) = Context::request(
 			Method::POST, &delivery.target,
