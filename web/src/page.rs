@@ -34,9 +34,18 @@ pub fn ConfigPage() -> impl IntoView {
 pub fn UserPage(tl: Timeline) -> impl IntoView {
 	let params = use_params_map();
 	let auth = use_context::<Auth>().expect("missing auth context");
-	let id = params.get().get("id").cloned().unwrap_or_default();
-	let _id = id.clone(); // wtf triple clone??? TODO!!
-	let actor = create_local_resource(move || _id.clone(), move |id| {
+	let id = params.get()
+		.get("id")
+		.cloned()
+		.unwrap_or_default();
+	let mut uid = id
+		.replace("/web/objects/", "")
+		.replacen('+', "https://", 1)
+		.replace('@', "/");
+	if !uid.starts_with("http") {
+		uid = format!("{URL_BASE}/web/objects/{uid}");
+	}
+	let actor = create_local_resource(move || params.get().get("id").cloned().unwrap_or_default(), move |id| {
 		async move {
 			match CACHE.get(&Uri::full(FetchKind::User, &id)) {
 				Some(x) => Some(x.clone()),
@@ -52,78 +61,83 @@ pub fn UserPage(tl: Timeline) -> impl IntoView {
 		<div>
 			<Breadcrumb back=true >users::view</Breadcrumb>
 			<div>
-				{move || match actor.get() {
-					None => view! { <p>loading...</p> }.into_view(),
-					Some(None) => view! { <p><code>error loading</code></p> }.into_view(),
-					Some(Some(object)) => {
-						let uid = object.id().unwrap_or_default().to_string();
-						let avatar_url = object.icon().get().map(|x| x.url().id().unwrap_or_default()).unwrap_or_default();
-						let background_url = object.image().get().map(|x| x.url().id().unwrap_or_default()).unwrap_or_default();
-						let display_name = object.name().unwrap_or_default().to_string();
-						let username = object.preferred_username().unwrap_or_default().to_string();
-						let summary = object.summary().unwrap_or_default().to_string();
-						let domain = object.id().unwrap_or_default().replace("https://", "").split('/').next().unwrap_or_default().to_string();
-						let actor_type = object.actor_type().unwrap_or(apb::ActorType::Person);
-						let actor_type_tag = if actor_type == apb::ActorType::Person { None } else {
-							Some(view! { <sup class="ml-s"><small>"["{actor_type.as_ref().to_lowercase()}"]"</small></sup> } )
-						};
-						let created = object.published();
-						let following = object.following().get().map(|x| x.total_items().unwrap_or(0)).unwrap_or(0);
-						let followers = object.followers().get().map(|x| x.total_items().unwrap_or(0)).unwrap_or(0);
-						let statuses = object.outbox().get().map(|x| x.total_items().unwrap_or(0)).unwrap_or(0);
-						let tl_url = format!("{}/outbox/page", Uri::api(FetchKind::User, &id.clone(), false));
-						if !tl.next.get().starts_with(&tl_url) {
-							tl.reset(tl_url);
-						}
-						view! {
-							<div class="ml-3 mr-3">
-								<div 
-									class="banner"
-									style={format!("background: center / cover url({background_url});")}
-								>
-									// <table class="align w-100">
-									// <tr><td rowspan=3>
-									// 	<img src=
+				{move || {
+					let uid = uid.clone();
+					match actor.get() {
+						None => view! { <p class="center">loading...</p> }.into_view(),
+						Some(None) => {
+							view! { <p class="center"><code>loading failed</code><sup><small><a class="clean" href={uid} target="_blank">"↗"</a></small></sup></p> }.into_view()
+						},
+						Some(Some(object)) => {
+							let uid = object.id().unwrap_or_default().to_string();
+							let avatar_url = object.icon().get().map(|x| x.url().id().unwrap_or_default()).unwrap_or_default();
+							let background_url = object.image().get().map(|x| x.url().id().unwrap_or_default()).unwrap_or_default();
+							let display_name = object.name().unwrap_or_default().to_string();
+							let username = object.preferred_username().unwrap_or_default().to_string();
+							let summary = object.summary().unwrap_or_default().to_string();
+							let domain = object.id().unwrap_or_default().replace("https://", "").split('/').next().unwrap_or_default().to_string();
+							let actor_type = object.actor_type().unwrap_or(apb::ActorType::Person);
+							let actor_type_tag = if actor_type == apb::ActorType::Person { None } else {
+								Some(view! { <sup class="ml-s"><small>"["{actor_type.as_ref().to_lowercase()}"]"</small></sup> } )
+							};
+							let created = object.published();
+							let following = object.following().get().map(|x| x.total_items().unwrap_or(0)).unwrap_or(0);
+							let followers = object.followers().get().map(|x| x.total_items().unwrap_or(0)).unwrap_or(0);
+							let statuses = object.outbox().get().map(|x| x.total_items().unwrap_or(0)).unwrap_or(0);
+							let tl_url = format!("{}/outbox/page", Uri::api(FetchKind::User, &id.clone(), false));
+							if !tl.next.get().starts_with(&tl_url) {
+								tl.reset(tl_url);
+							}
+							view! {
+								<div class="ml-3 mr-3">
+									<div 
+										class="banner"
+										style={format!("background: center / cover url({background_url});")}
+									>
+										// <table class="align w-100">
+										// <tr><td rowspan=3>
+										// 	<img src=
 
-									// </table>
-									<div style="height: 10em"></div>
+										// </table>
+										<div style="height: 10em"></div>
+									</div>
+									<div class="overlap">
+										<table class="pl-2 pr-2 align w-100" style="table-layout: fixed">
+											<tr>
+												<td rowspan=4 style="width: 8em">
+													<img class="avatar-circle avatar-border mr-s" src={avatar_url} style="height: 7em; width: 7em"/>
+												</td>
+												<td rowspan=2 class="bottom">
+													<b class="big">{display_name}</b>{actor_type_tag}
+												</td>
+												<td rowspan=2 class="bottom rev" title="statuses">{statuses}" "<span class="emoji">"\u{1f582}"</span></td>
+											</tr>
+											<tr></tr>
+											<tr>
+												<td class="top">
+													<small><a class="clean hover" href={uid} target="_blank">{username.clone()}@{domain}</a></small>
+												</td>
+												<td class="rev" title="following">{following}" "<span class="emoji">"👥"</span></td>
+											</tr>
+											<tr>
+												<td>
+													<DateTime t=created />
+												</td>
+												<td class="rev" title="followers">{followers}" "<span class="emoji">"📢"</span></td>
+											</tr>
+										</table>
+										<blockquote class="ml-2 mt-1">{
+										dissolve::strip_html_tags(&summary)
+											.into_iter()
+											.map(|x| view! { <div>{x}</div> })
+											.collect_view()
+										}</blockquote>
+									</div>
 								</div>
-								<div class="overlap">
-									<table class="pl-2 pr-2 align w-100" style="table-layout: fixed">
-										<tr>
-											<td rowspan=4 style="width: 8em">
-												<img class="avatar-circle avatar-border mr-s" src={avatar_url} style="height: 7em; width: 7em"/>
-											</td>
-											<td rowspan=2 class="bottom">
-												<b class="big">{display_name}</b>{actor_type_tag}
-											</td>
-											<td rowspan=2 class="bottom rev" title="statuses">{statuses}" "<span class="emoji">"\u{1f582}"</span></td>
-										</tr>
-										<tr></tr>
-										<tr>
-											<td class="top">
-												<small><a class="clean hover" href={uid} target="_blank">{username.clone()}@{domain}</a></small>
-											</td>
-											<td class="rev" title="following">{following}" "<span class="emoji">"👥"</span></td>
-										</tr>
-										<tr>
-											<td>
-												<DateTime t=created />
-											</td>
-											<td class="rev" title="followers">{followers}" "<span class="emoji">"📢"</span></td>
-										</tr>
-									</table>
-									<blockquote class="ml-2 mt-1">{
-									dissolve::strip_html_tags(&summary)
-										.into_iter()
-										.map(|x| view! { <div>{x}</div> })
-										.collect_view()
-									}</blockquote>
-								</div>
-							</div>
-							<TimelineFeed tl=tl />
-						}.into_view()
-					},
+								<TimelineFeed tl=tl />
+							}.into_view()
+						},
+					}
 				}}
 			</div>
 		</div>
@@ -134,6 +148,15 @@ pub fn UserPage(tl: Timeline) -> impl IntoView {
 pub fn ObjectPage(tl: Timeline) -> impl IntoView {
 	let params = use_params_map();
 	let auth = use_context::<Auth>().expect("missing auth context");
+	let mut uid =  params.get().get("id")
+		.cloned()
+		.unwrap_or_default()
+		.replace("/web/objects/", "")
+		.replacen('+', "https://", 1)
+		.replace('@', "/");
+	if !uid.starts_with("http") {
+		uid = format!("{URL_BASE}/web/objects/{uid}");
+	}
 	let object = create_local_resource(move || params.get().get("id").cloned().unwrap_or_default(), move |oid| {
 		async move {
 			match CACHE.get(&Uri::full(FetchKind::Object, &oid)) {
@@ -151,8 +174,11 @@ pub fn ObjectPage(tl: Timeline) -> impl IntoView {
 			<Breadcrumb back=true >objects::view</Breadcrumb>
 			<div class="ma-2" >
 				{move || match object.get() {
-					None => view! { <p> loading ... </p> }.into_view(),
-					Some(None) => view! { <p><code>loading failed</code></p> }.into_view(),
+					None => view! { <p class="center"> loading ... </p> }.into_view(),
+					Some(None) => {
+						let uid = uid.clone();
+						view! { <p class="center"><code>loading failed</code><sup><small><a class="clean" href={uid} target="_blank">"↗"</a></small></sup></p> }.into_view()
+					},
 					Some(Some(o)) => {
 						let object = o.clone();
 						let tl_url = format!("{}/page", Uri::api(FetchKind::Context, &o.context().id().unwrap_or_default(), false));
