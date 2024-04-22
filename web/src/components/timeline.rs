@@ -69,7 +69,7 @@ pub fn TimelineRepliesRecursive(tl: Timeline, root: String) -> impl IntoView {
 			children=move |object: serde_json::Value| {
 				match object.object_type() {
 					Some(apb::ObjectType::Activity(apb::ActivityType::Create)) => {
-						let oid = object.id().unwrap_or_default().to_string();
+						let oid = object.object().id().unwrap_or_default().to_string();
 						if let Some(note) = CACHE.get(&oid) {
 							view! {
 								<ActivityLine activity=object />
