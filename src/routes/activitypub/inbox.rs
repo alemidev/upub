@@ -51,15 +51,24 @@ pub async fn post(
 	AuthIdentity(auth): AuthIdentity,
 	Json(activity): Json<serde_json::Value>
 ) -> crate::Result<()> {
-	if !matches!(auth, Identity::Remote(_)) {
+	let Identity::Remote(server) = auth else {
 		if activity.activity_type() != Some(ActivityType::Delete) { // this is spammy af, ignore them!
 			tracing::warn!("refusing unauthorized activity: {}", pretty_json!(activity));
 		}
-		match auth {
-			Identity::Local(_user) => return Err(UpubError::forbidden()),
-			Identity::Anonymous => return Err(UpubError::unauthorized()),
-			_ => {},
+		if matches!(auth, Identity::Anonymous) {
+			return Err(UpubError::unauthorized());
+		} else {
+			return Err(UpubError::forbidden());
 		}
+	};
+
+	let Some(actor) = activity.actor().id() else {
+		return Err(UpubError::bad_request());
+	};
+
+	// TODO add whitelist of relays
+	if !server.ends_with(&Context::server(&actor)) {
+		return Err(UpubError::unauthorized());
 	}
 
 	// TODO we could process Links and bare Objects maybe, but probably out of AP spec?
@@ -69,15 +78,15 @@ pub async fn post(
 			Err(StatusCode::UNPROCESSABLE_ENTITY.into()) // won't ingest useless stuff
 		},
 
-		ActivityType::Delete => Ok(ctx.delete(activity).await?),
-		ActivityType::Follow => Ok(ctx.follow(activity).await?),
-		ActivityType::Accept(_) => Ok(ctx.accept(activity).await?),
-		ActivityType::Reject(_) => Ok(ctx.reject(activity).await?),
-		ActivityType::Like => Ok(ctx.like(activity).await?),
-		ActivityType::Create => Ok(ctx.create(activity).await?),
-		ActivityType::Update => Ok(ctx.update(activity).await?),
-		ActivityType::Undo => Ok(ctx.undo(activity).await?),
-		ActivityType::Announce => Ok(ctx.announce(activity).await?),
+		ActivityType::Create => Ok(ctx.create(server, activity).await?),
+		ActivityType::Like => Ok(ctx.like(server, activity).await?),
+		ActivityType::Follow => Ok(ctx.follow(server, activity).await?),
+		ActivityType::Announce => Ok(ctx.announce(server, activity).await?),
+		ActivityType::Accept(_) => Ok(ctx.accept(server, activity).await?),
+		ActivityType::Reject(_) => Ok(ctx.reject(server, activity).await?),
+		ActivityType::Undo => Ok(ctx.undo(server, activity).await?),
+		ActivityType::Delete => Ok(ctx.delete(server, activity).await?),
+		ActivityType::Update => Ok(ctx.update(server, activity).await?),
 
 		_x => {
 			tracing::info!("received unimplemented activity on inbox: {}", pretty_json!(activity));

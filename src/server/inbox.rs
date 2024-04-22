@@ -12,14 +12,35 @@ impl apb::server::Inbox for Context {
 	type Error = UpubError;
 	type Activity = serde_json::Value;
 
-	async fn create(&self, activity: serde_json::Value) -> crate::Result<()> {
+	async fn create(&self, server: String, activity: serde_json::Value) -> crate::Result<()> {
 		let activity_model = model::activity::Model::new(&activity)?;
+		let aid = activity_model.id.clone();
 		let Some(object_node) = activity.object().extract() else {
 			// TODO we could process non-embedded activities or arrays but im lazy rn
 			tracing::error!("refusing to process activity without embedded object: {}", serde_json::to_string_pretty(&activity).unwrap());
 			return Err(UpubError::unprocessable());
 		};
-		let object_model = model::object::Model::new(&object_node)?;
+		let mut object_model = model::object::Model::new(&object_node)?;
+		let oid = object_model.id.clone();
+		// make sure we're allowed to edit this object
+		if let Some(object_author) = &object_model.attributed_to {
+			if server != Context::server(object_author) {
+				return Err(UpubError::forbidden());
+			}
+		} else if server != Context::server(&object_model.id) {
+			return Err(UpubError::forbidden());
+		};
+		// fix context also for remote posts
+		// TODO this is not really appropriate because we're mirroring incorrectly remote objects, but
+		// it makes it SOO MUCH EASIER for us to fetch threads and stuff, so we're filling it for them
+		match (&object_model.in_reply_to, &object_model.context) {
+			(Some(reply_id), None) => // get context from replied object
+				object_model.context = self.fetch_object(reply_id).await?.context,
+			(None, None) => // generate a new context
+				object_model.context = Some(crate::url!(self, "/context/{}", uuid::Uuid::new_v4().to_string())),
+			(_, Some(_)) => {}, // leave it as set by user
+		}
+		// update replies counter
 		if let Some(ref in_reply_to) = object_model.in_reply_to {
 			if self.fetch_object(in_reply_to).await.is_ok() {
 				model::object::Entity::update_many()
@@ -29,8 +50,6 @@ impl apb::server::Inbox for Context {
 					.await?;
 			}
 		}
-		let aid = activity_model.id.clone();
-		let oid = object_model.id.clone();
 		model::object::Entity::insert(object_model.into_active_model()).exec(self.db()).await?;
 		model::activity::Entity::insert(activity_model.into_active_model()).exec(self.db()).await?;
 		for attachment in object_node.attachment() {
@@ -45,7 +64,7 @@ impl apb::server::Inbox for Context {
 		Ok(())
 	}
 
-	async fn like(&self, activity: serde_json::Value) -> crate::Result<()> {
+	async fn like(&self, _: String, activity: serde_json::Value) -> crate::Result<()> {
 		let aid = activity.id().ok_or(UpubError::bad_request())?;
 		let uid = activity.actor().id().ok_or(UpubError::bad_request())?;
 		let oid = activity.object().id().ok_or(UpubError::bad_request())?;
@@ -83,7 +102,7 @@ impl apb::server::Inbox for Context {
 		}
 	}
 
-	async fn follow(&self, activity: serde_json::Value) -> crate::Result<()> {
+	async fn follow(&self, _: String, activity: serde_json::Value) -> crate::Result<()> {
 		let activity_model = model::activity::Model::new(&activity)?;
 		let aid = activity_model.id.clone();
 		tracing::info!("{} wants to follow {}", activity_model.actor, activity_model.object.as_deref().unwrap_or("<no-one???>"));
@@ -94,7 +113,7 @@ impl apb::server::Inbox for Context {
 		Ok(())
 	}
 
-	async fn accept(&self, activity: serde_json::Value) -> crate::Result<()> {
+	async fn accept(&self, _: String, activity: serde_json::Value) -> crate::Result<()> {
 		// TODO what about TentativeAccept
 		let activity_model = model::activity::Model::new(&activity)?;
 		let Some(follow_request_id) = &activity_model.object else {
@@ -135,7 +154,7 @@ impl apb::server::Inbox for Context {
 		Ok(())
 	}
 
-	async fn reject(&self, activity: serde_json::Value) -> crate::Result<()> {
+	async fn reject(&self, _: String, activity: serde_json::Value) -> crate::Result<()> {
 		// TODO what about TentativeReject?
 		let activity_model = model::activity::Model::new(&activity)?;
 		let Some(follow_request_id) = &activity_model.object else {
@@ -161,7 +180,7 @@ impl apb::server::Inbox for Context {
 		Ok(())
 	}
 
-	async fn delete(&self, activity: serde_json::Value) -> crate::Result<()> {
+	async fn delete(&self, _: String, activity: serde_json::Value) -> crate::Result<()> {
 		// TODO verify the signature before just deleting lmao
 		let oid = activity.object().id().ok_or(UpubError::bad_request())?;
 		tracing::debug!("deleting '{oid}'"); // this is so spammy wtf!
@@ -172,16 +191,24 @@ impl apb::server::Inbox for Context {
 		Ok(())
 	}
 
-	async fn update(&self, activity: serde_json::Value) -> crate::Result<()> {
+	async fn update(&self, server: String, activity: serde_json::Value) -> crate::Result<()> {
 		let activity_model = model::activity::Model::new(&activity)?;
+		let aid = activity_model.id.clone();
 		let Some(object_node) = activity.object().extract() else {
 			// TODO we could process non-embedded activities or arrays but im lazy rn
 			tracing::error!("refusing to process activity without embedded object: {}", serde_json::to_string_pretty(&activity).unwrap());
 			return Err(UpubError::unprocessable());
 		};
-		let aid = activity_model.id.clone();
 		let Some(oid) = object_node.id().map(|x| x.to_string()) else {
 			return Err(UpubError::bad_request());
+		};
+		// make sure we're allowed to edit this object
+		if let Some(object_author) = object_node.attributed_to().id() {
+			if server != Context::server(&object_author) {
+				return Err(UpubError::forbidden());
+			}
+		} else if server != Context::server(&oid) {
+			return Err(UpubError::forbidden());
 		};
 		match object_node.object_type() {
 			Some(apb::ObjectType::Actor(_)) => {
@@ -209,13 +236,19 @@ impl apb::server::Inbox for Context {
 		Ok(())
 	}
 
-	async fn undo(&self, activity: serde_json::Value) -> crate::Result<()> {
+	async fn undo(&self, server: String, activity: serde_json::Value) -> crate::Result<()> {
 		let uid = activity.actor().id().ok_or_else(UpubError::bad_request)?;
 		// TODO in theory we could work with just object_id but right now only accept embedded
 		let undone_activity = activity.object().extract().ok_or_else(UpubError::bad_request)?;
 		let undone_aid = undone_activity.id().ok_or_else(UpubError::bad_request)?;
 		let undone_object_id = undone_activity.object().id().ok_or_else(UpubError::bad_request)?;
 		let activity_type = undone_activity.activity_type().ok_or_else(UpubError::bad_request)?;
+		let undone_activity_author = undone_activity.actor().id().ok_or_else(UpubError::bad_request)?;
+
+		// can't undo activities from remote actors!
+		if server != Context::server(&undone_activity_author) {
+			return Err(UpubError::forbidden());
+		};
 
 		match activity_type {
 			apb::ActivityType::Like => {
@@ -255,7 +288,7 @@ impl apb::server::Inbox for Context {
 
 	}
 	
-	async fn announce(&self, activity: serde_json::Value) -> crate::Result<()> {
+	async fn announce(&self, _: String, activity: serde_json::Value) -> crate::Result<()> {
 		let activity_model = model::activity::Model::new(&activity)?;
 		let Some(oid) = &activity_model.object else {
 			return Err(FieldError("object").into());
