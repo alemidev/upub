@@ -42,13 +42,16 @@ pub fn LoginBox(
 					let email = username_ref.get().map(|x| x.value()).unwrap_or("".into());
 					let password = password_ref.get().map(|x| x.value()).unwrap_or("".into());
 					spawn_local(async move {
-						let auth = reqwest::Client::new()
+						let Ok(res) = reqwest::Client::new()
 							.post(format!("{URL_BASE}/auth"))
 							.json(&LoginForm { email, password })
 							.send()
-							.await.unwrap()
+							.await
+						else { if let Some(rf) = password_ref.get() { rf.set_value("") }; return };
+						let Ok(auth) = res
 							.json::<AuthResponse>()
-							.await.unwrap();
+							.await
+						else { if let Some(rf) = password_ref.get() { rf.set_value("") }; return };
 						logging::log!("logged in until {}", auth.expires);
 						// update our username and token cookies
 						let username = auth.user.split('/').last().unwrap_or_default().to_string();
