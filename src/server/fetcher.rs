@@ -39,30 +39,15 @@ impl Fetcher for Context {
 		let host = Context::server(url);
 		let date = chrono::Utc::now().format("%a, %d %b %Y %H:%M:%S GMT").to_string(); // lmao @ "GMT"
 		let path = url.replace("https://", "").replace("http://", "").replace(&host, "");
+		let payload_buf = payload.unwrap_or("").as_bytes();
+		let digest = format!("sha-256={}", base64::prelude::BASE64_STANDARD.encode(openssl::sha::sha256(payload_buf)));
 
-		let mut headers = vec!["(request-target)", "host", "date"];
-		let mut headers_map : BTreeMap<String, String> = [
+		let headers = vec!["(request-target)", "host", "date", "digest"];
+		let headers_map : BTreeMap<String, String> = [
 			("host".to_string(), host.clone()),
 			("date".to_string(), date.clone()),
+			("digest".to_string(), digest.clone()),
 		].into();
-
-		let mut client = reqwest::Client::new()
-			.request(method.clone(), url)
-			.header(ACCEPT, "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"")
-			.header(CONTENT_TYPE, "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"")
-			.header(USER_AGENT, format!("upub+{VERSION} ({domain})"))
-			.header("Host", host.clone())
-			.header("Date", date.clone());
-
-
-		if let Some(payload) = payload {
-			let digest = format!("sha-256={}", base64::prelude::BASE64_STANDARD.encode(openssl::sha::sha256(payload.as_bytes())));
-			headers_map.insert("digest".to_string(), digest.clone());
-			headers.push("digest");
-			client = client
-				.header("Digest", digest)
-				.body(payload.to_string());
-		}
 
 		let mut signer = HttpSignature::new(
 			format!("{from}#main-key"), // TODO don't hardcode #main-key
@@ -74,12 +59,20 @@ impl Fetcher for Context {
 			.build_manually(&method.to_string().to_lowercase(), &path, headers_map)
 			.sign(key)?;
 
-		let res = client
-				.header("Signature", signer.header())
-				.send()
-				.await?;
-
-		Ok(res.error_for_status()?)
+		Ok(reqwest::Client::new()
+			.request(method.clone(), url)
+			.header(ACCEPT, "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"")
+			.header(CONTENT_TYPE, "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"")
+			.header(USER_AGENT, format!("upub+{VERSION} ({domain})"))
+			.header("Host", host.clone())
+			.header("Date", date.clone())
+			.header("Digest", digest)
+			.header("Signature", signer.header())
+			.body(payload.unwrap_or("").to_string())
+			.send()
+			.await?
+			.error_for_status()?
+		)
 	}
 
 	async fn fetch_user(&self, id: &str) -> crate::Result<model::user::Model> {

@@ -14,7 +14,6 @@ use clap::{Parser, Subcommand};
 use sea_orm::{ConnectOptions, Database, EntityTrait, IntoActiveModel};
 
 pub use errors::UpubResult as Result;
-use server::fetcher::Fetcher;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
 
 use crate::server::fetcher::Fetchable;
