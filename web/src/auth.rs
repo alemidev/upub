@@ -71,7 +71,7 @@ pub fn LoginBox(
 					});
 				} >
 					<input class="w-100" type="text" node_ref=username_ref placeholder="username" />
-					<input class="w-100" type="text" node_ref=password_ref placeholder="password" />
+					<input class="w-100" type="password" node_ref=password_ref placeholder="password" />
 					<input class="w-100" type="submit" value="login" />
 				</form>
 			</div>
