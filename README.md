@@ -42,8 +42,8 @@ all help is extremely welcome! if [my cgit](https://git.alemi.dev/upub.git/) loo
  - [x] http signatures
  - [x] privacy, targets, scopes
  - [x] simple web client
- - [ ] announce (boosts)
- - [ ] threads
+ - [x] announce (boosts)
+ - [x] threads
  - [ ] editing
  - [ ] searching
  - [ ] media
