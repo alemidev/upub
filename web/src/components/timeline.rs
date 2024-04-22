@@ -51,7 +51,12 @@ pub fn TimelineRepliesRecursive(tl: Timeline, root: String) -> impl IntoView {
 		.into_iter()
 		.filter_map(|x| CACHE.get(&x))
 		.filter(|x| match x.object_type() {
-			Some(apb::ObjectType::Activity(apb::ActivityType::Create)) => x.object().get().map(|o| o.in_reply_to().id().map(|r| r == root).unwrap_or(false)).unwrap_or(false),
+			Some(apb::ObjectType::Activity(apb::ActivityType::Create)) => {
+				let Some(oid) = x.object().id() else { return false; };
+				let Some(object) = CACHE.get(&oid) else { return false; };
+				let Some(reply) = object.in_reply_to().id() else { return false; };
+				reply == root
+			},
 			Some(apb::ObjectType::Activity(_)) => x.object().id().map(|o| o == root).unwrap_or(false),
 			_ => x.in_reply_to().id().map(|r| r == root).unwrap_or(false),
 		})
