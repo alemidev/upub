@@ -1,5 +1,5 @@
 use axum::extract::{Path, Query, State};
-use sea_orm::{ColumnTrait, Order, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect};
+use sea_orm::{ColumnTrait, PaginatorTrait, QueryFilter, QuerySelect};
 
 use crate::{model::{self, addressing::WrappedObject}, routes::activitypub::{jsonld::LD, JsonLD, Pagination}, server::{auth::AuthIdentity, Context}, url};
 

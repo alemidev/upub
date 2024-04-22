@@ -1,6 +1,6 @@
 use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
 use mastodon_async_entities::{account::{Account, AccountId}, status::Status};
-use sea_orm::{ColumnTrait, EntityTrait, Order, QueryFilter, QueryOrder};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter};
 
 use crate::{model, server::{auth::AuthIdentity, Context}};
 
