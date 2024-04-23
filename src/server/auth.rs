@@ -109,7 +109,7 @@ where
 						.verify(&user.public_key)
 					{
 						Ok(true) => identity = Identity::Remote(Context::server(&user_id)),
-						Ok(false) => tracing::warn!("invalid signature"),
+						Ok(false) => tracing::warn!("invalid signature: {http_signature:?}"),
 						Err(e) => tracing::error!("error verifying signature: {e}"),
 					},
 				Err(e) => {
