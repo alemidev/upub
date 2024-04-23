@@ -26,14 +26,18 @@ pub fn DateTime(t: Option<chrono::DateTime<chrono::Utc>>) -> impl IntoView {
 	}
 }
 
+pub const PRIVACY_PUBLIC : &str = "💿";
+pub const PRIVACY_FOLLOWERS : &str = "🔒";
+pub const PRIVACY_PRIVATE : &str = "📨";
+
 #[component]
 pub fn PrivacyMarker(addressed: Vec<String>) -> impl IntoView {
 	let privacy = if addressed.iter().any(|x| x == apb::target::PUBLIC) {
-		"🌐"
+		PRIVACY_PUBLIC
 	} else if addressed.iter().any(|x| x.ends_with("/followers")) {
-		"🔒"
+		PRIVACY_FOLLOWERS
 	} else {
-		"🔗"
+		PRIVACY_PRIVATE
 	};
 	let audience = format!("[ {} ]", addressed.join(", "));
 	view! {

@@ -23,6 +23,7 @@ pub fn App() -> impl IntoView {
 	let screen_width = window().screen().map(|x| x.avail_width().unwrap_or_default()).unwrap_or_default();
 
 	let (menu, set_menu) = create_signal(screen_width <= 786);
+	let (advanced, set_advanced) = create_signal(false);
 
 	spawn_local(async move {
 		if let Err(e) = server_tl.more(auth).await {
@@ -62,7 +63,11 @@ pub fn App() -> impl IntoView {
 					<hr class="mt-1 mb-1" />
 					<Navigator />
 					<hr class="mt-1 mb-1" />
-					<PostBox username=username />
+					{move || if advanced.get() { view! {
+						<AdvancedPostBox username=username advanced=set_advanced/>
+					}} else { view! {
+						<PostBox username=username advanced=set_advanced/>
+					}}}
 				</div>
 				<div class="col-main" class:w-100=move || menu.get() >
 					<Router // TODO maybe set base="/web" ?
