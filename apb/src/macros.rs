@@ -321,9 +321,9 @@ pub fn set_maybe_node(obj: &mut serde_json::Value, key: &str, node: crate::Node<
 				obj, key, Some(serde_json::Value::String(l.href().to_string())),
 			);
 		},
-		crate::Node::Array(_) => {
+		crate::Node::Array(arr) => {
 			set_maybe_value(
-				obj, key, Some(serde_json::Value::Array(node.into_iter().collect())),
+				obj, key, Some(serde_json::Value::Array(arr.into())),
 			);
 		},
 		crate::Node::Empty => {
