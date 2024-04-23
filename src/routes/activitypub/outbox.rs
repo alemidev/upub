@@ -1,7 +1,7 @@
 use axum::{extract::{Query, State}, http::StatusCode, Json};
 use sea_orm::{QueryFilter, QuerySelect};
 
-use crate::{errors::UpubError, model::{self, addressing::EmbeddedActivity}, routes::activitypub::{jsonld::LD, CreationResult, JsonLD, Pagination}, server::{auth::AuthIdentity, Context}, url};
+use crate::{errors::UpubError, model::{self, addressing::WrappedObject}, routes::activitypub::{jsonld::LD, CreationResult, JsonLD, Pagination}, server::{auth::AuthIdentity, Context}, url};
 
 pub async fn get(State(ctx): State<Context>) -> Result<JsonLD<serde_json::Value>, StatusCode> {
 	Ok(JsonLD(ctx.ap_collection(&url!(ctx, "/outbox"), None).ld_context()))
@@ -15,12 +15,12 @@ pub async fn page(
 	let limit = page.batch.unwrap_or(20).min(50);
 	let offset = page.offset.unwrap_or(0);
 
-	let items = model::addressing::Entity::find_activities()
+	let items = model::addressing::Entity::find_objects()
 		.filter(auth.filter_condition())
 		// TODO also limit to only local activities
 		.limit(limit)
 		.offset(offset)
-		.into_model::<EmbeddedActivity>()
+		.into_model::<WrappedObject>()
 		.all(ctx.db()).await?;
 	
 	let mut out = Vec::new();
