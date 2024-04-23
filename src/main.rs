@@ -117,10 +117,10 @@ async fn main() {
 				object: Some(actor.clone()),
 				target: None,
 				published: chrono::Utc::now(),
-				cc: model::Audience::default(),
-				bcc: model::Audience::default(),
-				to: model::Audience::default(),
+				to: model::Audience(vec![actor.clone()]),
 				bto: model::Audience::default(),
+				cc: model::Audience(vec![apb::target::PUBLIC.to_string()]),
+				bcc: model::Audience::default(),
 			};
 			model::activity::Entity::insert(activity_model.into_active_model())
 				.exec(ctx.db()).await.expect("could not insert activity in db");
