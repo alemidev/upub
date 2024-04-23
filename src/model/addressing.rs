@@ -156,7 +156,7 @@ impl Entity {
 			.distinct()
 			.select_only()
 			.join(sea_orm::JoinType::InnerJoin, Relation::Object.def())
-			.join(sea_orm::JoinType::LeftJoin, crate::model::object::Relation::Activity.def())
+			.join(sea_orm::JoinType::LeftJoin, Relation::Activity.def())
 			.order_by(crate::model::object::Column::Published, Order::Desc);
 
 		for col in crate::model::object::Column::iter() {
