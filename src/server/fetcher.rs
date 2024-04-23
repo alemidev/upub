@@ -128,7 +128,7 @@ async fn fetch_object_inner(ctx: &Context, id: &str, depth: usize) -> crate::Res
 	).await?.json::<serde_json::Value>().await?;
 
 	let addressed = object.addressed();
-	let object_model = model::object::Model::new(&object)?;
+	let mut object_model = model::object::Model::new(&object)?;
 
 	if let Some(reply) = &object_model.in_reply_to {
 		if depth <= 16 {
@@ -136,6 +136,17 @@ async fn fetch_object_inner(ctx: &Context, id: &str, depth: usize) -> crate::Res
 		} else {
 			tracing::warn!("thread deeper than 16, giving up fetching more replies");
 		}
+	}
+
+	// fix context also for remote posts
+	// TODO this is not really appropriate because we're mirroring incorrectly remote objects, but
+	// it makes it SOO MUCH EASIER for us to fetch threads and stuff, so we're filling it for them
+	match (&object_model.in_reply_to, &object_model.context) {
+		(Some(reply_id), None) => // get context from replied object
+			object_model.context = fetch_object_inner(ctx, reply_id, depth + 1).await?.context,
+		(None, None) => // generate a new context
+			object_model.context = Some(crate::url!(ctx, "/context/{}", uuid::Uuid::new_v4().to_string())),
+		(_, Some(_)) => {}, // leave it as set by user
 	}
 
 	for attachment in object.attachment() {
