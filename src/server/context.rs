@@ -84,7 +84,7 @@ impl Context {
 	}
 
 	pub fn base(&self) -> String {
-		format!("{}{}/", self.0.protocol, self.0.domain)
+		format!("{}{}", self.0.protocol, self.0.domain)
 	}
 
 	pub fn uri(&self, entity: &str, id: String) -> String {

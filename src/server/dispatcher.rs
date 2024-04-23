@@ -92,7 +92,7 @@ async fn worker(db: DatabaseConnection, domain: String, poll_interval: u64, mut 
 			},
 		};
 
-		let key = if delivery.actor == format!("https://{domain}/") {
+		let key = if delivery.actor == format!("https://{domain}") {
 			let Some(model::application::Model { private_key: key, .. }) = model::application::Entity::find()
 				.one(&db).await?
 			else {
