@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use apb::{target::Addressed, Object};
+use apb::{target::Addressed, Activity, Object};
 use base64::Engine;
 use reqwest::{header::{ACCEPT, CONTENT_TYPE, USER_AGENT}, Method, Response};
 use sea_orm::{EntityTrait, IntoActiveModel};
@@ -86,6 +86,9 @@ impl Fetcher for Context {
 		).await?.json::<serde_json::Value>().await?;
 		let user_model = model::user::Model::new(&user)?;
 
+		// TODO this may fail: while fetching, remote server may fetch our service actor.
+		//      if it does so with http signature, we will fetch that actor in background
+		//      meaning that, once we reach here, it's already inserted and returns an UNIQUE error
 		model::user::Entity::insert(user_model.clone().into_active_model())
 			.exec(self.db()).await?;
 
@@ -100,6 +103,18 @@ impl Fetcher for Context {
 		let activity = Self::request(
 			Method::GET, id, None, &format!("https://{}", self.domain()), &self.app().private_key, self.domain(),
 		).await?.json::<serde_json::Value>().await?;
+
+		if let Some(activity_actor) = activity.actor().id() {
+			if let Err(e) = self.fetch_user(&activity_actor).await {
+				tracing::warn!("could not get actor of fetched activity: {e}");
+			}
+		}
+
+		if let Some(activity_object) = activity.object().id() {
+			if let Err(e) = self.fetch_object(&activity_object).await {
+				tracing::warn!("could not get object of fetched activity: {e}");
+			}
+		}
 
 		let addressed = activity.addressed();
 		let activity_model = model::activity::Model::new(&activity)?;
@@ -127,6 +142,12 @@ async fn fetch_object_inner(ctx: &Context, id: &str, depth: usize) -> crate::Res
 	let object = Context::request(
 		Method::GET, id, None, &format!("https://{}", ctx.domain()), &ctx.app().private_key, ctx.domain(),
 	).await?.json::<serde_json::Value>().await?;
+
+	if let Some(attributed_to) = object.attributed_to().id() {
+		if let Err(e) = ctx.fetch_user(&attributed_to).await {
+			tracing::warn!("could not get actor of fetched object: {e}");
+		}
+	}
 
 	let addressed = object.addressed();
 	let mut object_model = model::object::Model::new(&object)?;
