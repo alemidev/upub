@@ -237,7 +237,7 @@ impl Context {
 			.set_collection_type(Some(apb::CollectionType::OrderedCollectionPage))
 			.set_part_of(apb::Node::link(id.replace("/page", "")))
 			.set_next(apb::Node::link(format!("{id}?offset={}", offset+limit)))
-			.set_ordered_items(apb::Node::Array(items))
+			.set_ordered_items(apb::Node::array(items))
 	}
 
 	pub async fn dispatch(&self, uid: &str, activity_targets: Vec<String>, aid: &str, oid: Option<&str>) -> crate::Result<()> {

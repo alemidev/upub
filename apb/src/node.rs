@@ -1,7 +1,7 @@
 /// ActivityPub object node, representing either nothing, something, a link to something or
 /// multiple things
 pub enum Node<T : super::Base> {
-	Array(Vec<T>), // TODO would be cool to make it Box<[T]> so that Node is just a ptr
+	Array(std::collections::VecDeque<T>), // TODO would be cool to make it Box<[T]> so that Node is just a ptr
 	Object(Box<T>),
 	Link(Box<dyn super::Link + Sync + Send>), // TODO feature flag to toggle these maybe?
 	Empty,
@@ -23,7 +23,7 @@ impl<T : super::Base + Clone> Iterator for Node<T> {
 		let x = match self {
 			Self::Empty => return None,
 			Self::Link(_) => return None,
-			Self::Array(arr) => return arr.pop(), // TODO weird that we iter in reverse
+			Self::Array(arr) => return arr.pop_front(), // TODO weird that we iter in reverse
 			Self::Object(x) => *x.clone(), // TODO needed because next() on object can't get value without owning
 		};
 		*self = Self::Empty;
@@ -37,7 +37,7 @@ impl<T : super::Base> Node<T> {
 		match self {
 			Node::Empty | Node::Link(_) => None,
 			Node::Object(x) => Some(x),
-			Node::Array(v) => v.last(), // TODO so it's coherent with next(), still weird tho!
+			Node::Array(v) => v.get(0),
 		}
 	}
 
@@ -46,7 +46,7 @@ impl<T : super::Base> Node<T> {
 		match self {
 			Node::Empty | Node::Link(_) => None,
 			Node::Object(x) => Some(*x),
-			Node::Array(mut v) => v.pop(), // TODO so it's coherent with next(), still weird tho!
+			Node::Array(mut v) => v.pop_front(),
 		}
 	}
 
@@ -124,7 +124,7 @@ impl Node<serde_json::Value> {
 	}
 
 	pub fn array(values: Vec<serde_json::Value>) -> Self {
-		Node::Array(values)
+		Node::Array(values.into())
 	}
 
 	#[cfg(feature = "fetch")]
@@ -165,7 +165,7 @@ impl From<serde_json::Value> for Node<serde_json::Value> {
 	fn from(value: serde_json::Value) -> Self {
 		match value {
 			serde_json::Value::String(uri) => Node::Link(Box::new(uri)),
-			serde_json::Value::Array(arr) => Node::Array(arr),
+			serde_json::Value::Array(arr) => Node::Array(arr.into()),
 			serde_json::Value::Object(_) => match value.get("href") {
 				None => Node::Object(Box::new(value)),
 				Some(_) => Node::Link(Box::new(value)),

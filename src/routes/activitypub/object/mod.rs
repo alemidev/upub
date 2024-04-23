@@ -50,7 +50,7 @@ pub async fn view(
 	Ok(JsonLD(
 		object.object.ap()
 			.set_replies(apb::Node::object(replies))
-			.set_attachment(apb::Node::Array(attachments))
+			.set_attachment(apb::Node::array(attachments))
 			.ld_context()
 	))
 }
