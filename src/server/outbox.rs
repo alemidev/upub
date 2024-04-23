@@ -202,33 +202,30 @@ impl apb::server::Outbox for Context {
 	async fn undo(&self, uid: String, activity: serde_json::Value) -> crate::Result<String> {
 		let aid = self.aid(uuid::Uuid::new_v4().to_string());
 		let activity_targets = activity.addressed();
-		{
-			let Some(old_aid) = activity.object().id() else {
-				return Err(UpubError::bad_request());
-			};
-			let Some(old_activity) = model::activity::Entity::find_by_id(old_aid)
-				.one(self.db()).await?
-			else {
-				return Err(UpubError::not_found());
-			};
-			if old_activity.actor != uid {
-				return Err(UpubError::forbidden());
-			}
-			match old_activity.activity_type {
-				apb::ActivityType::Like => {
-					model::like::Entity::delete(model::like::ActiveModel {
-						actor: Set(old_activity.actor), likes: Set(old_activity.object.unwrap_or("".into())),
-						..Default::default()
-					}).exec(self.db()).await?;
-				},
-				apb::ActivityType::Follow => {
-					model::relation::Entity::delete(model::relation::ActiveModel {
-						follower: Set(old_activity.actor), following: Set(old_activity.object.unwrap_or("".into())),
-						..Default::default()
-					}).exec(self.db()).await?;
-				},
-				t => tracing::warn!("extra side effects for activity {t:?} not implemented"),
-			}
+		let old_aid = activity.object().id().ok_or_else(UpubError::bad_request)?;
+		let old_activity = model::activity::Entity::find_by_id(old_aid)
+			.one(self.db())
+			.await?
+			.ok_or_else(UpubError::not_found)?;
+		if old_activity.actor != uid {
+			return Err(UpubError::forbidden());
+		}
+		match old_activity.activity_type {
+			apb::ActivityType::Like => {
+				model::like::Entity::delete_many()
+					.filter(model::like::Column::Actor.eq(old_activity.actor))
+					.filter(model::like::Column::Likes.eq(old_activity.object.unwrap_or("".into())))
+					.exec(self.db())
+					.await?;
+			},
+			apb::ActivityType::Follow => {
+				model::relation::Entity::delete_many()
+					.filter(model::relation::Column::Follower.eq(old_activity.actor))
+					.filter(model::relation::Column::Following.eq(old_activity.object.unwrap_or("".into())))
+					.exec(self.db())
+					.await?;
+			},
+			t => tracing::warn!("extra side effects for activity {t:?} not implemented"),
 		}
 		let activity_model = model::activity::Model::new(
 			&activity
