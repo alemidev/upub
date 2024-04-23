@@ -8,18 +8,21 @@ use crate::prelude::*;
 pub struct Timeline {
 	pub feed: RwSignal<Vec<String>>,
 	pub next: RwSignal<String>,
+	pub over: RwSignal<bool>,
 }
 
 impl Timeline {
 	pub fn new(url: String) -> Self {
 		let feed = create_rw_signal(vec![]);
 		let next = create_rw_signal(url);
-		Timeline { feed, next }
+		let over = create_rw_signal(false);
+		Timeline { feed, next, over }
 	}
 
 	pub fn reset(&self, url: String) {
 		self.feed.set(vec![]);
 		self.next.set(url);
+		self.over.set(false);
 	}
 
 	pub async fn more(&self, auth: Signal<Option<String>>) -> reqwest::Result<()> {
@@ -38,6 +41,8 @@ impl Timeline {
 
 		if let Some(next) = collection.next().id() {
 			self.next.set(next);
+		} else {
+			self.over.set(true);
 		}
 
 		Ok(())
@@ -157,7 +162,7 @@ pub fn TimelineFeed(tl: Timeline) -> impl IntoView {
 				}
 			}
 		/ >
-		<div class="center mt-1 mb-1" >
+		<div class="center mt-1 mb-1" class:hidden=tl.over>
 			<button type="button"
 				on:click=move |_| {
 					spawn_local(async move {
