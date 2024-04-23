@@ -1,4 +1,4 @@
-use apb::{ActivityMut, ObjectMut};
+use apb::{ActivityMut, BaseMut, ObjectMut};
 
 use leptos::*;
 use crate::prelude::*;
@@ -136,11 +136,13 @@ pub fn AdvancedPostBox(username: Signal<Option<String>>, advanced: WriteSignal<b
 					</tr>
 				</table>
 				<div class:hidden=move|| !embedded.get()>
+					<input class="w-100" type="text" node_ref=object_id_ref title="objectId" placeholder="objectId" />
+
 					<input class="w-100" type="text" node_ref=summary_ref title="summary" placeholder="summary" />
 
-					<input class="w-100 ml-s" type="text" node_ref=name_ref title="name" placeholder="name" />
-					<input class="w-100 ml-s" type="text" node_ref=context_ref title="context" placeholder="context" />
-					<input class="w-100 ml-s" type="text" node_ref=reply_ref title="inReplyTo" placeholder="inReplyTo" />
+					<input class="w-100" type="text" node_ref=name_ref title="name" placeholder="name" />
+					<input class="w-100" type="text" node_ref=context_ref title="context" placeholder="context" />
+					<input class="w-100" type="text" node_ref=reply_ref title="inReplyTo" placeholder="inReplyTo" />
 
 					<textarea rows="5" class="w-100" node_ref=content_ref title="content" placeholder="content" ></textarea>
 				</div>
@@ -182,6 +184,7 @@ pub fn AdvancedPostBox(username: Signal<Option<String>>, advanced: WriteSignal<b
 								if embedded.get() {
 									apb::Node::object(
 										serde_json::Value::Object(serde_json::Map::default())
+											.set_id(object_id.as_deref())
 											.set_object_type(Some(apb::ObjectType::Note))
 											.set_name(name.as_deref())
 											.set_summary(summary.as_deref())
