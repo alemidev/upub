@@ -16,8 +16,19 @@ use leptos::*;
 pub fn DateTime(t: Option<chrono::DateTime<chrono::Utc>>) -> impl IntoView {
 	match t {
 		Some(t) => {
-			let pretty = t.format("%Y/%m/%d %H:%M:%S").to_string();
-			let rfc = t.to_rfc3339();
+			let delta = chrono::Utc::now() - t;
+			let pretty = if delta.num_seconds() < 60 {
+				format!("{}s ago", delta.num_seconds())
+			} else if delta.num_minutes() < 60 {
+				format!("{}m ago", delta.num_minutes())
+			} else if delta.num_hours() < 24 {
+				format!("{}h ago", delta.num_hours())
+			} else if delta.num_days() < 90 {
+				format!("{}d ago", delta.num_days())
+			} else {
+				t.format("%Y/%m/%d %H:%M:%S").to_string()
+			};
+			let rfc = t.to_rfc2822();
 			Some(view! {
 				<small title={rfc}>{pretty}</small>
 			})
