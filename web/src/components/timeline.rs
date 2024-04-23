@@ -211,6 +211,13 @@ async fn process_activities(
 				activity.clone().set_object(apb::Node::maybe_link(object_id))
 			);
 		}
+
+		if let Some(uid) = activity.attributed_to().id() {
+			if CACHE.get(&uid).is_none() && !gonna_fetch.contains(&uid) {
+				gonna_fetch.insert(uid.clone());
+				sub_tasks.push(Box::pin(fetch_and_update(FetchKind::User, uid, auth)));
+			}
+		}
 	
 		if let Some(uid) = activity.actor().id() {
 			if CACHE.get(&uid).is_none() && !gonna_fetch.contains(&uid) {
