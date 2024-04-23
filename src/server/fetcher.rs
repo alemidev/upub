@@ -51,7 +51,8 @@ impl Fetcher for Context {
 
 		let mut signer = HttpSignature::new(
 			format!("{from}#main-key"), // TODO don't hardcode #main-key
-			"rsa-sha256".to_string(),
+			"hs2019".to_string(),
+			//"rsa-sha256".to_string(),
 			&headers,
 		);
 		
