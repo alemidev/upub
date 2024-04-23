@@ -1,9 +1,11 @@
+use axum::http::StatusCode;
+
 #[derive(Debug, thiserror::Error)]
 pub enum UpubError {
 	#[error("database error: {0}")]
 	Database(#[from] sea_orm::DbErr),
 
-	#[error("api returned {0}")]
+	#[error("{0}")]
 	Status(axum::http::StatusCode),
 
 	#[error("missing field: {0}")]
@@ -65,7 +67,14 @@ impl axum::response::IntoResponse for UpubError {
 		let descr = self.to_string();
 		match self {
 			UpubError::Status(status) => (status, descr).into_response(),
-			_ => (axum::http::StatusCode::INTERNAL_SERVER_ERROR, descr).into_response(),
+			UpubError::Database(_) => (StatusCode::SERVICE_UNAVAILABLE, descr).into_response(),
+			UpubError::Reqwest(x) =>
+				(
+					x.status().unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+					format!("failed fetching '{}': {descr}", x.url().map(|x| x.to_string()).unwrap_or_default())
+				).into_response(),
+			UpubError::Field(_) => (axum::http::StatusCode::BAD_REQUEST, descr).into_response(),
+			_ => (StatusCode::INTERNAL_SERVER_ERROR, descr).into_response(),
 		}
 	}
 }
