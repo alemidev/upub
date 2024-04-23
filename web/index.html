@@ -155,10 +155,11 @@
 			max-height: 2em;
 		}
 		img.attachment {
-			max-height: 15em;
-			max-width: 90%;
+			height: 10em;
+			width: 100%;
 			border: 5px solid #bf616a;
 			padding: 5px;
+			object-fit: cover;
 		}
 		div.tl-header {
 			background-color: #bf616a55;
@@ -180,6 +181,19 @@
 		}
 		td.bottom {
 			vertical-align: bottom;
+		}
+		details>summary::marker {
+			display: none;
+		}
+		details>summary {
+			list-style: none;
+			cursor: pointer;
+		}
+		details>summary:hover {
+			font-weight: bold;
+		}
+		code.cw {
+			display: block;
 		}
 		input[type="submit"].active {
 			background-color: var(--accent);
