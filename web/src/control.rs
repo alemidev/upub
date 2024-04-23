@@ -135,9 +135,10 @@ pub fn AdvancedPostBox(username: Signal<Option<String>>, advanced: WriteSignal<b
 						</td>
 					</tr>
 				</table>
-				<div class:hidden=move|| !embedded.get()>
-					<input class="w-100" type="text" node_ref=object_id_ref title="objectId" placeholder="objectId" />
 
+				<input class="w-100" type="text" node_ref=object_id_ref title="objectId" placeholder="objectId" />
+
+				<div class:hidden=move|| !embedded.get()>
 					<input class="w-100" type="text" node_ref=summary_ref title="summary" placeholder="summary" />
 
 					<input class="w-100" type="text" node_ref=name_ref title="name" placeholder="name" />
@@ -145,9 +146,6 @@ pub fn AdvancedPostBox(username: Signal<Option<String>>, advanced: WriteSignal<b
 					<input class="w-100" type="text" node_ref=reply_ref title="inReplyTo" placeholder="inReplyTo" />
 
 					<textarea rows="5" class="w-100" node_ref=content_ref title="content" placeholder="content" ></textarea>
-				</div>
-				<div class:hidden=embedded>
-					<input class="w-100" type="text" node_ref=object_id_ref title="objectId" placeholder="objectId" />
 				</div>
 
 				<table class="w-100 align">
