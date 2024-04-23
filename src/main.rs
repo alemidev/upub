@@ -11,7 +11,7 @@ mod migrations;
 use sea_orm_migration::MigratorTrait;
 
 use clap::{Parser, Subcommand};
-use sea_orm::{ConnectOptions, Database, EntityTrait, IntoActiveModel};
+use sea_orm::{ColumnTrait, ConnectOptions, Database, EntityTrait, IntoActiveModel, QueryFilter, QueryOrder};
 
 pub use errors::UpubResult as Result;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
@@ -70,6 +70,9 @@ enum CliCommand {
 	Relay {
 		/// actor url, same as with pleroma
 		actor: String,
+
+		#[arg(long, default_value_t = false)]
+		accept: bool
 	}
 }
 
@@ -104,13 +107,13 @@ async fn main() {
 		CliCommand::Fetch { uri, save } => fetch(db, args.domain, uri, save)
 			.await.expect("error fetching object"),
 
-		CliCommand::Relay { actor } => {
+		CliCommand::Relay { actor, accept } => {
 			let ctx = server::Context::new(db, args.domain)
 				.await.expect("failed creating server context");
 
 			let aid = ctx.aid(uuid::Uuid::new_v4().to_string());
 
-			let activity_model = model::activity::Model {
+			let mut activity_model = model::activity::Model {
 				id: aid.clone(),
 				activity_type: apb::ActivityType::Follow,
 				actor: ctx.base(),
@@ -122,11 +125,26 @@ async fn main() {
 				cc: model::Audience(vec![apb::target::PUBLIC.to_string()]),
 				bcc: model::Audience::default(),
 			};
+
+			if accept {
+				let follow_req = model::activity::Entity::find()
+					.filter(model::activity::Column::ActivityType.eq("Follow"))
+					.filter(model::activity::Column::Actor.eq(&actor))
+					.filter(model::activity::Column::Object.eq(ctx.base()))
+					.order_by_desc(model::activity::Column::Published)
+					.one(ctx.db())
+					.await
+					.expect("failed querying db for relay follow req")
+					.expect("no follow request to accept");
+				activity_model.activity_type = apb::ActivityType::Accept(apb::AcceptType::Accept);
+				activity_model.object = Some(follow_req.id);
+			};
+
 			model::activity::Entity::insert(activity_model.into_active_model())
 				.exec(ctx.db()).await.expect("could not insert activity in db");
 
 			ctx.dispatch(&ctx.base(), vec![actor], &aid, None).await
-				.expect("could not dispatch follow");
+				.expect("could not dispatch relay activity");
 		},
 
 		CliCommand::Serve => {
