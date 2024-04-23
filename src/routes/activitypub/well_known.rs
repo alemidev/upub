@@ -20,11 +20,11 @@ pub async fn nodeinfo_discovery(State(ctx): State<Context>) -> Json<NodeInfoDisc
 		links: vec![
 			NodeInfoDiscoveryRel {
 				rel: "http://nodeinfo.diaspora.software/ns/schema/2.0".into(),
-				href: format!("{}/nodeinfo/2.0.json", ctx.domain()),
+				href: crate::url!(ctx, "/nodeinfo/2.0.json"),
 			},
 			NodeInfoDiscoveryRel {
 				rel: "http://nodeinfo.diaspora.software/ns/schema/2.1".into(),
-				href: format!("{}/nodeinfo/2.1.json", ctx.domain()),
+				href: crate::url!(ctx, "/nodeinfo/2.1.json"),
 			},
 		],
 	})
