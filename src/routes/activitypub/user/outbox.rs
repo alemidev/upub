@@ -75,14 +75,23 @@ pub async fn post(
 				Some(BaseType::Object(ObjectType::Activity(ActivityType::Follow))) =>
 					Ok(CreationResult(ctx.follow(uid, activity).await?)),
 
-				Some(BaseType::Object(ObjectType::Activity(ActivityType::Undo))) =>
-					Ok(CreationResult(ctx.undo(uid, activity).await?)),
+				Some(BaseType::Object(ObjectType::Activity(ActivityType::Announce))) =>
+					Ok(CreationResult(ctx.announce(uid, activity).await?)),
 
 				Some(BaseType::Object(ObjectType::Activity(ActivityType::Accept(AcceptType::Accept)))) =>
 					Ok(CreationResult(ctx.accept(uid, activity).await?)),
 
 				Some(BaseType::Object(ObjectType::Activity(ActivityType::Reject(RejectType::Reject)))) =>
 					Ok(CreationResult(ctx.reject(uid, activity).await?)),
+
+				Some(BaseType::Object(ObjectType::Activity(ActivityType::Undo))) =>
+					Ok(CreationResult(ctx.undo(uid, activity).await?)),
+
+				Some(BaseType::Object(ObjectType::Activity(ActivityType::Delete))) =>
+					Ok(CreationResult(ctx.delete(uid, activity).await?)),
+
+				Some(BaseType::Object(ObjectType::Activity(ActivityType::Update))) =>
+					Ok(CreationResult(ctx.update(uid, activity).await?)),
 
 				Some(_) => Err(StatusCode::NOT_IMPLEMENTED.into()),
 			}
