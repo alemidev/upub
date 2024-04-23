@@ -143,7 +143,7 @@ async fn main() {
 			model::activity::Entity::insert(activity_model.into_active_model())
 				.exec(ctx.db()).await.expect("could not insert activity in db");
 
-			ctx.dispatch(&ctx.base(), vec![actor], &aid, None).await
+			ctx.dispatch(&ctx.base(), vec![actor, apb::target::PUBLIC.to_string()], &aid, None).await
 				.expect("could not dispatch relay activity");
 		},
 
