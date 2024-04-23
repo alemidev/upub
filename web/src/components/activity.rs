@@ -20,13 +20,12 @@ pub fn ActivityLine(activity: serde_json::Value) -> impl IntoView {
 				<img src={avatar} class="avatar-inline mr-s ml-1-r" /><b>{username}</b><small>@{domain}</small>
 			</a>
 			<span style="float:right">
-				<a class="upub-title clean" href={Uri::web(FetchKind::Object, &object_id)} ><code class="color moreinfo" title={object_id.clone()} >{kind.as_ref().to_string()}</code></a>
-				<a class="hover ml-1 hidden-on-mobile" href={Uri::web(FetchKind::Object, &object_id)} >
-					<DateTime t=activity.published() />
-				</a>
-				<span class="hidden-on-mobile">
-				<PrivacyMarker addressed=activity.addressed() />
-				</span>
+				<code class="color moreinfo" title={activity.published().map(|x| x.to_rfc2822())} >
+					<a class="upub-title clean" title={object_id.clone()} href={Uri::web(FetchKind::Object, &object_id)} >
+						{kind.as_ref().to_string()}
+					</a>
+					<PrivacyMarker addressed=activity.addressed() />
+				</code>
 			</span>
 		</div>
 	}

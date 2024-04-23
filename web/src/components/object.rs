@@ -22,13 +22,13 @@ pub fn Object(object: serde_json::Value) -> impl IntoView {
 				<td><ActorBanner object=author /></td>
 				<td class="rev" >
 					{object.in_reply_to().id().map(|reply| view! {
-							<small><i><a class="clean mr-1" href={Uri::web(FetchKind::Object, &reply)} title={reply}>reply</a></i></small> 
+							<small><i><a class="clean" href={Uri::web(FetchKind::Object, &reply)} title={reply}>reply</a></i></small> 
 					})}
-					<a class="clean hover" href={Uri::web(FetchKind::Object, object.id().unwrap_or_default())}>
+					<PrivacyMarker addressed=object.addressed() />
+					<a class="clean hover ml-s" href={Uri::web(FetchKind::Object, object.id().unwrap_or_default())}>
 						<DateTime t=object.published() />
 					</a>
-					<sup><small><a class="clean" href={uid} target="_blank">"↗"</a></small></sup>
-					<PrivacyMarker addressed=object.addressed() />
+					<sup><small><a class="clean ml-s" href={uid} target="_blank">"↗"</a></small></sup>
 				</td>
 			</tr>
 		</table>

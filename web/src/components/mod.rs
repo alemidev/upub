@@ -26,7 +26,7 @@ pub fn DateTime(t: Option<chrono::DateTime<chrono::Utc>>) -> impl IntoView {
 			} else if delta.num_days() < 90 {
 				format!("{}d ago", delta.num_days())
 			} else {
-				t.format("%Y/%m/%d %H:%M:%S").to_string()
+				t.format("%d/%m/%Y").to_string()
 			};
 			let rfc = t.to_rfc2822();
 			Some(view! {
@@ -37,7 +37,7 @@ pub fn DateTime(t: Option<chrono::DateTime<chrono::Utc>>) -> impl IntoView {
 	}
 }
 
-pub const PRIVACY_PUBLIC : &str = "💿";
+pub const PRIVACY_PUBLIC : &str = "🪩";
 pub const PRIVACY_FOLLOWERS : &str = "🔒";
 pub const PRIVACY_PRIVATE : &str = "📨";
 
@@ -52,6 +52,6 @@ pub fn PrivacyMarker(addressed: Vec<String>) -> impl IntoView {
 	};
 	let audience = format!("[ {} ]", addressed.join(", "));
 	view! {
-		<span class="emoji ml-1 moreinfo" title={audience} >{privacy}</span>
+		<span class="emoji ml-1 mr-s moreinfo" title={audience} >{privacy}</span>
 	}
 }
