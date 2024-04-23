@@ -288,7 +288,9 @@ impl apb::server::Outbox for Context {
 	async fn update(&self, uid: String, activity: serde_json::Value) -> crate::Result<String> {
 		let aid = self.aid(uuid::Uuid::new_v4().to_string());
 		let object_node = activity.object().extract().ok_or_else(UpubError::bad_request)?;
-		let mut object_model = model::object::Model::new(&object_node)?;
+		let mut object_model = model::object::Model::new(
+			&object_node.set_published(Some(chrono::Utc::now()))
+		)?;
 
 		let old_object_model = model::object::Entity::find_by_id(&object_model.id)
 			.one(self.db())
@@ -312,6 +314,7 @@ impl apb::server::Outbox for Context {
 		object_model.to = old_object_model.to;
 		object_model.bcc = old_object_model.bcc;
 		object_model.cc = old_object_model.cc;
+		object_model.published = old_object_model.published;
 
 		let addressed = activity.addressed();
 		let activity_model = model::activity::Model::new(
