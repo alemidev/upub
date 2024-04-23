@@ -29,7 +29,7 @@ pub fn PostBox(username: Signal<Option<String>>, advanced: WriteSignal<bool>) ->
 			<table class="align w-100">
 				<tr>
 					<td><input type="checkbox" on:input=move |ev| advanced.set(event_target_checked(&ev)) title="advanced" /></td>
-					<td><input class="w-100" type="text" node_ref=summary_ref title="summary" /></td>
+					<td class="w-100"><input class="w-100" type="text" node_ref=summary_ref title="summary" /></td>
 				</tr>
 			</table>
 
@@ -138,9 +138,9 @@ pub fn AdvancedPostBox(username: Signal<Option<String>>, advanced: WriteSignal<b
 				<div class:hidden=move|| !embedded.get()>
 					<input class="w-100" type="text" node_ref=summary_ref title="summary" placeholder="summary" />
 
-					<input class="w-100 ml-s mr-2" type="text" node_ref=name_ref title="name" placeholder="name" />
-					<input class="w-100 ml-s mr-2" type="text" node_ref=context_ref title="context" placeholder="context" />
-					<input class="w-100 ml-s mr-2" type="text" node_ref=reply_ref title="inReplyTo" placeholder="inReplyTo" />
+					<input class="w-100 ml-s" type="text" node_ref=name_ref title="name" placeholder="name" />
+					<input class="w-100 ml-s" type="text" node_ref=context_ref title="context" placeholder="context" />
+					<input class="w-100 ml-s" type="text" node_ref=reply_ref title="inReplyTo" placeholder="inReplyTo" />
 
 					<textarea rows="5" class="w-100" node_ref=content_ref title="content" placeholder="content" ></textarea>
 				</div>

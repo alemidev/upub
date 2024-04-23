@@ -51,7 +51,7 @@ pub fn App() -> impl IntoView {
 		<hr class="sep" />
 		<div class="container mt-2 pt-2" >
 			<div class="two-col" >
-				<div class="col-side sticky" class:hidden=move || menu.get() >
+				<div class="col-side sticky pb-s" class:hidden=move || menu.get() >
 					<LoginBox
 						token_tx=set_auth
 						token=auth
