@@ -31,7 +31,7 @@ pub async fn view(
 			.set_preferred_username(Some(ctx.domain()))
 			.set_public_key(apb::Node::object(
 				serde_json::Value::new_object()
-					.set_id(Some(&url!(ctx, "#main-key")))
+					.set_id(Some(&url!(ctx, "/#main-key")))
 					.set_owner(Some(&url!(ctx, "")))
 					.set_public_key_pem(&ctx.app().public_key)
 			))
