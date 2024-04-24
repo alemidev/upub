@@ -145,11 +145,19 @@ pub fn TimelineFeed(tl: Timeline) -> impl IntoView {
 								<hr/ >
 							}.into_view(),
 						// everything else
-						Some(apb::ObjectType::Activity(_)) => {
+						Some(apb::ObjectType::Activity(t)) => {
 							let object_id = item.object().id().unwrap_or_default();
-							let object = CACHE.get(&object_id).map(|obj| {
-								view! { <Object object=obj /> }
-							});
+							let object = match t {
+								apb::ActivityType::Create | apb::ActivityType::Announce => 
+									CACHE.get(&object_id).map(|obj| {
+										view! { <Object object=obj /> }
+									}.into_view()),
+								apb::ActivityType::Follow =>
+									CACHE.get(&object_id).map(|obj| {
+										view! { <div class="ml-1"><ActorBanner object=obj /></div> }
+									}.into_view()),
+								_ => None,
+							};
 							view! {
 								<ActivityLine activity=item />
 								{object}
