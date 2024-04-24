@@ -11,12 +11,19 @@ pub fn Object(object: serde_json::Value) -> impl IntoView {
 	let author_id = object.attributed_to().id().unwrap_or_default();
 	let author = CACHE.get_or(&author_id, serde_json::Value::String(author_id.clone()));
 	let attachments = object.attachment()
-		.map(|x| view! {
-			<p class="center">
-				<a href={x.url().id().unwrap_or_default()} target="_blank">
-					<img class="attachment ml-1" src={x.url().id().unwrap_or_default()} title={x.name().unwrap_or_default().to_string()} />
-				</a>
-			</p>
+		.map(|x| {
+			let (expand, set_expand) = create_signal(false);
+			view! {
+				<p class="center">
+					<img
+						class="attachment ml-1"
+						class:expand=expand
+						src={x.url().id().unwrap_or_default()}
+						title={x.name().unwrap_or_default().to_string()}
+						on:click=move |_| set_expand.set(!expand.get())
+					/>
+				</p>
+			}
 		})
 		.collect_view();
 	let attachments_padding = if object.attachment().is_empty() {

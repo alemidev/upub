@@ -155,11 +155,17 @@
 			max-height: 2em;
 		}
 		img.attachment {
+			cursor: pointer;
 			height: 10em;
 			width: 100%;
 			border: 5px solid #bf616a;
 			padding: 5px;
 			object-fit: cover;
+		}
+		img.expand {
+			height: unset;
+			max-height: 50vh;
+			object-fit: contain;
 		}
 		div.tl-header {
 			background-color: #bf616a55;
