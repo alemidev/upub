@@ -14,7 +14,7 @@ pub fn Object(object: serde_json::Value) -> impl IntoView {
 		.map(|x| view! {
 			<p class="center">
 				<a href={x.url().id().unwrap_or_default()} target="_blank">
-					<img class="attachment" src={x.url().id().unwrap_or_default()} title={x.name().unwrap_or_default().to_string()} />
+					<img class="attachment ml-1" src={x.url().id().unwrap_or_default()} title={x.name().unwrap_or_default().to_string()} />
 				</a>
 			</p>
 		})
