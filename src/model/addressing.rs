@@ -1,5 +1,7 @@
 use apb::{ActivityMut, ObjectMut};
-use sea_orm::{entity::prelude::*, FromQueryResult, Iterable, Order, QueryOrder, QuerySelect, SelectColumns};
+use sea_orm::{entity::prelude::*, Condition, FromQueryResult, Iterable, Order, QueryOrder, QuerySelect, SelectColumns};
+
+use crate::routes::activitypub::jsonld::LD;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "addressing")]
@@ -59,105 +61,81 @@ impl ActiveModelBehavior for ActiveModel {}
 
 
 
-
-
-#[derive(Debug)]
-pub struct EmbeddedActivity {
-	pub activity: crate::model::activity::Model,
-	pub object: Option<crate::model::object::Model>,
+#[allow(clippy::large_enum_variant)] // tombstone is an outlier, not the norm! this is a beefy enum
+#[derive(Debug, Clone)]
+pub enum Event {
+	Tombstone,
+	StrayObject(crate::model::object::Model),
+	Activity(crate::model::activity::Model),
+	DeepActivity {
+		activity: crate::model::activity::Model,
+		object: crate::model::object::Model,
+	}
 }
 
-impl EmbeddedActivity {
-	pub async fn ap_filled(self, db: &DatabaseConnection) -> crate::Result<serde_json::Value> {
-		let a = self.activity.ap();
-		match self.object {
-			None => Ok(a),
-			Some(o) => {
-				let attachments = o.find_related(crate::model::attachment::Entity)
-					.all(db)
-					.await?
-					.into_iter()
-					.map(|x| x.ap())
-					.collect();
-				Ok(a.set_object(
-					apb::Node::object(o.ap().set_attachment(apb::Node::array(attachments)))
-				))
-			}
+
+impl Event {
+	pub fn id(&self) -> &str {
+		match self {
+			Event::Tombstone => "",
+			Event::StrayObject(x) => x.id.as_str(),
+			Event::Activity(x) => x.id.as_str(),
+			Event::DeepActivity { activity: _, object } => object.id.as_str(),
+		}
+	}
+
+	pub fn ap(self, attachment: Option<Vec<crate::model::attachment::Model>>) -> serde_json::Value {
+		let attachment = match attachment {
+			None => apb::Node::Empty,
+			Some(vec) => apb::Node::array(
+				vec.into_iter().map(|x| x.ap()).collect()
+			),
+		};
+		match self {
+			Event::Activity(x) => x.ap(),
+			Event::DeepActivity { activity, object } =>
+				activity.ap().set_object(apb::Node::object(object.ap().set_attachment(attachment))),
+			Event::StrayObject(x) => serde_json::Value::new_object()
+				.set_activity_type(Some(apb::ActivityType::Activity))
+				.set_object(apb::Node::object(x.ap().set_attachment(attachment))),
+			Event::Tombstone => serde_json::Value::new_object()
+				.set_activity_type(Some(apb::ActivityType::Activity))
+				.set_object(apb::Node::object(
+					serde_json::Value::new_object()
+						.set_object_type(Some(apb::ObjectType::Tombstone))
+				)),
 		}
 	}
 }
 
-impl FromQueryResult for EmbeddedActivity {
-	fn from_query_result(res: &sea_orm::QueryResult, _pre: &str) -> Result<Self, sea_orm::DbErr> {
-		let activity = crate::model::activity::Model::from_query_result(res, crate::model::activity::Entity.table_name())?;
-		let object = crate::model::object::Model::from_query_result(res, crate::model::object::Entity.table_name()).ok();
-		Ok(Self { activity, object })
-	}
-}
-
-#[derive(Debug)]
-pub struct WrappedObject {
-	pub activity: Option<crate::model::activity::Model>,
-	pub object: crate::model::object::Model,
-}
-
-
-impl WrappedObject {
-	pub async fn ap_filled(self, db: &DatabaseConnection) -> crate::Result<serde_json::Value> {
-		let attachments = self.object.find_related(crate::model::attachment::Entity)
-			.all(db)
-			.await?
-			.into_iter()
-			.map(|x| x.ap())
-			.collect();
-		let o = self.object.ap()
-			.set_attachment(apb::Node::Array(attachments));
-		match self.activity {
-			None => Ok(o),
-			Some(a) => Ok(a.ap().set_object(apb::Node::object(o))),
-		}
-	}
-}
-
-impl FromQueryResult for WrappedObject {
+impl FromQueryResult for Event {
 	fn from_query_result(res: &sea_orm::QueryResult, _pre: &str) -> Result<Self, sea_orm::DbErr> {
 		let activity = crate::model::activity::Model::from_query_result(res, crate::model::activity::Entity.table_name()).ok();
-		let object = crate::model::object::Model::from_query_result(res, crate::model::object::Entity.table_name())?;
-		Ok(Self { activity, object })
+		let object = crate::model::object::Model::from_query_result(res, crate::model::object::Entity.table_name()).ok();
+		match (activity, object) {
+			(Some(activity), Some(object)) => Ok(Self::DeepActivity { activity, object }),
+			(Some(activity), None) => Ok(Self::Activity(activity)),
+			(None, Some(object)) => Ok(Self::StrayObject(object)),
+			(None, None) => Ok(Self::Tombstone),
+		}
 	}
 }
-
-
-
 
 
 impl Entity {
-	pub fn find_activities() -> Select<Entity> {
+	pub fn find_addressed() -> Select<Entity> {
 		let mut select = Entity::find()
 			.distinct()
 			.select_only()
-			.join(sea_orm::JoinType::InnerJoin, Relation::Activity.def())
-			.join(sea_orm::JoinType::LeftJoin, crate::model::activity::Relation::Object.def())
-			.order_by(crate::model::activity::Column::Published, Order::Desc);
-
-		for col in crate::model::activity::Column::iter() {
-			select = select.select_column_as(col, format!("{}{}", crate::model::activity::Entity.table_name(), col.to_string()));
-		}
-
-		for col in crate::model::object::Column::iter() {
-			select = select.select_column_as(col, format!("{}{}", crate::model::object::Entity.table_name(), col.to_string()));
-		}
-
-		select
-	}
-
-	pub fn find_objects() -> Select<Entity> {
-		let mut select = Entity::find()
-			.distinct()
-			.select_only()
-			.join(sea_orm::JoinType::InnerJoin, Relation::Object.def())
+			.join(sea_orm::JoinType::LeftJoin, Relation::Object.def())
 			.join(sea_orm::JoinType::LeftJoin, Relation::Activity.def())
-			.order_by(crate::model::object::Column::Published, Order::Desc);
+			.filter(
+				// TODO ghetto double inner join because i want to filter out tombstones
+				Condition::any()
+					.add(crate::model::activity::Column::Id.is_not_null())
+					.add(crate::model::object::Column::Id.is_not_null())
+			)
+			.order_by(Column::Published, Order::Desc);
 
 		for col in crate::model::object::Column::iter() {
 			select = select.select_column_as(col, format!("{}{}", crate::model::object::Entity.table_name(), col.to_string()));

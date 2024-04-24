@@ -1,6 +1,6 @@
 use axum::extract::{Path, Query, State};
 use sea_orm::{ColumnTrait, QueryFilter};
-use crate::{errors::UpubError, model::{self, addressing::EmbeddedActivity}, server::{auth::AuthIdentity, fetcher::Fetcher, Context}};
+use crate::{errors::UpubError, model::{self, addressing::Event, attachment::BatchFillable}, server::{auth::AuthIdentity, fetcher::Fetcher, Context}};
 
 use super::{jsonld::LD, JsonLD, TryFetch};
 
@@ -19,17 +19,17 @@ pub async fn view(
 		ctx.fetch_activity(&aid).await?;
 	}
 
-	match model::addressing::Entity::find_activities()
+	let row = model::addressing::Entity::find_addressed()
 		.filter(model::activity::Column::Id.eq(&aid))
 		.filter(auth.filter_condition())
-		.into_model::<EmbeddedActivity>()
+		.into_model::<Event>()
 		.one(ctx.db())
 		.await?
-	{
-		Some(activity) => Ok(JsonLD(
-			activity.ap_filled(ctx.db()).await?.ld_context()
-		)),
-		None => Err(UpubError::not_found()),
-	}
+		.ok_or_else(UpubError::not_found)?;
+
+	let mut attachments = row.load_attachments_batch(ctx.db()).await?;
+	let attach = attachments.remove(row.id());
+
+	Ok(JsonLD(row.ap(attach).ld_context()))
 }
 

@@ -1,20 +1,20 @@
 use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
 
-use sea_orm::{ColumnTrait, QueryFilter, QuerySelect};
-use crate::{errors::UpubError, model::{self, addressing::EmbeddedActivity}, routes::activitypub::{jsonld::LD, JsonLD, Pagination}, server::{auth::{AuthIdentity, Identity}, Context}, url};
+use sea_orm::{ColumnTrait, Condition};
+use crate::{errors::UpubError, model, routes::activitypub::{JsonLD, Pagination}, server::{auth::{AuthIdentity, Identity}, Context}, url};
 
 pub async fn get(
 	State(ctx): State<Context>,
 	Path(id): Path<String>,
 	AuthIdentity(auth): AuthIdentity,
-) -> Result<JsonLD<serde_json::Value>, StatusCode> {
+) -> crate::Result<JsonLD<serde_json::Value>> {
 	match auth {
-		Identity::Anonymous => Err(StatusCode::FORBIDDEN),
-		Identity::Remote(_) => Err(StatusCode::FORBIDDEN),
+		Identity::Anonymous => Err(StatusCode::FORBIDDEN.into()),
+		Identity::Remote(_) => Err(StatusCode::FORBIDDEN.into()),
 		Identity::Local(user) => if ctx.uid(id.clone()) == user {
-			Ok(JsonLD(ctx.ap_collection(&url!(ctx, "/users/{id}/inbox"), None).ld_context()))
+			crate::server::builders::collection(&url!(ctx, "/users/{id}/inbox"), None)
 		} else {
-			Err(StatusCode::FORBIDDEN)
+			Err(StatusCode::FORBIDDEN.into())
 		},
 	}
 }
@@ -25,32 +25,21 @@ pub async fn page(
 	AuthIdentity(auth): AuthIdentity,
 	Query(page): Query<Pagination>,
 ) -> crate::Result<JsonLD<serde_json::Value>> {
-	let Identity::Local(uid) = auth else {
+	let Identity::Local(uid) = &auth else {
 		// local inbox is only for local users
 		return Err(UpubError::forbidden());
 	};
-	if uid != ctx.uid(id.clone()) {
+	if uid != &ctx.uid(id.clone()) {
 		return Err(UpubError::forbidden());
 	}
-	let limit = page.batch.unwrap_or(20).min(50);
-	let offset = page.offset.unwrap_or(0);
-	let activities = model::addressing::Entity::find_activities()
-		.filter(model::addressing::Column::Actor.eq(&uid))
-		.offset(offset)
-		.limit(limit)
-		.into_model::<EmbeddedActivity>()
-		.all(ctx.db())
-		.await?;
-	let mut out = Vec::new();
-	for activity in activities {
-		out.push(activity.ap_filled(ctx.db()).await?);
-	}
-	Ok(JsonLD(
-		ctx.ap_collection_page(
-			&url!(ctx, "/users/{id}/inbox/page"),
-			offset, limit, out,
-		).ld_context()
-	))
+
+	crate::server::builders::paginate(
+		url!(ctx, "/users/{id}/inbox/page"),
+		Condition::all().add(model::addressing::Column::Actor.eq(uid)),
+		ctx.db(),
+		page,
+	)
+		.await
 }
 
 pub async fn post(

@@ -3,6 +3,8 @@ use sea_orm::{entity::prelude::*, Set};
 
 use crate::routes::activitypub::jsonld::LD;
 
+use super::addressing::Event;
+
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "attachments")]
 pub struct Model {
@@ -59,3 +61,52 @@ impl Related<super::object::Entity> for Entity {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+
+#[axum::async_trait]
+pub trait BatchFillable {
+	async fn load_attachments_batch(&self, db: &DatabaseConnection) -> Result<std::collections::BTreeMap<String, Vec<Model>>, DbErr>;
+}
+
+#[axum::async_trait]
+impl BatchFillable for &[Event] {
+	async fn load_attachments_batch(&self, db: &DatabaseConnection) -> Result<std::collections::BTreeMap<String, Vec<Model>>, DbErr> {
+		let objects : Vec<crate::model::object::Model> = self
+			.iter()
+			.filter_map(|x| match x {
+				Event::Tombstone => None,
+				Event::Activity(_) => None,
+				Event::StrayObject(x) => Some(x.clone()),
+				Event::DeepActivity { activity: _, object } => Some(object.clone()),
+			})
+			.collect();
+
+		let attachments = objects.load_many(Entity, db).await?;
+
+		let mut out : std::collections::BTreeMap<String, Vec<Model>> = std::collections::BTreeMap::new();
+		for attach in attachments.into_iter().flatten() {
+			if out.contains_key(&attach.object) {
+				out.get_mut(&attach.object).expect("contains but get failed?").push(attach);
+			} else {
+				out.insert(attach.object.clone(), vec![attach]);
+			}
+		}
+
+		Ok(out)
+	}
+}
+
+#[axum::async_trait]
+impl BatchFillable for Vec<Event> {
+	async fn load_attachments_batch(&self, db: &DatabaseConnection) -> Result<std::collections::BTreeMap<String, Vec<Model>>, DbErr> {
+		self.as_slice().load_attachments_batch(db).await
+	}
+}
+
+#[axum::async_trait]
+impl BatchFillable for Event {
+	async fn load_attachments_batch(&self, db: &DatabaseConnection) -> Result<std::collections::BTreeMap<String, Vec<Model>>, DbErr> {
+		let x = vec![self.clone()]; // TODO wasteful clone and vec![] but ehhh convenient
+		x.load_attachments_batch(db).await
+	}
+}

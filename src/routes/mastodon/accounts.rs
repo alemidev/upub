@@ -70,7 +70,7 @@ pub async fn statuses(
 	Query(_query): Query<StatusesQuery>,
 ) -> Result<Json<Vec<Status>>, StatusCode> {
 	let uid = ctx.uid(id);
-	model::addressing::Entity::find_activities()
+	model::addressing::Entity::find_addressed()
 		.filter(model::activity::Column::Actor.eq(uid))
 		.filter(auth.filter_condition());
 

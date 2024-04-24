@@ -1,10 +1,9 @@
 use axum::{extract::{Query, State}, http::StatusCode, Json};
-use sea_orm::{QueryFilter, QuerySelect};
 
-use crate::{errors::UpubError, model::{self, addressing::WrappedObject}, routes::activitypub::{jsonld::LD, CreationResult, JsonLD, Pagination}, server::{auth::AuthIdentity, Context}, url};
+use crate::{errors::UpubError, routes::activitypub::{CreationResult, JsonLD, Pagination}, server::{auth::AuthIdentity, Context}, url};
 
-pub async fn get(State(ctx): State<Context>) -> Result<JsonLD<serde_json::Value>, StatusCode> {
-	Ok(JsonLD(ctx.ap_collection(&url!(ctx, "/outbox"), None).ld_context()))
+pub async fn get(State(ctx): State<Context>) -> crate::Result<JsonLD<serde_json::Value>> {
+	crate::server::builders::collection(&url!(ctx, "/outbox"), None)
 }
 
 pub async fn page(
@@ -12,29 +11,13 @@ pub async fn page(
 	Query(page): Query<Pagination>,
 	AuthIdentity(auth): AuthIdentity,
 ) -> crate::Result<JsonLD<serde_json::Value>> {
-	let limit = page.batch.unwrap_or(20).min(50);
-	let offset = page.offset.unwrap_or(0);
-
-	let items = model::addressing::Entity::find_objects()
-		.filter(auth.filter_condition())
-		// TODO also limit to only local activities
-		.limit(limit)
-		.offset(offset)
-		.into_model::<WrappedObject>()
-		.all(ctx.db()).await?;
-	
-	let mut out = Vec::new();
-	for item in items {
-		out.push(item.ap_filled(ctx.db()).await?);
-	}
-
-	Ok(JsonLD(
-		ctx.ap_collection_page(
-			&url!(ctx, "/outbox/page"),
-			offset, limit,
-			out,
-		).ld_context()
-	))
+	crate::server::builders::paginate(
+		url!(ctx, "/outbox/page"),
+		auth.filter_condition(), // TODO filter local only stuff
+		ctx.db(),
+		page,
+	)
+		.await
 }
 
 pub async fn post(

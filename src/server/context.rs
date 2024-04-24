@@ -1,10 +1,9 @@
 use std::sync::Arc;
 
-use apb::{BaseMut, CollectionMut, CollectionPageMut};
 use openssl::rsa::Rsa;
 use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect, SelectColumns, Set};
 
-use crate::{model, routes::activitypub::jsonld::LD, server::fetcher::Fetcher};
+use crate::{model, server::fetcher::Fetcher};
 
 use super::dispatcher::Dispatcher;
 
@@ -221,30 +220,6 @@ impl Context {
 		Ok(())
 	}
 
-	// TODO should probs not be here
-	pub fn ap_collection(&self, id: &str, total_items: Option<u64>) -> serde_json::Value {
-		serde_json::Value::new_object()
-			.set_id(Some(id))
-			.set_collection_type(Some(apb::CollectionType::OrderedCollection))
-			.set_first(apb::Node::link(format!("{id}/page")))
-			.set_total_items(total_items)
-	}
-
-	// TODO should probs not be here
-	pub fn ap_collection_page(&self, id: &str, offset: u64, limit: u64, items: Vec<serde_json::Value>) -> serde_json::Value {
-		serde_json::Value::new_object()
-			.set_id(Some(&format!("{id}?offset={offset}")))
-			.set_collection_type(Some(apb::CollectionType::OrderedCollectionPage))
-			.set_part_of(apb::Node::link(id.replace("/page", "")))
-			.set_ordered_items(apb::Node::array(items))
-			.set_next(
-				if items.len() < limit as usize {
-					apb::Node::Empty
-				} else {
-					apb::Node::link(format!("{id}?offset={}", offset+limit))
-				}
-			)
-	}
 
 	pub async fn dispatch(&self, uid: &str, activity_targets: Vec<String>, aid: &str, oid: Option<&str>) -> crate::Result<()> {
 		let addressed = self.expand_addressing(activity_targets).await?;

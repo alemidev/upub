@@ -1,16 +1,15 @@
 use apb::{server::Inbox, Activity, ActivityType};
 use axum::{extract::{Query, State}, http::StatusCode, Json};
-use sea_orm::{QueryFilter, QuerySelect};
 
-use crate::{errors::UpubError, model::{self, addressing::WrappedObject}, server::{auth::{AuthIdentity, Identity}, Context}, url};
+use crate::{errors::UpubError, server::{auth::{AuthIdentity, Identity}, Context}, url};
 
-use super::{jsonld::LD, JsonLD, Pagination};
+use super::{JsonLD, Pagination};
 
 
 pub async fn get(
 	State(ctx): State<Context>,
-) -> Result<JsonLD<serde_json::Value>, StatusCode> {
-	Ok(JsonLD(ctx.ap_collection(&url!(ctx, "/inbox"), None).ld_context()))
+) -> crate::Result<JsonLD<serde_json::Value>> {
+	crate::server::builders::collection(&url!(ctx, "/inbox"), None)
 }
 
 pub async fn page(
@@ -18,25 +17,13 @@ pub async fn page(
 	AuthIdentity(auth): AuthIdentity,
 	Query(page): Query<Pagination>,
 ) -> crate::Result<JsonLD<serde_json::Value>> {
-	let limit = page.batch.unwrap_or(20).min(50);
-	let offset = page.offset.unwrap_or(0);
-	let objects = model::addressing::Entity::find_objects()
-		.filter(auth.filter_condition())
-		.limit(limit)
-		.offset(offset)
-		.into_model::<WrappedObject>()
-		.all(ctx.db())
-		.await?;
-	let mut out = Vec::new();
-	for object in objects {
-		out.push(object.ap_filled(ctx.db()).await?);
-	}
-	Ok(JsonLD(
-		ctx.ap_collection_page(
-			&url!(ctx, "/inbox/page"),
-			offset, limit, out,
-		).ld_context()
-	))
+	crate::server::builders::paginate(
+		url!(ctx, "/inbox/page"),
+		auth.filter_condition(),
+		ctx.db(),
+		page
+	)
+		.await
 }
 
 macro_rules! pretty_json {

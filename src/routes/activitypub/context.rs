@@ -1,7 +1,7 @@
 use axum::extract::{Path, Query, State};
-use sea_orm::{ColumnTrait, PaginatorTrait, QueryFilter, QuerySelect};
+use sea_orm::{ColumnTrait, Condition, PaginatorTrait, QueryFilter};
 
-use crate::{model::{self, addressing::WrappedObject}, routes::activitypub::{jsonld::LD, JsonLD, Pagination}, server::{auth::AuthIdentity, Context}, url};
+use crate::{model, routes::activitypub::{JsonLD, Pagination}, server::{auth::AuthIdentity, Context}, url};
 
 pub async fn get(
 	State(ctx): State<Context>,
@@ -14,13 +14,13 @@ pub async fn get(
 		url!(ctx, "/context/{id}")
 	};
 
-	let count = model::addressing::Entity::find_objects()
+	let count = model::addressing::Entity::find_addressed()
 		.filter(auth.filter_condition())
 		.filter(model::object::Column::Context.eq(context))
 		.count(ctx.db())
 		.await?;
 
-	Ok(JsonLD(ctx.ap_collection(&url!(ctx, "/context/{id}"), Some(count)).ld_context()))
+	crate::server::builders::collection(&url!(ctx, "/context/{id}"), Some(count))
 }
 
 pub async fn page(
@@ -29,9 +29,6 @@ pub async fn page(
 	Query(page): Query<Pagination>,
 	AuthIdentity(auth): AuthIdentity,
 ) -> crate::Result<JsonLD<serde_json::Value>> {
-	let limit = page.batch.unwrap_or(20).min(50);
-	let offset = page.offset.unwrap_or(0);
-
 	let context = if id.starts_with('+') {
 		id.replacen('+', "https://", 1).replace('@', "/")
 	} else if id.starts_with("tag:") {
@@ -40,24 +37,13 @@ pub async fn page(
 		url!(ctx, "/context/{id}") // TODO need a better way to figure out which ones are our contexts
 	};
 
-	let items = model::addressing::Entity::find_objects()
-		.filter(auth.filter_condition())
-		.filter(model::object::Column::Context.eq(context))
-		.limit(limit)
-		.offset(offset)
-		.into_model::<WrappedObject>()
-		.all(ctx.db())
-		.await?;
-
-	let mut out = Vec::new();
-	for item in items {
-		out.push(item.ap_filled(ctx.db()).await?);
-	}
-
-	Ok(JsonLD(
-		ctx.ap_collection_page(
-			&url!(ctx, "/context/{id}/page"),
-			offset, limit, out,
-		).ld_context()
-	))
+	crate::server::builders::paginate(
+		url!(ctx, "/context/{id}/page"),
+		Condition::all()
+			.add(auth.filter_condition())
+			.add(model::object::Column::Context.eq(context)),
+		ctx.db(),
+		page
+	)
+		.await
 }

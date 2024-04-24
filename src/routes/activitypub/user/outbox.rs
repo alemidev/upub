@@ -1,16 +1,14 @@
 use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
-use sea_orm::{ColumnTrait, QueryFilter, QuerySelect};
+use sea_orm::{ColumnTrait, Condition};
 
 use apb::{server::Outbox, AcceptType, ActivityType, Base, BaseType, ObjectType, RejectType};
-use crate::{errors::UpubError, model::{self, addressing::EmbeddedActivity}, routes::activitypub::{jsonld::LD, CreationResult, JsonLD, Pagination}, server::{auth::{AuthIdentity, Identity}, Context}, url};
+use crate::{errors::UpubError, model, routes::activitypub::{CreationResult, JsonLD, Pagination}, server::{auth::{AuthIdentity, Identity}, Context}, url};
 
 pub async fn get(
 	State(ctx): State<Context>,
 	Path(id): Path<String>,
-) -> Result<JsonLD<serde_json::Value>, StatusCode> {
-	Ok(JsonLD(
-		ctx.ap_collection(&url!(ctx, "/users/{id}/outbox"), None).ld_context()
-	))
+) -> crate::Result<JsonLD<serde_json::Value>> {
+	crate::server::builders::collection(&url!(ctx, "/users/{id}/outbox"), None)
 }
 
 pub async fn page(
@@ -24,28 +22,19 @@ pub async fn page(
 	} else {
 		ctx.uid(id.clone())
 	};
-	let limit = page.batch.unwrap_or(20).min(50);
-	let offset = page.offset.unwrap_or(0);
-
-	let activities = model::addressing::Entity::find_activities()
-		.filter(model::activity::Column::Actor.eq(&uid))
-		.filter(auth.filter_condition())
-		.limit(limit)
-		.offset(offset)
-		.into_model::<EmbeddedActivity>()
-		.all(ctx.db()).await?;
-
-	let mut out = Vec::new();
-	for activity in activities {
-		out.push(activity.ap_filled(ctx.db()).await?);
-	}
-
-	Ok(JsonLD(
-		ctx.ap_collection_page(
-			&url!(ctx, "/users/{id}/outbox/page"),
-			offset, limit, out,
-		).ld_context()
-	))
+	crate::server::builders::paginate(
+		url!(ctx, "/users/{id}/outbox/page"),
+		Condition::all()
+			.add(auth.filter_condition())
+			.add(
+				Condition::any()
+					.add(model::activity::Column::Actor.eq(&uid))
+					.add(model::object::Column::AttributedTo.eq(&uid))
+				),
+		ctx.db(),
+		page,
+	)
+		.await
 }
 
 pub async fn post(
