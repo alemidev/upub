@@ -78,9 +78,15 @@ async fn worker(db: DatabaseConnection, domain: String, poll_interval: u64, mut 
 		{
 			Some((activity, None)) => activity.ap(),
 			Some((activity, Some(object))) => {
-				// embed local object when dispatching
-				// TODO this .contains() is jank, could trick us into embedding remote activities
-				if object.id.contains(&domain) {
+				let always_embed = matches!(
+					activity.activity_type,
+					apb::ActivityType::Create
+					| apb::ActivityType::Undo
+					| apb::ActivityType::Update
+					| apb::ActivityType::Accept(_)
+					| apb::ActivityType::Reject(_)
+				);
+				if always_embed {
 					activity.ap().set_object(Node::object(object.ap()))
 				} else {
 					activity.ap()
