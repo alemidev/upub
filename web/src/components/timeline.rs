@@ -35,7 +35,11 @@ impl Timeline {
 			.collect();
 	
 		let mut feed = self.feed.get();
-		let mut older = process_activities(activities, auth).await;
+		let mut older = process_activities(activities, auth)
+			.await
+			.into_iter()
+			.filter(|x| !feed.contains(x))
+			.collect();
 		feed.append(&mut older);
 		self.feed.set(feed);
 
