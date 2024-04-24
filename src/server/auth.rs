@@ -22,9 +22,12 @@ impl Identity {
 		let base_cond = Condition::any().add(model::addressing::Column::Actor.eq(apb::target::PUBLIC));
 		match self {
 			Identity::Anonymous => base_cond,
-			Identity::Local(uid) => base_cond.add(model::addressing::Column::Actor.eq(uid)),
 			Identity::Remote(server) => base_cond.add(model::addressing::Column::Server.eq(server)),
 			// TODO should we allow all users on same server to see? or just specific user??
+			Identity::Local(uid) => base_cond
+				.add(model::addressing::Column::Actor.eq(uid))
+				.add(model::activity::Column::Actor.eq(uid))
+				.add(model::object::Column::AttributedTo.eq(uid)),
 		}
 	}
 
