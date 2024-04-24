@@ -138,8 +138,14 @@ pub fn TimelineFeed(tl: Timeline) -> impl IntoView {
 			key=|k| k.to_string()
 			children=move |id: String| {
 				match CACHE.get(&id) {
-					Some(item) => match item.base_type() {
-						Some(apb::BaseType::Object(apb::ObjectType::Activity(_))) => {
+					Some(item) => match item.object_type() {
+						// special case for placeholder activities
+						Some(apb::ObjectType::Note) => view! {
+								<Object object=item.clone() />
+								<hr/ >
+							}.into_view(),
+						// everything else
+						Some(apb::ObjectType::Activity(_)) => {
 							let object_id = item.object().id().unwrap_or_default();
 							let object = CACHE.get(&object_id).map(|obj| {
 								view! { <Object object=obj /> }
@@ -150,10 +156,7 @@ pub fn TimelineFeed(tl: Timeline) -> impl IntoView {
 								<hr/ >
 							}.into_view()
 						},
-						Some(apb::BaseType::Object(apb::ObjectType::Note)) => view! {
-								<Object object=item.clone() />
-								<hr/ >
-							}.into_view(),
+						// should never happen
 						_ => view! { <p><code>type not implemented</code></p><hr /> }.into_view(),
 					},
 					None => view! {
@@ -215,6 +218,8 @@ async fn process_activities(
 				activity_id.to_string(),
 				activity.clone().set_object(apb::Node::maybe_link(object_id))
 			);
+		} else if let Some(object_id) = activity.object().id() {
+			out.push(object_id);
 		}
 
 		if let Some(uid) = activity.attributed_to().id() {
