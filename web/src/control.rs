@@ -95,6 +95,7 @@ pub fn AdvancedPostBox(username: Signal<Option<String>>, advanced: WriteSignal<b
 	let (error, set_error) = create_signal(None);
 	let (value, set_value) = create_signal("Like".to_string());
 	let (embedded, set_embedded) = create_signal(false);
+	let sensitive_ref: NodeRef<html::Input> = create_node_ref();
 	let summary_ref: NodeRef<html::Input> = create_node_ref();
 	let content_ref: NodeRef<html::Textarea> = create_node_ref();
 	let context_ref: NodeRef<html::Input> = create_node_ref();
@@ -139,11 +140,19 @@ pub fn AdvancedPostBox(username: Signal<Option<String>>, advanced: WriteSignal<b
 				<input class="w-100" type="text" node_ref=object_id_ref title="objectId" placeholder="objectId" />
 
 				<div class:hidden=move|| !embedded.get()>
-					<input class="w-100" type="text" node_ref=summary_ref title="summary" placeholder="summary" />
-
 					<input class="w-100" type="text" node_ref=name_ref title="name" placeholder="name" />
 					<input class="w-100" type="text" node_ref=context_ref title="context" placeholder="context" />
 					<input class="w-100" type="text" node_ref=reply_ref title="inReplyTo" placeholder="inReplyTo" />
+
+					<table class="align w-100">
+						<tr>
+							<td><input type="checkbox" title="sensitive" checked node_ref=sensitive_ref/>
+									</td>
+							<td class="w-100">
+								<input class="w-100" type="text" node_ref=summary_ref title="summary" placeholder="summary" />
+							</td>
+						</tr>
+					</table>
 
 					<textarea rows="5" class="w-100" node_ref=content_ref title="content" placeholder="content" ></textarea>
 				</div>
