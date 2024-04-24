@@ -80,6 +80,7 @@ pub async fn faker(db: &sea_orm::DatabaseConnection, domain: String, count: u64)
 			bto: Set(Audience::default()),
 			cc: Set(Audience(vec![])),
 			bcc: Set(Audience::default()),
+			sensitive: Set(false),
 		}).exec(db).await?;
 
 		activity::Entity::insert(activity::ActiveModel {
