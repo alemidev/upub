@@ -25,6 +25,8 @@ pub struct Model {
 	pub to: Audience,
 	pub bto: Audience,
 	pub published: ChronoDateTimeUtc,
+
+	pub sensitive: bool,
 }
 
 impl Model {
@@ -46,6 +48,8 @@ impl Model {
 			bto: object.bto().into(),
 			cc: object.cc().into(),
 			bcc: object.bcc().into(),
+
+			sensitive: object.sensitive().unwrap_or(false),
 		})
 	}
 
@@ -64,6 +68,7 @@ impl Model {
 			.set_bto(apb::Node::Empty)
 			.set_cc(apb::Node::links(self.cc.0.clone()))
 			.set_bcc(apb::Node::Empty)
+			.set_sensitive(Some(self.sensitive))
 	}
 }
 

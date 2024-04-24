@@ -66,6 +66,9 @@ pub trait Object : Base {
 	fn bcc(&self) -> Node<Self::Link> { Node::Empty }
 	fn media_type(&self) -> Option<&str> { None } // also in link
 	fn duration(&self) -> Option<&str> { None } // TODO how to parse xsd:duration ?
+
+	// TODO i really need this but it isn't part of AP!
+	fn sensitive(&self) -> Option<bool> { None }
 }
 
 pub trait ObjectMut : BaseMut {
@@ -102,6 +105,8 @@ pub trait ObjectMut : BaseMut {
 	fn set_bcc(self, val: Node<Self::Link>) -> Self;
 	fn set_media_type(self, val: Option<&str>) -> Self; // also in link
 	fn set_duration(self, val: Option<&str>) -> Self; // TODO how to parse xsd:duration ?
+
+	fn set_sensitive(self, val: Option<bool>) -> Self;
 }
 
 #[cfg(feature = "unstructured")]
@@ -138,6 +143,8 @@ impl Object for serde_json::Value {
 	crate::getter! { media_type::mediaType -> &str }
 	crate::getter! { duration -> &str }
 	crate::getter! { url -> node Self::Link }
+
+	crate::getter! { sensitive -> bool }
 
 	// TODO Mastodon doesn't use a "context" field on the object but makes up a new one!!
 	fn context(&self) -> Node<<Self as Object>::Object> {
@@ -186,4 +193,6 @@ impl ObjectMut for serde_json::Value {
 	crate::setter! { duration -> &str }
 	crate::setter! { url -> node Self::Link }
 	crate::setter! { context -> node <Self as Object>::Object }
+
+	crate::setter! { sensitive -> bool }
 }
