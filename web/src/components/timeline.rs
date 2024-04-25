@@ -119,7 +119,7 @@ pub fn TimelineReplies(tl: Timeline, root: String) -> impl IntoView {
 		<div>
 			<TimelineRepliesRecursive tl=tl root=root />
 		</div>
-		<div class="center mt-1 mb-1" >
+		<div class="center mt-1 mb-1" class:hidden=tl.over >
 			<button type="button"
 				on:click=move |_| {
 					spawn_local(async move {
