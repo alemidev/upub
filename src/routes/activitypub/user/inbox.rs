@@ -35,7 +35,10 @@ pub async fn page(
 
 	crate::server::builders::paginate(
 		url!(ctx, "/users/{id}/inbox/page"),
-		Condition::all().add(model::addressing::Column::Actor.eq(uid)),
+		Condition::any()
+			.add(model::addressing::Column::Actor.eq(uid))
+			.add(model::object::Column::AttributedTo.eq(uid))
+			.add(model::activity::Column::Actor.eq(uid)),
 		ctx.db(),
 		page,
 	)
