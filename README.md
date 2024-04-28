@@ -55,9 +55,9 @@ all help is extremely welcome! if [my cgit](https://git.alemi.dev/upub.git/) loo
  - [ ] more optimized database schema
 
 ## what about the name?
-μpub, sometimes stylyzed `upub`, is pronounced `mu-pub` (the `μ` stands for [micro](https://en.wikipedia.org/wiki/International_System_of_Units#Prefixes))
+μpub (or simply `upub`) means "[micro](https://en.wikipedia.org/wiki/International_System_of_Units#Prefixes)-pub", but could also be read "upub", "you-pub" or "mu-pub"
 
 ## frontend
-upub aims to be compatible with multiple frontends via the mastodon api, but a simple custom ui is also being worked on
+μpub aims to be compatible with multiple frontends via the mastodon api, but a simple custom ui is also being worked on
 
 ![screenshot of upub simple frontend](https://cdn.alemi.dev/proj/upub/fe/20240424.png)
