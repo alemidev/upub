@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use apb::{target::Addressed, Activity, Object};
 use base64::Engine;
 use reqwest::{header::{ACCEPT, CONTENT_TYPE, USER_AGENT}, Method, Response};
-use sea_orm::{EntityTrait, IntoActiveModel};
+use sea_orm::{sea_query::Expr, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
 
 use crate::{model, VERSION};
 
@@ -155,6 +155,11 @@ async fn fetch_object_inner(ctx: &Context, id: &str, depth: usize) -> crate::Res
 	if let Some(reply) = &object_model.in_reply_to {
 		if depth <= 16 {
 			fetch_object_inner(ctx, reply, depth + 1).await?;
+			model::object::Entity::update_many()
+				.filter(model::object::Column::Id.eq(reply))
+				.col_expr(model::object::Column::Comments, Expr::col(model::object::Column::Comments).add(1))
+				.exec(ctx.db())
+				.await?;
 		} else {
 			tracing::warn!("thread deeper than 16, giving up fetching more replies");
 		}
