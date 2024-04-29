@@ -1,4 +1,4 @@
-use axum::http::StatusCode;
+use axum::{http::StatusCode, response::Redirect};
 
 #[derive(Debug, thiserror::Error)]
 pub enum UpubError {
@@ -22,6 +22,11 @@ pub enum UpubError {
 
 	#[error("invalid base64 string: {0}")]
 	Base64(#[from] base64::DecodeError),
+
+	// TODO this isn't really an error but i need to redirect from some routes so this allows me to
+	// keep the type hints on the return type, still what the hell!!!!
+	#[error("redirecting to {0}")]
+	Redirect(String),
 }
 
 impl UpubError {
@@ -66,6 +71,7 @@ impl axum::response::IntoResponse for UpubError {
 	fn into_response(self) -> axum::response::Response {
 		let descr = self.to_string();
 		match self {
+			UpubError::Redirect(to) => Redirect::to(&to).into_response(),
 			UpubError::Status(status) => (status, descr).into_response(),
 			UpubError::Database(_) => (StatusCode::SERVICE_UNAVAILABLE, descr).into_response(),
 			UpubError::Reqwest(x) =>

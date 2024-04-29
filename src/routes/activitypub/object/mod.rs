@@ -20,7 +20,11 @@ pub async fn view(
 		ctx.oid(id.clone())
 	};
 	if auth.is_local() && query.fetch && !ctx.is_local(&oid) {
-		ctx.fetch_object(&oid).await?;
+		let obj = ctx.fetch_object(&oid).await?;
+		// some implementations serve statuses on different urls than their AP id
+		if obj.id != oid {
+			return Err(UpubError::Redirect(crate::url!(ctx, "/objects/{}", ctx.id(&obj.id))));
+		}
 	}
 
 	let item = model::addressing::Entity::find_addressed()
