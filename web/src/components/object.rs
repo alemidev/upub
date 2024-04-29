@@ -1,7 +1,7 @@
 use leptos::*;
 use crate::{prelude::*, URL_SENSITIVE};
 
-use apb::{target::Addressed, Base, Object};
+use apb::{target::Addressed, Base, Collection, Object};
 
 #[component]
 pub fn Attachment(
@@ -86,6 +86,18 @@ pub fn Object(object: serde_json::Value) -> impl IntoView {
 	let attachments = object.attachment()
 		.map(|x| view! { <Attachment object=x sensitive=sensitive /> })
 		.collect_view();
+	let comments = object.replies().get()
+		.map(|x| x.total_items().unwrap_or(0))
+		.filter(|x| *x > 0)
+		.map(|x| view! { <small>{x}</small> });
+	let likes = object.audience().get()
+		.map(|x| x.total_items().unwrap_or(0))
+		.filter(|x| *x > 0)
+		.map(|x| view! { <small>{x}</small> });
+	let shares = object.generator().get()
+		.map(|x| x.total_items().unwrap_or(0))
+		.filter(|x| *x > 0)
+		.map(|x| view! { <small>{x}</small> });
 	let attachments_padding = if object.attachment().is_empty() {
 		None
 	} else {
@@ -114,6 +126,11 @@ pub fn Object(object: serde_json::Value) -> impl IntoView {
 				{attachments}
 			</Summary>
 		</blockquote>
+		<div class="mt-s ml-1 rev">
+			<span class="emoji ml-2">{comments}" 📨"</span>
+			<span class="emoji ml-2">{likes}" ⭐"</span>
+			<span class="emoji ml-2">{shares}" 🚀"</span>
+		</div>
 	}
 }
 
