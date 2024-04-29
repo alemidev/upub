@@ -11,7 +11,7 @@ pub async fn get(
 	let replies_id = url!(ctx, "/objects/{id}/replies");
 	let oid = ctx.uri("objects", id);
 
-	let count = model::addressing::Entity::find_addressed()
+	let count = model::addressing::Entity::find_addressed(auth.my_id())
 		.filter(auth.filter_condition())
 		.filter(model::object::Column::InReplyTo.eq(oid))
 		.count(ctx.db())
@@ -35,7 +35,8 @@ pub async fn page(
 			.add(auth.filter_condition())
 			.add(model::object::Column::InReplyTo.eq(oid)),
 		ctx.db(),
-		page
+		page,
+		auth.my_id(),
 	)
 		.await
 }

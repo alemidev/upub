@@ -33,6 +33,7 @@ pub async fn page(
 				),
 		ctx.db(),
 		page,
+		auth.my_id(),
 	)
 		.await
 }

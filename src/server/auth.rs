@@ -31,6 +31,13 @@ impl Identity {
 		}
 	}
 
+	pub fn my_id(&self) -> Option<&str> {
+		match self {
+			Identity::Local(x) => Some(x.as_str()),
+			_ => None,
+		}
+	}
+
 	pub fn is_anon(&self) -> bool {
 		matches!(self, Self::Anonymous)
 	}

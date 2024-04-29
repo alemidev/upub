@@ -21,7 +21,8 @@ pub async fn page(
 		url!(ctx, "/inbox/page"),
 		auth.filter_condition(),
 		ctx.db(),
-		page
+		page,
+		auth.my_id(),
 	)
 		.await
 }

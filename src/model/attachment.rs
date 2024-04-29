@@ -76,8 +76,8 @@ impl BatchFillable for &[Event] {
 			.filter_map(|x| match x {
 				Event::Tombstone => None,
 				Event::Activity(_) => None,
-				Event::StrayObject(x) => Some(x.clone()),
-				Event::DeepActivity { activity: _, object } => Some(object.clone()),
+				Event::StrayObject { object, liked: _ } => Some(object.clone()),
+				Event::DeepActivity { activity: _, liked: _, object } => Some(object.clone()),
 			})
 			.collect();
 

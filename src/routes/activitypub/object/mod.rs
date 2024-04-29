@@ -4,7 +4,7 @@ use apb::ObjectMut;
 use axum::extract::{Path, Query, State};
 use sea_orm::{ColumnTrait, ModelTrait, QueryFilter};
 
-use crate::{errors::UpubError, model::{self, addressing::Event}, server::{auth::AuthIdentity, fetcher::Fetcher, Context}};
+use crate::{errors::UpubError, model::{self, addressing::Event}, server::{auth::{AuthIdentity, Identity}, fetcher::Fetcher, Context}};
 
 use super::{jsonld::LD, JsonLD, TryFetch};
 
@@ -27,7 +27,7 @@ pub async fn view(
 		}
 	}
 
-	let item = model::addressing::Entity::find_addressed()
+	let item = model::addressing::Entity::find_addressed(auth.my_id())
 		.filter(model::object::Column::Id.eq(&oid))
 		.filter(auth.filter_condition())
 		.into_model::<Event>()
@@ -38,8 +38,8 @@ pub async fn view(
 	let object = match item {
 		Event::Tombstone => return Err(UpubError::not_found()),
 		Event::Activity(_) => return Err(UpubError::not_found()),
-		Event::StrayObject(x) => x,
-		Event::DeepActivity { activity: _, object } => object,
+		Event::StrayObject { object, liked: _ } => object,
+		Event::DeepActivity { activity: _, liked: _, object } => object,
 	};
 
 	let attachments = object.find_related(model::attachment::Entity)

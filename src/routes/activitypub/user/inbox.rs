@@ -41,6 +41,7 @@ pub async fn page(
 			.add(model::activity::Column::Actor.eq(uid)),
 		ctx.db(),
 		page,
+		auth.my_id(),
 	)
 		.await
 }

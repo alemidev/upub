@@ -11,7 +11,7 @@ pub async fn get(
 	let local_context_id = url!(ctx, "/context/{id}");
 	let context = ctx.uri("context", id);
 
-	let count = model::addressing::Entity::find_addressed()
+	let count = model::addressing::Entity::find_addressed(auth.my_id())
 		.filter(auth.filter_condition())
 		.filter(model::object::Column::Context.eq(context))
 		.count(ctx.db())
@@ -40,7 +40,8 @@ pub async fn page(
 			.add(auth.filter_condition())
 			.add(model::object::Column::Context.eq(context)),
 		ctx.db(),
-		page
+		page,
+		auth.my_id(),
 	)
 		.await
 }

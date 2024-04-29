@@ -8,11 +8,12 @@ pub async fn paginate(
 	filter: Condition,
 	db: &DatabaseConnection,
 	page: Pagination,
+	my_id: Option<&str>,
 ) -> crate::Result<JsonLD<serde_json::Value>> {
 	let limit = page.batch.unwrap_or(20).min(50);
 	let offset = page.offset.unwrap_or(0);
 
-	let items = crate::model::addressing::Entity::find_addressed()
+	let items = crate::model::addressing::Entity::find_addressed(my_id)
 		.filter(filter)
 		// TODO also limit to only local activities
 		.limit(limit)

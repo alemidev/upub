@@ -1,4 +1,4 @@
-use apb::{ActivityMut, ObjectMut};
+use apb::{ActivityMut, CollectionMut, ObjectMut};
 use sea_orm::{entity::prelude::*, Condition, FromQueryResult, Iterable, Order, QueryOrder, QuerySelect, SelectColumns};
 
 use crate::routes::activitypub::jsonld::LD;
@@ -65,11 +65,15 @@ impl ActiveModelBehavior for ActiveModel {}
 #[derive(Debug, Clone)]
 pub enum Event {
 	Tombstone,
-	StrayObject(crate::model::object::Model),
 	Activity(crate::model::activity::Model),
+	StrayObject {
+		object: crate::model::object::Model,
+		liked: Option<String>,
+	},
 	DeepActivity {
 		activity: crate::model::activity::Model,
 		object: crate::model::object::Model,
+		liked: Option<String>,
 	}
 }
 
@@ -78,9 +82,9 @@ impl Event {
 	pub fn id(&self) -> &str {
 		match self {
 			Event::Tombstone => "",
-			Event::StrayObject(x) => x.id.as_str(),
 			Event::Activity(x) => x.id.as_str(),
-			Event::DeepActivity { activity: _, object } => object.id.as_str(),
+			Event::StrayObject { object, liked: _ } => object.id.as_str(),
+			Event::DeepActivity { activity: _, liked: _, object } => object.id.as_str(),
 		}
 	}
 
@@ -93,11 +97,37 @@ impl Event {
 		};
 		match self {
 			Event::Activity(x) => x.ap(),
-			Event::DeepActivity { activity, object } =>
-				activity.ap().set_object(apb::Node::object(object.ap().set_attachment(attachment))),
-			Event::StrayObject(x) => serde_json::Value::new_object()
+			Event::DeepActivity { activity, object, liked } =>
+				activity.ap().set_object(apb::Node::object({
+					let likes = object.likes;
+					let mut obj = object.ap()
+						.set_attachment(attachment);
+					if let Some(liked) = liked {
+						obj = obj.set_audience(apb::Node::object( // TODO setting this again ewww...
+							serde_json::Value::new_object()
+								.set_collection_type(Some(apb::CollectionType::OrderedCollection))
+								.set_total_items(Some(likes as u64))
+								.set_ordered_items(apb::Node::links(vec![liked]))
+						));
+					}
+					obj
+				})),
+			Event::StrayObject { object, liked } => serde_json::Value::new_object()
 				.set_activity_type(Some(apb::ActivityType::Activity))
-				.set_object(apb::Node::object(x.ap().set_attachment(attachment))),
+				.set_object(apb::Node::object({
+					let likes = object.likes;
+					let mut obj = object.ap()
+						.set_attachment(attachment);
+					if let Some(liked) = liked {
+						obj = obj.set_audience(apb::Node::object( // TODO setting this again ewww...
+							serde_json::Value::new_object()
+								.set_collection_type(Some(apb::CollectionType::OrderedCollection))
+								.set_total_items(Some(likes as u64))
+								.set_ordered_items(apb::Node::links(vec![liked]))
+						));
+					}
+					obj
+				})),
 			Event::Tombstone => serde_json::Value::new_object()
 				.set_activity_type(Some(apb::ActivityType::Activity))
 				.set_object(apb::Node::object(
@@ -112,10 +142,11 @@ impl FromQueryResult for Event {
 	fn from_query_result(res: &sea_orm::QueryResult, _pre: &str) -> Result<Self, sea_orm::DbErr> {
 		let activity = crate::model::activity::Model::from_query_result(res, crate::model::activity::Entity.table_name()).ok();
 		let object = crate::model::object::Model::from_query_result(res, crate::model::object::Entity.table_name()).ok();
+		let liked = res.try_get(crate::model::like::Entity.table_name(), &crate::model::like::Column::Actor.to_string()).ok();
 		match (activity, object) {
-			(Some(activity), Some(object)) => Ok(Self::DeepActivity { activity, object }),
+			(Some(activity), Some(object)) => Ok(Self::DeepActivity { activity, object, liked }),
 			(Some(activity), None) => Ok(Self::Activity(activity)),
-			(None, Some(object)) => Ok(Self::StrayObject(object)),
+			(None, Some(object)) => Ok(Self::StrayObject { object, liked }),
 			(None, None) => Ok(Self::Tombstone),
 		}
 	}
@@ -123,7 +154,7 @@ impl FromQueryResult for Event {
 
 
 impl Entity {
-	pub fn find_addressed() -> Select<Entity> {
+	pub fn find_addressed(uid: Option<&str>) -> Select<Entity> {
 		let mut select = Entity::find()
 			.distinct()
 			.select_only()
@@ -136,6 +167,13 @@ impl Entity {
 					.add(crate::model::object::Column::Id.is_not_null())
 			)
 			.order_by(Column::Published, Order::Desc);
+
+		if let Some(uid) = uid {
+			select = select
+				.filter(crate::model::like::Column::Actor.eq(uid))
+				.join(sea_orm::JoinType::LeftJoin, crate::model::object::Relation::Like.def())
+				.select_column_as(crate::model::like::Column::Actor, format!("{}{}", crate::model::like::Entity.table_name(), crate::model::like::Column::Actor.to_string()));
+		}
 
 		for col in crate::model::object::Column::iter() {
 			select = select.select_column_as(col, format!("{}{}", crate::model::object::Entity.table_name(), col.to_string()));

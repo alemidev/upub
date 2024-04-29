@@ -7,7 +7,7 @@ pub mod following;
 use axum::extract::{Path, Query, State};
 use sea_orm::EntityTrait;
 
-use apb::{ActorMut, BaseMut, CollectionMut, Node, ObjectMut};
+use apb::{ActorMut, Node, ObjectMut};
 use crate::{errors::UpubError, model::{self, user}, server::{auth::AuthIdentity, fetcher::Fetcher, Context}, url};
 
 use super::{jsonld::LD, JsonLD, TryFetch};

@@ -18,7 +18,7 @@ pub async fn view(
 		}
 	}
 
-	let row = model::addressing::Entity::find_addressed()
+	let row = model::addressing::Entity::find_addressed(auth.my_id())
 		.filter(model::activity::Column::Id.eq(&aid))
 		.filter(auth.filter_condition())
 		.into_model::<Event>()

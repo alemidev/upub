@@ -16,6 +16,7 @@ pub async fn page(
 		auth.filter_condition(), // TODO filter local only stuff
 		ctx.db(),
 		page,
+		auth.my_id(),
 	)
 		.await
 }
