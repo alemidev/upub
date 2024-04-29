@@ -49,16 +49,16 @@ pub async fn view(
 		.map(|x| x.ap())
 		.collect::<Vec<serde_json::Value>>();
 
-	let replies = 
-		serde_json::Value::new_object()
-			.set_id(Some(&crate::url!(ctx, "/objects/{id}/replies")))
-			.set_collection_type(Some(apb::CollectionType::OrderedCollection))
-			.set_first(apb::Node::link(crate::url!(ctx, "/objects/{id}/replies/page")))
-			.set_total_items(Some(object.comments as u64));
+	// let replies = 
+	// 	serde_json::Value::new_object()
+	// 		.set_id(Some(&crate::url!(ctx, "/objects/{id}/replies")))
+	// 		.set_collection_type(Some(apb::CollectionType::OrderedCollection))
+	// 		.set_first(apb::Node::link(crate::url!(ctx, "/objects/{id}/replies/page")))
+	// 		.set_total_items(Some(object.comments as u64));
 
 	Ok(JsonLD(
 		object.ap()
-			.set_replies(apb::Node::object(replies))
+			// .set_replies(apb::Node::object(replies))
 			.set_attachment(apb::Node::array(attachments))
 			.ld_context()
 	))
