@@ -3,6 +3,7 @@ pub mod activity;
 pub mod user;
 pub mod config;
 
+pub mod relay;
 pub mod relation;
 pub mod addressing;
 pub mod share;

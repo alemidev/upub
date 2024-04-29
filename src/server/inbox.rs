@@ -116,6 +116,20 @@ impl apb::server::Inbox for Context {
 	async fn accept(&self, _: String, activity: serde_json::Value) -> crate::Result<()> {
 		// TODO what about TentativeAccept
 		let activity_model = model::activity::Model::new(&activity)?;
+
+		if let Some(mut r) = model::relay::Entity::find_by_id(&activity_model.actor)
+			.one(self.db())
+			.await?
+		{
+			r.accepted = true;
+			model::relay::Entity::update(r.into_active_model()).exec(self.db()).await?;
+			model::activity::Entity::insert(activity_model.clone().into_active_model())
+				.exec(self.db())
+				.await?;
+			tracing::info!("relay {} is now broadcasting to us", activity_model.actor);
+			return Ok(());
+		}
+
 		let Some(follow_request_id) = &activity_model.object else {
 			return Err(UpubError::bad_request());
 		};
@@ -294,6 +308,14 @@ impl apb::server::Inbox for Context {
 			return Err(FieldError("object").into());
 		};
 		self.fetch_object(oid).await?;
+
+		// relays send us activities as Announce, but we don't really want to count those towards the
+		// total shares count of an object, so just fetch the object and be done with it
+		if !self.is_relay(&activity_model.actor) {
+			tracing::info!("relay {} broadcasted {}", activity_model.actor, oid);
+			return Ok(())
+		}
+
 		let share = model::share::ActiveModel {
 			id: sea_orm::ActiveValue::NotSet,
 			actor: sea_orm::Set(activity_model.actor.clone()),

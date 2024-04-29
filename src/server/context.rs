@@ -1,7 +1,7 @@
-use std::sync::Arc;
+use std::{collections::BTreeSet, sync::Arc};
 
 use openssl::rsa::Rsa;
-use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect, SelectColumns, Set};
+use sea_orm::{ColumnTrait, DatabaseConnection, EntityOrSelect, EntityTrait, QueryFilter, QuerySelect, SelectColumns, Set};
 
 use crate::{model, server::fetcher::Fetcher};
 
@@ -17,6 +17,7 @@ struct ContextInner {
 	dispatcher: Dispatcher,
 	// TODO keep these pre-parsed
 	app: model::application::Model,
+	relays: BTreeSet<String>,
 }
 
 #[macro_export]
@@ -61,8 +62,17 @@ impl Context {
 			}
 		};
 
+		let relays = model::relay::Entity::find()
+			.select_only()
+			.select_column(model::relay::Column::Id)
+			.filter(model::relay::Column::Accepted.eq(true))
+			.into_tuple::<String>()
+			.all(&db)
+			.await?;
+
 		Ok(Context(Arc::new(ContextInner {
 			db, domain, protocol, app, dispatcher,
+			relays: BTreeSet::from_iter(relays.into_iter()),
 		})))
 	}
 
@@ -220,11 +230,14 @@ impl Context {
 		Ok(())
 	}
 
-
 	pub async fn dispatch(&self, uid: &str, activity_targets: Vec<String>, aid: &str, oid: Option<&str>) -> crate::Result<()> {
 		let addressed = self.expand_addressing(activity_targets).await?;
 		self.address_to(Some(aid), oid, &addressed).await?;
 		self.deliver_to(aid, uid, &addressed).await?;
 		Ok(())
+	}
+
+	pub fn is_relay(&self, id: &str) -> bool {
+		self.0.relays.contains(id)
 	}
 }
