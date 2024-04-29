@@ -1,7 +1,7 @@
 use std::{collections::BTreeSet, sync::Arc};
 
 use openssl::rsa::Rsa;
-use sea_orm::{ColumnTrait, DatabaseConnection, EntityOrSelect, EntityTrait, QueryFilter, QuerySelect, SelectColumns, Set};
+use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect, SelectColumns, Set};
 
 use crate::{model, server::fetcher::Fetcher};
 
