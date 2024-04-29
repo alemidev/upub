@@ -85,18 +85,6 @@ impl Model {
 			)))
 			.set_published(Some(self.created))
 			.set_preferred_username(Some(&self.preferred_username))
-			.set_inbox(apb::Node::maybe_link(self.inbox))
-			.set_outbox(apb::Node::maybe_link(self.outbox))
-			.set_following(apb::Node::maybe_link(self.following))
-			.set_followers(apb::Node::maybe_link(self.followers))
-			.set_public_key(apb::Node::object(
-				serde_json::Value::new_object()
-					.set_id(Some(&format!("{}#main-key", self.id)))
-					.set_owner(Some(&self.id))
-					.set_public_key_pem(&self.public_key)
-			))
-			.set_discoverable(Some(true))
-			.set_endpoints(apb::Node::Empty)
 			.set_replies(apb::Node::object(
 				serde_json::Value::new_object()
 					.set_id(self.outbox.as_deref())
@@ -115,6 +103,18 @@ impl Model {
 					.set_collection_type(Some(apb::CollectionType::OrderedCollection))
 					.set_total_items(Some(self.following_count as u64))
 			))
+			.set_inbox(apb::Node::maybe_link(self.inbox))
+			.set_outbox(apb::Node::maybe_link(self.outbox))
+			.set_following(apb::Node::maybe_link(self.following))
+			.set_followers(apb::Node::maybe_link(self.followers))
+			.set_public_key(apb::Node::object(
+				serde_json::Value::new_object()
+					.set_id(Some(&format!("{}#main-key", self.id)))
+					.set_owner(Some(&self.id))
+					.set_public_key_pem(&self.public_key)
+			))
+			.set_discoverable(Some(true))
+			.set_endpoints(apb::Node::Empty)
 	}
 }
 
