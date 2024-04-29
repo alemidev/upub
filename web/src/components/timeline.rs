@@ -9,6 +9,7 @@ pub struct Timeline {
 	pub feed: RwSignal<Vec<String>>,
 	pub next: RwSignal<String>,
 	pub over: RwSignal<bool>,
+	pub loading: RwSignal<bool>,
 }
 
 impl Timeline {
@@ -16,7 +17,8 @@ impl Timeline {
 		let feed = create_rw_signal(vec![]);
 		let next = create_rw_signal(url);
 		let over = create_rw_signal(false);
-		Timeline { feed, next, over }
+		let loading = create_rw_signal(false);
+		Timeline { feed, next, over, loading }
 	}
 
 	pub fn reset(&self, url: String) {
@@ -26,6 +28,13 @@ impl Timeline {
 	}
 
 	pub async fn more(&self, auth: Signal<Option<String>>) -> reqwest::Result<()> {
+		self.loading.set(true);
+		let res = self.more_inner(auth).await;
+		self.loading.set(false);
+		res
+	}
+
+	async fn more_inner(&self, auth: Signal<Option<String>>) -> reqwest::Result<()> {
 		use apb::{Collection, CollectionPage};
 
 		let feed_url = self.next.get();
@@ -121,6 +130,7 @@ pub fn TimelineReplies(tl: Timeline, root: String) -> impl IntoView {
 		</div>
 		<div class="center mt-1 mb-1" class:hidden=tl.over >
 			<button type="button"
+				prop:disabled=tl.loading 
 				on:click=move |_| {
 					spawn_local(async move {
 						if let Err(e) = tl.more(auth).await {
@@ -128,7 +138,7 @@ pub fn TimelineReplies(tl: Timeline, root: String) -> impl IntoView {
 						}
 					})
 				}
-			>more</button>
+			>{move || if tl.loading.get() { "loading" } else { "more" }}</button>
 		</div>
 	}
 }
@@ -177,8 +187,9 @@ pub fn TimelineFeed(tl: Timeline) -> impl IntoView {
 				}
 			}
 		/ >
-		<div class="center mt-1 mb-1" class:hidden=tl.over>
+		<div class="center mt-1 mb-1" class:hidden=tl.over >
 			<button type="button"
+				prop:disabled=tl.loading 
 				on:click=move |_| {
 					spawn_local(async move {
 						if let Err(e) = tl.more(auth).await {
@@ -186,7 +197,7 @@ pub fn TimelineFeed(tl: Timeline) -> impl IntoView {
 						}
 					})
 				}
-			>more</button>
+			>{move || if tl.loading.get() { "loading" } else { "more" }}</button>
 		</div>
 	}
 }
