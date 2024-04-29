@@ -10,11 +10,7 @@ pub async fn view(
 	AuthIdentity(auth): AuthIdentity,
 	Query(query): Query<TryFetch>,
 ) -> crate::Result<JsonLD<serde_json::Value>> {
-	let aid = if id.starts_with('+') {
-		format!("https://{}", id.replacen('+', "", 1).replace('@', "/"))
-	} else {
-		ctx.aid(id.clone())
-	};
+	let aid = ctx.uri("activities", id);
 	if auth.is_local() && query.fetch && !ctx.is_local(&aid) {
 		ctx.fetch_activity(&aid).await?;
 	}

@@ -97,7 +97,14 @@ impl Context {
 	}
 
 	pub fn uri(&self, entity: &str, id: String) -> String {
-		if id.starts_with("http") { id } else {
+		if id.starts_with("http") { // ready-to-use id
+			id
+		} else if id.starts_with('+') { // compacted id
+			id
+				.replacen('+', "https://", 1)
+				.replace('@', "/")
+				.replace("//", "/@") // oops my method sucks!! TODO
+		} else { // bare local id
 			format!("{}{}/{}/{}", self.0.protocol, self.0.domain, entity, id)
 		}
 	}

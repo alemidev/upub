@@ -8,11 +8,8 @@ pub async fn get(
 	Path(id): Path<String>,
 	AuthIdentity(auth): AuthIdentity,
 ) -> crate::Result<JsonLD<serde_json::Value>> {
-	let context = if id.starts_with('+') {
-		format!("https://{}", id.replacen('+', "", 1).replace('@', "/"))
-	} else {
-		url!(ctx, "/context/{id}")
-	};
+	let local_context_id = url!(ctx, "/context/{id}");
+	let context = ctx.uri("context", id);
 
 	let count = model::addressing::Entity::find_addressed()
 		.filter(auth.filter_condition())
@@ -20,7 +17,7 @@ pub async fn get(
 		.count(ctx.db())
 		.await?;
 
-	crate::server::builders::collection(&url!(ctx, "/context/{id}"), Some(count))
+	crate::server::builders::collection(&local_context_id, Some(count))
 }
 
 pub async fn page(

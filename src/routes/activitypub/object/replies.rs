@@ -8,11 +8,8 @@ pub async fn get(
 	Path(id): Path<String>,
 	AuthIdentity(auth): AuthIdentity,
 ) -> crate::Result<JsonLD<serde_json::Value>> {
-	let oid = if id.starts_with('+') {
-		format!("https://{}", id.replacen('+', "", 1).replace('@', "/"))
-	} else {
-		ctx.oid(id.clone())
-	};
+	let replies_id = url!(ctx, "/objects/{id}/replies");
+	let oid = ctx.uri("objects", id);
 
 	let count = model::addressing::Entity::find_addressed()
 		.filter(auth.filter_condition())
@@ -20,7 +17,7 @@ pub async fn get(
 		.count(ctx.db())
 		.await?;
 
-	crate::server::builders::collection(&url!(ctx, "/objects/{id}/replies"), Some(count))
+	crate::server::builders::collection(&replies_id, Some(count))
 }
 
 pub async fn page(
@@ -29,14 +26,11 @@ pub async fn page(
 	Query(page): Query<Pagination>,
 	AuthIdentity(auth): AuthIdentity,
 ) -> crate::Result<JsonLD<serde_json::Value>> {
-	let oid = if id.starts_with('+') {
-		format!("https://{}", id.replacen('+', "", 1).replace('@', "/"))
-	} else {
-		ctx.oid(id.clone())
-	};
+	let page_id = url!(ctx, "/objects/{id}/replies/page");
+	let oid = ctx.uri("objects", id);
 
 	crate::server::builders::paginate(
-		url!(ctx, "/objects/{id}/replies/page"),
+		page_id,
 		Condition::all()
 			.add(auth.filter_condition())
 			.add(model::object::Column::InReplyTo.eq(oid)),
