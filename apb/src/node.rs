@@ -3,7 +3,7 @@
 pub enum Node<T : super::Base> {
 	Array(std::collections::VecDeque<T>), // TODO would be cool to make it Box<[T]> so that Node is just a ptr
 	Object(Box<T>),
-	Link(Box<dyn super::Link + Sync + Send>), // TODO feature flag to toggle these maybe?
+	Link(Box<dyn crate::Link + Sync + Send>), // TODO feature flag to toggle these maybe?
 	Empty,
 }
 

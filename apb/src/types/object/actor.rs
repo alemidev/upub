@@ -1,6 +1,4 @@
-use crate::Node;
-
-use crate::{Object, ObjectMut, PublicKey};
+use crate::{Node, Object, ObjectMut};
 
 crate::strenum! {
 	pub enum ActorType {
@@ -13,7 +11,7 @@ crate::strenum! {
 }
 
 pub trait Actor : Object {
-	type PublicKey : PublicKey;
+	type PublicKey : crate::PublicKey;
 
 	fn actor_type(&self) -> Option<ActorType> { None }
 	fn preferred_username(&self) -> Option<&str> { None }
@@ -30,7 +28,7 @@ pub trait Actor : Object {
 }
 
 pub trait ActorMut : ObjectMut {
-	type PublicKey : PublicKey;
+	type PublicKey : crate::PublicKey;
 
 	fn set_actor_type(self, val: Option<ActorType>) -> Self;
 	fn set_preferred_username(self, val: Option<&str>) -> Self;

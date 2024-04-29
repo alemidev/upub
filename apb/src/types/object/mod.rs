@@ -7,12 +7,12 @@ pub mod place;
 pub mod profile;
 pub mod relationship;
 
-use crate::{Base, BaseMut, Link, Node};
+use crate::{Base, BaseMut, Node};
 
-use actor::{Actor, ActorType};
-use document::{Document, DocumentType};
+use actor::ActorType;
+use document::DocumentType;
 use activity::ActivityType;
-use collection::{Collection, CollectionType};
+use collection::CollectionType;
 
 crate::strenum! {
 	pub enum ObjectType {
@@ -33,11 +33,12 @@ crate::strenum! {
 }
 
 pub trait Object : Base {
-	type Link : Link;
-	type Actor : Actor;
+	type Link : crate::Link;
+	type Actor : crate::Actor;
 	type Object : Object;
-	type Collection : Collection;
-	type Document : Document;
+	type Collection : crate::Collection;
+	type Document : crate::Document;
+	type Activity : crate::Activity;
 
 	fn object_type(&self) -> Option<ObjectType> { None }
 	fn attachment(&self) -> Node<Self::Object> { Node::Empty }
@@ -69,14 +70,19 @@ pub trait Object : Base {
 
 	// TODO i really need this but it isn't part of AP!
 	fn sensitive(&self) -> Option<bool> { None }
+
+	fn as_activity(&self) -> Option<&Self::Activity> { None }
+	fn as_actor(&self) -> Option<&Self::Actor> { None }
+	fn as_collection(&self) -> Option<&Self::Collection> { None }
+	fn as_document(&self) -> Option<&Self::Document> { None }
 }
 
 pub trait ObjectMut : BaseMut {
-	type Link : Link;
-	type Actor : Actor;
+	type Link : crate::Link;
+	type Actor : crate::Actor;
 	type Object : Object;
-	type Collection : Collection;
-	type Document : Document;
+	type Collection : crate::Collection;
+	type Document : crate::Document;
 
 	fn set_object_type(self, val: Option<ObjectType>) -> Self;
 	fn set_attachment(self, val: Node<Self::Object>) -> Self;
@@ -116,7 +122,8 @@ impl Object for serde_json::Value {
 	type Object = serde_json::Value;
 	type Document = serde_json::Value;
 	type Collection = serde_json::Value;
-	
+	type Activity = serde_json::Value;
+
 	crate::getter! { object_type -> type ObjectType }
 	crate::getter! { attachment -> node <Self as Object>::Object }
 	crate::getter! { attributed_to::attributedTo -> node Self::Actor }
@@ -154,6 +161,34 @@ impl Object for serde_json::Value {
 				Some(x) => Node::from(x.clone()),
 				None => Node::Empty,
 			}
+		}
+	}
+
+	fn as_activity(&self) -> Option<&Self::Activity> {
+		match self.object_type() {
+			Some(ObjectType::Activity(_)) => Some(self),
+			_ => None,
+		}
+	}
+
+	fn as_actor(&self) -> Option<&Self::Actor> {
+		match self.object_type() {
+			Some(ObjectType::Actor(_)) => Some(self),
+			_ => None,
+		}
+	}
+
+	fn as_collection(&self) -> Option<&Self::Collection> {
+		match self.object_type() {
+			Some(ObjectType::Collection(_)) => Some(self),
+			_ => None,
+		}
+	}
+
+	fn as_document(&self) -> Option<&Self::Document> {
+		match self.object_type() {
+			Some(ObjectType::Document(_)) => Some(self),
+			_ => None,
 		}
 	}
 }
