@@ -3,18 +3,25 @@ use crate::{prelude::*, URL_SENSITIVE};
 
 use apb::{target::Addressed, Base, Object};
 
-
 #[component]
-pub fn Object(object: serde_json::Value) -> impl IntoView {
-	let uid = object.id().unwrap_or_default().to_string();
-	let content = dissolve::strip_html_tags(object.content().unwrap_or_default());
-	let author_id = object.attributed_to().id().unwrap_or_default();
-	let author = CACHE.get_or(&author_id, serde_json::Value::String(author_id.clone()));
-	let sensitive = object.sensitive().unwrap_or_default();
-	let attachments = object.attachment()
-		.map(|x| {
-			let (expand, set_expand) = create_signal(false);
-			let href = x.url().id().unwrap_or_default();
+pub fn Attachment(
+	object: serde_json::Value,
+	#[prop(optional)]
+	sensitive: bool
+) -> impl IntoView {
+	let (expand, set_expand) = create_signal(false);
+	let href = object.url().id().unwrap_or_default();
+	let media_type = object.media_type()
+		.unwrap_or("image/png") // TODO weird defaulting to png?????
+		.to_string();
+	let kind = media_type
+		.split('/')
+		.next()
+		.unwrap_or("image")
+		.to_string();
+
+	match kind.as_str() {
+		"image" =>
 			view! {
 				<p class="center">
 					<img
@@ -25,12 +32,59 @@ pub fn Object(object: serde_json::Value) -> impl IntoView {
 						} else {
 							href.clone()
 						}}
-						title={x.name().unwrap_or_default().to_string()}
+						title={object.name().unwrap_or_default().to_string()}
 						on:click=move |_| set_expand.set(!expand.get())
 					/>
 				</p>
-			}
-		})
+			}.into_view(),
+
+		"video" =>
+			view! {
+				<p class="center cursor box ml-1"
+					on:click=move |_| set_expand.set(!expand.get())
+					title={object.name().unwrap_or_default().to_string()}
+				>
+					<video controls loop class="attachment" class:expand=expand >
+						<source src={href.clone()} type={media_type} />
+						<a href={href} target="_blank">audio clip</a>
+					</video>
+				</p>
+			}.into_view(),
+
+		"audio" =>
+			view! {
+				<p class="center">
+					<audio controls class="w-100">
+						<source src={href.clone()} type={media_type} />
+						<a href={href} target="_blank">audio clip</a>
+					</audio>
+				</p>
+			}.into_view(),
+
+		_ => 
+			view! {
+				<p class="center box">
+					<code class="cw color center">
+						<a href={href} target="_blank">{media_type}</a>
+					</code>
+					<p class="tiny-text">
+						<small>{object.name().unwrap_or_default().to_string()}</small>
+					</p>
+				</p>
+			}.into_view(),
+	}
+}
+
+
+#[component]
+pub fn Object(object: serde_json::Value) -> impl IntoView {
+	let uid = object.id().unwrap_or_default().to_string();
+	let content = dissolve::strip_html_tags(object.content().unwrap_or_default());
+	let author_id = object.attributed_to().id().unwrap_or_default();
+	let author = CACHE.get_or(&author_id, serde_json::Value::String(author_id.clone()));
+	let sensitive = object.sensitive().unwrap_or_default();
+	let attachments = object.attachment()
+		.map(|x| view! { <Attachment object=x sensitive=sensitive /> })
 		.collect_view();
 	let attachments_padding = if object.attachment().is_empty() {
 		None

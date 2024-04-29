@@ -154,22 +154,36 @@
 		img.inline-avatar {
 			max-height: 2em;
 		}
+		p.box {
+			border: 3px solid #bf616a;
+			width: 100%;
+		}
+		p.cursor {
+			cursor: pointer;
+		}
+		video.attachment {
+			height: 10em;
+		}
 		img.attachment {
 			cursor: pointer;
 			height: 10em;
 			width: 100%;
-			border: 5px solid #bf616a;
+			border: 3px solid #bf616a;
 			padding: 5px;
 			object-fit: cover;
 		}
-		img.expand {
+		img.expand,
+		video.expand {
 			height: unset;
-			max-height: 50vh;
+			max-height: 55vh;
 			object-fit: contain;
 		}
 		div.tl-header {
 			background-color: #bf616a55;
 			color: #bf616a;
+		}
+		p.tiny-text {
+			line-height: .75em;
 		}
 		table.post-table {
 			border-collapse: collapse;
