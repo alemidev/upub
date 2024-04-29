@@ -40,7 +40,7 @@ pub fn Attachment(
 
 		"video" =>
 			view! {
-				<p class="center cursor box ml-1"
+				<div class="center cursor box ml-1"
 					on:click=move |_| set_expand.set(!expand.get())
 					title={object.name().unwrap_or_default().to_string()}
 				>
@@ -48,7 +48,7 @@ pub fn Attachment(
 						<source src={href.clone()} type={media_type} />
 						<a href={href} target="_blank">audio clip</a>
 					</video>
-				</p>
+				</div>
 			}.into_view(),
 
 		"audio" =>
