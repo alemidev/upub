@@ -141,7 +141,7 @@ pub fn Summary(summary: Option<String>, open: bool, children: Children) -> impl 
 		Some(summary) => view! {
 			<details class="pa-s" prop:open=open>
 				<summary>
-					<code class="cw color ml-s w-100">{summary}</code>
+					<code class="cw center color ml-s w-100">{summary}</code>
 				</summary>
 				{children()}
 			</details>
