@@ -100,9 +100,8 @@ impl apb::server::Outbox for Context {
 	async fn like(&self, uid: String, activity: serde_json::Value) -> crate::Result<String> {
 		let aid = self.aid(uuid::Uuid::new_v4().to_string());
 		let activity_targets = activity.addressed();
-		let Some(oid) = activity.object().id() else {
-			return Err(UpubError::bad_request());
-		};
+		let oid = activity.object().id().ok_or_else(UpubError::bad_request)?;
+		self.fetch_object(&oid).await?;
 		let activity_model = model::activity::Model::new(
 			&activity
 				.set_id(Some(&aid))
@@ -112,13 +111,18 @@ impl apb::server::Outbox for Context {
 
 		let like_model = model::like::ActiveModel {
 			actor: Set(uid.clone()),
-			likes: Set(oid),
+			likes: Set(oid.clone()),
 			date: Set(chrono::Utc::now()),
 			..Default::default()
 		};
 		model::like::Entity::insert(like_model).exec(self.db()).await?;
 		model::activity::Entity::insert(activity_model.into_active_model())
 			.exec(self.db()).await?;
+		model::object::Entity::update_many()
+			.col_expr(model::object::Column::Likes, Expr::col(model::object::Column::Likes).add(1))
+			.filter(model::object::Column::Id.eq(oid))
+			.exec(self.db())
+			.await?;
 
 		self.dispatch(&uid, activity_targets, &aid, None).await?;
 
@@ -338,6 +342,7 @@ impl apb::server::Outbox for Context {
 		let aid = self.aid(uuid::Uuid::new_v4().to_string());
 		let activity_targets = activity.addressed();
 		let oid = activity.object().id().ok_or_else(UpubError::bad_request)?;
+		self.fetch_object(&oid).await?;
 		let activity_model = model::activity::Model::new(
 			&activity
 				.set_id(Some(&aid))
@@ -347,13 +352,18 @@ impl apb::server::Outbox for Context {
 
 		let share_model = model::share::ActiveModel {
 			actor: Set(uid.clone()),
-			shares: Set(oid),
+			shares: Set(oid.clone()),
 			date: Set(chrono::Utc::now()),
 			..Default::default()
 		};
 		model::share::Entity::insert(share_model).exec(self.db()).await?;
 		model::activity::Entity::insert(activity_model.into_active_model())
 			.exec(self.db()).await?;
+		model::object::Entity::update_many()
+			.col_expr(model::object::Column::Shares, Expr::col(model::object::Column::Shares).add(1))
+			.filter(model::object::Column::Id.eq(oid))
+			.exec(self.db())
+			.await?;
 
 		self.dispatch(&uid, activity_targets, &aid, None).await?;
 
