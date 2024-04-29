@@ -116,6 +116,12 @@ pub enum Relation {
 
 	#[sea_orm(has_many = "super::attachment::Entity")]
 	Attachment,
+
+	#[sea_orm(has_many = "super::like::Entity")]
+	Like,
+
+	#[sea_orm(has_many = "super::share::Entity")]
+	Share,
 }
 
 impl Related<super::activity::Entity> for Entity {
@@ -139,6 +145,18 @@ impl Related<super::addressing::Entity> for Entity {
 impl Related<super::attachment::Entity> for Entity {
 	fn to() -> RelationDef {
 		Relation::Attachment.def()
+	}
+}
+
+impl Related<super::like::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Like.def()
+	}
+}
+
+impl Related<super::share::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Share.def()
 	}
 }
 
