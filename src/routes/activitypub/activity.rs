@@ -12,7 +12,10 @@ pub async fn view(
 ) -> crate::Result<JsonLD<serde_json::Value>> {
 	let aid = ctx.uri("activities", id);
 	if auth.is_local() && query.fetch && !ctx.is_local(&aid) {
-		ctx.fetch_activity(&aid).await?;
+		let obj = ctx.fetch_activity(&aid).await?;
+		if obj.id != aid {
+			return Err(UpubError::Redirect(obj.id));
+		}
 	}
 
 	let row = model::addressing::Entity::find_addressed()
