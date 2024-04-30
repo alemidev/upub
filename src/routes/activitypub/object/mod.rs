@@ -4,7 +4,7 @@ use apb::{CollectionMut, ObjectMut};
 use axum::extract::{Path, Query, State};
 use sea_orm::{ColumnTrait, ModelTrait, QueryFilter};
 
-use crate::{errors::UpubError, model::{self, addressing::Event}, server::{auth::{AuthIdentity, Identity}, fetcher::Fetcher, Context}};
+use crate::{errors::UpubError, model::{self, addressing::Event}, server::{auth::AuthIdentity, fetcher::Fetcher, Context}};
 
 use super::{jsonld::LD, JsonLD, TryFetch};
 
