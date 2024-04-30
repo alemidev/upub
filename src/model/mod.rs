@@ -14,9 +14,6 @@ pub mod delivery;
 pub mod attachment;
 pub mod application;
 
-#[cfg(feature = "faker")]
-pub mod faker;
-
 #[derive(Debug, Clone, thiserror::Error)]
 #[error("missing required field: '{0}'")]
 pub struct FieldError(pub &'static str);

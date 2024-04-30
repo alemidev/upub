@@ -1,6 +1,7 @@
 pub mod server;
 pub mod model;
 pub mod routes;
+pub mod cli;
 
 pub mod errors;
 
@@ -11,12 +12,10 @@ mod migrations;
 use sea_orm_migration::MigratorTrait;
 
 use clap::{Parser, Subcommand};
-use sea_orm::{ColumnTrait, ConnectOptions, Database, EntityTrait, IntoActiveModel, QueryFilter, QueryOrder};
+use sea_orm::{ConnectOptions, Database};
 
 pub use errors::UpubResult as Result;
 use tower_http::{cors::CorsLayer, trace::TraceLayer};
-
-use crate::server::fetcher::Fetchable;
 
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -113,58 +112,25 @@ async fn main() {
 
 	match args.command {
 		#[cfg(feature = "migrations")]
-		CliCommand::Migrate => migrations::Migrator::up(&db, None)
-			.await.expect("error applying migrations"),
+		CliCommand::Migrate =>
+			migrations::Migrator::up(&db, None)
+				.await.expect("error applying migrations"),
 
 		#[cfg(feature = "faker")]
-		CliCommand::Faker { count } => model::faker::faker(&db, args.domain, count)
-			.await.expect("error creating fake entities"),
+		CliCommand::Faker { count } =>
+			cli::faker(&db, args.domain, count)
+				.await.expect("error creating fake entities"),
 
-		CliCommand::Fetch { uri, save } => fetch(db, args.domain, uri, save)
-			.await.expect("error fetching object"),
+		CliCommand::Fetch { uri, save } => 
+			cli::fetch(db, args.domain, uri, save)
+				.await.expect("error fetching object"),
 
-		CliCommand::Relay { actor, accept } => {
-			let ctx = server::Context::new(db, args.domain)
-				.await.expect("failed creating server context");
-
-			let aid = ctx.aid(uuid::Uuid::new_v4().to_string());
-
-			let mut activity_model = model::activity::Model {
-				id: aid.clone(),
-				activity_type: apb::ActivityType::Follow,
-				actor: ctx.base(),
-				object: Some(actor.clone()),
-				target: None,
-				published: chrono::Utc::now(),
-				to: model::Audience(vec![actor.clone()]),
-				bto: model::Audience::default(),
-				cc: model::Audience(vec![apb::target::PUBLIC.to_string()]),
-				bcc: model::Audience::default(),
-			};
-
-			if accept {
-				let follow_req = model::activity::Entity::find()
-					.filter(model::activity::Column::ActivityType.eq("Follow"))
-					.filter(model::activity::Column::Actor.eq(&actor))
-					.filter(model::activity::Column::Object.eq(ctx.base()))
-					.order_by_desc(model::activity::Column::Published)
-					.one(ctx.db())
-					.await
-					.expect("failed querying db for relay follow req")
-					.expect("no follow request to accept");
-				activity_model.activity_type = apb::ActivityType::Accept(apb::AcceptType::Accept);
-				activity_model.object = Some(follow_req.id);
-			};
-
-			model::activity::Entity::insert(activity_model.into_active_model())
-				.exec(ctx.db()).await.expect("could not insert activity in db");
-
-			ctx.dispatch(&ctx.base(), vec![actor, apb::target::PUBLIC.to_string()], &aid, None).await
-				.expect("could not dispatch relay activity");
-		},
+		CliCommand::Relay { actor, accept } =>
+			cli::relay(db, args.domain, actor, accept)
+				.await.expect("error registering/accepting relay"),
 
 		CliCommand::Fix { likes, shares, replies } =>
-			fix(db, likes, shares, replies)
+			cli::fix(db, likes, shares, replies)
 				.await
 				.expect("failed running fix task"),
 
@@ -191,129 +157,4 @@ async fn main() {
 				.expect("failed serving application")
 		},
 	}
-}
-
-
-async fn fetch(db: sea_orm::DatabaseConnection, domain: String, uri: String, save: bool) -> crate::Result<()> {
-	use apb::Base;
-
-	let ctx = server::Context::new(db, domain)
-		.await.expect("failed creating server context");
-
-	let mut node = apb::Node::link(uri.to_string());
-	node.fetch(&ctx).await?;
-
-	let obj = node.get().expect("node still empty after fetch?");
-
-	if save {
-		match obj.base_type() {
-			Some(apb::BaseType::Object(apb::ObjectType::Actor(_))) => {
-				model::user::Entity::insert(
-					model::user::Model::new(obj).unwrap().into_active_model()
-				).exec(ctx.db()).await.unwrap();
-			},
-			Some(apb::BaseType::Object(apb::ObjectType::Activity(_))) => {
-				model::activity::Entity::insert(
-					model::activity::Model::new(obj).unwrap().into_active_model()
-				).exec(ctx.db()).await.unwrap();
-			},
-			Some(apb::BaseType::Object(apb::ObjectType::Note)) => {
-				model::object::Entity::insert(
-					model::object::Model::new(obj).unwrap().into_active_model()
-				).exec(ctx.db()).await.unwrap();
-			},
-			Some(apb::BaseType::Object(t)) => tracing::warn!("not implemented: {:?}", t),
-			Some(apb::BaseType::Link(_)) => tracing::error!("fetched another link?"),
-			None => tracing::error!("no type on object"),
-		}
-	}
-
-	println!("{}", serde_json::to_string_pretty(&obj).unwrap());
-
-	Ok(())
-}
-
-async fn fix(db: sea_orm::DatabaseConnection, likes: bool, shares: bool, replies: bool) -> crate::Result<()> {
-	use futures::TryStreamExt;
-
-	if likes {
-		tracing::info!("fixing likes...");
-		let mut store = std::collections::HashMap::new();
-		{
-			let mut stream = model::like::Entity::find().stream(&db).await?;
-			while let Some(like) = stream.try_next().await? {
-				store.insert(like.likes.clone(), store.get(&like.likes).unwrap_or(&0) + 1);
-			}
-		}
-
-		for (k, v) in store {
-			let m = model::object::ActiveModel {
-				id: sea_orm::Set(k.clone()),
-				likes: sea_orm::Set(v),
-				..Default::default()
-			};
-			if let Err(e) = model::object::Entity::update(m)
-				.exec(&db)
-				.await
-			{
-				tracing::warn!("record not updated ({k}): {e}");
-			}
-		}
-	}
-
-	if shares {
-		tracing::info!("fixing shares...");
-		let mut store = std::collections::HashMap::new();
-		{
-			let mut stream = model::share::Entity::find().stream(&db).await?;
-			while let Some(share) = stream.try_next().await? {
-				store.insert(share.shares.clone(), store.get(&share.shares).unwrap_or(&0) + 1);
-			}
-		}
-
-		for (k, v) in store {
-			let m = model::object::ActiveModel {
-				id: sea_orm::Set(k.clone()),
-				shares: sea_orm::Set(v),
-				..Default::default()
-			};
-			if let Err(e) = model::object::Entity::update(m)
-				.exec(&db)
-				.await
-			{
-				tracing::warn!("record not updated ({k}): {e}");
-			}
-		}
-	}
-
-	if replies {
-		tracing::info!("fixing replies...");
-		let mut store = std::collections::HashMap::new();
-		{
-			let mut stream = model::object::Entity::find().stream(&db).await?;
-			while let Some(object) = stream.try_next().await? {
-				if let Some(reply) = object.in_reply_to {
-					let before = store.get(&reply).unwrap_or(&0);
-					store.insert(reply, before + 1);
-				}
-			}
-		}
-
-		for (k, v) in store {
-			let m = model::object::ActiveModel {
-				id: sea_orm::Set(k.clone()),
-				comments: sea_orm::Set(v),
-				..Default::default()
-			};
-			if let Err(e) = model::object::Entity::update(m)
-				.exec(&db)
-				.await
-			{
-				tracing::warn!("record not updated ({k}): {e}");
-			}
-		}
-	}
-
-	tracing::info!("done running fix tasks");
-	Ok(())
 }

@@ -1,5 +1,4 @@
-use crate::model::{addressing, config, credential};
-use super::{activity, object, user, Audience};
+use crate::model::{addressing, config, credential, activity, object, user, Audience};
 use openssl::rsa::Rsa;
 use sea_orm::IntoActiveModel;
 
@@ -7,7 +6,7 @@ pub async fn faker(db: &sea_orm::DatabaseConnection, domain: String, count: u64)
 	use sea_orm::{EntityTrait, Set};
 
 	let key = Rsa::generate(2048).unwrap();
-	let test_user = super::user::Model {
+	let test_user = user::Model {
 		id: format!("{domain}/users/test"),
 		name: Some("μpub".into()),
 		domain: clean_domain(&domain),
