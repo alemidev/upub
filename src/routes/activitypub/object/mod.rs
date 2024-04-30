@@ -1,6 +1,6 @@
 pub mod replies;
 
-use apb::ObjectMut;
+use apb::{CollectionMut, ObjectMut};
 use axum::extract::{Path, Query, State};
 use sea_orm::{ColumnTrait, ModelTrait, QueryFilter};
 
@@ -35,11 +35,11 @@ pub async fn view(
 		.await?
 		.ok_or_else(UpubError::not_found)?;
 
-	let object = match item {
+	let (object, liked) = match item {
 		Event::Tombstone => return Err(UpubError::not_found()),
 		Event::Activity(_) => return Err(UpubError::not_found()),
-		Event::StrayObject { object, liked: _ } => object,
-		Event::DeepActivity { activity: _, liked: _, object } => object,
+		Event::StrayObject { object, liked } => (object, liked),
+		Event::DeepActivity { activity: _, liked, object } => (object, liked),
 	};
 
 	let attachments = object.find_related(model::attachment::Entity)
@@ -55,11 +55,18 @@ pub async fn view(
 	// 		.set_collection_type(Some(apb::CollectionType::OrderedCollection))
 	// 		.set_first(apb::Node::link(crate::url!(ctx, "/objects/{id}/replies/page")))
 	// 		.set_total_items(Some(object.comments as u64));
+	
+	let likes_count = object.likes as u64;
+	let mut obj = object.ap().set_attachment(apb::Node::array(attachments));
 
-	Ok(JsonLD(
-		object.ap()
-			// .set_replies(apb::Node::object(replies))
-			.set_attachment(apb::Node::array(attachments))
-			.ld_context()
-	))
+	if let Some(liked) = liked {
+		obj = obj.set_audience(apb::Node::object( // TODO setting this again ewww...
+			serde_json::Value::new_object()
+				.set_collection_type(Some(apb::CollectionType::OrderedCollection))
+				.set_total_items(Some(likes_count))
+				.set_ordered_items(apb::Node::links(vec![liked]))
+		));
+	}
+
+	Ok(JsonLD(obj.ld_context()))
 }
