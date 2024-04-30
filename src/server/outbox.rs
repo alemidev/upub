@@ -47,6 +47,11 @@ impl apb::server::Outbox for Context {
 			.exec(self.db()).await?;
 		model::activity::Entity::insert(activity_model.into_active_model())
 			.exec(self.db()).await?;
+		model::user::Entity::update_many()
+			.col_expr(model::user::Column::StatusesCount, Expr::col(model::user::Column::StatusesCount).add(1))
+			.filter(model::user::Column::Id.eq(&uid))
+			.exec(self.db())
+			.await?;
 
 		self.dispatch(&uid, activity_targets, &aid, Some(&oid)).await?;
 
@@ -90,6 +95,11 @@ impl apb::server::Outbox for Context {
 			.exec(self.db()).await?;
 		model::activity::Entity::insert(activity_model.into_active_model())
 			.exec(self.db()).await?;
+		model::user::Entity::update_many()
+			.col_expr(model::user::Column::StatusesCount, Expr::col(model::user::Column::StatusesCount).add(1))
+			.filter(model::user::Column::Id.eq(&uid))
+			.exec(self.db())
+			.await?;
 
 		self.dispatch(&uid, activity_targets, &aid, Some(&oid)).await?;
 

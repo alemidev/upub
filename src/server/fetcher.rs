@@ -166,6 +166,11 @@ async fn fetch_object_inner(ctx: &Context, id: &str, depth: usize) -> crate::Res
 		if let Err(e) = ctx.fetch_user(&attributed_to).await {
 			tracing::warn!("could not get actor of fetched object: {e}");
 		}
+		model::user::Entity::update_many()
+			.col_expr(model::user::Column::StatusesCount, Expr::col(model::user::Column::StatusesCount).add(1))
+			.filter(model::user::Column::Id.eq(&attributed_to))
+			.exec(ctx.db())
+			.await?;
 	}
 
 	let addressed = object.addressed();

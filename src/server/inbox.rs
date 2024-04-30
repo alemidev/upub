@@ -22,6 +22,7 @@ impl apb::server::Inbox for Context {
 		};
 		let mut object_model = model::object::Model::new(&object_node)?;
 		let oid = object_model.id.clone();
+		let uid = object_model.attributed_to.clone();
 		// make sure we're allowed to edit this object
 		if let Some(object_author) = &object_model.attributed_to {
 			if server != Context::server(object_author) {
@@ -55,6 +56,14 @@ impl apb::server::Inbox for Context {
 		for attachment in object_node.attachment() {
 			let attachment_model = model::attachment::ActiveModel::new(&attachment, oid.clone())?;
 			model::attachment::Entity::insert(attachment_model)
+				.exec(self.db())
+				.await?;
+		}
+		// TODO can we even receive anonymous objects?
+		if let Some(object_author) = uid {
+			model::user::Entity::update_many()
+				.col_expr(model::user::Column::StatusesCount, Expr::col(model::user::Column::StatusesCount).add(1))
+				.filter(model::user::Column::Id.eq(&object_author))
 				.exec(self.db())
 				.await?;
 		}
