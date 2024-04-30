@@ -1,5 +1,5 @@
 use apb::{ActivityMut, CollectionMut, ObjectMut};
-use sea_orm::{entity::prelude::*, Condition, FromQueryResult, Iterable, Order, QueryOrder, QuerySelect, SelectColumns};
+use sea_orm::{entity::prelude::*, sea_query::IntoCondition, Condition, FromQueryResult, Iterable, Order, QueryOrder, QuerySelect, SelectColumns};
 
 use crate::routes::activitypub::jsonld::LD;
 
@@ -169,9 +169,13 @@ impl Entity {
 			.order_by(Column::Published, Order::Desc);
 
 		if let Some(uid) = uid {
+			let uid = uid.to_string();
 			select = select
-				.filter(crate::model::like::Column::Actor.eq(uid))
-				.join(sea_orm::JoinType::LeftJoin, crate::model::object::Relation::Like.def())
+				.join(
+					sea_orm::JoinType::LeftJoin,
+					crate::model::object::Relation::Like.def()
+						.on_condition(move |_l, _r| crate::model::like::Column::Actor.eq(uid.clone()).into_condition()),
+				)
 				.select_column_as(crate::model::like::Column::Actor, format!("{}{}", crate::model::like::Entity.table_name(), crate::model::like::Column::Actor.to_string()));
 		}
 
