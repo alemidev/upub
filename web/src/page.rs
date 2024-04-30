@@ -81,9 +81,9 @@ pub fn UserPage(tl: Timeline) -> impl IntoView {
 								Some(view! { <sup class="ml-s"><small>"["{actor_type.as_ref().to_lowercase()}"]"</small></sup> } )
 							};
 							let created = object.published();
-							let following = object.following().get().map(|x| x.total_items().unwrap_or(0)).unwrap_or(0);
-							let followers = object.followers().get().map(|x| x.total_items().unwrap_or(0)).unwrap_or(0);
-							let statuses = object.outbox().get().map(|x| x.total_items().unwrap_or(0)).unwrap_or(0);
+							let following = object.generator().get().map(|x| x.total_items().unwrap_or(0)).unwrap_or(0);
+							let followers = object.audience().get().map(|x| x.total_items().unwrap_or(0)).unwrap_or(0);
+							let statuses = object.replies().get().map(|x| x.total_items().unwrap_or(0)).unwrap_or(0);
 							let tl_url = format!("{}/outbox/page", Uri::api(FetchKind::User, &id.clone(), false));
 							if !tl.next.get().starts_with(&tl_url) {
 								tl.reset(tl_url);
