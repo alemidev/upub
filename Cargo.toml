@@ -3,7 +3,7 @@ members = ["apb", "web"]
 
 [package]
 name = "upub"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = [ "alemi <me@alemi.dev>" ]
 description = "Traits and types to handle ActivityPub objects"
