@@ -1,7 +1,7 @@
 use leptos::*;
 use crate::{prelude::*, URL_SENSITIVE};
 
-use apb::{target::Addressed, Base, Collection, Object};
+use apb::{target::Addressed, ActivityMut, Base, Collection, Object, ObjectMut};
 
 #[component]
 pub fn Attachment(
@@ -78,26 +78,25 @@ pub fn Attachment(
 
 #[component]
 pub fn Object(object: serde_json::Value) -> impl IntoView {
-	let uid = object.id().unwrap_or_default().to_string();
+	let oid = object.id().unwrap_or_default().to_string();
 	let content = dissolve::strip_html_tags(object.content().unwrap_or_default());
 	let author_id = object.attributed_to().id().unwrap_or_default();
 	let author = CACHE.get_or(&author_id, serde_json::Value::String(author_id.clone()));
 	let sensitive = object.sensitive().unwrap_or_default();
+	let addressed = object.addressed();
+	let public = addressed.iter().any(|x| x.as_str() == apb::target::PUBLIC);
 	let attachments = object.attachment()
 		.map(|x| view! { <Attachment object=x sensitive=sensitive /> })
 		.collect_view();
 	let comments = object.replies().get()
-		.map(|x| x.total_items().unwrap_or(0))
-		.filter(|x| *x > 0)
-		.map(|x| view! { <small>{x}</small> });
-	let likes = object.audience().get()
-		.map(|x| x.total_items().unwrap_or(0))
-		.filter(|x| *x > 0)
-		.map(|x| view! { <small>{x}</small> });
+		.map_or(0, |x| x.total_items().unwrap_or(0));
 	let shares = object.generator().get()
-		.map(|x| x.total_items().unwrap_or(0))
-		.filter(|x| *x > 0)
-		.map(|x| view! { <small>{x}</small> });
+		.map_or(0, |x| x.total_items().unwrap_or(0));
+	let likes = object.audience().get()
+		.map_or(0, |x| x.total_items().unwrap_or(0));
+	let already_liked = object.audience().get()
+		.map_or(false, |x| !x.ordered_items().is_empty());
+	let like_target = if public { None } else { Some(author_id) };
 	let attachments_padding = if object.attachment().is_empty() {
 		None
 	} else {
@@ -111,11 +110,11 @@ pub fn Object(object: serde_json::Value) -> impl IntoView {
 					{object.in_reply_to().id().map(|reply| view! {
 							<small><i><a class="clean" href={Uri::web(FetchKind::Object, &reply)} title={reply}>reply</a></i></small> 
 					})}
-					<PrivacyMarker addressed=object.addressed() />
+					<PrivacyMarker addressed=addressed />
 					<a class="clean hover ml-s" href={Uri::web(FetchKind::Object, object.id().unwrap_or_default())}>
 						<DateTime t=object.published() />
 					</a>
-					<sup><small><a class="clean ml-s" href={uid} target="_blank">"↗"</a></small></sup>
+					<sup><small><a class="clean ml-s" href={oid.clone()} target="_blank">"↗"</a></small></sup>
 				</td>
 			</tr>
 		</table>
@@ -127,9 +126,9 @@ pub fn Object(object: serde_json::Value) -> impl IntoView {
 			</Summary>
 		</blockquote>
 		<div class="mt-s ml-1 rev">
-			<span class="emoji ml-2">{comments}" 📨"</span>
-			<span class="emoji ml-2">{likes}" ⭐"</span>
-			<span class="emoji ml-2">{shares}" 🚀"</span>
+			<ReplyButton n=comments />
+			<LikeButton n=likes liked=already_liked target=oid author=like_target />
+			<RepostButton n=shares />
 		</div>
 	}
 }
@@ -149,3 +148,73 @@ pub fn Summary(summary: Option<String>, open: bool, children: Children) -> impl 
 	}
 }
 
+#[component]
+pub fn LikeButton(
+	n: u64,
+	target: String,
+	liked: bool,
+	#[prop(default=None)]
+	author: Option<String>,
+) -> impl IntoView {
+	let (count, set_count) = create_signal(n);
+	let (clicked, set_clicked) = create_signal(!liked);
+	let auth = use_context::<Auth>().expect("missing auth context");
+	view! {
+		<span
+			class:emoji=clicked
+			class:cursor=clicked
+			class="emoji-btn ml-2"
+			on:click=move |_ev| {
+				if !clicked.get() { return; }
+				let target_url = format!("{URL_BASE}/users/test/outbox");
+				let followers_url = format!("{URL_BASE}/users/test/followers");
+				let (to, cc) = if let Some(author) = &author {
+					(apb::Node::links(vec![author.to_string()]), apb::Node::Empty)
+				} else {
+					(apb::Node::links(vec![apb::target::PUBLIC.to_string()]), apb::Node::links(vec![followers_url]))
+				};
+				let payload = serde_json::Value::Object(serde_json::Map::default())
+					.set_activity_type(Some(apb::ActivityType::Like))
+					.set_object(apb::Node::link(target.clone()))
+					.set_to(to)
+					.set_cc(cc);
+				spawn_local(async move {
+					match Http::post(&target_url, &payload, auth).await {
+						Ok(()) => {
+							set_clicked.set(false);
+							set_count.set(count.get() + 1);
+						},
+						Err(e) => tracing::error!("failed sending like: {e}"),
+					}
+				});
+			}
+		>
+			{move || if count.get() > 0 { Some(view! { <small>{count}</small> })} else { None }}
+			" ⭐"
+		</span>
+	}
+}
+
+#[component]
+pub fn ReplyButton(n: u64) -> impl IntoView {
+	let comments = if n > 0 {
+		Some(view! { <small>{n}</small> })
+	} else {
+		None
+	};
+	view! {
+		<span class="emoji ml-2">{comments}" 📨"</span>
+	}
+}
+
+#[component]
+pub fn RepostButton(n: u64) -> impl IntoView {
+	let shares = if n > 0 {
+		Some(view! { <small>{n}</small> })
+	} else {
+		None
+	};
+	view! {
+		<span class="emoji ml-2">{shares}" 🚀"</span>
+	}
+}
