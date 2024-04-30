@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use apb::{target::Addressed, Activity, Object};
+use apb::{target::Addressed, Activity, Collection, Object};
 use base64::Engine;
 use reqwest::{header::{ACCEPT, CONTENT_TYPE, USER_AGENT}, Method, Response};
 use sea_orm::{sea_query::Expr, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
@@ -84,7 +84,26 @@ impl Fetcher for Context {
 		let user = Self::request(
 			Method::GET, id, None, &format!("https://{}", self.domain()), &self.app().private_key, self.domain(),
 		).await?.json::<serde_json::Value>().await?;
-		let user_model = model::user::Model::new(&user)?;
+		let mut user_model = model::user::Model::new(&user)?;
+
+		// TODO try fetching these numbers from audience/generator fields to avoid making 2 more GETs
+		if let Some(followers_url) = &user_model.followers {
+			let user_followers = Self::request(
+				Method::GET, followers_url, None, &format!("https://{}", self.domain()), &self.app().private_key, self.domain(),
+			).await?.json::<serde_json::Value>().await?;
+			if let Some(total) = user_followers.total_items() {
+				user_model.followers_count = total as i64;
+			}
+		}
+
+		if let Some(following_url) = &user_model.following {
+			let user_following = Self::request(
+				Method::GET, following_url, None, &format!("https://{}", self.domain()), &self.app().private_key, self.domain(),
+			).await?.json::<serde_json::Value>().await?;
+			if let Some(total) = user_following.total_items() {
+				user_model.following_count = total as i64;
+			}
+		}
 
 		// TODO this may fail: while fetching, remote server may fetch our service actor.
 		//      if it does so with http signature, we will fetch that actor in background
