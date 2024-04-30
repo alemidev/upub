@@ -1,3 +1,8 @@
+// TODO
+// move this file somewhere else
+// it's not a route
+// maybe under src/server/jsonld.rs ??
+
 use axum::response::{IntoResponse, Response};
 
 pub trait LD {
