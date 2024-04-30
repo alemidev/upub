@@ -320,7 +320,7 @@ impl apb::server::Inbox for Context {
 
 		// relays send us activities as Announce, but we don't really want to count those towards the
 		// total shares count of an object, so just fetch the object and be done with it
-		if !self.is_relay(&activity_model.actor) {
+		if self.is_relay(&activity_model.actor) {
 			tracing::info!("relay {} broadcasted {}", activity_model.actor, oid);
 			return Ok(())
 		}
