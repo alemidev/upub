@@ -88,20 +88,30 @@ impl Fetcher for Context {
 
 		// TODO try fetching these numbers from audience/generator fields to avoid making 2 more GETs
 		if let Some(followers_url) = &user_model.followers {
-			let user_followers = Self::request(
-				Method::GET, followers_url, None, &format!("https://{}", self.domain()), &self.app().private_key, self.domain(),
-			).await?.json::<serde_json::Value>().await?;
-			if let Some(total) = user_followers.total_items() {
-				user_model.followers_count = total as i64;
+			let req = Self::request(
+				Method::GET, followers_url, None,
+				&format!("https://{}", self.domain()), &self.app().private_key, self.domain(),
+			).await;
+			if let Ok(res) = req {
+				if let Ok(user_followers) = res.json::<serde_json::Value>().await {
+					if let Some(total) = user_followers.total_items() {
+						user_model.followers_count = total as i64;
+					}
+				}
 			}
 		}
 
 		if let Some(following_url) = &user_model.following {
-			let user_following = Self::request(
-				Method::GET, following_url, None, &format!("https://{}", self.domain()), &self.app().private_key, self.domain(),
-			).await?.json::<serde_json::Value>().await?;
-			if let Some(total) = user_following.total_items() {
-				user_model.following_count = total as i64;
+			let req =  Self::request(
+				Method::GET, following_url, None,
+				&format!("https://{}", self.domain()), &self.app().private_key, self.domain(),
+			).await;
+			if let Ok(res) = req {
+				if let Ok(user_following) = res.json::<serde_json::Value>().await {
+					if let Some(total) = user_following.total_items() {
+						user_model.following_count = total as i64;
+					}
+				}
 			}
 		}
 
