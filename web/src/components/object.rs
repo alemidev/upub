@@ -96,7 +96,6 @@ pub fn Object(object: serde_json::Value) -> impl IntoView {
 		.map_or(0, |x| x.total_items().unwrap_or(0));
 	let already_liked = object.audience().get()
 		.map_or(false, |x| !x.ordered_items().is_empty());
-	let like_target = if public { None } else { Some(author_id) };
 	let attachments_padding = if object.attachment().is_empty() {
 		None
 	} else {
@@ -127,8 +126,8 @@ pub fn Object(object: serde_json::Value) -> impl IntoView {
 		</blockquote>
 		<div class="mt-s ml-1 rev">
 			<ReplyButton n=comments />
-			<LikeButton n=likes liked=already_liked target=oid author=like_target />
-			<RepostButton n=shares />
+			<LikeButton n=likes liked=already_liked target=oid.clone() author=author_id private=!public />
+			<RepostButton n=shares target=oid />
 		</div>
 	}
 }
@@ -153,8 +152,9 @@ pub fn LikeButton(
 	n: u64,
 	target: String,
 	liked: bool,
-	#[prop(default=None)]
-	author: Option<String>,
+	author: String,
+	#[prop(optional)]
+	private: bool,
 ) -> impl IntoView {
 	let (count, set_count) = create_signal(n);
 	let (clicked, set_clicked) = create_signal(!liked);
@@ -167,11 +167,12 @@ pub fn LikeButton(
 			on:click=move |_ev| {
 				if !clicked.get() { return; }
 				let target_url = format!("{URL_BASE}/users/test/outbox");
-				let followers_url = format!("{URL_BASE}/users/test/followers");
-				let (to, cc) = if let Some(author) = &author {
-					(apb::Node::links(vec![author.to_string()]), apb::Node::Empty)
-				} else {
-					(apb::Node::links(vec![apb::target::PUBLIC.to_string()]), apb::Node::links(vec![followers_url]))
+				let to = apb::Node::links(vec![author.to_string()]);
+				let cc = if private { apb::Node::Empty } else {
+					apb::Node::links(vec![
+						apb::target::PUBLIC.to_string(),
+						format!("{URL_BASE}/users/test/followers")
+					])
 				};
 				let payload = serde_json::Value::Object(serde_json::Map::default())
 					.set_activity_type(Some(apb::ActivityType::Like))
@@ -208,13 +209,37 @@ pub fn ReplyButton(n: u64) -> impl IntoView {
 }
 
 #[component]
-pub fn RepostButton(n: u64) -> impl IntoView {
-	let shares = if n > 0 {
-		Some(view! { <small>{n}</small> })
-	} else {
-		None
-	};
+pub fn RepostButton(n: u64, target: String) -> impl IntoView {
+	let (count, set_count) = create_signal(n);
+	let (clicked, set_clicked) = create_signal(true);
+	let auth = use_context::<Auth>().expect("missing auth context");
 	view! {
-		<span class="emoji ml-2">{shares}" 🚀"</span>
+		<span
+			class:emoji=clicked
+			class:cursor=clicked
+			class="emoji-btn ml-2"
+			on:click=move |_ev| {
+				if !clicked.get() { return; }
+				set_clicked.set(false);
+				let target_url = format!("{URL_BASE}/users/test/outbox");
+				let to = apb::Node::links(vec![apb::target::PUBLIC.to_string()]);
+				let cc = apb::Node::links(vec![format!("{URL_BASE}/users/test/followers")]);
+				let payload = serde_json::Value::Object(serde_json::Map::default())
+					.set_activity_type(Some(apb::ActivityType::Announce))
+					.set_object(apb::Node::link(target.clone()))
+					.set_to(to)
+					.set_cc(cc);
+				spawn_local(async move {
+					match Http::post(&target_url, &payload, auth).await {
+						Ok(()) => set_count.set(count.get() + 1),
+						Err(e) => tracing::error!("failed sending like: {e}"),
+					}
+					set_clicked.set(true);
+				});
+			}
+		>
+			{move || if count.get() > 0 { Some(view! { <small>{count}</small> })} else { None }}
+			" 🚀"
+		</span>
 	}
 }
