@@ -118,7 +118,7 @@ pub fn App() -> impl IntoView {
 		<footer>
 			<div>
 				<hr class="sep" />
-				<span class="footer" >"\u{26fc} woven under moonlight  :: "<a href="https://git.alemi.dev/upub.git" target="_blank" >src</a>" :: wip by alemi :: "<a href="javascript:window.scrollTo({top:0})">top</a></span>
+				<span class="footer" >"\u{26fc} woven under moonlight  :: "<a href="https://git.alemi.dev/upub.git" target="_blank" >src</a>" :: wip by alemi :: "<a href="javascript:window.scrollTo({top:0, behavior:'smooth'})">top</a></span>
 			</div>
 		</footer>
 	}
