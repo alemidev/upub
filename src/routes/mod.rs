@@ -9,7 +9,7 @@ pub mod mastodon;
 #[cfg(not(feature = "mastodon"))]
 pub mod mastodon {
 	pub trait MastodonRouter {
-		fn mastodon_routes(self) -> Self { self }
+		fn mastodon_routes(self) -> Self where Self: Sized { self }
 	}
 	
 	impl MastodonRouter for axum::Router<crate::server::Context> {}
