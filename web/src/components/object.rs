@@ -162,9 +162,11 @@ pub fn LikeButton(
 	view! {
 		<span
 			class:emoji=clicked
-			class:cursor=clicked
-			class="emoji-btn ml-2"
+			class:emoji-btn=move || auth.get().is_some()
+			class:cursor=move || clicked.get() && auth.get().is_some()
+			class="ml-2"
 			on:click=move |_ev| {
+				if auth.get().is_none() { return; }
 				if !clicked.get() { return; }
 				let target_url = format!("{URL_BASE}/users/test/outbox");
 				let to = apb::Node::links(vec![author.to_string()]);
@@ -199,6 +201,7 @@ pub fn LikeButton(
 #[component]
 pub fn ReplyButton(n: u64, target: String) -> impl IntoView {
 	let reply = use_context::<ReplyControls>().expect("missing reply controls context");
+	let auth = use_context::<Auth>().expect("missing auth context");
 	let comments = if n > 0 {
 		Some(view! { <small>{n}</small> })
 	} else {
@@ -208,8 +211,11 @@ pub fn ReplyButton(n: u64, target: String) -> impl IntoView {
 	view! {
 		<span
 			class:emoji=move || !reply.reply_to.get().map_or(false, |x| x == _target)
-			class="emoji-btn cursor ml-2"
-			on:click=move |_ev| reply.reply(&target)
+			// TODO can we merge these two classes conditions?
+			class:emoji-btn=move || auth.get().is_some()
+			class:cursor=move || auth.get().is_some()
+			class="ml-2"
+			on:click=move |_ev| if auth.get().is_some() { reply.reply(&target) }
 		>
 			{comments}
 			" 📨"
@@ -225,9 +231,11 @@ pub fn RepostButton(n: u64, target: String) -> impl IntoView {
 	view! {
 		<span
 			class:emoji=clicked
-			class:cursor=clicked
-			class="emoji-btn ml-2"
+			class:emoji-btn=move || auth.get().is_some()
+			class:cursor=move || clicked.get() && auth.get().is_some()
+			class="ml-2"
 			on:click=move |_ev| {
+				if auth.get().is_none() { return; }
 				if !clicked.get() { return; }
 				set_clicked.set(false);
 				let target_url = format!("{URL_BASE}/users/test/outbox");
