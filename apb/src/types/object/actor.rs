@@ -52,6 +52,12 @@ pub trait ActorMut : ObjectMut {
 	fn set_streams(self, val: Node<Self::Collection>) -> Self;
 	fn set_endpoints(self, val: Node<Self::Object>) -> Self; // TODO it's more complex than this!
 	fn set_public_key(self, val: Node<Self::PublicKey>) -> Self;
+
+	#[cfg(feature = "activitypub-miscellaneous-terms")]
+	fn set_moved_to(self, val: Node<Self::Actor>) -> Self;
+	#[cfg(feature = "activitypub-miscellaneous-terms")]
+	fn set_manually_approves_followers(self, val: Option<bool>) -> Self;
+
 	#[cfg(feature = "activitypub-fe")]
 	fn set_following_me(self, val: Option<bool>) -> Self;
 	#[cfg(feature = "activitypub-fe")]
@@ -73,6 +79,11 @@ impl Actor for serde_json::Value {
 	crate::getter! { liked -> node Self::Collection }
 	crate::getter! { streams -> node Self::Collection }
 	crate::getter! { public_key::publicKey -> node Self::PublicKey }
+
+	#[cfg(feature = "activitypub-miscellaneous-terms")]
+	crate::getter! { moved_to::movedTo -> node Self::Actor }
+	#[cfg(feature = "activitypub-miscellaneous-terms")]
+	crate::getter! { manually_approves_followers::manuallyApprovedFollowers -> bool }
 
 	#[cfg(feature = "activitypub-fe")]
 	crate::getter! { following_me::followingMe -> bool }
@@ -101,6 +112,10 @@ impl ActorMut for serde_json::Value {
 	crate::setter! { public_key::publicKey -> node Self::PublicKey }
 	crate::setter! { discoverable -> bool }
 
+	#[cfg(feature = "activitypub-miscellaneous-terms")]
+	crate::setter! { moved_to::movedTo -> node Self::Actor }
+	#[cfg(feature = "activitypub-miscellaneous-terms")]
+	crate::setter! { manually_approves_followers::manuallyApprovedFollowers -> bool }
 
 	#[cfg(feature = "activitypub-fe")]
 	crate::setter! { following_me::followingMe -> bool }
