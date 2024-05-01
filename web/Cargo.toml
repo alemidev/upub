@@ -24,7 +24,7 @@ leptos = { version = "0.6", features = ["csr", "tracing"] }
 leptos_router = { version = "0.6", features = ["csr"] }
 leptos-use = { version = "0.10", features = ["serde"] }
 reqwest = { version = "0.12", features = ["json"] }
-apb = { path = "../apb", features = ["unstructured"] }
+apb = { path = "../apb", features = ["unstructured", "activitypub-fe", "activitypub-counters"] }
 futures = "0.3.30"
 dissolve = "0.2" # TODO strip html without this crate
 lazy_static = "1.4"

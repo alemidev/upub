@@ -97,24 +97,16 @@ pub fn UserPage(tl: Timeline) -> impl IntoView {
 								Some(view! { <sup class="ml-s"><small>"["{actor_type.as_ref().to_lowercase()}"]"</small></sup> } )
 							};
 							let created = object.published();
-							let following = object.generator().get().map(|x| x.total_items().unwrap_or(0)).unwrap_or(0);
-							let followers = object.audience().get().map(|x| x.total_items().unwrap_or(0)).unwrap_or(0);
-							let statuses = object.replies().get().map(|x| x.total_items().unwrap_or(0)).unwrap_or(0);
+							let following = object.following_count().unwrap_or(0);
+							let followers = object.followers_count().unwrap_or(0);
+							let statuses = object.statuses_count().unwrap_or(0);
 							let tl_url = format!("{}/outbox/page", Uri::api(FetchKind::User, &id.clone(), false));
 							if !tl.next.get().starts_with(&tl_url) {
 								tl.reset(tl_url);
 							}
-							let _uid = uid.clone(); // TODO ughhhh
-							let followed_by_me = object.audience()
-								.get()
-								.filter(|x| x.ordered_items().is_empty()) // TODO check if contains my uid
-								.map(|_| view! { <input type="submit" value="follow" on:click=move |_| send_follow_request(_uid.clone()) /> }.into_view())
-								.unwrap_or(view! { <code class="color">following</code> }.into_view());
-
-							// let following_me = object.generator()
-							// 	.get()
-							// 	.filter(|x| !x.ordered_items().is_empty()) // TODO check if contains my uid
-							// 	.map(|_| view! { <input type="submit" value="remove" /> });
+							let following_me = object.following_me().unwrap_or(false);
+							let followed_by_me = object.followed_by_me().unwrap_or(false);
+							let _uid = uid.clone();
 
 							view! {
 								<div class="ml-3 mr-3">
@@ -150,8 +142,16 @@ pub fn UserPage(tl: Timeline) -> impl IntoView {
 											</tr>
 										</table>
 										<div class="rev mr-1">
-											{followed_by_me}
-											// {following_me}
+											{if followed_by_me {
+												view! { <code class="color">following</code> }.into_view()
+											} else {
+												view! { <input type="submit" value="follow" on:click=move |_| send_follow_request(_uid.clone()) /> }.into_view()
+											}}
+											{if following_me {
+												Some(view! { <code class="ml-1 color">follows you</code> })
+											} else {
+												None
+											}}
 										</div>
 										<blockquote class="ml-2 mt-1">{
 										dissolve::strip_html_tags(&summary)

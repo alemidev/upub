@@ -90,12 +90,11 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 		.collect_view();
 	let comments = object.replies().get()
 		.map_or(0, |x| x.total_items().unwrap_or(0));
-	let shares = object.generator().get()
+	let shares = object.shares().get()
 		.map_or(0, |x| x.total_items().unwrap_or(0));
-	let likes = object.audience().get()
+	let likes = object.likes().get()
 		.map_or(0, |x| x.total_items().unwrap_or(0));
-	let already_liked = object.audience().get()
-		.map_or(false, |x| !x.ordered_items().is_empty()); // TODO check if contains my uid
+	let already_liked = object.liked_by_me().unwrap_or(false);
 	let attachments_padding = if object.attachment().is_empty() {
 		None
 	} else {
