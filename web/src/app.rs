@@ -20,6 +20,9 @@ pub fn App() -> impl IntoView {
 	let user_tl = Timeline::new(format!("{URL_BASE}/users/{}/outbox/page", username.get().unwrap_or_default()));
 	let context_tl = Timeline::new(format!("{URL_BASE}/outbox/page"));
 
+	let reply_controls = ReplyControls::default();
+	provide_context(reply_controls);
+
 	let screen_width = window().screen().map(|x| x.avail_width().unwrap_or_default()).unwrap_or_default();
 
 	let (menu, set_menu) = create_signal(screen_width <= 786);

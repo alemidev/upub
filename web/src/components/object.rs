@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use leptos::*;
 use crate::{prelude::*, URL_SENSITIVE};
 
@@ -127,7 +125,7 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 			</Summary>
 		</blockquote>
 		<div class="mt-s ml-1 rev">
-			<ReplyButton n=comments />
+			<ReplyButton n=comments target=oid.clone() />
 			<LikeButton n=likes liked=already_liked target=oid.clone() author=author_id private=!public />
 			<RepostButton n=shares target=oid />
 		</div>
@@ -199,14 +197,23 @@ pub fn LikeButton(
 }
 
 #[component]
-pub fn ReplyButton(n: u64) -> impl IntoView {
+pub fn ReplyButton(n: u64, target: String) -> impl IntoView {
+	let reply = use_context::<ReplyControls>().expect("missing reply controls context");
 	let comments = if n > 0 {
 		Some(view! { <small>{n}</small> })
 	} else {
 		None
 	};
+	let _target = target.clone(); // TODO ughhhh useless clones
 	view! {
-		<span class="emoji ml-2">{comments}" 📨"</span>
+		<span
+			class:emoji=move || !reply.reply_to.get().map_or(false, |x| x == _target)
+			class="emoji-btn cursor ml-2"
+			on:click=move |_ev| reply.reply(&target)
+		>
+			{comments}
+			" 📨"
+		</span>
 	}
 }
 

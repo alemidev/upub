@@ -1,4 +1,4 @@
-use apb::{ActivityMut, BaseMut, ObjectMut};
+use apb::{ActivityMut, Base, BaseMut, Object, ObjectMut};
 
 use leptos::*;
 use crate::prelude::*;
@@ -14,9 +14,35 @@ pub fn Navigator() -> impl IntoView {
 	}
 }
 
+#[derive(Debug, Clone, Copy, Default)]
+pub struct ReplyControls {
+	pub context: RwSignal<Option<String>>,
+	pub reply_to: RwSignal<Option<String>>,
+}
+
+impl ReplyControls {
+	pub fn reply(&self, oid: &str) {
+		if let Some(obj) = CACHE.get(oid) {
+			self.context.set(obj.context().id());
+			self.reply_to.set(obj.id().map(|x| x.to_string()));
+		}
+	}
+
+	pub fn clear(&self) {
+		self.context.set(None);
+		self.reply_to.set(None);
+	}
+}
+
+fn post_author(post_id: &str) -> Option<crate::Object> {
+	let usr = CACHE.get(post_id)?.attributed_to().id()?;
+	CACHE.get(&usr)
+}
+
 #[component]
 pub fn PostBox(username: Signal<Option<String>>, advanced: WriteSignal<bool>) -> impl IntoView {
 	let auth = use_context::<Auth>().expect("missing auth context");
+	let reply = use_context::<ReplyControls>().expect("missing reply controls");
 	let (posting, set_posting) = create_signal(false);
 	let (error, set_error) = create_signal(None);
 	let summary_ref: NodeRef<html::Input> = create_node_ref();
@@ -26,6 +52,23 @@ pub fn PostBox(username: Signal<Option<String>>, advanced: WriteSignal<bool>) ->
 	let private_ref: NodeRef<html::Input> = create_node_ref();
 	view! {
 		<div class:hidden=move || !auth.present() >
+			{move ||
+				reply.reply_to.get().map(|r| {
+					let actor_strip = post_author(&r).map(|x| view! { <ActorStrip object=x /> });
+					view! {
+						<span class="nowrap">
+							<span 
+								class="cursor emoji emoji-btn mr-s ml-s"
+								on:click=move|_| reply.clear()
+								title={format!("> {r} | ctx: {}", reply.context.get().unwrap_or_default())}
+							>
+								"📨"
+							</span>
+							<small>{actor_strip}</small>
+						</span>
+					}
+				})
+			}
 			<table class="align w-100">
 				<tr>
 					<td><input type="checkbox" on:input=move |ev| advanced.set(event_target_checked(&ev)) title="advanced" /></td>
@@ -58,6 +101,8 @@ pub fn PostBox(username: Signal<Option<String>>, advanced: WriteSignal<bool>) ->
 									.set_object_type(Some(apb::ObjectType::Note))
 									.set_summary(summary.as_deref())
 									.set_content(Some(&content))
+									.set_context(apb::Node::maybe_link(reply.context.get()))
+									.set_in_reply_to(apb::Node::maybe_link(reply.reply_to.get()))
 									.set_to(to)
 									.set_cc(cc);
 								let target_url = format!("{URL_BASE}/users/test/outbox");
