@@ -27,6 +27,7 @@ reqwest = { version = "0.12", features = ["json"], optional = true }
 default = ["activitypub-miscellaneous-terms"]
 # extensions
 activitypub-miscellaneous-terms = []
+activitypub-counters = [] # https://ns.alemi.dev/as/counters/#
 # builtin utils
 orm = ["dep:sea-orm"]
 fetch = ["dep:reqwest"]

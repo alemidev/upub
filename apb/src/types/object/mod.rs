@@ -73,6 +73,9 @@ pub trait Object : Base {
 	#[cfg(feature = "activitypub-miscellaneous-terms")]
 	fn sensitive(&self) -> Option<bool> { None }
 
+	#[cfg(feature = "activitypub-fe")]
+	fn liked_by_me(&self) -> Option<bool> { None }
+
 	fn as_activity(&self) -> Option<&Self::Activity> { None }
 	fn as_actor(&self) -> Option<&Self::Actor> { None }
 	fn as_collection(&self) -> Option<&Self::Collection> { None }
@@ -118,6 +121,9 @@ pub trait ObjectMut : BaseMut {
 
 	#[cfg(feature = "activitypub-miscellaneous-terms")]
 	fn set_sensitive(self, val: Option<bool>) -> Self;
+
+	#[cfg(feature = "activitypub-fe")]
+	fn set_liked_by_me(self, val: Option<bool>) -> Self;
 }
 
 #[cfg(feature = "unstructured")]
@@ -160,6 +166,9 @@ impl Object for serde_json::Value {
 
 	#[cfg(feature = "activitypub-miscellaneous-terms")]
 	crate::getter! { sensitive -> bool }
+
+	#[cfg(feature = "activitypub-fe")]
+	crate::getter! { liked_by_me::likedByMe -> bool }
 
 	// TODO Mastodon doesn't use a "context" field on the object but makes up a new one!!
 	fn context(&self) -> Node<<Self as Object>::Object> {
@@ -241,4 +250,7 @@ impl ObjectMut for serde_json::Value {
 
 	#[cfg(feature = "activitypub-miscellaneous-terms")]
 	crate::setter! { sensitive -> bool }
+
+	#[cfg(feature = "activitypub-fe")]
+	crate::setter! { liked_by_me::likedByMe -> bool }
 }
