@@ -118,7 +118,7 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 			</tr>
 		</table>
 		<blockquote class="tl">
-			<Summary summary=object.summary().map(|x| x.to_string()) open=!sensitive >
+			<Summary summary=object.summary().map(|x| x.to_string()) open=false >
 				{content.into_iter().map(|x| view! { <p>{x}</p> }).collect_view()}
 				{attachments_padding}
 				{attachments}
