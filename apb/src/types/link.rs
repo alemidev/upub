@@ -1,3 +1,13 @@
+#[cfg(feature = "activitypub-miscellaneous-terms")]
+crate::strenum! {
+	pub enum LinkType {
+		Link,
+		Hashtag,
+		Mention;
+	};
+}
+
+#[cfg(not(feature = "activitypub-miscellaneous-terms"))]
 crate::strenum! {
 	pub enum LinkType {
 		Link,

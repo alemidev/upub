@@ -23,6 +23,13 @@ pub trait Actor : Object {
 	fn streams(&self) -> Node<Self::Collection> { Node::Empty }
 	fn endpoints(&self) -> Node<Self::Object> { Node::Empty }
 	fn public_key(&self) -> Node<Self::PublicKey> { Node::Empty }
+
+	#[cfg(feature = "activitypub-miscellaneous-terms")]
+	fn moved_to(&self) -> Node<Self::Actor> { Node::Empty }
+
+	#[cfg(feature = "activitypub-miscellaneous-terms")]
+	fn manually_approves_followers(&self) -> Option<bool> { None }
+
 	// idk about this? everyone has it but AP doesn't mention it
 	fn discoverable(&self) -> Option<bool> { None }
 }

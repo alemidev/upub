@@ -68,7 +68,7 @@ pub trait Object : Base {
 	fn media_type(&self) -> Option<&str> { None } // also in link
 	fn duration(&self) -> Option<&str> { None } // TODO how to parse xsd:duration ?
 
-	// TODO i really need this but it isn't part of AP!
+	#[cfg(feature = "activitypub-miscellaneous-terms")]
 	fn sensitive(&self) -> Option<bool> { None }
 
 	fn as_activity(&self) -> Option<&Self::Activity> { None }
@@ -112,6 +112,7 @@ pub trait ObjectMut : BaseMut {
 	fn set_media_type(self, val: Option<&str>) -> Self; // also in link
 	fn set_duration(self, val: Option<&str>) -> Self; // TODO how to parse xsd:duration ?
 
+	#[cfg(feature = "activitypub-miscellaneous-terms")]
 	fn set_sensitive(self, val: Option<bool>) -> Self;
 }
 
@@ -151,6 +152,7 @@ impl Object for serde_json::Value {
 	crate::getter! { duration -> &str }
 	crate::getter! { url -> node Self::Link }
 
+	#[cfg(feature = "activitypub-miscellaneous-terms")]
 	crate::getter! { sensitive -> bool }
 
 	// TODO Mastodon doesn't use a "context" field on the object but makes up a new one!!
@@ -229,5 +231,6 @@ impl ObjectMut for serde_json::Value {
 	crate::setter! { url -> node Self::Link }
 	crate::setter! { context -> node <Self as Object>::Object }
 
+	#[cfg(feature = "activitypub-miscellaneous-terms")]
 	crate::setter! { sensitive -> bool }
 }

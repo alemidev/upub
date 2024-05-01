@@ -24,8 +24,12 @@ sea-orm = { version = "0.12", optional = true }
 reqwest = { version = "0.12", features = ["json"], optional = true }
 
 [features]
-default = []
+default = ["activitypub-miscellaneous-terms"]
+# extensions
+activitypub-miscellaneous-terms = []
+# builtin utils
 orm = ["dep:sea-orm"]
 fetch = ["dep:reqwest"]
+# providers
 unstructured = ["dep:serde_json"]
-# TODO eventually also make a structured base?
+#TODO eventually also make a structured base?
