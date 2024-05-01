@@ -34,14 +34,6 @@ impl<T : super::Base + Clone> Iterator for Node<T> {
 	}
 }
 
-impl<T : super::Base + Clone> Node<T> {
-	pub fn update(&mut self, builder: impl FnOnce(T) -> T) {
-		if let Node::Object(x) = self {
-			*x = Box::new(builder((**x).clone()));
-		}
-	}
-}
-
 impl<T : super::Base> Node<T> {
 	/// return reference to embedded object (or last if many are present)
 	pub fn get(&self) -> Option<&T> {
