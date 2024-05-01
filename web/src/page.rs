@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use apb::{Actor, Base, Collection, Object};
+use apb::{ActivityMut, Actor, Base, Collection, Object, ObjectMut};
 
 use leptos::*;
 use leptos_router::*;
@@ -30,6 +30,19 @@ pub fn ConfigPage() -> impl IntoView {
 			</div>
 		</div>
 	}
+}
+
+fn send_follow_request(target: String) {
+	let auth = use_context::<Auth>().expect("missing auth context");
+	spawn_local(async move {
+		let payload = serde_json::Value::Object(serde_json::Map::default())
+			.set_activity_type(Some(apb::ActivityType::Follow))
+			.set_object(apb::Node::link(target.clone()))
+			.set_to(apb::Node::links(vec![target]));
+		if let Err(e) = Http::post(&auth.outbox(), &payload, auth).await {
+			tracing::error!("failed sending follow request: {e}");
+		}
+	})
 }
 
 #[component]
@@ -91,18 +104,25 @@ pub fn UserPage(tl: Timeline) -> impl IntoView {
 							if !tl.next.get().starts_with(&tl_url) {
 								tl.reset(tl_url);
 							}
+							let _uid = uid.clone(); // TODO ughhhh
+							let followed_by_me = object.audience()
+								.get()
+								.filter(|x| x.ordered_items().is_empty()) // TODO check if contains my uid
+								.map(|_| view! { <input type="submit" value="follow" on:click=move |_| send_follow_request(_uid.clone()) /> }.into_view())
+								.unwrap_or(view! { <code class="color">following</code> }.into_view());
+
+							// let following_me = object.generator()
+							// 	.get()
+							// 	.filter(|x| !x.ordered_items().is_empty()) // TODO check if contains my uid
+							// 	.map(|_| view! { <input type="submit" value="remove" /> });
+
 							view! {
 								<div class="ml-3 mr-3">
 									<div 
 										class="banner"
 										style={format!("background: center / cover url({background_url});")}
 									>
-										// <table class="align w-100">
-										// <tr><td rowspan=3>
-										// 	<img src=
-
-										// </table>
-										<div style="height: 10em"></div>
+										<div style="height: 10em"></div> // TODO bad way to have it fixed height ewwww
 									</div>
 									<div class="overlap">
 										<table class="pl-2 pr-2 align w-100" style="table-layout: fixed">
@@ -118,7 +138,7 @@ pub fn UserPage(tl: Timeline) -> impl IntoView {
 											<tr></tr>
 											<tr>
 												<td class="top">
-													<small><a class="clean hover" href={uid} target="_blank">{username.clone()}@{domain}</a></small>
+													<small><a class="clean hover" href={uid.clone()} target="_blank">{username.clone()}@{domain}</a></small>
 												</td>
 												<td class="rev" title="following">{following}" "<span class="emoji">"👥"</span></td>
 											</tr>
@@ -129,6 +149,10 @@ pub fn UserPage(tl: Timeline) -> impl IntoView {
 												<td class="rev" title="followers">{followers}" "<span class="emoji">"📢"</span></td>
 											</tr>
 										</table>
+										<div class="rev mr-1">
+											{followed_by_me}
+											// {following_me}
+										</div>
 										<blockquote class="ml-2 mt-1">{
 										dissolve::strip_html_tags(&summary)
 											.into_iter()
