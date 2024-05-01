@@ -16,6 +16,9 @@ impl<T : super::Base> From<Option<T>> for Node<T> {
 	}
 }
 
+// TODO how do i move out of the box for a moment? i need to leave it uninitialized while i update
+// the value and then put it back, i think it should be safe to do so! but i'm not sure how, so i'm
+// using a clone (expensive but simple solution)
 impl<T : super::Base + Clone> Iterator for Node<T> {
 	type Item = T;
 
@@ -28,6 +31,14 @@ impl<T : super::Base + Clone> Iterator for Node<T> {
 		};
 		*self = Self::Empty;
 		Some(x)
+	}
+}
+
+impl<T : super::Base + Clone> Node<T> {
+	pub fn update(&mut self, builder: impl FnOnce(T) -> T) {
+		if let Node::Object(x) = self {
+			*x = Box::new(builder((**x).clone()));
+		}
 	}
 }
 
