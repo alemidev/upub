@@ -5,7 +5,7 @@ pub mod outbox;
 pub mod following;
 
 use axum::extract::{Path, Query, State};
-use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, SelectColumns};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QuerySelect, SelectColumns};
 
 use apb::{ActorMut, CollectionMut, Node, Object, ObjectMut};
 use crate::{errors::UpubError, model::{self, user}, server::{auth::AuthIdentity, fetcher::Fetcher, Context}, url};
@@ -46,6 +46,7 @@ pub async fn view(
 					let followed_by_me = model::relation::Entity::find()
 						.filter(model::relation::Column::Follower.eq(my_id))
 						.filter(model::relation::Column::Following.eq(&uid))
+						.select_only()
 						.select_column(model::relation::Column::Follower)
 						.into_tuple::<String>()
 						.all(ctx.db())
@@ -58,6 +59,7 @@ pub async fn view(
 					let following_me = model::relation::Entity::find()
 						.filter(model::relation::Column::Following.eq(my_id))
 						.filter(model::relation::Column::Follower.eq(&uid))
+						.select_only()
 						.select_column(model::relation::Column::Following)
 						.into_tuple::<String>()
 						.all(ctx.db())
@@ -90,6 +92,7 @@ pub async fn view(
 					let followed_by_me = model::relation::Entity::find()
 						.filter(model::relation::Column::Follower.eq(my_id))
 						.filter(model::relation::Column::Following.eq(&uid))
+						.select_only()
 						.select_column(model::relation::Column::Follower)
 						.into_tuple::<String>()
 						.all(ctx.db())
@@ -102,6 +105,7 @@ pub async fn view(
 					let following_me = model::relation::Entity::find()
 						.filter(model::relation::Column::Following.eq(my_id))
 						.filter(model::relation::Column::Follower.eq(&uid))
+						.select_only()
 						.select_column(model::relation::Column::Following)
 						.into_tuple::<String>()
 						.all(ctx.db())
