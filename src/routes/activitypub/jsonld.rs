@@ -15,10 +15,13 @@ pub trait LD {
 impl LD for serde_json::Value {
 	fn ld_context(mut self) -> Self {
 		if let Some(obj) = self.as_object_mut() {
+			let mut ctx = serde_json::Map::new();
+			ctx.insert("sensitive".to_string(), serde_json::Value::String("as:sensitive".into()));
 			obj.insert(
 				"@context".to_string(),
 				serde_json::Value::Array(vec![
-					serde_json::Value::String("https://www.w3.org/ns/activitystreams".into())
+					serde_json::Value::String("https://www.w3.org/ns/activitystreams".into()),
+					serde_json::Value::Object(ctx),
 				]),
 			);
 		} else {
