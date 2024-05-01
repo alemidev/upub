@@ -136,7 +136,7 @@ where
 					// exist anymore, so it must be a deletion we can ignore
 					if let UpubError::Reqwest(ref x) = e {
 						if let Some(StatusCode::GONE) = x.status() {
-							return Err(UpubError::not_modified());
+							return Err(UpubError::Status(StatusCode::OK)); // 200 so mastodon will shut uppp
 						}
 					}
 					tracing::warn!("could not fetch user (won't verify): {e}");
