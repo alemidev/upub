@@ -26,7 +26,6 @@ pub trait Actor : Object {
 
 	#[cfg(feature = "activitypub-miscellaneous-terms")]
 	fn moved_to(&self) -> Node<Self::Actor> { Node::Empty }
-
 	#[cfg(feature = "activitypub-miscellaneous-terms")]
 	fn manually_approves_followers(&self) -> Option<bool> { None }
 
@@ -34,6 +33,13 @@ pub trait Actor : Object {
 	fn following_me(&self) -> Option<bool> { None }
 	#[cfg(feature = "activitypub-fe")]
 	fn followed_by_me(&self) -> Option<bool> { None }
+
+	#[cfg(feature = "activitypub-counters")]
+	fn followers_count(&self) -> Option<u64> { None }
+	#[cfg(feature = "activitypub-counters")]
+	fn following_count(&self) -> Option<u64> { None }
+	#[cfg(feature = "activitypub-counters")]
+	fn statuses_count(&self) -> Option<u64> { None }
 
 	// idk about this? everyone has it but AP doesn't mention it
 	fn discoverable(&self) -> Option<bool> { None }
@@ -63,6 +69,13 @@ pub trait ActorMut : ObjectMut {
 	#[cfg(feature = "activitypub-fe")]
 	fn set_followed_by_me(self, val: Option<bool>) -> Self;
 
+	#[cfg(feature = "activitypub-counters")]
+	fn set_followers_count(self, val: Option<u64>) -> Self;
+	#[cfg(feature = "activitypub-counters")]
+	fn set_following_count(self, val: Option<u64>) -> Self;
+	#[cfg(feature = "activitypub-counters")]
+	fn set_statuses_count(self, val: Option<u64>) -> Self;
+
 	fn set_discoverable(self, val: Option<bool>) -> Self;
 }
 
@@ -89,6 +102,13 @@ impl Actor for serde_json::Value {
 	crate::getter! { following_me::followingMe -> bool }
 	#[cfg(feature = "activitypub-fe")]
 	crate::getter! { followed_by_me::followedByMe -> bool }
+
+	#[cfg(feature = "activitypub-counters")]
+	crate::getter! { following_count::followingCount -> u64 }
+	#[cfg(feature = "activitypub-counters")]
+	crate::getter! { followers_count::followersCount -> u64 }
+	#[cfg(feature = "activitypub-counters")]
+	crate::getter! { statuses_count::statusesCount -> u64 }
 
 	crate::getter! { discoverable -> bool }
 
@@ -121,6 +141,14 @@ impl ActorMut for serde_json::Value {
 	crate::setter! { following_me::followingMe -> bool }
 	#[cfg(feature = "activitypub-fe")]
 	crate::setter! { followed_by_me::followedByMe -> bool }
+
+	#[cfg(feature = "activitypub-counters")]
+	crate::setter! { following_count::followingCount -> u64 }
+	#[cfg(feature = "activitypub-counters")]
+	crate::setter! { followers_count::followersCount -> u64 }
+	#[cfg(feature = "activitypub-counters")]
+	crate::setter! { statuses_count::statusesCount -> u64 }
+
 	fn set_endpoints(mut self, _val: Node<<Self as Object>::Object>) -> Self {
 		self.as_object_mut().unwrap().insert("endpoints".to_string(), serde_json::Value::Object(serde_json::Map::default()));
 		self
