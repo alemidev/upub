@@ -115,6 +115,12 @@ macro_rules! getter {
 		}
 	};
 
+	($name:ident::$rename:ident -> bool) => {
+		fn $name(&self) -> Option<bool> {
+			self.get(stringify!($rename))?.as_bool()
+		}
+	};
+
 	($name:ident::$rename:ident -> &str) => {
 		fn $name(&self) -> Option<&str> {
 			self.get(stringify!($rename))?.as_str()
@@ -200,6 +206,17 @@ macro_rules! setter {
 			fn [< set_$name >](mut self, val: Option<bool>) -> Self {
 				$crate::macros::set_maybe_value(
 					&mut self, stringify!($name), val.map(|x| serde_json::Value::Bool(x))
+				);
+				self
+			}
+		}
+	};
+
+	($name:ident::$rename:ident -> bool) => {
+		paste::item! {
+			fn [< set_$name >](mut self, val: Option<bool>) -> Self {
+				$crate::macros::set_maybe_value(
+					&mut self, stringify!($rename), val.map(|x| serde_json::Value::Bool(x))
 				);
 				self
 			}
