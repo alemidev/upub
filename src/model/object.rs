@@ -1,4 +1,4 @@
-use apb::{BaseMut, Object, Collection, CollectionMut, ObjectMut};
+use apb::{BaseMut, Collection, CollectionMut, ObjectMut};
 use sea_orm::entity::prelude::*;
 
 use crate::routes::activitypub::jsonld::LD;
@@ -41,21 +41,12 @@ impl Model {
 			context: object.context().id(),
 			in_reply_to: object.in_reply_to().id(),
 			published: object.published().ok_or(super::FieldError("published"))?,
-			comments: object.replies()
-				.get()
+			comments: object.replies().get()
 				.map_or(0, |x| x.total_items().unwrap_or(0)) as i64,
-			likes: object.audience()
-				.get()
-				.map_or(0, |x|
-					x.as_collection()
-						.map_or(0, |x| x.total_items().unwrap_or(0))
-				) as i64,
-			shares: object.generator()
-				.get()
-				.map_or(0, |x|
-					x.as_collection()
-						.map_or(0, |x| x.total_items().unwrap_or(0))
-					) as i64,
+			likes: object.likes().get()
+				.map_or(0, |x| x.total_items().unwrap_or(0)) as i64,
+			shares: object.shares().get()
+				.map_or(0, |x| x.total_items().unwrap_or(0)) as i64,
 			to: object.to().into(),
 			bto: object.bto().into(),
 			cc: object.cc().into(),
@@ -81,12 +72,12 @@ impl Model {
 			.set_cc(apb::Node::links(self.cc.0.clone()))
 			.set_bcc(apb::Node::Empty)
 			.set_sensitive(Some(self.sensitive))
-			.set_generator(apb::Node::object(
+			.set_shares(apb::Node::object(
 				serde_json::Value::new_object()
 					.set_collection_type(Some(apb::CollectionType::OrderedCollection))
 					.set_total_items(Some(self.shares as u64))
 			))
-			.set_audience(apb::Node::object(
+			.set_likes(apb::Node::object(
 				serde_json::Value::new_object()
 					.set_collection_type(Some(apb::CollectionType::OrderedCollection))
 					.set_total_items(Some(self.likes as u64))

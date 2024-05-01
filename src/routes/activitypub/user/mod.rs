@@ -7,7 +7,7 @@ pub mod following;
 use axum::extract::{Path, Query, State};
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QuerySelect, SelectColumns};
 
-use apb::{ActorMut, CollectionMut, Node, Object, ObjectMut};
+use apb::{ActorMut, Node, ObjectMut};
 use crate::{errors::UpubError, model::{self, user}, server::{auth::AuthIdentity, fetcher::Fetcher, Context}, url};
 
 use super::{jsonld::LD, JsonLD, TryFetch};
@@ -27,6 +27,37 @@ pub async fn view(
 	if auth.is_local() && query.fetch && !ctx.is_local(&uid) {
 		ctx.fetch_user(&uid).await?;
 	}
+
+	let (followed_by_me, following_me) = match auth.my_id() {
+		None => (None, None),
+		Some(my_id) => {
+			// TODO these two queries are fast because of indexes but still are 2 subqueries for each
+			// user GET, not even parallelized... should really add these as joins on the main query, so
+			// that it's one roundtrip only
+			let followed_by_me = model::relation::Entity::find()
+				.filter(model::relation::Column::Follower.eq(my_id))
+				.filter(model::relation::Column::Following.eq(&uid))
+				.select_only()
+				.select_column(model::relation::Column::Follower)
+				.into_tuple::<String>()
+				.one(ctx.db())
+				.await?
+				.map(|_| true);
+
+			let following_me = model::relation::Entity::find()
+				.filter(model::relation::Column::Following.eq(my_id))
+				.filter(model::relation::Column::Follower.eq(&uid))
+				.select_only()
+				.select_column(model::relation::Column::Follower)
+				.into_tuple::<String>()
+				.one(ctx.db())
+				.await?
+				.map(|_| true);
+
+			(followed_by_me, following_me)
+		},
+	};
+
 	match user::Entity::find_by_id(&uid)
 		.find_also_related(model::config::Entity)
 		.one(ctx.db()).await?
@@ -37,39 +68,9 @@ pub async fn view(
 				.set_inbox(Node::link(url!(ctx, "/users/{id}/inbox")))
 				.set_outbox(Node::link(url!(ctx, "/users/{id}/outbox")))
 				.set_following(Node::link(url!(ctx, "/users/{id}/following")))
-				.set_followers(Node::link(url!(ctx, "/users/{id}/followers")));
-
-			// TODO maybe this thing could be made as a single join, to avoid triple db roundtrip for
-			// each fetch made by local users? it's indexed and fast but still...
-			if let Some(my_id) = auth.my_id() {
-				if !auth.is(&uid) {
-					let followed_by_me = model::relation::Entity::find()
-						.filter(model::relation::Column::Follower.eq(my_id))
-						.filter(model::relation::Column::Following.eq(&uid))
-						.select_only()
-						.select_column(model::relation::Column::Follower)
-						.into_tuple::<String>()
-						.all(ctx.db())
-						.await?;
-
-					user
-						.audience()
-						.update(|x| x.set_ordered_items(apb::Node::links(followed_by_me)));
-
-					let following_me = model::relation::Entity::find()
-						.filter(model::relation::Column::Following.eq(my_id))
-						.filter(model::relation::Column::Follower.eq(&uid))
-						.select_only()
-						.select_column(model::relation::Column::Following)
-						.into_tuple::<String>()
-						.all(ctx.db())
-						.await?;
-					
-					user
-						.generator()
-						.update(|x| x.set_ordered_items(apb::Node::links(following_me)));
-				}
-			}
+				.set_followers(Node::link(url!(ctx, "/users/{id}/followers")))
+				.set_following_me(following_me)
+				.set_followed_by_me(followed_by_me);
 
 			if !auth.is(&uid) && !cfg.show_followers_count {
 				user = user.set_audience(apb::Node::Empty);
@@ -81,44 +82,13 @@ pub async fn view(
 
 			Ok(JsonLD(user.ld_context()))
 		},
-		// remote user TODDO doesn't work?
-		Some((user_model, None)) => {
-			let user = user_model.ap();
-
-			// TODO maybe this thing could be made as a single join, to avoid triple db roundtrip for
-			// each fetch made by local users? it's indexed and fast but still...
-			if let Some(my_id) = auth.my_id() {
-				if !auth.is(&uid) {
-					let followed_by_me = model::relation::Entity::find()
-						.filter(model::relation::Column::Follower.eq(my_id))
-						.filter(model::relation::Column::Following.eq(&uid))
-						.select_only()
-						.select_column(model::relation::Column::Follower)
-						.into_tuple::<String>()
-						.all(ctx.db())
-						.await?;
-
-					user
-						.audience()
-						.update(|x| x.set_ordered_items(apb::Node::links(followed_by_me)));
-
-					let following_me = model::relation::Entity::find()
-						.filter(model::relation::Column::Following.eq(my_id))
-						.filter(model::relation::Column::Follower.eq(&uid))
-						.select_only()
-						.select_column(model::relation::Column::Following)
-						.into_tuple::<String>()
-						.all(ctx.db())
-						.await?;
-					
-					user
-						.generator()
-						.update(|x| x.set_ordered_items(apb::Node::links(following_me)));
-				}
-			}
-
-			Ok(JsonLD(user.ld_context()))
-		},
+		// remote user
+		Some((user_model, None)) => Ok(JsonLD(
+			user_model.ap()
+				.set_following_me(following_me)
+				.set_followed_by_me(followed_by_me)
+				.ld_context()
+		)),
 		None => Err(UpubError::not_found()),
 	}
 }

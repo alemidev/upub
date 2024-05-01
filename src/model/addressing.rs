@@ -1,4 +1,4 @@
-use apb::{ActivityMut, CollectionMut, ObjectMut};
+use apb::{ActivityMut, ObjectMut};
 use sea_orm::{entity::prelude::*, sea_query::IntoCondition, Condition, FromQueryResult, Iterable, Order, QueryOrder, QuerySelect, SelectColumns};
 
 use crate::routes::activitypub::jsonld::LD;
@@ -98,36 +98,18 @@ impl Event {
 		match self {
 			Event::Activity(x) => x.ap(),
 			Event::DeepActivity { activity, object, liked } =>
-				activity.ap().set_object(apb::Node::object({
-					let likes = object.likes;
-					let mut obj = object.ap()
-						.set_attachment(attachment);
-					if let Some(liked) = liked {
-						obj = obj.set_audience(apb::Node::object( // TODO setting this again ewww...
-							serde_json::Value::new_object()
-								.set_collection_type(Some(apb::CollectionType::OrderedCollection))
-								.set_total_items(Some(likes as u64))
-								.set_ordered_items(apb::Node::links(vec![liked]))
-						));
-					}
-					obj
-				})),
+				activity.ap().set_object(apb::Node::object(
+					object.ap()
+						.set_attachment(attachment)
+						.set_liked_by_me(if liked.is_some() { Some(true) } else { None })
+				)),
 			Event::StrayObject { object, liked } => serde_json::Value::new_object()
 				.set_activity_type(Some(apb::ActivityType::Activity))
-				.set_object(apb::Node::object({
-					let likes = object.likes;
-					let mut obj = object.ap()
-						.set_attachment(attachment);
-					if let Some(liked) = liked {
-						obj = obj.set_audience(apb::Node::object( // TODO setting this again ewww...
-							serde_json::Value::new_object()
-								.set_collection_type(Some(apb::CollectionType::OrderedCollection))
-								.set_total_items(Some(likes as u64))
-								.set_ordered_items(apb::Node::links(vec![liked]))
-						));
-					}
-					obj
-				})),
+				.set_object(apb::Node::object(
+					object.ap()
+						.set_attachment(attachment)
+						.set_liked_by_me(if liked.is_some() { Some(true) } else { None })
+				)),
 			Event::Tombstone => serde_json::Value::new_object()
 				.set_activity_type(Some(apb::ActivityType::Activity))
 				.set_object(apb::Node::object(

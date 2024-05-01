@@ -1,6 +1,6 @@
 use sea_orm::entity::prelude::*;
 
-use apb::{Actor, ActorMut, ActorType, BaseMut, Collection, CollectionMut, DocumentMut, Object, ObjectMut, PublicKey, PublicKeyMut};
+use apb::{Actor, ActorMut, ActorType, BaseMut, DocumentMut, Object, ObjectMut, PublicKey, PublicKeyMut};
 
 use crate::routes::activitypub::jsonld::LD;
 
@@ -59,9 +59,9 @@ impl Model {
 			following: object.following().id(),
 			created: object.published().unwrap_or(chrono::Utc::now()),
 			updated: chrono::Utc::now(),
-			following_count: object.generator().get().map_or(0, |f| f.as_collection().map_or(0, |f| f.total_items().unwrap_or(0))) as i64,
-			followers_count: object.audience().get().map_or(0, |f| f.as_collection().map_or(0, |f| f.total_items().unwrap_or(0))) as i64,
-			statuses_count: object.replies().get().map_or(0, |o| o.total_items().unwrap_or(0)) as i64,
+			following_count: object.following_count().unwrap_or(0) as i64,
+			followers_count: object.followers_count().unwrap_or(0) as i64,
+			statuses_count: object.statuses_count().unwrap_or(0) as i64,
 			public_key: object.public_key().get().ok_or(super::FieldError("publicKey"))?.public_key_pem().to_string(),
 			private_key: None, // there's no way to transport privkey over AP json, must come from DB
 		})
@@ -85,24 +85,9 @@ impl Model {
 			)))
 			.set_published(Some(self.created))
 			.set_preferred_username(Some(&self.preferred_username))
-			.set_replies(apb::Node::object(
-				serde_json::Value::new_object()
-					.set_id(self.outbox.as_deref())
-					.set_collection_type(Some(apb::CollectionType::OrderedCollection))
-					.set_total_items(Some(self.statuses_count as u64))
-			))
-			.set_audience(apb::Node::object(
-				serde_json::Value::new_object()
-					.set_id(self.followers.as_deref())
-					.set_collection_type(Some(apb::CollectionType::OrderedCollection))
-					.set_total_items(Some(self.followers_count as u64))
-			))
-			.set_generator(apb::Node::object(
-				serde_json::Value::new_object()
-					.set_id(self.following.as_deref())
-					.set_collection_type(Some(apb::CollectionType::OrderedCollection))
-					.set_total_items(Some(self.following_count as u64))
-			))
+			.set_statuses_count(Some(self.statuses_count as u64))
+			.set_followers_count(Some(self.followers_count as u64))
+			.set_following_count(Some(self.following_count as u64))
 			.set_inbox(apb::Node::maybe_link(self.inbox))
 			.set_outbox(apb::Node::maybe_link(self.outbox))
 			.set_following(apb::Node::maybe_link(self.following))
