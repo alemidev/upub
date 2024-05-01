@@ -7,17 +7,19 @@ use leptos_use::{use_cookie, use_cookie_with_options, utils::FromToStringCodec, 
 
 #[component]
 pub fn App() -> impl IntoView {
-	let (auth, set_auth) = use_cookie_with_options::<String, FromToStringCodec>(
+	let (token, set_token) = use_cookie_with_options::<String, FromToStringCodec>(
 		"token",
 		UseCookieOptions::default()
 			.max_age(1000 * 60 * 60 * 6)
 	);
-	let (username, set_username) = use_cookie::<String, FromToStringCodec>("username");
+	let (user, set_username) = use_cookie::<String, FromToStringCodec>("username");
+
+	let auth = Auth { token, user };
 	provide_context(auth);
 
-	let home_tl = Timeline::new(format!("{URL_BASE}/users/{}/inbox/page", username.get().unwrap_or_default()));
+	let home_tl = Timeline::new(format!("{URL_BASE}/users/{}/inbox/page", auth.username()));
 	let server_tl = Timeline::new(format!("{URL_BASE}/inbox/page"));
-	let user_tl = Timeline::new(format!("{URL_BASE}/users/{}/outbox/page", username.get().unwrap_or_default()));
+	let user_tl = Timeline::new(format!("{URL_BASE}/users/{}/outbox/page", auth.username()));
 	let context_tl = Timeline::new(format!("{URL_BASE}/outbox/page"));
 
 	let reply_controls = ReplyControls::default();
@@ -34,7 +36,7 @@ pub fn App() -> impl IntoView {
 		}
 	});
 
-	if auth.get().is_some() {
+	if auth.present() {
 		spawn_local(async move {
 			if let Err(e) = home_tl.more(auth).await {
 				tracing::error!("error populating timeline: {e}");
@@ -56,10 +58,8 @@ pub fn App() -> impl IntoView {
 			<div class="two-col" >
 				<div class="col-side sticky pb-s" class:hidden=move || menu.get() >
 					<LoginBox
-						token_tx=set_auth
-						token=auth
+						token_tx=set_token
 						username_tx=set_username
-						username=username
 						home_tl=home_tl
 						server_tl=server_tl
 					/>
@@ -67,9 +67,9 @@ pub fn App() -> impl IntoView {
 					<Navigator />
 					<hr class="mt-1 mb-1" />
 					{move || if advanced.get() { view! {
-						<AdvancedPostBox username=username advanced=set_advanced/>
+						<AdvancedPostBox advanced=set_advanced/>
 					}} else { view! {
-						<PostBox username=username advanced=set_advanced/>
+						<PostBox advanced=set_advanced/>
 					}}}
 				</div>
 				<div class="col-main" class:w-100=move || menu.get() >
@@ -91,7 +91,7 @@ pub fn App() -> impl IntoView {
 								<main>
 										<Routes>
 											<Route path="/web" view=move ||
-												if auth.get().is_some() {
+												if auth.present() {
 													view! { <Redirect path="/web/home" /> }
 												} else {
 													view! { <Redirect path="/web/server" /> }

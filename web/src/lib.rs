@@ -14,6 +14,7 @@ pub const URL_SENSITIVE: &str = "https://cdn.alemi.dev/social/nsfw.png";
 pub const NAME: &str = "μ";
 
 use std::sync::Arc;
+use auth::Auth;
 
 
 
@@ -81,14 +82,14 @@ impl Http {
 		method: reqwest::Method,
 		url: &str,
 		data: Option<&T>,
-		token: leptos::Signal<Option<String>>
+		auth: Auth,
 	) -> reqwest::Result<reqwest::Response> {
 		use leptos::SignalGet;
 
 		let mut req = reqwest::Client::new()
 			.request(method, url);
 
-		if let Some(auth) = token.get() {
+		if let Some(auth) = auth.token.get().filter(|x| !x.is_empty()) {
 			req = req.header("Authorization", format!("Bearer {}", auth));
 		}
 
@@ -101,14 +102,14 @@ impl Http {
 			.error_for_status()
 	}
 
-	pub async fn fetch<T: serde::de::DeserializeOwned>(url: &str, token: leptos::Signal<Option<String>>) -> reqwest::Result<T> {
+	pub async fn fetch<T: serde::de::DeserializeOwned>(url: &str, token: Auth) -> reqwest::Result<T> {
 		Self::request::<()>(reqwest::Method::GET, url, None, token)
 			.await?
 			.json::<T>()
 			.await
 	}
 
-	pub async fn post<T: serde::ser::Serialize>(url: &str, data: &T, token: leptos::Signal<Option<String>>) -> reqwest::Result<()> {
+	pub async fn post<T: serde::ser::Serialize>(url: &str, data: &T, token: Auth) -> reqwest::Result<()> {
 		Self::request(reqwest::Method::POST, url, Some(data), token)
 			.await?;
 		Ok(())

@@ -40,7 +40,7 @@ fn post_author(post_id: &str) -> Option<crate::Object> {
 }
 
 #[component]
-pub fn PostBox(username: Signal<Option<String>>, advanced: WriteSignal<bool>) -> impl IntoView {
+pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 	let auth = use_context::<Auth>().expect("missing auth context");
 	let reply = use_context::<ReplyControls>().expect("missing reply controls");
 	let (posting, set_posting) = create_signal(false);
@@ -89,9 +89,9 @@ pub fn PostBox(username: Signal<Option<String>>, advanced: WriteSignal<bool>) ->
 								let summary = summary_ref.get().map(|x| x.value());
 								let content = content_ref.get().map(|x| x.value()).unwrap_or_default();
 								let (to, cc) = if get_checked(public_ref) {
-									(apb::Node::links(vec![apb::target::PUBLIC.to_string()]), apb::Node::links(vec![format!("{URL_BASE}/users/{}/followers", username.get().unwrap_or_default())]))
+									(apb::Node::links(vec![apb::target::PUBLIC.to_string()]), apb::Node::links(vec![format!("{URL_BASE}/users/{}/followers", auth.username())]))
 								} else if get_checked(followers_ref) {
-									(apb::Node::links(vec![format!("{URL_BASE}/users/{}/followers", username.get().unwrap_or_default())]), apb::Node::Empty)
+									(apb::Node::links(vec![format!("{URL_BASE}/users/{}/followers", auth.username())]), apb::Node::Empty)
 								} else if get_checked(private_ref) {
 									(apb::Node::links(vec![]), apb::Node::Empty)
 								} else {
@@ -105,8 +105,7 @@ pub fn PostBox(username: Signal<Option<String>>, advanced: WriteSignal<bool>) ->
 									.set_in_reply_to(apb::Node::maybe_link(reply.reply_to.get()))
 									.set_to(to)
 									.set_cc(cc);
-								let target_url = format!("{URL_BASE}/users/test/outbox");
-								match Http::post(&target_url, &payload, auth).await {
+								match Http::post(&auth.outbox(), &payload, auth).await {
 									Err(e) => set_error.set(Some(e.to_string())),
 									Ok(()) => {
 										set_error.set(None);
@@ -134,7 +133,7 @@ pub fn PostBox(username: Signal<Option<String>>, advanced: WriteSignal<bool>) ->
 }
 
 #[component]
-pub fn AdvancedPostBox(username: Signal<Option<String>>, advanced: WriteSignal<bool>) -> impl IntoView {
+pub fn AdvancedPostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 	let auth = use_context::<Auth>().expect("missing auth context");
 	let (posting, set_posting) = create_signal(false);
 	let (error, set_error) = create_signal(None);
@@ -208,7 +207,7 @@ pub fn AdvancedPostBox(username: Signal<Option<String>>, advanced: WriteSignal<b
 						<td class="w-66"><input class="w-100" type="text" node_ref=bto_ref title="bto" placeholder="bto" /></td>
 					</tr>
 					<tr>
-						<td class="w-33"><input class="w-100" type="text" node_ref=cc_ref title="cc" placeholder="cc" value=format!("{URL_BASE}/users/{}/followers", username.get().unwrap_or_default()) /></td>
+						<td class="w-33"><input class="w-100" type="text" node_ref=cc_ref title="cc" placeholder="cc" value=format!("{URL_BASE}/users/{}/followers", auth.username()) /></td>
 						<td class="w-33"><input class="w-100" type="text" node_ref=bcc_ref title="bcc" placeholder="bcc" /></td>
 					</tr>
 				</table>
@@ -252,7 +251,7 @@ pub fn AdvancedPostBox(username: Signal<Option<String>>, advanced: WriteSignal<b
 									apb::Node::maybe_link(object_id)
 								}
 							);
-						let target_url = format!("{URL_BASE}/users/{}/outbox", username.get().unwrap_or_default());
+						let target_url = format!("{URL_BASE}/users/{}/outbox", auth.username());
 						match Http::post(&target_url, &payload, auth).await {
 							Err(e) => set_error.set(Some(e.to_string())),
 							Ok(()) => set_error.set(None),

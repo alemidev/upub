@@ -27,14 +27,14 @@ impl Timeline {
 		self.over.set(false);
 	}
 
-	pub async fn more(&self, auth: Signal<Option<String>>) -> reqwest::Result<()> {
+	pub async fn more(&self, auth: Auth) -> reqwest::Result<()> {
 		self.loading.set(true);
 		let res = self.more_inner(auth).await;
 		self.loading.set(false);
 		res
 	}
 
-	async fn more_inner(&self, auth: Signal<Option<String>>) -> reqwest::Result<()> {
+	async fn more_inner(&self, auth: Auth) -> reqwest::Result<()> {
 		use apb::{Collection, CollectionPage};
 
 		let feed_url = self.next.get();
@@ -202,10 +202,7 @@ pub fn TimelineFeed(tl: Timeline) -> impl IntoView {
 	}
 }
 
-async fn process_activities(
-	activities: Vec<serde_json::Value>,
-	auth: Signal<Option<String>>,
-) -> Vec<String> {
+async fn process_activities(activities: Vec<serde_json::Value>, auth: Auth) -> Vec<String> {
 	use apb::ActivityMut;
 	let mut sub_tasks : Vec<Pin<Box<dyn futures::Future<Output = ()>>>> = Vec::new();
 	let mut gonna_fetch = BTreeSet::new();
@@ -269,14 +266,14 @@ async fn process_activities(
 	out
 }
 
-async fn fetch_and_update(kind: FetchKind, id: String, auth: Signal<Option<String>>) {
+async fn fetch_and_update(kind: FetchKind, id: String, auth: Auth) {
 	match Http::fetch(&Uri::api(kind, &id, false), auth).await {
 		Ok(data) => CACHE.put(id, Arc::new(data)),
 		Err(e) => console_warn(&format!("could not fetch '{id}': {e}")),
 	}
 }
 
-async fn fetch_and_update_with_user(kind: FetchKind, id: String, auth: Signal<Option<String>>) {
+async fn fetch_and_update_with_user(kind: FetchKind, id: String, auth: Auth) {
 	fetch_and_update(kind.clone(), id.clone(), auth).await;
 	if let Some(obj) = CACHE.get(&id) {
 		if let Some(actor_id) = match kind {

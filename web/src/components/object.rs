@@ -95,7 +95,7 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 	let likes = object.audience().get()
 		.map_or(0, |x| x.total_items().unwrap_or(0));
 	let already_liked = object.audience().get()
-		.map_or(false, |x| !x.ordered_items().is_empty());
+		.map_or(false, |x| !x.ordered_items().is_empty()); // TODO check if contains my uid
 	let attachments_padding = if object.attachment().is_empty() {
 		None
 	} else {
@@ -162,18 +162,17 @@ pub fn LikeButton(
 	view! {
 		<span
 			class:emoji=clicked
-			class:emoji-btn=move || auth.get().is_some()
-			class:cursor=move || clicked.get() && auth.get().is_some()
+			class:emoji-btn=move || auth.present()
+			class:cursor=move || clicked.get() && auth.present()
 			class="ml-2"
 			on:click=move |_ev| {
-				if auth.get().is_none() { return; }
+				if !auth.present() { return; }
 				if !clicked.get() { return; }
-				let target_url = format!("{URL_BASE}/users/test/outbox");
 				let to = apb::Node::links(vec![author.to_string()]);
 				let cc = if private { apb::Node::Empty } else {
 					apb::Node::links(vec![
 						apb::target::PUBLIC.to_string(),
-						format!("{URL_BASE}/users/test/followers")
+						format!("{URL_BASE}/users/{}/followers", auth.username())
 					])
 				};
 				let payload = serde_json::Value::Object(serde_json::Map::default())
@@ -182,7 +181,7 @@ pub fn LikeButton(
 					.set_to(to)
 					.set_cc(cc);
 				spawn_local(async move {
-					match Http::post(&target_url, &payload, auth).await {
+					match Http::post(&auth.outbox(), &payload, auth).await {
 						Ok(()) => {
 							set_clicked.set(false);
 							set_count.set(count.get() + 1);
@@ -212,10 +211,10 @@ pub fn ReplyButton(n: u64, target: String) -> impl IntoView {
 		<span
 			class:emoji=move || !reply.reply_to.get().map_or(false, |x| x == _target)
 			// TODO can we merge these two classes conditions?
-			class:emoji-btn=move || auth.get().is_some()
-			class:cursor=move || auth.get().is_some()
+			class:emoji-btn=move || auth.present()
+			class:cursor=move || auth.present()
 			class="ml-2"
-			on:click=move |_ev| if auth.get().is_some() { reply.reply(&target) }
+			on:click=move |_ev| if auth.present() { reply.reply(&target) }
 		>
 			{comments}
 			" 📨"
@@ -231,23 +230,22 @@ pub fn RepostButton(n: u64, target: String) -> impl IntoView {
 	view! {
 		<span
 			class:emoji=clicked
-			class:emoji-btn=move || auth.get().is_some()
-			class:cursor=move || clicked.get() && auth.get().is_some()
+			class:emoji-btn=move || auth.present()
+			class:cursor=move || clicked.get() && auth.present()
 			class="ml-2"
 			on:click=move |_ev| {
-				if auth.get().is_none() { return; }
+				if !auth.present() { return; }
 				if !clicked.get() { return; }
 				set_clicked.set(false);
-				let target_url = format!("{URL_BASE}/users/test/outbox");
 				let to = apb::Node::links(vec![apb::target::PUBLIC.to_string()]);
-				let cc = apb::Node::links(vec![format!("{URL_BASE}/users/test/followers")]);
+				let cc = apb::Node::links(vec![format!("{URL_BASE}/users/{}/followers", auth.username())]);
 				let payload = serde_json::Value::Object(serde_json::Map::default())
 					.set_activity_type(Some(apb::ActivityType::Announce))
 					.set_object(apb::Node::link(target.clone()))
 					.set_to(to)
 					.set_cc(cc);
 				spawn_local(async move {
-					match Http::post(&target_url, &payload, auth).await {
+					match Http::post(&auth.outbox(), &payload, auth).await {
 						Ok(()) => set_count.set(count.get() + 1),
 						Err(e) => tracing::error!("failed sending like: {e}"),
 					}
