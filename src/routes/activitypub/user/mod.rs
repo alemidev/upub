@@ -80,7 +80,41 @@ pub async fn view(
 			Ok(JsonLD(user.ld_context()))
 		},
 		// remote user TODDO doesn't work?
-		Some((user, None)) => Ok(JsonLD(user.ap().ld_context())),
+		Some((user_model, None)) => {
+			let user = user_model.ap();
+
+			// TODO maybe this thing could be made as a single join, to avoid triple db roundtrip for
+			// each fetch made by local users? it's indexed and fast but still...
+			if let Some(my_id) = auth.my_id() {
+				if !auth.is(&uid) {
+					let followed_by_me = model::relation::Entity::find()
+						.filter(model::relation::Column::Follower.eq(my_id))
+						.filter(model::relation::Column::Following.eq(&uid))
+						.select_column(model::relation::Column::Follower)
+						.into_tuple::<String>()
+						.all(ctx.db())
+						.await?;
+
+					user
+						.audience()
+						.update(|x| x.set_ordered_items(apb::Node::links(followed_by_me)));
+
+					let following_me = model::relation::Entity::find()
+						.filter(model::relation::Column::Following.eq(my_id))
+						.filter(model::relation::Column::Follower.eq(&uid))
+						.select_column(model::relation::Column::Following)
+						.into_tuple::<String>()
+						.all(ctx.db())
+						.await?;
+					
+					user
+						.generator()
+						.update(|x| x.set_ordered_items(apb::Node::links(following_me)));
+				}
+			}
+
+			Ok(JsonLD(user.ld_context()))
+		},
 		None => Err(UpubError::not_found()),
 	}
 }
