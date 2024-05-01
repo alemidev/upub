@@ -1,3 +1,4 @@
+use std::sync::Arc;
 
 use leptos::*;
 use crate::prelude::*;
@@ -6,10 +7,10 @@ use apb::{target::Addressed, Activity, Actor, Base, Object};
 
 
 #[component]
-pub fn ActivityLine(activity: serde_json::Value) -> impl IntoView {
+pub fn ActivityLine(activity: crate::Object) -> impl IntoView {
 	let object_id = activity.object().id().unwrap_or_default();
 	let actor_id = activity.actor().id().unwrap_or_default();
-	let actor = CACHE.get_or(&actor_id, serde_json::Value::String(actor_id.clone()));
+	let actor = CACHE.get_or(&actor_id, serde_json::Value::String(actor_id.clone()).into());
 	let avatar = actor.icon().get().map(|x| x.url().id().unwrap_or_default()).unwrap_or_default();
 	let username = actor.preferred_username().unwrap_or_default().to_string();
 	let domain = actor.id().unwrap_or_default().replace("https://", "").split('/').next().unwrap_or_default().to_string();

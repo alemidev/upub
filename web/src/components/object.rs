@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use leptos::*;
 use crate::{prelude::*, URL_SENSITIVE};
 
@@ -77,11 +79,11 @@ pub fn Attachment(
 
 
 #[component]
-pub fn Object(object: serde_json::Value) -> impl IntoView {
+pub fn Object(object: crate::Object) -> impl IntoView {
 	let oid = object.id().unwrap_or_default().to_string();
 	let content = dissolve::strip_html_tags(object.content().unwrap_or_default());
 	let author_id = object.attributed_to().id().unwrap_or_default();
-	let author = CACHE.get_or(&author_id, serde_json::Value::String(author_id.clone()));
+	let author = CACHE.get_or(&author_id, serde_json::Value::String(author_id.clone()).into());
 	let sensitive = object.sensitive().unwrap_or_default();
 	let addressed = object.addressed();
 	let public = addressed.iter().any(|x| x.as_str() == apb::target::PUBLIC);

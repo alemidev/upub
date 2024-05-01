@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use apb::{Actor, Base, Collection, Object};
 
 use leptos::*;
@@ -51,6 +53,7 @@ pub fn UserPage(tl: Timeline) -> impl IntoView {
 				Some(x) => Some(x.clone()),
 				None => {
 					let user : serde_json::Value = Http::fetch(&Uri::api(FetchKind::User, &id, true), auth).await.ok()?;
+					let user = Arc::new(user);
 					CACHE.put(Uri::full(FetchKind::User, &id), user.clone());
 					Some(user)
 				},
@@ -163,6 +166,7 @@ pub fn ObjectPage(tl: Timeline) -> impl IntoView {
 				Some(x) => Some(x.clone()),
 				None => {
 					let obj = Http::fetch::<serde_json::Value>(&Uri::api(FetchKind::Object, &oid, true), auth).await.ok()?;
+					let obj = Arc::new(obj);
 					CACHE.put(Uri::full(FetchKind::Object, &oid), obj.clone());
 					Some(obj)
 				}
@@ -225,9 +229,9 @@ pub fn TimelinePage(name: &'static str, tl: Timeline) -> impl IntoView {
 
 #[component]
 pub fn DebugPage() -> impl IntoView {
-	let (object, set_object) = create_signal(serde_json::Value::String(
+	let (object, set_object) = create_signal(Arc::new(serde_json::Value::String(
 		"use this view to fetch remote AP objects and inspect their content".into())
-	);
+	));
 	let cached_ref: NodeRef<html::Input> = create_node_ref();
 	let auth = use_context::<Auth>().expect("missing auth context");
 	let (query, set_query) = create_signal("".to_string());
@@ -242,14 +246,14 @@ pub fn DebugPage() -> impl IntoView {
 					if cached {
 						match CACHE.get(&fetch_url) {
 							Some(x) => set_object.set(x),
-							None => set_object.set(serde_json::Value::String("not in cache!".into())),
+							None => set_object.set(Arc::new(serde_json::Value::String("not in cache!".into()))),
 						}
 					} else {
 						let url = format!("{URL_BASE}/dbg?id={fetch_url}");
 						spawn_local(async move {
 							match Http::fetch::<serde_json::Value>(&url, auth).await {
-								Ok(x) => set_object.set(x),
-								Err(e) => set_object.set(serde_json::Value::String(e.to_string())),
+								Ok(x) => set_object.set(Arc::new(x)),
+								Err(e) => set_object.set(Arc::new(serde_json::Value::String(e.to_string()))),
 							}
 						});
 					}
@@ -273,7 +277,7 @@ pub fn DebugPage() -> impl IntoView {
 				</form>
 			</div>
 			<pre class="ma-1" >
-				{move || serde_json::to_string_pretty(&object.get()).unwrap_or("unserializable".to_string())}
+				{move || serde_json::to_string_pretty(object.get().as_ref()).unwrap_or("unserializable".to_string())}
 			</pre>
 		</div>
 	}

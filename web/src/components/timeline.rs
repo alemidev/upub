@@ -1,4 +1,4 @@
-use std::{collections::BTreeSet, pin::Pin};
+use std::{collections::BTreeSet, pin::Pin, sync::Arc};
 
 use apb::{Activity, Base, Object};
 use leptos::*;
@@ -78,13 +78,13 @@ pub fn TimelineRepliesRecursive(tl: Timeline, root: String) -> impl IntoView {
 			Some(apb::ObjectType::Activity(_)) => x.object().id().map(|o| o == root).unwrap_or(false),
 			_ => x.in_reply_to().id().map(|r| r == root).unwrap_or(false),
 		})
-		.collect::<Vec<serde_json::Value>>();
+		.collect::<Vec<crate::Object>>();
 
 	view! {
 		<For
 			each=root_values
 			key=|k| k.id().unwrap_or_default().to_string()
-			children=move |object: serde_json::Value| {
+			children=move |object: crate::Object| {
 				match object.object_type() {
 					Some(apb::ObjectType::Activity(apb::ActivityType::Create)) => {
 						let oid = object.object().id().unwrap_or_default().to_string();
@@ -220,7 +220,7 @@ async fn process_activities(
 				actors_seen.insert(attributed_to);
 			}
 			if let Some(object_uri) = object.id() {
-				CACHE.put(object_uri.to_string(), object.clone());
+				CACHE.put(object_uri.to_string(), Arc::new(object.clone()));
 			} else {
 				tracing::warn!("embedded object without id: {object:?}");
 			}
@@ -239,7 +239,7 @@ async fn process_activities(
 			out.push(activity_id.to_string());
 			CACHE.put(
 				activity_id.to_string(),
-				activity.clone().set_object(apb::Node::maybe_link(object_id))
+				Arc::new(activity.clone().set_object(apb::Node::maybe_link(object_id)))
 			);
 		} else if let Some(object_id) = activity.object().id() {
 			out.push(object_id);
@@ -271,7 +271,7 @@ async fn process_activities(
 
 async fn fetch_and_update(kind: FetchKind, id: String, auth: Signal<Option<String>>) {
 	match Http::fetch(&Uri::api(kind, &id, false), auth).await {
-		Ok(data) => CACHE.put(id, data),
+		Ok(data) => CACHE.put(id, Arc::new(data)),
 		Err(e) => console_warn(&format!("could not fetch '{id}': {e}")),
 	}
 }

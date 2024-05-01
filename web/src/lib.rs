@@ -21,23 +21,25 @@ lazy_static::lazy_static! {
 	pub static ref CACHE: ObjectCache = ObjectCache::default();
 }
 
+pub type Object = Arc<serde_json::Value>;
+
 #[derive(Debug, Clone, Default)]
-pub struct ObjectCache(pub Arc<dashmap::DashMap<String, serde_json::Value>>);
+pub struct ObjectCache(pub Arc<dashmap::DashMap<String, Object>>);
 
 impl ObjectCache {
-	pub fn get(&self, k: &str) -> Option<serde_json::Value> {
+	pub fn get(&self, k: &str) -> Option<Object> {
 		self.0.get(k).map(|x| x.clone())
 	}
 
-	pub fn get_or(&self, k: &str, or: serde_json::Value) -> serde_json::Value {
+	pub fn get_or(&self, k: &str, or: Object) -> Object {
 		self.get(k).unwrap_or(or)
 	}
 
-	pub fn put(&self, k: String, v: serde_json::Value) {
+	pub fn put(&self, k: String, v: Object) {
 		self.0.insert(k, v);
 	}
 
-	pub async fn fetch(&self, k: &str, kind: FetchKind) -> reqwest::Result<serde_json::Value> {
+	pub async fn fetch(&self, k: &str, kind: FetchKind) -> reqwest::Result<Object> {
 		match self.get(k) {
 			Some(x) => Ok(x),
 			None => {
@@ -45,7 +47,7 @@ impl ObjectCache {
 					.await?
 					.json::<serde_json::Value>()
 					.await?;
-				self.put(k.to_string(), obj);
+				self.put(k.to_string(), Arc::new(obj));
 				Ok(self.get(k).expect("not found in cache after insertion"))
 			}
 		}
