@@ -3,6 +3,8 @@
 
 μpub aims to be a private, lightweight, modular and **secure** [ActivityPub](https://www.w3.org/TR/activitypub/) server
 
+ * follow development [in the dedicated matrix room](https://matrix.to/#/#upub:alemi.dev)
+
 μpub is currently being developed and can do most basic things, like posting notes, liking things, following others, deliveries and browsing
 
 all interactions must happen with ActivityPub's client-server methods (basically POST your activities to your outbox), and there's a simple frontend
@@ -44,14 +46,20 @@ all help is extremely welcome! if [my cgit](https://git.alemi.dev/upub.git/) loo
  - [x] simple web client
  - [x] announce (boosts)
  - [x] threads
- - [ ] editing
- - [ ] searching
- - [ ] media
- - [ ] user fields
- - [ ] mastodon api
- - [ ] hashtags, discovery
+ - [x] remote media
+ - [x] editing via api
+ - [x] advanced composer
+ - [x] api for fetching
+ - [x] like, share, reply via frontend
  - [ ] polls
+ - [ ] editing via web frontend
+ - [ ] remote media proxy
+ - [ ] upload media
+ - [ ] mastodon-like search bar
+ - [ ] hashtags, discovery
+ - [ ] user fields
  - [ ] lists
+ - [ ] mastodon api
  - [ ] more optimized database schema
 
 ## what about the name?
