@@ -3,6 +3,18 @@ use crate::prelude::*;
 
 use apb::{Actor, Base, Object};
 
+#[component]
+pub fn ActorStrip(object: crate::Object) -> impl IntoView {
+	let actor_id = object.id().unwrap_or_default().to_string();
+	let username = object.preferred_username().unwrap_or_default().to_string();
+	let domain = object.id().unwrap_or_default().replace("https://", "").split('/').next().unwrap_or_default().to_string();
+	let avatar = object.icon().get().map(|x| x.url().id().unwrap_or_default()).unwrap_or_default();
+	view! {
+		<a href={Uri::web(FetchKind::User, &actor_id)} class="clean hover">
+			<img src={avatar} class="avatar-inline mr-s" /><b>{username}</b><small>@{domain}</small>
+		</a>
+	}
+}
 
 #[component]
 pub fn ActorBanner(object: crate::Object) -> impl IntoView {
