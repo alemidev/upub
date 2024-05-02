@@ -1,6 +1,6 @@
 use apb::{target::Addressed, Activity, Base, Object};
 use reqwest::StatusCode;
-use sea_orm::{sea_query::Expr, ActiveModelTrait, ColumnTrait, Condition, EntityTrait, IntoActiveModel, QueryFilter, Set};
+use sea_orm::{sea_query::Expr, ActiveModelTrait, ColumnTrait, Condition, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect, SelectColumns, Set};
 
 use crate::{errors::{LoggableError, UpubError}, model::{self, FieldError}};
 
@@ -98,7 +98,18 @@ impl apb::server::Inbox for Context {
 				model::activity::Entity::insert(activity_model)
 					.exec(self.db())
 					.await?;
-				let expanded_addressing = self.expand_addressing(activity.addressed()).await?;
+				let mut expanded_addressing = self.expand_addressing(activity.addressed()).await?;
+				if expanded_addressing.is_empty() { // WHY MASTODON!!!!!!!
+					expanded_addressing.push(
+						model::object::Entity::find_by_id(&oid)
+							.select_only()
+							.select_column(model::object::Column::AttributedTo)
+							.into_tuple::<String>()
+							.one(self.db())
+							.await?
+							.ok_or_else(UpubError::not_found)?
+						);
+				}
 				self.address_to(Some(aid), None, &expanded_addressing).await?;
 				model::object::Entity::update_many()
 					.col_expr(model::object::Column::Likes, Expr::col(model::object::Column::Likes).add(1))
