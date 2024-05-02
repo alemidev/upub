@@ -114,10 +114,17 @@ impl apb::server::Inbox for Context {
 	async fn follow(&self, _: String, activity: serde_json::Value) -> crate::Result<()> {
 		let activity_model = model::activity::Model::new(&activity)?;
 		let aid = activity_model.id.clone();
-		tracing::info!("{} wants to follow {}", activity_model.actor, activity_model.object.as_deref().unwrap_or("<no-one???>"));
+		let target_user_id = activity_model.object
+			.as_deref()
+			.ok_or_else(UpubError::bad_request)?
+			.to_string();
+		tracing::info!("{} wants to follow {}", activity_model.actor, target_user_id);
 		model::activity::Entity::insert(activity_model.into_active_model())
 			.exec(self.db()).await?;
-		let expanded_addressing = self.expand_addressing(activity.addressed()).await?;
+		let mut expanded_addressing = self.expand_addressing(activity.addressed()).await?;
+		if !expanded_addressing.contains(&target_user_id) {
+			expanded_addressing.push(target_user_id);
+		}
 		self.address_to(Some(&aid), None, &expanded_addressing).await?;
 		Ok(())
 	}
@@ -166,13 +173,16 @@ impl apb::server::Inbox for Context {
 			.await?;
 		model::relation::Entity::insert(
 			model::relation::ActiveModel {
-				follower: Set(follow_activity.actor),
+				follower: Set(follow_activity.actor.clone()),
 				following: Set(activity_model.actor),
 				..Default::default()
 			}
 		).exec(self.db()).await?;
 
-		let expanded_addressing = self.expand_addressing(activity.addressed()).await?;
+		let mut expanded_addressing = self.expand_addressing(activity.addressed()).await?;
+		if !expanded_addressing.contains(&follow_activity.actor) {
+			expanded_addressing.push(follow_activity.actor);
+		}
 		self.address_to(Some(&activity_model.id), None, &expanded_addressing).await?;
 		Ok(())
 	}
@@ -198,7 +208,10 @@ impl apb::server::Inbox for Context {
 			.exec(self.db())
 			.await?;
 
-		let expanded_addressing = self.expand_addressing(activity.addressed()).await?;
+		let mut expanded_addressing = self.expand_addressing(activity.addressed()).await?;
+		if !expanded_addressing.contains(&follow_activity.actor) {
+			expanded_addressing.push(follow_activity.actor);
+		}
 		self.address_to(Some(&activity_model.id), None, &expanded_addressing).await?;
 		Ok(())
 	}
