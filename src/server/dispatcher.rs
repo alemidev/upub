@@ -76,7 +76,7 @@ async fn worker(db: DatabaseConnection, domain: String, poll_interval: u64, mut 
 			.one(&db)
 			.await? // TODO probably should not fail here and at least re-insert the delivery
 		{
-			Some((activity, None)) => activity.ap(),
+			Some((activity, None)) => activity.ap().ld_context(),
 			Some((activity, Some(object))) => {
 				let always_embed = matches!(
 					activity.activity_type,
