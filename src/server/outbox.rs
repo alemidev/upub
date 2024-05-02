@@ -33,6 +33,7 @@ impl apb::server::Outbox for Context {
 				object_model.context = Some(crate::url!(self, "/context/{}", uuid::Uuid::new_v4().to_string())),
 			(_, Some(_)) => {}, // leave it as set by user
 		}
+		let reply_to = object_model.in_reply_to.clone();
 
 		let activity_model = model::activity::Model {
 			id: aid.clone(),
@@ -56,6 +57,13 @@ impl apb::server::Outbox for Context {
 			.filter(model::user::Column::Id.eq(&uid))
 			.exec(self.db())
 			.await?;
+		if let Some(reply_to) = reply_to {
+			model::object::Entity::update_many()
+				.filter(model::object::Column::Id.eq(reply_to))
+				.col_expr(model::object::Column::Comments, Expr::col(model::object::Column::Comments).add(1))
+				.exec(self.db())
+				.await?;
+		}
 
 		self.dispatch(&uid, activity_targets, &aid, Some(&oid)).await?;
 
@@ -97,6 +105,7 @@ impl apb::server::Outbox for Context {
 				object_model.context = Some(crate::url!(self, "/context/{}", uuid::Uuid::new_v4().to_string())),
 			(_, Some(_)) => {}, // leave it as set by user
 		}
+		let reply_to = object_model.in_reply_to.clone();
 
 		model::object::Entity::insert(object_model.into_active_model())
 			.exec(self.db()).await?;
@@ -107,6 +116,13 @@ impl apb::server::Outbox for Context {
 			.filter(model::user::Column::Id.eq(&uid))
 			.exec(self.db())
 			.await?;
+		if let Some(reply_to) = reply_to {
+			model::object::Entity::update_many()
+				.filter(model::object::Column::Id.eq(reply_to))
+				.col_expr(model::object::Column::Comments, Expr::col(model::object::Column::Comments).add(1))
+				.exec(self.db())
+				.await?;
+		}
 
 		self.dispatch(&uid, activity_targets, &aid, Some(&oid)).await?;
 
