@@ -141,7 +141,7 @@ pub fn UserPage(tl: Timeline) -> impl IntoView {
 												<td class="rev" title="followers">{followers}" "<span class="emoji">"📢"</span></td>
 											</tr>
 										</table>
-										<div class="rev mr-1">
+										<div class="rev mr-1" class:hidden=move || !auth.present() || auth.user_id() == uid>
 											{if followed_by_me {
 												view! { <code class="color">following</code> }.into_view()
 											} else {
