@@ -1,7 +1,7 @@
 use leptos::*;
 use crate::prelude::*;
 
-use apb::{ActivityMut, Actor, Base, Object, ObjectMut};
+use apb::{Activity, ActivityMut, Actor, Base, Object, ObjectMut};
 
 #[component]
 pub fn ActorStrip(object: crate::Object) -> impl IntoView {
@@ -55,12 +55,14 @@ pub fn FollowRequestButtons(activity_id: String, actor_id: String) -> impl IntoV
 	// TODO lmao what is going on with this double move / triple clone ???????????
 	let _activity_id = activity_id.clone();
 	let _actor_id = actor_id.clone();
+	let from_actor = CACHE.get(&activity_id).map(|x| x.actor().id().unwrap_or_default()).unwrap_or_default();
+	let _from_actor = from_actor.clone();
 	if actor_id == auth.user_id() {
 		Some(view! {
 			<input type="submit" value="accept"
 				on:click=move |_| {
 					let activity_id = _activity_id.clone();
-					let actor_id = _actor_id.clone();
+					let actor_id = _from_actor.clone();
 					spawn_local(async move {
 						send_follow_response(
 							apb::ActivityType::Accept(apb::AcceptType::Accept),
@@ -75,7 +77,7 @@ pub fn FollowRequestButtons(activity_id: String, actor_id: String) -> impl IntoV
 			<input type="submit" value="reject"
 				on:click=move |_| {
 					let activity_id = activity_id.clone();
-					let actor_id = actor_id.clone();
+					let actor_id = from_actor.clone();
 					spawn_local(async move {
 						send_follow_response(
 							apb::ActivityType::Reject(apb::RejectType::Reject),
