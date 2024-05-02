@@ -76,7 +76,7 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 				</tr>
 			</table>
 
-			<textarea rows="5" class="w-100" node_ref=content_ref title="content" ></textarea>
+			<textarea rows="6" class="w-100" node_ref=content_ref title="content" ></textarea>
 
 			<table class="align rev w-100">
 				<tr>
