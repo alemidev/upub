@@ -12,9 +12,9 @@ pub fn App() -> impl IntoView {
 		UseCookieOptions::default()
 			.max_age(1000 * 60 * 60 * 6)
 	);
-	let (user, set_username) = use_cookie::<String, FromToStringCodec>("username");
+	let (userid, set_userid) = use_cookie::<String, FromToStringCodec>("user_id");
 
-	let auth = Auth { token, user };
+	let auth = Auth { token, userid };
 	provide_context(auth);
 
 	let home_tl = Timeline::new(format!("{URL_BASE}/users/{}/inbox/page", auth.username()));
@@ -59,7 +59,7 @@ pub fn App() -> impl IntoView {
 				<div class="col-side sticky pb-s" class:hidden=move || menu.get() >
 					<LoginBox
 						token_tx=set_token
-						username_tx=set_username
+						userid_tx=set_userid
 						home_tl=home_tl
 						server_tl=server_tl
 					/>

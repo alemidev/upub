@@ -5,6 +5,7 @@ use crate::prelude::*;
 pub trait AuthToken {
 	fn present(&self) -> bool;
 	fn token(&self) -> String;
+	fn user_id(&self) -> String;
 	fn username(&self) -> String;
 	fn outbox(&self) -> String;
 }
@@ -12,14 +13,14 @@ pub trait AuthToken {
 #[derive(Debug, Clone, Copy)]
 pub struct Auth {
 	pub token: Signal<Option<String>>,
-	pub user: Signal<Option<String>>,
+	pub userid: Signal<Option<String>>,
 }
 
 
 #[component]
 pub fn LoginBox(
 	token_tx: WriteSignal<Option<String>>,
-	username_tx: WriteSignal<Option<String>>,
+	userid_tx: WriteSignal<Option<String>>,
 	home_tl: Timeline,
 	server_tl: Timeline,
 ) -> impl IntoView {
@@ -61,7 +62,7 @@ pub fn LoginBox(
 						logging::log!("logged in until {}", auth_response.expires);
 						// update our username and token cookies
 						let username = auth_response.user.split('/').last().unwrap_or_default().to_string();
-						username_tx.set(Some(username.clone()));
+						userid_tx.set(Some(auth_response.user));
 						token_tx.set(Some(auth_response.token));
 						// reset home feed and point it to our user's inbox
 						home_tl.reset(format!("{URL_BASE}/users/{}/inbox/page", username));
@@ -107,9 +108,19 @@ impl AuthToken for Auth {
 	fn token(&self) -> String {
 		self.token.get().unwrap_or_default()
 	}
+
+	fn user_id(&self) -> String {
+		self.userid.get().unwrap_or_default()
+	}
 	
 	fn username(&self) -> String {
-		self.user.get().unwrap_or_default()
+		// TODO maybe cache this?? how often do i need it?
+		self.userid.get()
+			.unwrap_or_default()
+			.split('/')
+			.last()
+			.unwrap_or_default()
+			.to_string()
 	}
 
 	fn present(&self) -> bool {
@@ -117,6 +128,6 @@ impl AuthToken for Auth {
 	}
 
 	fn outbox(&self) -> String {
-		format!("{URL_BASE}/users/{}/outbox", self.user.get().unwrap_or_default())
+		format!("{URL_BASE}/users/{}/outbox", self.username())
 	}
 }
