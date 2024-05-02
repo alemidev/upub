@@ -86,7 +86,7 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 						<button class="w-100" prop:disabled=posting type="button" style="height: 3em" on:click=move |_| {
 							set_posting.set(true);
 							spawn_local(async move {
-								let summary = summary_ref.get().map(|x| x.value());
+								let summary = get_if_some(summary_ref);
 								let content = content_ref.get().map(|x| x.value()).unwrap_or_default();
 								let (to, cc) = if get_checked(public_ref) {
 									(apb::Node::links(vec![apb::target::PUBLIC.to_string()]), apb::Node::links(vec![format!("{URL_BASE}/users/{}/followers", auth.username())]))
@@ -266,14 +266,14 @@ pub fn AdvancedPostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 
 fn get_if_some(node: NodeRef<html::Input>) -> Option<String> {
 	node.get()
-		.filter(|x| !x.value().is_empty())
 		.map(|x| x.value())
+		.filter(|x| !x.is_empty())
 }
 
 fn get_vec_if_some(node: NodeRef<html::Input>) -> Vec<String> {
 	node.get()
-		.filter(|x| !x.value().is_empty())
 		.map(|x| x.value())
+		.filter(|x| !x.is_empty())
 		.map(|x|
 			x.split(',')
 				.map(|x| x.to_string())
