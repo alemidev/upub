@@ -16,6 +16,7 @@ pub async fn update_users(db: sea_orm::DatabaseConnection, domain: String, days:
 
 
 		while let Some(user) = stream.try_next().await? {
+			if ctx.is_local(&user.id) { continue }
 			match ctx.pull_user(&user.id).await {
 				Err(e) => tracing::warn!("could not update user {}: {e}", user.id),
 				Ok(u) => {
