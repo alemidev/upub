@@ -1,7 +1,7 @@
 use leptos::*;
 use crate::prelude::*;
 
-use apb::{Actor, Base, Object};
+use apb::{ActivityMut, Actor, Base, Object, ObjectMut};
 
 #[component]
 pub fn ActorStrip(object: crate::Object) -> impl IntoView {
@@ -46,5 +46,58 @@ pub fn ActorBanner(object: crate::Object) -> impl IntoView {
 		_ => view! {
 			<div><b>invalid actor</b></div>
 		}
+	}
+}
+
+#[component]
+pub fn FollowRequestButtons(activity_id: String, actor_id: String) -> impl IntoView {
+	let auth = use_context::<Auth>().expect("missing auth context");
+	// TODO lmao what is going on with this double move / triple clone ???????????
+	let _activity_id = activity_id.clone();
+	let _actor_id = actor_id.clone();
+	if actor_id == auth.user_id() {
+		Some(view! {
+			<input type="submit" value="accept"
+				on:click=move |_| {
+					let activity_id = _activity_id.clone();
+					let actor_id = _actor_id.clone();
+					spawn_local(async move {
+						send_follow_response(
+							apb::ActivityType::Accept(apb::AcceptType::Accept),
+							activity_id,
+							actor_id,
+							auth
+						).await
+					})
+				}
+			/>
+			<span class="ma-1"></span>
+			<input type="submit" value="reject"
+				on:click=move |_| {
+					let activity_id = activity_id.clone();
+					let actor_id = actor_id.clone();
+					spawn_local(async move {
+						send_follow_response(
+							apb::ActivityType::Reject(apb::RejectType::Reject),
+							activity_id,
+							actor_id,
+							auth
+						).await
+					})
+				}
+			/>
+		})
+	} else {
+		None
+	}
+}
+
+async fn send_follow_response(kind: apb::ActivityType, target: String, to: String, auth: Auth) {
+	let payload = serde_json::Value::Object(serde_json::Map::default())
+		.set_activity_type(Some(kind))
+		.set_object(apb::Node::link(target))
+		.set_to(apb::Node::links(vec![to]));
+	if let Err(e) = Http::post(&auth.outbox(), &payload, auth).await {
+		tracing::error!("failed posting follow response: {e}");
 	}
 }

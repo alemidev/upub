@@ -1,6 +1,6 @@
 use std::{collections::BTreeSet, pin::Pin, sync::Arc};
 
-use apb::{Activity, Base, Object};
+use apb::{Activity, ActivityMut, Base, Object, ObjectMut};
 use leptos::*;
 use crate::prelude::*;
 
@@ -168,7 +168,12 @@ pub fn TimelineFeed(tl: Timeline) -> impl IntoView {
 									}.into_view()),
 								apb::ActivityType::Follow =>
 									CACHE.get(&object_id).map(|obj| {
-										view! { <div class="ml-1"><ActorBanner object=obj /></div> }
+										view! {
+											<div class="ml-1">
+												<ActorBanner object=obj />
+												<FollowRequestButtons activity_id=id actor_id=object_id />
+											</div>
+										}
 									}.into_view()),
 								_ => None,
 							};
@@ -203,7 +208,6 @@ pub fn TimelineFeed(tl: Timeline) -> impl IntoView {
 }
 
 async fn process_activities(activities: Vec<serde_json::Value>, auth: Auth) -> Vec<String> {
-	use apb::ActivityMut;
 	let mut sub_tasks : Vec<Pin<Box<dyn futures::Future<Output = ()>>>> = Vec::new();
 	let mut gonna_fetch = BTreeSet::new();
 	let mut actors_seen = BTreeSet::new();
