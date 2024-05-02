@@ -1,7 +1,8 @@
-use apb::{target::Addressed, Activity, ActivityMut, BaseMut, Node, ObjectMut};
-use sea_orm::{sea_query::Expr, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, Set};
+use apb::{target::Addressed, Activity, ActivityMut, ActorMut, BaseMut, Node, Object, ObjectMut, PublicKeyMut};
+use reqwest::StatusCode;
+use sea_orm::{sea_query::Expr, ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, Set};
 
-use crate::{errors::UpubError, model};
+use crate::{errors::UpubError, model, routes::activitypub::jsonld::LD};
 
 use super::{fetcher::Fetcher, Context};
 
@@ -299,33 +300,73 @@ impl apb::server::Outbox for Context {
 	async fn update(&self, uid: String, activity: serde_json::Value) -> crate::Result<String> {
 		let aid = self.aid(uuid::Uuid::new_v4().to_string());
 		let object_node = activity.object().extract().ok_or_else(UpubError::bad_request)?;
-		let mut object_model = model::object::Model::new(
-			&object_node.set_published(Some(chrono::Utc::now()))
-		)?;
 
-		let old_object_model = model::object::Entity::find_by_id(&object_model.id)
-			.one(self.db())
-			.await?
-			.ok_or_else(UpubError::not_found)?;
+		match object_node.object_type() {
+			Some(apb::ObjectType::Actor(_)) => {
+				let actor_model = model::user::Model::new(
+					&object_node
+						// TODO must set these, but we will ignore them
+						.set_actor_type(Some(apb::ActorType::Person))
+						.set_public_key(apb::Node::object(
+							serde_json::Value::new_object().set_public_key_pem("")
+						))
+				)?;
+				let old_actor_model = model::user::Entity::find_by_id(&actor_model.id)
+					.one(self.db())
+					.await?
+					.ok_or_else(UpubError::not_found)?;
 
-		// can't change local objects attributed to nobody
-		let author_id = old_object_model.attributed_to.ok_or_else(UpubError::forbidden)?;
-		if author_id != uid {
-			// can't change objects of others
-			return Err(UpubError::forbidden());
+				if old_actor_model.id != uid {
+					// can't change user fields of others
+					return Err(UpubError::forbidden());
+				}
+
+				if actor_model.name.is_none() { actor_model.name = old_actor_model.name }
+				if actor_model.summary.is_none() { actor_model.summary = old_actor_model.summary }
+				if actor_model.image.is_none() { actor_model.image = old_actor_model.image }
+				if actor_model.icon.is_none() { actor_model.icon = old_actor_model.icon }
+
+				let update_model = actor_model.into_active_model();
+				update_model.reset(model::user::Column::Name);
+				update_model.reset(model::user::Column::Summary);
+				update_model.reset(model::user::Column::Image);
+				update_model.reset(model::user::Column::Icon);
+
+				model::user::Entity::update(update_model)
+					.exec(self.db()).await?;
+			},
+			Some(apb::ObjectType::Note) => {
+				let mut object_model = model::object::Model::new(
+					&object_node.set_published(Some(chrono::Utc::now()))
+				)?;
+
+				let old_object_model = model::object::Entity::find_by_id(&object_model.id)
+					.one(self.db())
+					.await?
+					.ok_or_else(UpubError::not_found)?;
+
+				// can't change local objects attributed to nobody
+				let author_id = old_object_model.attributed_to.ok_or_else(UpubError::forbidden)?;
+				if author_id != uid {
+					// can't change objects of others
+					return Err(UpubError::forbidden());
+				}
+
+				if object_model.name.is_none() { object_model.name = old_object_model.name }
+				if object_model.summary.is_none() { object_model.summary = old_object_model.summary }
+				if object_model.content.is_none() { object_model.content = old_object_model.content }
+
+				let update_model = object_model.into_active_model();
+				update_model.reset(model::object::Column::Name);
+				update_model.reset(model::object::Column::Summary);
+				update_model.reset(model::object::Column::Content);
+				update_model.reset(model::object::Column::Sensitive);
+
+				model::object::Entity::update(update_model)
+					.exec(self.db()).await?;
+			},
+			_ => return Err(UpubError::Status(StatusCode::NOT_IMPLEMENTED)),
 		}
-
-		object_model.id = old_object_model.id;
-		object_model.attributed_to = Some(uid.clone());
-		object_model.context = old_object_model.context;
-		object_model.likes = old_object_model.likes;
-		object_model.shares = old_object_model.shares;
-		object_model.comments = old_object_model.comments;
-		object_model.bto = old_object_model.bto;
-		object_model.to = old_object_model.to;
-		object_model.bcc = old_object_model.bcc;
-		object_model.cc = old_object_model.cc;
-		object_model.published = old_object_model.published;
 
 		let addressed = activity.addressed();
 		let activity_model = model::activity::Model::new(
@@ -335,13 +376,8 @@ impl apb::server::Outbox for Context {
 				.set_published(Some(chrono::Utc::now()))
 		)?;
 
-		model::object::Entity::update(object_model.into_active_model())
-			.exec(self.db())
-			.await?;
-
 		model::activity::Entity::insert(activity_model.into_active_model())
-			.exec(self.db())
-			.await?;
+			.exec(self.db()).await?;
 
 		self.dispatch(&uid, addressed, &aid, None).await?;
 
