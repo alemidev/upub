@@ -15,7 +15,7 @@ impl PublicKey for serde_json::Value {
 	crate::getter! { owner -> &str }
 
 	fn public_key_pem(&self) -> &str {
-		self.get("publicKeyPem").unwrap().as_str().unwrap()
+		self.get("publicKeyPem").map(|x| x.as_str().unwrap_or_default()).unwrap_or_default()
 	}
 }
 
