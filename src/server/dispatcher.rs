@@ -3,7 +3,7 @@ use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, Order, QueryFilter, 
 use tokio::{sync::broadcast, task::JoinHandle};
 
 use apb::{ActivityMut, Node};
-use crate::{errors::UpubError, model, server::{fetcher::Fetcher, Context}};
+use crate::{errors::UpubError, model, routes::activitypub::jsonld::LD, server::{fetcher::Fetcher, Context}};
 
 pub struct Dispatcher {
 	waker: broadcast::Sender<()>,
@@ -87,9 +87,9 @@ async fn worker(db: DatabaseConnection, domain: String, poll_interval: u64, mut 
 					| apb::ActivityType::Reject(_)
 				);
 				if always_embed {
-					activity.ap().set_object(Node::object(object.ap()))
+					activity.ap().set_object(Node::object(object.ap())).ld_context()
 				} else {
-					activity.ap()
+					activity.ap().ld_context()
 				}
 			},
 			None => {
