@@ -1,0 +1,23 @@
+[package]
+name = "mdhtml"
+version = "0.1.0"
+edition = "2021"
+authors = [ "alemi <me@alemi.dev>" ]
+description = "Parse and display a markdown-like HTML subset"
+license = "MIT"
+keywords = ["html", "markdown", "parser"]
+repository = "https://git.alemi.dev/upub.git"
+readme = "README.md"
+
+[lib]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+html5ever = "0.27"
+tracing = "0.1"
+comrak = { version = "0.23", optional = true }
+
+[features]
+default = ["markdown"]
+markdown = ["dep:comrak"]
