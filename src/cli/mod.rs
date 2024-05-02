@@ -12,3 +12,6 @@ pub use relay::*;
 
 mod register;
 pub use register::*;
+
+mod update;
+pub use update::*;

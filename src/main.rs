@@ -88,6 +88,13 @@ enum CliCommand {
 		#[arg(long, default_value_t = false)]
 		/// fix replies counts for posts
 		replies: bool,
+	},
+
+	/// update remote users
+	Update {
+		#[arg(long, short, default_value_t = 7)]
+		/// number of days after which users should get updated
+		days: i64,
 	}
 }
 
@@ -131,8 +138,11 @@ async fn main() {
 
 		CliCommand::Fix { likes, shares, replies } =>
 			cli::fix(db, likes, shares, replies)
-				.await
-				.expect("failed running fix task"),
+				.await.expect("failed running fix task"),
+
+		CliCommand::Update { days } =>
+			cli::update_users(db, args.domain, days)
+				.await.expect("error updating users"),
 
 		CliCommand::Serve => {
 			let ctx = server::Context::new(db, args.domain)
