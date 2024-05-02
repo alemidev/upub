@@ -25,6 +25,7 @@ pub struct Model {
 	pub to: Audience,
 	pub bto: Audience,
 	pub published: ChronoDateTimeUtc,
+	pub updated: Option<ChronoDateTimeUtc>,
 
 	pub sensitive: bool,
 }
@@ -41,6 +42,7 @@ impl Model {
 			context: object.context().id(),
 			in_reply_to: object.in_reply_to().id(),
 			published: object.published().ok_or(super::FieldError("published"))?,
+			updated: object.updated(),
 			comments: object.replies().get()
 				.map_or(0, |x| x.total_items().unwrap_or(0)) as i64,
 			likes: object.likes().get()
@@ -67,6 +69,7 @@ impl Model {
 			.set_context(apb::Node::maybe_link(self.context.clone()))
 			.set_in_reply_to(apb::Node::maybe_link(self.in_reply_to.clone()))
 			.set_published(Some(self.published))
+			.set_updated(self.updated)
 			.set_to(apb::Node::links(self.to.0.clone()))
 			.set_bto(apb::Node::Empty)
 			.set_cc(apb::Node::links(self.cc.0.clone()))

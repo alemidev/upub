@@ -327,6 +327,7 @@ impl apb::server::Outbox for Context {
 				if actor_model.icon.is_none() { actor_model.icon = old_actor_model.icon }
 
 				let mut update_model = actor_model.into_active_model();
+				update_model.updated = sea_orm::Set(chrono::Utc::now());
 				update_model.reset(model::user::Column::Name);
 				update_model.reset(model::user::Column::Summary);
 				update_model.reset(model::user::Column::Image);
@@ -357,6 +358,7 @@ impl apb::server::Outbox for Context {
 				if object_model.content.is_none() { object_model.content = old_object_model.content }
 
 				let mut update_model = object_model.into_active_model();
+				update_model.updated = sea_orm::Set(Some(chrono::Utc::now()));
 				update_model.reset(model::object::Column::Name);
 				update_model.reset(model::object::Column::Summary);
 				update_model.reset(model::object::Column::Content);

@@ -13,6 +13,7 @@ mod m20240418_000001_add_statuses_and_reply_to;
 mod m20240421_000001_add_attachments;
 mod m20240424_000001_add_sensitive_field;
 mod m20240429_000001_add_relays_table;
+mod m20240502_000001_add_object_updated;
 
 pub struct Migrator;
 
@@ -33,6 +34,7 @@ impl MigratorTrait for Migrator {
 			Box::new(m20240421_000001_add_attachments::Migration),
 			Box::new(m20240424_000001_add_sensitive_field::Migration),
 			Box::new(m20240429_000001_add_relays_table::Migration),
+			Box::new(m20240502_000001_add_object_updated::Migration),
 		]
 	}
 }
