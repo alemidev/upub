@@ -153,7 +153,7 @@ pub fn UserPage(tl: Timeline) -> impl IntoView {
 												None
 											}}
 										</div>
-										<p class="ml-2 mt-1" inner_html={mdhtml::safe_html(&summary)}></p>
+										<p class="ml-2 mt-1 center" inner_html={mdhtml::safe_html(&summary)}></p>
 									</div>
 								</div>
 								<TimelineFeed tl=tl />
