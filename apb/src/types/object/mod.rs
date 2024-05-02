@@ -55,13 +55,13 @@ pub trait Object : Base {
 	fn location(&self) -> Node<Self::Object> { Node::Empty }
 	fn preview(&self) -> Node<Self::Object> { Node::Empty }    // also in link
 	fn published(&self) -> Option<chrono::DateTime<chrono::Utc>> { None }
+	fn updated(&self) -> Option<chrono::DateTime<chrono::Utc>> { None }
 	fn replies(&self) -> Node<Self::Collection> { Node::Empty }
 	fn likes(&self) -> Node<Self::Collection> { Node::Empty }
 	fn shares(&self) -> Node<Self::Collection> { Node::Empty }
 	fn start_time(&self) -> Option<chrono::DateTime<chrono::Utc>> { None }
 	fn summary(&self) -> Option<&str> { None }
 	fn tag(&self) -> Node<Self::Object> { Node::Empty }
-	fn updated(&self) -> Option<chrono::DateTime<chrono::Utc>> { None }
 	fn url(&self) -> Node<Self::Link> { Node::Empty }
 	fn to(&self) -> Node<Self::Link> { Node::Empty }
 	fn bto(&self) -> Node<Self::Link> { Node::Empty }
@@ -104,13 +104,13 @@ pub trait ObjectMut : BaseMut {
 	fn set_location(self, val: Node<Self::Object>) -> Self;
 	fn set_preview(self, val: Node<Self::Object>) -> Self;    // also in link
 	fn set_published(self, val: Option<chrono::DateTime<chrono::Utc>>) -> Self;
+	fn set_updated(self, val: Option<chrono::DateTime<chrono::Utc>>) -> Self;
 	fn set_replies(self, val: Node<Self::Collection>) -> Self;
 	fn set_likes(self, val: Node<Self::Collection>) -> Self;
 	fn set_shares(self, val: Node<Self::Collection>) -> Self;
 	fn set_start_time(self, val: Option<chrono::DateTime<chrono::Utc>>) -> Self;
 	fn set_summary(self, val: Option<&str>) -> Self;
 	fn set_tag(self, val: Node<Self::Object>) -> Self;
-	fn set_updated(self, val: Option<chrono::DateTime<chrono::Utc>>) -> Self;
 	fn set_url(self, val: Node<Self::Link>) -> Self;
 	fn set_to(self, val: Node<Self::Link>) -> Self;
 	fn set_bto(self, val: Node<Self::Link>) -> Self;
@@ -149,13 +149,13 @@ impl Object for serde_json::Value {
 	crate::getter! { location -> node <Self as Object>::Object }
 	crate::getter! { preview -> node <Self as Object>::Object }
 	crate::getter! { published -> chrono::DateTime<chrono::Utc> }
+	crate::getter! { updated -> chrono::DateTime<chrono::Utc> }
 	crate::getter! { replies -> node Self::Collection }
 	crate::getter! { likes -> node Self::Collection }
 	crate::getter! { shares -> node Self::Collection }
 	crate::getter! { start_time::startTime -> chrono::DateTime<chrono::Utc> }
 	crate::getter! { summary -> &str }
 	crate::getter! { tag -> node <Self as Object>::Object }
-	crate::getter! { updated -> chrono::DateTime<chrono::Utc> }
 	crate::getter! { to -> node Self::Link }
 	crate::getter! { bto -> node Self::Link }
 	crate::getter! { cc -> node Self::Link }
@@ -232,13 +232,13 @@ impl ObjectMut for serde_json::Value {
 	crate::setter! { location -> node <Self as Object>::Object }
 	crate::setter! { preview -> node <Self as Object>::Object }
 	crate::setter! { published -> chrono::DateTime<chrono::Utc> }
+	crate::setter! { updated -> chrono::DateTime<chrono::Utc> }
 	crate::setter! { replies -> node Self::Collection }
 	crate::setter! { likes -> node Self::Collection }
 	crate::setter! { shares -> node Self::Collection }
 	crate::setter! { start_time::startTime -> chrono::DateTime<chrono::Utc> }
 	crate::setter! { summary -> &str }
 	crate::setter! { tag -> node <Self as Object>::Object }
-	crate::setter! { updated -> chrono::DateTime<chrono::Utc> }
 	crate::setter! { to -> node Self::Link }
 	crate::setter! { bto -> node Self::Link}
 	crate::setter! { cc -> node Self::Link }
