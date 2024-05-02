@@ -98,3 +98,13 @@ impl Related<super::addressing::Entity> for Entity {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+impl apb::target::Addressed for Model {
+	fn addressed(&self) -> Vec<String> {
+		let mut to : Vec<String> = self.to.0.clone();
+		to.append(&mut self.bto.0.clone());
+		to.append(&mut self.cc.0.clone());
+		to.append(&mut self.bcc.0.clone());
+		to
+	}
+}
