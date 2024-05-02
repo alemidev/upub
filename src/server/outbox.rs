@@ -303,7 +303,7 @@ impl apb::server::Outbox for Context {
 
 		match object_node.object_type() {
 			Some(apb::ObjectType::Actor(_)) => {
-				let actor_model = model::user::Model::new(
+				let mut actor_model = model::user::Model::new(
 					&object_node
 						// TODO must set these, but we will ignore them
 						.set_actor_type(Some(apb::ActorType::Person))
@@ -326,7 +326,7 @@ impl apb::server::Outbox for Context {
 				if actor_model.image.is_none() { actor_model.image = old_actor_model.image }
 				if actor_model.icon.is_none() { actor_model.icon = old_actor_model.icon }
 
-				let update_model = actor_model.into_active_model();
+				let mut update_model = actor_model.into_active_model();
 				update_model.reset(model::user::Column::Name);
 				update_model.reset(model::user::Column::Summary);
 				update_model.reset(model::user::Column::Image);
@@ -356,7 +356,7 @@ impl apb::server::Outbox for Context {
 				if object_model.summary.is_none() { object_model.summary = old_object_model.summary }
 				if object_model.content.is_none() { object_model.content = old_object_model.content }
 
-				let update_model = object_model.into_active_model();
+				let mut update_model = object_model.into_active_model();
 				update_model.reset(model::object::Column::Name);
 				update_model.reset(model::object::Column::Summary);
 				update_model.reset(model::object::Column::Content);

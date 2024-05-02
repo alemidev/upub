@@ -238,7 +238,7 @@ impl apb::server::Inbox for Context {
 				// TODO oof here is an example of the weakness of this model, we have to go all the way
 				// back up to serde_json::Value because impl Object != impl Actor
 				let actor_model = model::user::Model::new(&object_node)?;
-				let update_model = actor_model.into_active_model();
+				let mut update_model = actor_model.into_active_model();
 				update_model.reset(model::user::Column::Name);
 				update_model.reset(model::user::Column::Summary);
 				update_model.reset(model::user::Column::Image);
@@ -248,7 +248,7 @@ impl apb::server::Inbox for Context {
 			},
 			Some(apb::ObjectType::Note) => {
 				let object_model = model::object::Model::new(&object_node)?;
-				let update_model = object_model.into_active_model();
+				let mut  update_model = object_model.into_active_model();
 				update_model.reset(model::object::Column::Name);
 				update_model.reset(model::object::Column::Summary);
 				update_model.reset(model::object::Column::Content);
