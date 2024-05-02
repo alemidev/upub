@@ -16,7 +16,7 @@ impl TokenSink for Sink {
 				if !matches!(
 					tag.name.as_ref(),
 					"h1" | "h2" | "h3" 
-					| "hr" | "p" | "b" | "i"
+					| "hr" | "br" | "p" | "b" | "i"
 					| "blockquote" | "pre" | "code"
 					| "ul" | "ol" | "li"
 					| "img" | "a"
