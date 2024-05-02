@@ -79,7 +79,7 @@ pub fn Attachment(
 #[component]
 pub fn Object(object: crate::Object) -> impl IntoView {
 	let oid = object.id().unwrap_or_default().to_string();
-	let content = dissolve::strip_html_tags(object.content().unwrap_or_default());
+	let content = mdhtml::safe_html(object.content().unwrap_or_default());
 	let author_id = object.attributed_to().id().unwrap_or_default();
 	let author = CACHE.get_or(&author_id, serde_json::Value::String(author_id.clone()).into());
 	let sensitive = object.sensitive().unwrap_or_default();
@@ -118,7 +118,7 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 		</table>
 		<blockquote class="tl">
 			<Summary summary=object.summary().map(|x| x.to_string()) open=false >
-				{content.into_iter().map(|x| view! { <p>{x}</p> }).collect_view()}
+				<p inner_html={content}></p>
 				{attachments_padding}
 				{attachments}
 			</Summary>

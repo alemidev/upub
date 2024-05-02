@@ -153,12 +153,7 @@ pub fn UserPage(tl: Timeline) -> impl IntoView {
 												None
 											}}
 										</div>
-										<blockquote class="ml-2 mt-1">{
-										dissolve::strip_html_tags(&summary)
-											.into_iter()
-											.map(|x| view! { <div>{x}</div> })
-											.collect_view()
-										}</blockquote>
+										<blockquote class="ml-2 mt-1" inner_html={mdhtml::safe_html(&summary)}></blockquote>
 									</div>
 								</div>
 								<TimelineFeed tl=tl />
