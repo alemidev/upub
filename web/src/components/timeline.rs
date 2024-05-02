@@ -108,9 +108,11 @@ pub fn TimelineRepliesRecursive(tl: Timeline, root: String) -> impl IntoView {
 					_ => {
 						let oid = object.id().unwrap_or_default().to_string();
 						view! {
-							<Object object=object />
-							<div class="depth-r">
-								<TimelineRepliesRecursive tl=tl root=oid />
+							<div class="context">
+								<Object object=object />
+								<div class="depth-r">
+									<TimelineRepliesRecursive tl=tl root=oid />
+								</div>
 							</div>
 						}.into_view()
 					},
