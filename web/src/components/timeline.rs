@@ -210,6 +210,7 @@ async fn process_activities(activities: Vec<serde_json::Value>, auth: Auth) -> V
 	let mut out = Vec::new();
 
 	for activity in activities {
+		let activity_type = activity.activity_type().unwrap_or(apb::ActivityType::Activity);
 		// save embedded object if present
 		if let Some(object) = activity.object().get() {
 			// also fetch actor attributed to
@@ -224,8 +225,12 @@ async fn process_activities(activities: Vec<serde_json::Value>, auth: Auth) -> V
 		} else { // try fetching it
 			if let Some(object_id) = activity.object().id() {
 				if !gonna_fetch.contains(&object_id) {
+					let fetch_kind = match activity_type {
+						apb::ActivityType::Follow => FetchKind::User,
+						_ => FetchKind::Object,
+					};
 					gonna_fetch.insert(object_id.clone());
-					sub_tasks.push(Box::pin(fetch_and_update_with_user(FetchKind::Object, object_id, auth)));
+					sub_tasks.push(Box::pin(fetch_and_update_with_user(fetch_kind, object_id, auth)));
 				}
 			}
 		}
