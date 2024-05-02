@@ -23,6 +23,9 @@ impl apb::server::Outbox for Context {
 				.set_attributed_to(Node::link(uid.clone()))
 				.set_published(Some(chrono::Utc::now()))
 		)?;
+		if let Some(content) = object_model.content {
+			object_model.content = Some(mdhtml::safe_markdown(&content));
+		}
 		match (&object_model.in_reply_to, &object_model.context) {
 			(Some(reply_id), None) => // get context from replied object
 				object_model.context = self.fetch_object(reply_id).await?.context,
@@ -84,6 +87,9 @@ impl apb::server::Outbox for Context {
 		object_model.bto = activity_model.bto.clone();
 		object_model.cc = activity_model.cc.clone();
 		object_model.bcc = activity_model.bcc.clone();
+		if let Some(content) = object_model.content {
+			object_model.content = Some(mdhtml::safe_markdown(&content));
+		}
 		match (&object_model.in_reply_to, &object_model.context) {
 			(Some(reply_id), None) => // get context from replied object
 				object_model.context = self.fetch_object(reply_id).await?.context,

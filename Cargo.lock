@@ -4412,6 +4412,7 @@ dependencies = [
  "futures",
  "jrd",
  "mastodon-async-entities",
+ "mdhtml",
  "nodeinfo",
  "openssl",
  "rand",
