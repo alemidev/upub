@@ -2,7 +2,7 @@ use crate::{Object, Link};
 
 pub const PUBLIC : &str = "https://www.w3.org/ns/activitystreams#Public";
 
-pub trait Addressed : Object {
+pub trait Addressed {
 	fn addressed(&self) -> Vec<String>;
 }
 
