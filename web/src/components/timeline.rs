@@ -1,6 +1,6 @@
 use std::{collections::BTreeSet, pin::Pin, sync::Arc};
 
-use apb::{Activity, ActivityMut, Base, Object, ObjectMut};
+use apb::{Activity, ActivityMut, Base, Object};
 use leptos::*;
 use crate::prelude::*;
 
