@@ -4,7 +4,7 @@ use apb::{ActivityMut, Actor, Base, Object, ObjectMut};
 
 use leptos::*;
 use leptos_router::*;
-use crate::prelude::*;
+use crate::{prelude::*, DEFAULT_AVATAR_URL};
 
 #[component]
 pub fn AboutPage() -> impl IntoView {
@@ -86,8 +86,8 @@ pub fn UserPage(tl: Timeline) -> impl IntoView {
 						},
 						Some(Some(object)) => {
 							let uid = object.id().unwrap_or_default().to_string();
-							let avatar_url = object.icon().get().map(|x| x.url().id().unwrap_or_default()).unwrap_or_default();
-							let background_url = object.image().get().map(|x| x.url().id().unwrap_or_default()).unwrap_or_default();
+							let avatar_url = object.icon().get().map(|x| x.url().id().unwrap_or(DEFAULT_AVATAR_URL.into())).unwrap_or(DEFAULT_AVATAR_URL.into());
+							let background_url = object.image().get().map(|x| x.url().id().unwrap_or(DEFAULT_AVATAR_URL.into())).unwrap_or(DEFAULT_AVATAR_URL.into());
 							let display_name = object.name().unwrap_or_default().to_string();
 							let username = object.preferred_username().unwrap_or_default().to_string();
 							let summary = object.summary().unwrap_or_default().to_string();
