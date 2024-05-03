@@ -37,13 +37,13 @@ impl Timeline {
 	async fn more_inner(&self, auth: Auth) -> reqwest::Result<()> {
 		use apb::{Collection, CollectionPage};
 
-		let feed_url = self.next.get();
+		let feed_url = self.next.get_untracked();
 		let collection : serde_json::Value = Http::fetch(&feed_url, auth).await?;
 		let activities : Vec<serde_json::Value> = collection
 			.ordered_items()
 			.collect();
 	
-		let mut feed = self.feed.get();
+		let mut feed = self.feed.get_untracked();
 		let mut older = process_activities(activities, auth)
 			.await
 			.into_iter()

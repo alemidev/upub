@@ -85,12 +85,12 @@ impl Http {
 		data: Option<&T>,
 		auth: Auth,
 	) -> reqwest::Result<reqwest::Response> {
-		use leptos::SignalGet;
+		use leptos::SignalGetUntracked;
 
 		let mut req = reqwest::Client::new()
 			.request(method, url);
 
-		if let Some(auth) = auth.token.get().filter(|x| !x.is_empty()) {
+		if let Some(auth) = auth.token.get_untracked().filter(|x| !x.is_empty()) {
 			req = req.header("Authorization", format!("Bearer {}", auth));
 		}
 

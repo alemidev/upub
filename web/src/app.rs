@@ -17,9 +17,12 @@ pub fn App() -> impl IntoView {
 	let auth = Auth { token, userid };
 	provide_context(auth);
 
-	let home_tl = Timeline::new(format!("{URL_BASE}/users/{}/inbox/page", auth.username()));
+	let username = auth.userid.get_untracked()
+		.map(|x| x.split('/').last().unwrap_or_default().to_string())
+		.unwrap_or_default();
+	let home_tl = Timeline::new(format!("{URL_BASE}/users/{username}/inbox/page"));
 	let server_tl = Timeline::new(format!("{URL_BASE}/inbox/page"));
-	let user_tl = Timeline::new(format!("{URL_BASE}/users/{}/outbox/page", auth.username()));
+	let user_tl = Timeline::new(format!("{URL_BASE}/users/{username}/outbox/page"));
 	let context_tl = Timeline::new(format!("{URL_BASE}/outbox/page"));
 
 	let reply_controls = ReplyControls::default();
@@ -36,7 +39,8 @@ pub fn App() -> impl IntoView {
 		}
 	});
 
-	if auth.present() {
+	let auth_present = auth.token.get_untracked().is_some(); // skip helper to use get_untracked
+	if auth_present { 
 		spawn_local(async move {
 			if let Err(e) = home_tl.more(auth).await {
 				tracing::error!("error populating timeline: {e}");
@@ -44,7 +48,7 @@ pub fn App() -> impl IntoView {
 		});
 	}
 
-	let title_target = if auth.present() { "/web/home" } else { "/web/server" };
+	let title_target = if auth_present { "/web/home" } else { "/web/server" };
 
 	view! {
 		<nav class="w-100 mt-1 mb-1 pb-s">
