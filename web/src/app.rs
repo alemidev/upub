@@ -112,6 +112,7 @@ pub fn App() -> impl IntoView {
 											<Route path="/web/objects/:id" view=move || view! { <ObjectPage tl=context_tl /> } />
 
 											<Route path="/web/debug" view=DebugPage />
+											<Route path="/web/search" view=SearchPage />
 
 											<Route path="/" view=move || view! { <Redirect path="/web" /> } />
 										</Routes>

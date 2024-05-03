@@ -331,3 +331,57 @@ pub fn DebugPage() -> impl IntoView {
 		</div>
 	}
 }
+
+#[component]
+pub fn SearchPage() -> impl IntoView {
+	let auth = use_context::<Auth>().expect("missing auth context");
+
+	let user = create_local_resource(
+		move || use_query_map().get().get("q").cloned().unwrap_or_default(),
+		move |q| {
+			let user_fetch = Uri::api(FetchKind::User, &q, true);
+			async move { Some(Arc::new(Http::fetch::<serde_json::Value>(&user_fetch, auth).await.ok()?)) }
+		}
+	);
+	
+	let object = create_local_resource(
+		move || use_query_map().get().get("q").cloned().unwrap_or_default(),
+		move |q| {
+			let object_fetch = Uri::api(FetchKind::Object, &q, true);
+			async move { Some(Arc::new(Http::fetch::<serde_json::Value>(&object_fetch, auth).await.ok()?)) }
+		}
+	);
+
+	view! {
+		<Breadcrumb>search</Breadcrumb>
+		<blockquote class="mt-1 mb-1">
+			<details open>
+				<summary class="mb-2">
+					<code class="cw center color ml-s w-100">users</code>
+				</summary>
+				{move || match user.get() {
+					None => None,
+					Some(None) => None,
+					Some(Some(u)) => Some(view! {
+						<ActorBanner object=u />
+					}),
+				}}
+			</details>
+		</blockquote>
+
+		<blockquote class="mt-1 mb-1">
+			<details open>
+				<summary class="mb-2">
+					<code class="cw center color ml-s w-100">objects</code>
+				</summary>
+				{move || match object.get() {
+					None => None,
+					Some(None) => None,
+					Some(Some(o)) => Some(view! {
+						<Object object=o />
+					}),
+				}}
+			</details>
+		</blockquote>
+	}
+}
