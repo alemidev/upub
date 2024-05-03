@@ -101,7 +101,7 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 		Some(view! { <div class="pb-1"></div> })
 	};
 	view! {
-		<table class="align w-100">
+		<table class="align w-100 ml-s mr-s">
 			<tr>
 				<td><ActorBanner object=author /></td>
 				<td class="rev" >
