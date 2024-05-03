@@ -197,6 +197,7 @@ async fn crawl_replies(ctx: &Context, id: &str, depth: usize) -> crate::Result<(
 	{
 		Ok(_) => {},
 		Err(sea_orm::DbErr::RecordNotInserted) => {},
+		Err(sea_orm::DbErr::Exec(_)) => {}, // ughhh bad fix for sqlite
 		Err(e) => return Err(e.into()),
 	}
 
