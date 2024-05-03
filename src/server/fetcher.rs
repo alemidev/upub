@@ -5,7 +5,7 @@ use base64::Engine;
 use reqwest::{header::{ACCEPT, CONTENT_TYPE, USER_AGENT}, Method, Response};
 use sea_orm::{sea_query::Expr, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
 
-use crate::{errors::UpubError, model, VERSION};
+use crate::{model, VERSION};
 
 use super::{auth::HttpSignature, Context};
 

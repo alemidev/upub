@@ -1,4 +1,4 @@
-mod server;
+pub mod server; // TODO there are some methods that i dont use yet, make it public so that ra shuts up
 mod model;
 mod routes;
 mod cli;
