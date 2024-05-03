@@ -21,6 +21,14 @@ impl Timeline {
 		Timeline { feed, next, over, loading }
 	}
 
+	pub fn len(&self) -> usize {
+		self.feed.get().len()
+	}
+
+	pub fn is_empty(&self) -> bool {
+		self.feed.get().is_empty()
+	}
+
 	pub fn reset(&self, url: String) {
 		self.feed.set(vec![]);
 		self.next.set(url);
