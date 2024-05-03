@@ -1,9 +1,9 @@
-pub mod server;
-pub mod model;
-pub mod routes;
-pub mod cli;
+mod server;
+mod model;
+mod routes;
+mod cli;
 
-pub mod errors;
+mod errors;
 
 #[cfg(feature = "migrations")]
 mod migrations;
@@ -48,7 +48,6 @@ enum CliCommand {
 	/// apply database migrations
 	Migrate,
 
-	#[cfg(feature = "faker")]
 	/// generate fake user, note and activity
 	Faker{
 		/// how many fake statuses to insert for root user
@@ -123,7 +122,6 @@ async fn main() {
 			migrations::Migrator::up(&db, None)
 				.await.expect("error applying migrations"),
 
-		#[cfg(feature = "faker")]
 		CliCommand::Faker { count } =>
 			cli::faker(&db, args.domain, count)
 				.await.expect("error creating fake entities"),

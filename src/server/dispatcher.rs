@@ -17,8 +17,6 @@ impl Default for Dispatcher {
 }
 
 impl Dispatcher {
-	pub fn new() -> Self { Dispatcher::default() }
-
 	pub fn spawn(&self, db: DatabaseConnection, domain: String, poll_interval: u64) -> JoinHandle<()> {
 		let waker = self.waker.subscribe();
 		tokio::spawn(async move {
