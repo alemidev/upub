@@ -1,15 +1,20 @@
 use axum::extract::{Path, Query, State};
 use sea_orm::{ColumnTrait, Condition, PaginatorTrait, QueryFilter};
 
-use crate::{model, routes::activitypub::{JsonLD, Pagination}, server::{auth::AuthIdentity, Context}, url};
+use crate::{model, routes::activitypub::{JsonLD, Pagination, TryFetch}, server::{auth::AuthIdentity, fetcher::Fetcher, Context}, url};
 
 pub async fn get(
 	State(ctx): State<Context>,
 	Path(id): Path<String>,
 	AuthIdentity(auth): AuthIdentity,
+	Query(q): Query<TryFetch>,
 ) -> crate::Result<JsonLD<serde_json::Value>> {
 	let replies_id = url!(ctx, "/objects/{id}/replies");
 	let oid = ctx.uri("objects", id);
+
+	if auth.is_local() && q.fetch {
+		ctx.fetch_thread(&oid).await?;
+	}
 
 	let count = model::addressing::Entity::find_addressed(auth.my_id())
 		.filter(auth.filter_condition())

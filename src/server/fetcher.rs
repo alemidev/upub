@@ -1,11 +1,11 @@
 use std::collections::BTreeMap;
 
-use apb::{target::Addressed, Activity, Collection, Object};
+use apb::{target::Addressed, Activity, Collection, CollectionPage, Link, Object};
 use base64::Engine;
 use reqwest::{header::{ACCEPT, CONTENT_TYPE, USER_AGENT}, Method, Response};
 use sea_orm::{sea_query::Expr, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
 
-use crate::{model, VERSION};
+use crate::{errors::UpubError, model, VERSION};
 
 use super::{auth::HttpSignature, Context};
 
@@ -19,6 +19,8 @@ pub trait Fetcher {
 
 	async fn fetch_activity(&self, id: &str) -> crate::Result<model::activity::Model>;
 	async fn pull_activity(&self, id: &str) -> crate::Result<model::activity::Model>;
+
+	async fn fetch_thread(&self, id: &str) -> crate::Result<()>;
 
 	async fn request(
 		method: reqwest::Method,
@@ -165,6 +167,10 @@ impl Fetcher for Context {
 		Ok(activity_model)
 	}
 
+	async fn fetch_thread(&self, id: &str) -> crate::Result<()> {
+		crawl_replies(self, id, 0).await
+	}
+
 	async fn fetch_object(&self, id: &str) -> crate::Result<model::object::Model> {
 		fetch_object_inner(self, id, 0).await
 	}
@@ -176,6 +182,58 @@ impl Fetcher for Context {
 
 		Ok(model::object::Model::new(&object)?)
 	}
+}
+
+#[async_recursion::async_recursion]
+async fn crawl_replies(ctx: &Context, id: &str, depth: usize) -> crate::Result<()> {
+	tracing::info!("crawling replies of '{id}'");
+	let object = Context::request(
+		Method::GET, id, None, &format!("https://{}", ctx.domain()), &ctx.app().private_key, ctx.domain(),
+	).await?.json::<serde_json::Value>().await?;
+
+	let object_model = model::object::Model::new(&object)?;
+	match model::object::Entity::insert(object_model.into_active_model())
+		.exec(ctx.db()).await
+	{
+		Ok(_) => {},
+		Err(sea_orm::DbErr::RecordNotInserted) => {},
+		Err(e) => return Err(e.into()),
+	}
+
+	if depth > 16 {
+		tracing::warn!("stopping thread crawling: too deep!");
+		return Ok(());
+	}
+
+	let mut page_url = match object.replies().get() {
+		Some(serde_json::Value::String(x)) => {
+			let replies = Context::request(
+				Method::GET, x, None, &format!("https://{}", ctx.domain()), &ctx.app().private_key, ctx.domain(),
+			).await?.json::<serde_json::Value>().await?;
+			replies.first().id()
+		},
+		Some(serde_json::Value::Object(x)) => {
+			let obj = serde_json::Value::Object(x.clone()); // lol putting it back, TODO!
+			obj.first().id()
+		},
+		_ => return Ok(()),
+	};
+
+	while let Some(ref url) = page_url {
+		let replies = Context::request(
+			Method::GET, url, None, &format!("https://{}", ctx.domain()), &ctx.app().private_key, ctx.domain(),
+		).await?.json::<serde_json::Value>().await?;
+
+		for reply in replies.items() {
+			// TODO right now it crawls one by one, could be made in parallel but would be quite more
+			// abusive, so i'll keep it like this while i try it out
+			crawl_replies(ctx, reply.href(), depth + 1).await?;
+		}
+
+		page_url = replies.next().id();
+	}
+
+	Ok(())
 }
 
 #[async_recursion::async_recursion]
