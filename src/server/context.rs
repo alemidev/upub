@@ -101,9 +101,9 @@ impl Context {
 			id
 		} else if id.starts_with('+') { // compacted id
 			id
-				.replacen('+', "https://", 1)
 				.replace('@', "/")
 				.replace("//", "/@") // oops my method sucks!! TODO
+				.replacen('+', "https://", 1)
 		} else { // bare local id
 			format!("{}{}/{}/{}", self.0.protocol, self.0.domain, entity, id)
 		}
