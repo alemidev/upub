@@ -1,9 +1,13 @@
 pub mod server; // TODO there are some methods that i dont use yet, make it public so that ra shuts up
 mod model;
 mod routes;
-mod cli;
 
 mod errors;
+
+mod config;
+
+#[cfg(feature = "cli")]
+mod cli;
 
 #[cfg(feature = "migrations")]
 mod migrations;
@@ -21,10 +25,10 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 #[derive(Parser)]
 /// all names were taken
-struct CliArgs {
+struct Args {
 	#[clap(subcommand)]
 	/// command to run
-	command: CliCommand,
+	command: Mode,
 
 	#[arg(short = 'd', long = "db", default_value = "sqlite://./upub.db")]
 	/// database connection uri
@@ -40,7 +44,7 @@ struct CliArgs {
 }
 
 #[derive(Clone, Subcommand)]
-enum CliCommand {
+enum Mode {
 	/// run fediverse server
 	Serve ,
 
@@ -48,59 +52,19 @@ enum CliCommand {
 	/// apply database migrations
 	Migrate,
 
-	/// generate fake user, note and activity
-	Faker{
-		/// how many fake statuses to insert for root user
-		count: u64,
+	#[cfg(feature = "cli")]
+	/// run maintenance CLI tasks
+	Cli {
+		#[clap(subcommand)]
+		/// task to run
+		command: cli::CliCommand,
 	},
-
-	/// fetch a single AP object
-	Fetch {
-		/// object id, or uri, to fetch
-		uri: String,
-
-		#[arg(long, default_value_t = false)]
-		/// store fetched object in local db
-		save: bool,
-	},
-
-	/// follow a remote relay
-	Relay {
-		/// actor url, same as with pleroma
-		actor: String,
-
-		#[arg(long, default_value_t = false)]
-		/// instead of sending a follow request, send an accept
-		accept: bool
-	},
-
-	/// run db maintenance tasks
-	Fix {
-		#[arg(long, default_value_t = false)]
-		/// fix likes counts for posts
-		likes: bool,
-
-		#[arg(long, default_value_t = false)]
-		/// fix shares counts for posts
-		shares: bool,
-
-		#[arg(long, default_value_t = false)]
-		/// fix replies counts for posts
-		replies: bool,
-	},
-
-	/// update remote users
-	Update {
-		#[arg(long, short, default_value_t = 7)]
-		/// number of days after which users should get updated
-		days: i64,
-	}
 }
 
 #[tokio::main]
 async fn main() {
 
-	let args = CliArgs::parse();
+	let args = Args::parse();
 
 	tracing_subscriber::fmt()
 		.compact()
@@ -118,31 +82,16 @@ async fn main() {
 
 	match args.command {
 		#[cfg(feature = "migrations")]
-		CliCommand::Migrate =>
+		Mode::Migrate =>
 			migrations::Migrator::up(&db, None)
 				.await.expect("error applying migrations"),
 
-		CliCommand::Faker { count } =>
-			cli::faker(&db, args.domain, count)
-				.await.expect("error creating fake entities"),
+		#[cfg(feature = "cli")]
+		Mode::Cli { command } =>
+			cli::run(command, db, args.domain)
+				.await.expect("failed running cli task"),
 
-		CliCommand::Fetch { uri, save } => 
-			cli::fetch(db, args.domain, uri, save)
-				.await.expect("error fetching object"),
-
-		CliCommand::Relay { actor, accept } =>
-			cli::relay(db, args.domain, actor, accept)
-				.await.expect("error registering/accepting relay"),
-
-		CliCommand::Fix { likes, shares, replies } =>
-			cli::fix(db, likes, shares, replies)
-				.await.expect("failed running fix task"),
-
-		CliCommand::Update { days } =>
-			cli::update_users(db, args.domain, days)
-				.await.expect("error updating users"),
-
-		CliCommand::Serve => {
+		Mode::Serve => {
 			let ctx = server::Context::new(db, args.domain)
 				.await.expect("failed creating server context");
 

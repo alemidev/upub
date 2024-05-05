@@ -46,6 +46,7 @@ time = { version = "0.3", features = ["serde"], optional = true }
 async-recursion = "1.1"
 
 [features]
-default = ["migrations"]
+default = ["migrations", "cli"]
+cli = []
 migrations = ["dep:sea-orm-migration"]
 mastodon = ["dep:mastodon-async-entities", "dep:time"]
