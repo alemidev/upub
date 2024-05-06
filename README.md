@@ -1,17 +1,18 @@
 # μpub
 > micro social network, federated
+![screenshot of upub simple frontend](https://cdn.alemi.dev/proj/upub/fe/20240424.png)
 
 μpub aims to be a private, lightweight, modular and **secure** [ActivityPub](https://www.w3.org/TR/activitypub/) server
 
  * follow development [in the dedicated matrix room](https://matrix.to/#/#upub:alemi.dev)
 
-μpub is currently being developed and can do most basic things, like posting notes, liking things, following others, deliveries and browsing
+μpub is usable as a very simple ActivityPub project: it has a home and server timeline, it allows to browse threads, star notes and leave replies, it renders remote media of any kind and can be used to browse and follow remote users
 
-all interactions must happen with ActivityPub's client-server methods (basically POST your activities to your outbox), and there's a simple frontend
+all interactions happen with ActivityPub's client-server methods (basically POST your activities to your outbox), with [appropriate extensions](https://ns.alemi.dev/as): **μpub doesn't want to invent another API**!
+
+development is still active, so expect more stuff to come! since most fediverse software uses Mastodon's API, μpub plans to implement it as an optional feature, becoming eventually compatible with most existing frontends and mobile applications, but focus right now is on producing something specific to μpub needs
 
 a test instance is _usually_ available at [feditest.alemi.dev](https://feditest.alemi.dev)
-
-upub's stock frontend is also being developed and can be viewed _usually_ at [feditest.alemi.dev/web](https://feditest.alemi.dev/web)
 
 ## about security
 most activitypub implementations don't really validate fetches: knowing an activity/object id will allow anyone to resolve it on most fedi software. this is of course unacceptable: "security through obscurity" just doesn't work
@@ -51,21 +52,20 @@ all help is extremely welcome! if [my cgit](https://git.alemi.dev/upub.git/) loo
  - [x] advanced composer
  - [x] api for fetching
  - [x] like, share, reply via frontend
+ - [ ] backend config
+ - [ ] frontend config
+ - [ ] mentions, notifications
+ - [ ] mastodon-like search bar
  - [ ] polls
- - [ ] editing via web frontend
+ - [ ] better editing via web frontend
  - [ ] remote media proxy
  - [ ] upload media
- - [ ] mastodon-like search bar
- - [ ] hashtags, discovery
+ - [ ] hashtags
+ - [ ] public vs unlisted for discovery
  - [ ] user fields
  - [ ] lists
- - [ ] mastodon api
- - [ ] more optimized database schema
+ - [ ] full mastodon api
+ - [ ] optimize `addressing` database schema
 
 ## what about the name?
 μpub (or simply `upub`) means "[micro](https://en.wikipedia.org/wiki/International_System_of_Units#Prefixes)-pub", but could also be read "upub", "you-pub" or "mu-pub"
-
-## frontend
-μpub aims to be compatible with multiple frontends via the mastodon api, but a simple custom ui is also being worked on
-
-![screenshot of upub simple frontend](https://cdn.alemi.dev/proj/upub/fe/20240424.png)
