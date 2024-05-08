@@ -98,21 +98,27 @@ pub fn TimelineRepliesRecursive(tl: Timeline, root: String) -> impl IntoView {
 						let oid = object.object().id().unwrap_or_default().to_string();
 						if let Some(note) = CACHE.get(&oid) {
 							view! {
-								<ActivityLine activity=object />
-								<Object object=note />
-								<div class="depth-r">
-									<TimelineRepliesRecursive tl=tl root=oid />
+								<div class="context depth-r">
+									<ActivityLine activity=object />
+									<Object object=note />
+									<div class="depth-r">
+										<TimelineRepliesRecursive tl=tl root=oid />
+									</div>
 								</div>
-							}.into_view()
+							}
 						} else {
 							view! {
-								<ActivityLine activity=object />
-							}.into_view()
+								<div class="context depth-r">
+									<ActivityLine activity=object />
+								</div>
+							}
 						}
 					},
 					Some(apb::ObjectType::Activity(_)) => view! {
-						<ActivityLine activity=object />
-					}.into_view(),
+						<div class="context depth-r">
+							<ActivityLine activity=object />
+						</div>
+					},
 					_ => {
 						let oid = object.id().unwrap_or_default().to_string();
 						view! {
@@ -122,7 +128,7 @@ pub fn TimelineRepliesRecursive(tl: Timeline, root: String) -> impl IntoView {
 									<TimelineRepliesRecursive tl=tl root=oid />
 								</div>
 							</div>
-						}.into_view()
+						}
 					},
 				}
 			}
