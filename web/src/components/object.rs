@@ -1,7 +1,9 @@
+use std::sync::Arc;
+
 use leptos::*;
 use crate::{prelude::*, URL_SENSITIVE};
 
-use apb::{target::Addressed, ActivityMut, Base, Collection, Object, ObjectMut};
+use apb::{target::Addressed, ActivityMut, Base, Collection, CollectionMut, Object, ObjectMut};
 
 #[component]
 pub fn Attachment(
@@ -95,10 +97,32 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 	let likes = object.likes().get()
 		.map_or(0, |x| x.total_items().unwrap_or(0));
 	let already_liked = object.liked_by_me().unwrap_or(false);
+
 	let attachments_padding = if object.attachment().is_empty() {
 		None
 	} else {
 		Some(view! { <div class="pb-1"></div> })
+	};
+	let post_inner = view! {
+		<Summary summary=object.summary().map(|x| x.to_string()) open=false >
+			<p inner_html={content}></p>
+			{attachments_padding}
+			{attachments}
+		</Summary>
+	};
+	let post = match object.object_type() {
+		Some(apb::ObjectType::Document(apb::DocumentType::Page)) => view! {
+			<table>{post_inner}</table>
+		}.into_view(), // lemmy
+		Some(apb::ObjectType::Document(apb::DocumentType::Video)) => post_inner.into_view(), // peertube?
+		Some(apb::ObjectType::Note) => view! {
+			<blockquote class="tl">{post_inner}</blockquote>
+		}.into_view(),
+		Some(t) => view! {
+			<h3>{t.as_ref().to_string()}</h3>
+			{post_inner}
+		}.into_view(),
+		None => view! { <code>missing object type</code> }.into_view(),
 	};
 	view! {
 		<table class="align w-100 ml-s mr-s">
@@ -116,13 +140,7 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 				</td>
 			</tr>
 		</table>
-		<blockquote class="tl">
-			<Summary summary=object.summary().map(|x| x.to_string()) open=false >
-				<p inner_html={content}></p>
-				{attachments_padding}
-				{attachments}
-			</Summary>
-		</blockquote>
+		{post}
 		<div class="mt-s ml-1 rev">
 			<ReplyButton n=comments target=oid.clone() />
 			<LikeButton n=likes liked=already_liked target=oid.clone() author=author_id private=!public />
@@ -179,11 +197,21 @@ pub fn LikeButton(
 					.set_object(apb::Node::link(target.clone()))
 					.set_to(to)
 					.set_cc(cc);
+				let target = target.clone();
 				spawn_local(async move {
 					match Http::post(&auth.outbox(), &payload, auth).await {
 						Ok(()) => {
 							set_clicked.set(false);
 							set_count.set(count.get() + 1);
+							if let Some(cached) = CACHE.get(&target) {
+								let mut new = (*cached).clone().set_liked_by_me(Some(true));
+								if let Some(likes) = new.likes().get() {
+									if let Some(count) = likes.total_items() {
+										new = new.set_likes(apb::Node::object(likes.clone().set_total_items(Some(count + 1))));
+									}
+								}
+								CACHE.put(target, Arc::new(new));
+							}
 						},
 						Err(e) => tracing::error!("failed sending like: {e}"),
 					}
