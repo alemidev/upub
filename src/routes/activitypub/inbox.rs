@@ -40,9 +40,16 @@ pub async fn post(
 	Json(activity): Json<serde_json::Value>
 ) -> crate::Result<()> {
 	let Identity::Remote(server) = auth else {
-		if activity.activity_type() != Some(ActivityType::Delete) { // this is spammy af, ignore them!
-			tracing::warn!("refusing unauthorized activity: {}", pretty_json!(activity));
+		if activity.activity_type() == Some(ActivityType::Delete) {
+			// this is spammy af, ignore them!
+			// we basically received a delete for a user we can't fetch and verify, meaning remote
+			// deleted someone we never saw. technically we deleted nothing so we should return error,
+			// but mastodon keeps hammering us trying to delete this user, so just make mastodon happy
+			// and return 200 without even bothering checking this stuff
+			// would be cool if mastodon played nicer with the network...
+			return Ok(());
 		}
+		tracing::warn!("refusing unauthorized activity: {}", pretty_json!(activity));
 		if matches!(auth, Identity::Anonymous) {
 			return Err(UpubError::unauthorized());
 		} else {
