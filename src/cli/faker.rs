@@ -83,6 +83,7 @@ pub async fn faker(ctx: crate::server::Context, count: u64) -> Result<(), sea_or
 			bto: Set(Audience::default()),
 			cc: Set(Audience(vec![])),
 			bcc: Set(Audience::default()),
+			url: Set(None),
 			sensitive: Set(false),
 		}).exec(db).await?;
 

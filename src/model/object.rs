@@ -24,6 +24,7 @@ pub struct Model {
 	pub bcc: Audience,
 	pub to: Audience,
 	pub bto: Audience,
+	pub url: Option<String>,
 	pub published: ChronoDateTimeUtc,
 	pub updated: Option<ChronoDateTimeUtc>,
 
@@ -43,6 +44,7 @@ impl Model {
 			in_reply_to: object.in_reply_to().id(),
 			published: object.published().ok_or(super::FieldError("published"))?,
 			updated: object.updated(),
+			url: object.url().id(),
 			comments: object.replies().get()
 				.map_or(0, |x| x.total_items().unwrap_or(0)) as i64,
 			likes: object.likes().get()
@@ -74,6 +76,7 @@ impl Model {
 			.set_bto(apb::Node::Empty)
 			.set_cc(apb::Node::links(self.cc.0.clone()))
 			.set_bcc(apb::Node::Empty)
+			.set_url(apb::Node::maybe_link(self.url))
 			.set_sensitive(Some(self.sensitive))
 			.set_shares(apb::Node::object(
 				serde_json::Value::new_object()

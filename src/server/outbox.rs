@@ -14,7 +14,8 @@ impl apb::server::Outbox for Context {
 	type Activity = serde_json::Value;
 
 	async fn create_note(&self, uid: String, object: serde_json::Value) -> crate::Result<String> {
-		let oid = self.oid(uuid::Uuid::new_v4().to_string());
+		let raw_oid = uuid::Uuid::new_v4().to_string();
+		let oid = self.oid(raw_oid.clone());
 		let aid = self.aid(uuid::Uuid::new_v4().to_string());
 		let activity_targets = object.addressed();
 		let mut object_model = model::object::Model::new(
@@ -34,6 +35,10 @@ impl apb::server::Outbox for Context {
 			(_, Some(_)) => {}, // leave it as set by user
 		}
 		let reply_to = object_model.in_reply_to.clone();
+
+		if let Some(fe_url) = &self.cfg().instance.frontend {
+			object_model.url = Some(format!("{fe_url}/objects/{raw_oid}")); 
+		}
 
 		let activity_model = model::activity::Model {
 			id: aid.clone(),
@@ -75,7 +80,8 @@ impl apb::server::Outbox for Context {
 			return Err(UpubError::bad_request());
 		};
 
-		let oid = self.oid(uuid::Uuid::new_v4().to_string());
+		let raw_oid = uuid::Uuid::new_v4().to_string();
+		let oid = self.oid(raw_oid.clone());
 		let aid = self.aid(uuid::Uuid::new_v4().to_string());
 		let activity_targets = activity.addressed();
 		let mut object_model = model::object::Model::new(
@@ -106,6 +112,9 @@ impl apb::server::Outbox for Context {
 			(_, Some(_)) => {}, // leave it as set by user
 		}
 		let reply_to = object_model.in_reply_to.clone();
+		if let Some(fe_url) = &self.cfg().instance.frontend {
+			object_model.url = Some(format!("{fe_url}/objects/{raw_oid}")); 
+		}
 
 		model::object::Entity::insert(object_model.into_active_model())
 			.exec(self.db()).await?;
