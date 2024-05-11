@@ -115,7 +115,11 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 	};
 	let post = match object.object_type() {
 		Some(apb::ObjectType::Document(apb::DocumentType::Page)) => view! {
-			<table class="w-100 pa-1">{post_inner}</table>
+			<div class="border ml-1 mr-1 mt-1">
+				<b>{object.name().unwrap_or_default().to_string()}</b>
+				<hr />
+				{post_inner}
+			</div>
 		}.into_view(), // lemmy
 		Some(apb::ObjectType::Document(apb::DocumentType::Video)) => post_inner.into_view(), // peertube?
 		Some(apb::ObjectType::Note) => view! {
