@@ -54,14 +54,25 @@ impl apb::server::Inbox for Context {
 		model::object::Entity::insert(object_model.into_active_model()).exec(self.db()).await?;
 		model::activity::Entity::insert(activity_model.into_active_model()).exec(self.db()).await?;
 		for attachment in object_node.attachment() {
-			let attachment_model = model::attachment::ActiveModel::new(&attachment, oid.clone())?;
+			let attachment_model = model::attachment::ActiveModel::new(&attachment, oid.clone(), None)?;
 			model::attachment::Entity::insert(attachment_model)
 				.exec(self.db())
 				.await?;
 		}
 		// lemmy sends us an image field in posts, treat it like an attachment i'd say
 		if let Some(img) = object_node.image().get() {
-			let attachment_model = model::attachment::ActiveModel::new(img, oid.clone())?;
+			// TODO lemmy doesnt tell us the media type but we use it to display the thing...
+			let img_url = img.url().id().unwrap_or_default();
+			let media_type = if img_url.ends_with("png") {
+				Some("image/png".to_string())
+			} else if img_url.ends_with("webp") {
+				Some("image/webp".to_string())
+			} else if img_url.ends_with("jpeg") || img_url.ends_with("jpg") {
+				Some("image/jpeg".to_string())
+			} else {
+				None
+			};
+			let attachment_model = model::attachment::ActiveModel::new(img, oid.clone(), media_type)?;
 			model::attachment::Entity::insert(attachment_model)
 				.exec(self.db())
 				.await?;

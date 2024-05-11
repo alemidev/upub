@@ -292,14 +292,25 @@ async fn fetch_object_inner(ctx: &Context, id: &str, depth: usize) -> crate::Res
 	}
 
 	for attachment in object.attachment() {
-		let attachment_model = model::attachment::ActiveModel::new(&attachment, object_model.id.clone())?;
+		let attachment_model = model::attachment::ActiveModel::new(&attachment, object_model.id.clone(), None)?;
 		model::attachment::Entity::insert(attachment_model)
 			.exec(ctx.db())
 			.await?;
 	}
 	// lemmy sends us an image field in posts, treat it like an attachment i'd say
 	if let Some(img) = object.image().get() {
-		let attachment_model = model::attachment::ActiveModel::new(img, object_model.id.clone())?;
+		// TODO lemmy doesnt tell us the media type but we use it to display the thing...
+		let img_url = img.url().id().unwrap_or_default();
+		let media_type = if img_url.ends_with("png") {
+			Some("image/png".to_string())
+		} else if img_url.ends_with("webp") {
+			Some("image/webp".to_string())
+		} else if img_url.ends_with("jpeg") || img_url.ends_with("jpg") {
+			Some("image/jpeg".to_string())
+		} else {
+			None
+		};
+		let attachment_model = model::attachment::ActiveModel::new(img, object_model.id.clone(), media_type)?;
 		model::attachment::Entity::insert(attachment_model)
 			.exec(ctx.db())
 			.await?;
