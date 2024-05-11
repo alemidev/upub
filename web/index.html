@@ -68,17 +68,19 @@
 			margin: 0em 1em;
 		}
 		blockquote {
-			color: var(--text);
-			margin-left: .5em;
-			padding-left: .5em;
-			margin-top: 0;
-			margin-bottom: 0;
-			overflow-wrap: break-word;
-			hyphens: auto;
-		}
-		blockquote.tl {
+			margin-top: .5em;
+			margin-bottom: .5em;
 			margin-left: 1.25em;
 			padding-left: .3em;
+			overflow-wrap: break-word;
+			hyphens: auto;
+			border-left: solid 3px var(--background-secondary);
+		}
+		blockquote.tl {
+			color: var(--text);
+			border-left: solid 3px var(--accent);
+			margin-top: 0;
+			margin-bottom: 0;
 		}
 		blockquote.tl p {
 			margin: 0 .5em;
