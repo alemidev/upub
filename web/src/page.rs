@@ -299,12 +299,7 @@ pub fn DebugPage() -> impl IntoView {
 						}
 					} else {
 						let url = format!("{URL_BASE}/dbg?id={fetch_url}");
-						spawn_local(async move {
-							match Http::fetch::<serde_json::Value>(&url, auth).await {
-								Ok(x) => set_object.set(Arc::new(x)),
-								Err(e) => set_object.set(Arc::new(serde_json::Value::String(e.to_string()))),
-							}
-						});
+						spawn_local(async move { set_object.set(Arc::new(debug_fetch(&url, auth).await)) });
 					}
 				} >
 				<table class="align w-100" >
@@ -383,5 +378,19 @@ pub fn SearchPage() -> impl IntoView {
 				}}
 			</details>
 		</blockquote>
+	}
+}
+
+// this is a rather weird way to fetch but i want to see the bare error text if it fails!
+async fn debug_fetch(url: &str, token: Auth) -> serde_json::Value {
+	match Http::request::<()>(reqwest::Method::GET, url, None, token).await {
+		Err(e) => serde_json::Value::String(format!("[!] failed sending request: {e}")),
+		Ok(res) => match res.text().await {
+			Err(e) => serde_json::Value::String(format!("[!] invalid response body: {e}")),
+			Ok(x) => match serde_json::from_str(&x) {
+				Err(_) => serde_json::Value::String(x),
+				Ok(v) => v,
+			},
+		}
 	}
 }

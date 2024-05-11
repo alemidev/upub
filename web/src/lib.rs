@@ -98,21 +98,21 @@ impl Http {
 			req = req.json(data);
 		}
 
-		req.send()
-			.await?
-			.error_for_status()
+		req.send().await
 	}
 
 	pub async fn fetch<T: serde::de::DeserializeOwned>(url: &str, token: Auth) -> reqwest::Result<T> {
 		Self::request::<()>(reqwest::Method::GET, url, None, token)
 			.await?
+			.error_for_status()?
 			.json::<T>()
 			.await
 	}
 
 	pub async fn post<T: serde::ser::Serialize>(url: &str, data: &T, token: Auth) -> reqwest::Result<()> {
 		Self::request(reqwest::Method::POST, url, Some(data), token)
-			.await?;
+			.await?
+			.error_for_status()?;
 		Ok(())
 	}
 }
