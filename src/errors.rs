@@ -1,4 +1,4 @@
-use axum::{http::StatusCode, response::Redirect};
+use axum::{http::StatusCode, response::{IntoResponse, Redirect}};
 
 #[derive(Debug, thiserror::Error)]
 pub enum UpubError {
@@ -19,6 +19,11 @@ pub enum UpubError {
 
 	#[error("fetch error: {0}")]
 	Reqwest(#[from] reqwest::Error),
+
+	// TODO this is quite ugly because its basically a reqwest::Error but with extra string... buuut
+	// helps with debugging!
+	#[error("fetch error: {0} -- server responded with {1}")]
+	FetchError(reqwest::Error, String),
 
 	#[error("invalid base64 string: {0}")]
 	Base64(#[from] base64::DecodeError),
@@ -74,6 +79,11 @@ impl axum::response::IntoResponse for UpubError {
 			UpubError::Redirect(to) => Redirect::to(&to).into_response(),
 			UpubError::Status(status) => (status, descr).into_response(),
 			UpubError::Database(_) => (StatusCode::SERVICE_UNAVAILABLE, descr).into_response(),
+			UpubError::FetchError(e, body) =>
+				(
+					e.status().unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+					format!("failed fetching '{}': {descr} -- server responded with {body}", e.url().map(|x| x.to_string()).unwrap_or_default()),
+				).into_response(),
 			UpubError::Reqwest(x) =>
 				(
 					x.status().unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),

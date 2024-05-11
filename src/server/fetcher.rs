@@ -5,7 +5,7 @@ use base64::Engine;
 use reqwest::{header::{ACCEPT, CONTENT_TYPE, USER_AGENT}, Method, Response};
 use sea_orm::{sea_query::Expr, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
 
-use crate::{model, VERSION};
+use crate::{errors::UpubError, model, VERSION};
 
 use super::{auth::HttpSignature, Context};
 
@@ -54,7 +54,7 @@ pub trait Fetcher {
 			.build_manually(&method.to_string().to_lowercase(), &path, headers_map)
 			.sign(key)?;
 
-		Ok(reqwest::Client::new()
+		let response = reqwest::Client::new()
 			.request(method.clone(), url)
 			.header(ACCEPT, "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"")
 			.header(CONTENT_TYPE, "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"")
@@ -65,9 +65,13 @@ pub trait Fetcher {
 			.header("Signature", signer.header())
 			.body(payload.unwrap_or("").to_string())
 			.send()
-			.await?
-			.error_for_status()?
-		)
+			.await?;
+
+		// TODO this is ugly but i want to see the raw response text when it's a failure
+		match response.error_for_status_ref() {
+			Ok(_) => Ok(response),
+			Err(e) => Err(UpubError::FetchError(e, response.text().await?)),
+		}
 	}
 }
 
