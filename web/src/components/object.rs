@@ -40,18 +40,20 @@ pub fn Attachment(
 				</p>
 			}.into_view(),
 
-		"video" =>
+		"video" => {
+			let _href = href.clone();
 			view! {
 				<div class="center cursor box ml-1"
 					on:click=move |_| set_expand.set(!expand.get())
 					title={object.name().unwrap_or_default().to_string()}
 				>
 					<video controls loop class="attachment" class:expand=expand >
-						<source src={href.clone()} type={media_type} />
-						<a href={href} target="_blank">audio clip</a>
+						{move || if sensitive && !expand.get() { None } else { Some(view! { <source src={_href.clone()} type={media_type.clone()} /> }) }}
+						<a href={href.clone()} target="_blank">video clip</a>
 					</video>
 				</div>
-			}.into_view(),
+			}.into_view()
+		},
 
 		"audio" =>
 			view! {
