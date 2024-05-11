@@ -1,8 +1,6 @@
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, QueryOrder};
 
-pub async fn relay(db: sea_orm::DatabaseConnection, domain: String, actor: String, accept: bool) -> crate::Result<()> {
-	let ctx = crate::server::Context::new(db, domain).await?;
-
+pub async fn relay(ctx: crate::server::Context, actor: String, accept: bool) -> crate::Result<()> {
 	let aid = ctx.aid(uuid::Uuid::new_v4().to_string());
 
 	let mut activity_model = crate::model::activity::Model {

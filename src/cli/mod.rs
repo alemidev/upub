@@ -10,8 +10,8 @@ pub use faker::*;
 mod relay;
 pub use relay::*;
 
-mod register;
-pub use register::*;
+//mod register;
+//pub use register::*;
 
 mod update;
 pub use update::*;
@@ -71,17 +71,21 @@ pub async fn run(
 	command: CliCommand,
 	db: sea_orm::DatabaseConnection,
 	domain: String,
+	config: crate::config::Config,
 ) -> crate::Result<()> {
+	let ctx = crate::server::Context::new(
+		db, domain, config,
+	).await?;
 	match command {
 		CliCommand::Faker { count } =>
-			Ok(faker(&db, domain, count).await?),
+			Ok(faker(ctx, count).await?),
 		CliCommand::Fetch { uri, save } =>
-			Ok(fetch(db, domain, uri, save).await?),
+			Ok(fetch(ctx, uri, save).await?),
 		CliCommand::Relay { actor, accept } =>
-			Ok(relay(db, domain, actor, accept).await?),
+			Ok(relay(ctx, actor, accept).await?),
 		CliCommand::Fix { likes, shares, replies } =>
-			Ok(fix(db, likes, shares, replies).await?),
+			Ok(fix(ctx, likes, shares, replies).await?),
 		CliCommand::Update { days } =>
-			Ok(update_users(db, domain, days).await?),
+			Ok(update_users(ctx, days).await?),
 	}
 }

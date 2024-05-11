@@ -1,10 +1,9 @@
 use futures::TryStreamExt;
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
 
-use crate::server::{fetcher::Fetcher, Context};
+use crate::server::fetcher::Fetcher;
 
-pub async fn update_users(db: sea_orm::DatabaseConnection, domain: String, days: i64) -> crate::Result<()> {
-	let ctx = Context::new(db, domain).await?;
+pub async fn update_users(ctx: crate::server::Context, days: i64) -> crate::Result<()> {
 	let mut count = 0;
 	let mut insertions = Vec::new();
 

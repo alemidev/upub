@@ -2,14 +2,17 @@ use crate::model::{addressing, config, credential, activity, object, user, Audie
 use openssl::rsa::Rsa;
 use sea_orm::IntoActiveModel;
 
-pub async fn faker(db: &sea_orm::DatabaseConnection, domain: String, count: u64) -> Result<(), sea_orm::DbErr> {
+pub async fn faker(ctx: crate::server::Context, count: u64) -> Result<(), sea_orm::DbErr> {
 	use sea_orm::{EntityTrait, Set};
+
+	let domain = ctx.domain();
+	let db = ctx.db();
 
 	let key = Rsa::generate(2048).unwrap();
 	let test_user = user::Model {
 		id: format!("{domain}/users/test"),
 		name: Some("μpub".into()),
-		domain: clean_domain(&domain),
+		domain: clean_domain(domain),
 		preferred_username: "test".to_string(),
 		summary: Some("hello world! i'm manually generated but served dynamically from db! check progress at https://git.alemi.dev/upub.git".to_string()),
 		following: None,

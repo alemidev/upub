@@ -2,11 +2,8 @@ use sea_orm::{EntityTrait, IntoActiveModel};
 
 use crate::server::fetcher::Fetchable;
 
-pub async fn fetch(db: sea_orm::DatabaseConnection, domain: String, uri: String, save: bool) -> crate::Result<()> {
+pub async fn fetch(ctx: crate::server::Context, uri: String, save: bool) -> crate::Result<()> {
 	use apb::Base;
-
-	let ctx = crate::server::Context::new(db, domain)
-		.await.expect("failed creating server context");
 
 	let mut node = apb::Node::link(uri.to_string());
 	node.fetch(&ctx).await?;
