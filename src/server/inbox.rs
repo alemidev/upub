@@ -59,6 +59,13 @@ impl apb::server::Inbox for Context {
 				.exec(self.db())
 				.await?;
 		}
+		// lemmy sends us an image field in posts, treat it like an attachment i'd say
+		if let Some(img) = object.image().get() {
+			let attachment_model = model::attachment::ActiveModel::new(img, object_model.id.clone())?;
+			model::attachment::Entity::insert(attachment_model)
+				.exec(ctx.db())
+				.await?;
+		}
 		// TODO can we even receive anonymous objects?
 		if let Some(object_author) = uid {
 			model::user::Entity::update_many()

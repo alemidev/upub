@@ -297,6 +297,13 @@ async fn fetch_object_inner(ctx: &Context, id: &str, depth: usize) -> crate::Res
 			.exec(ctx.db())
 			.await?;
 	}
+	// lemmy sends us an image field in posts, treat it like an attachment i'd say
+	if let Some(img) = object.image().get() {
+		let attachment_model = model::attachment::ActiveModel::new(img, object_model.id.clone())?;
+		model::attachment::Entity::insert(attachment_model)
+			.exec(ctx.db())
+			.await?;
+	}
 
 	let expanded_addresses = ctx.expand_addressing(addressed).await?;
 	ctx.address_to(None, Some(&object_model.id), &expanded_addresses).await?;
