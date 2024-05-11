@@ -140,8 +140,7 @@ pub fn TimelineFeed(tl: Timeline) -> impl IntoView {
 			children=move |id: String| {
 				match CACHE.get(&id) {
 					Some(i) => view! {
-						<Item item=i />
-						<hr />
+						<Item item=i sep=true />
 					}.into_view(),
 					None => view! {
 						<p><code>{id}</code>" "[<a href={uri}>go</a>]</p>

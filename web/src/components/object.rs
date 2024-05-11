@@ -11,6 +11,7 @@ pub fn Attachment(
 	#[prop(optional)]
 	sensitive: bool
 ) -> impl IntoView {
+	let config = use_context::<Signal<crate::Config>>().expect("missing config context");
 	let (expand, set_expand) = create_signal(false);
 	let href = object.url().id().unwrap_or_default();
 	let media_type = object.media_type()
@@ -47,7 +48,7 @@ pub fn Attachment(
 					on:click=move |_| set_expand.set(!expand.get())
 					title={object.name().unwrap_or_default().to_string()}
 				>
-					<video controls loop class="attachment" class:expand=expand >
+					<video controls class="attachment" class:expand=expand prop:loop=move || config.get().loop_videos  >
 						{move || if sensitive && !expand.get() { None } else { Some(view! { <source src={_href.clone()} type={media_type.clone()} /> }) }}
 						<a href={href.clone()} target="_blank">video clip</a>
 					</video>
@@ -58,7 +59,7 @@ pub fn Attachment(
 		"audio" =>
 			view! {
 				<p class="center">
-					<audio controls class="w-100">
+					<audio controls class="w-100" prop:loop=move || config.get().loop_videos >
 						<source src={href.clone()} type={media_type} />
 						<a href={href} target="_blank">audio clip</a>
 					</audio>
@@ -106,7 +107,7 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 		Some(view! { <div class="pb-1"></div> })
 	};
 	let post_inner = view! {
-		<Summary summary=object.summary().map(|x| x.to_string()) open=false >
+		<Summary summary=object.summary().map(|x| x.to_string()) >
 			<p inner_html={content}></p>
 			{attachments_padding}
 			{attachments}
@@ -152,11 +153,12 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 }
 
 #[component]
-pub fn Summary(summary: Option<String>, open: bool, children: Children) -> impl IntoView {
+pub fn Summary(summary: Option<String>, children: Children) -> impl IntoView {
+	let config = use_context::<Signal<crate::Config>>().expect("missing config context");
 	match summary.filter(|x| !x.is_empty()) {
 		None => children().into_view(),
 		Some(summary) => view! {
-			<details class="pa-s" prop:open=open>
+			<details class="pa-s" prop:open=move || !config.get().collapse_content_warnings>
 				<summary>
 					<code class="cw center color ml-s w-100">{summary}</code>
 				</summary>
