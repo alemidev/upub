@@ -4510,6 +4510,8 @@ dependencies = [
  "mdhtml",
  "reqwest",
  "serde",
+ "serde-inline-default",
+ "serde_default",
  "serde_json",
  "thiserror",
  "tracing",

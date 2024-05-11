@@ -2,7 +2,7 @@ use leptos::*;
 use leptos_router::*;
 use crate::prelude::*;
 
-use leptos_use::{use_cookie, use_cookie_with_options, utils::FromToStringCodec, UseCookieOptions};
+use leptos_use::{storage::use_local_storage, use_cookie, use_cookie_with_options, utils::{FromToStringCodec, JsonCodec}, UseCookieOptions};
 
 
 #[component]
@@ -12,10 +12,12 @@ pub fn App() -> impl IntoView {
 		UseCookieOptions::default()
 			.max_age(1000 * 60 * 60 * 6)
 	);
+	let (config, set_config, _) = use_local_storage::<crate::Config, JsonCodec>("config");
 	let (userid, set_userid) = use_cookie::<String, FromToStringCodec>("user_id");
 
 	let auth = Auth { token, userid };
 	provide_context(auth);
+	provide_context(config);
 
 	let username = auth.userid.get_untracked()
 		.map(|x| x.split('/').last().unwrap_or_default().to_string())
@@ -105,7 +107,7 @@ pub fn App() -> impl IntoView {
 											<Route path="/web/home" view=move || view! { <TimelinePage name="home" tl=home_tl /> } />
 											<Route path="/web/server" view=move || view! { <TimelinePage name="server" tl=server_tl /> } />
 
-											<Route path="/web/config" view=ConfigPage />
+											<Route path="/web/config" view=move || view! { <ConfigPage setter=set_config /> } />
 											<Route path="/web/about" view=AboutPage />
 
 											<Route path="/web/users/:id" view=move || view! { <UserPage tl=user_tl /> } />

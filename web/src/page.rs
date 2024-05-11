@@ -4,7 +4,7 @@ use apb::{ActivityMut, Actor, Base, Object, ObjectMut};
 
 use leptos::*;
 use leptos_router::*;
-use crate::{prelude::*, DEFAULT_AVATAR_URL};
+use crate::{prelude::*, Config, DEFAULT_AVATAR_URL};
 
 #[component]
 pub fn AboutPage() -> impl IntoView {
@@ -21,16 +21,82 @@ pub fn AboutPage() -> impl IntoView {
 }
 
 #[component]
-pub fn ConfigPage() -> impl IntoView {
+pub fn ConfigPage(setter: WriteSignal<Config>) -> impl IntoView {
+	let config = use_context::<Signal<Config>>().expect("missing config context");
+
+	macro_rules! get_cfg {
+		(filter $field:ident) => {
+			move || config.get().filters.$field
+		};
+		($field:ident) => {
+			move || config.get().$field
+		};
+	}
+
+	macro_rules! set_cfg {
+		($field:ident) => {
+			move |ev| {
+				let mut mock = config.get();
+				mock.$field = event_target_checked(&ev);
+				setter.set(mock);
+			}
+		};
+		(filter $field:ident) => {
+			move |ev| {
+				let mut mock = config.get();
+				mock.filters.$field = event_target_checked(&ev);
+				setter.set(mock);
+			}
+		};
+	}
+
 	view! {
 		<div>
 			<Breadcrumb>config</Breadcrumb>
+			<p>
+				<input type="checkbox" title="likes" class="mr-1"
+					prop:checked=get_cfg!(loop_videos)
+					on:input=set_cfg!(loop_videos)
+				/> loop videos
+			</p>
+			<p>
+				<input type="checkbox" title="likes" class="mr-1"
+					prop:checked=get_cfg!(collapse_content_warnings)
+					on:input=set_cfg!(collapse_content_warnings)
+				/> collapse content warnings
+			</p>
 			<div class="mt-s mb-s" >
-				<p><code>"not implemented :("</code></p>
+				<table class="ma-3 center">
+					<tr>
+						<th></th>
+						<th>filters</th>
+					</tr>
+					<tr>
+						<td><input type="checkbox" prop:checked=get_cfg!(filter likes) on:input=set_cfg!(filter likes) /></td>
+						<td>likes</td>
+					</tr>
+					<tr>
+						<td><input type="checkbox" prop:checked=get_cfg!(filter creates) on:input=set_cfg!(filter creates)/></td>
+						<td>creates</td>
+					</tr>
+					<tr>
+						<td><input type="checkbox" prop:checked=get_cfg!(filter announces) on:input=set_cfg!(filter announces) /></td>
+						<td>announces</td>
+					</tr>
+					<tr>
+						<td><input type="checkbox" prop:checked=get_cfg!(filter follows) on:input=set_cfg!(filter follows) /></td>
+						<td>follows</td>
+					</tr>
+					<tr>
+						<td><input type="checkbox" prop:checked=get_cfg!(filter orphans) on:input=set_cfg!(filter orphans) /></td>
+						<td>orphans</td>
+					</tr>
+				</table>
 			</div>
 		</div>
 	}
 }
+
 
 fn send_follow_request(target: String) {
 	let auth = use_context::<Auth>().expect("missing auth context");

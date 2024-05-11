@@ -22,6 +22,7 @@ pub fn Navigator() -> impl IntoView {
 			<tr><td colspan="2"><a href="/web/home"><input class="w-100" type="submit" class:hidden=move || !auth.present() value="home timeline" /></a></td></tr>
 			<tr><td colspan="2"><a href="/web/server"><input class="w-100" type="submit" value="server timeline" /></a></td></tr>
 			<tr><td colspan="2"><a href="/web/about"><input class="w-100" type="submit" value="about" /></a></td></tr>
+			<tr><td colspan="2"><a href="/web/config"><input class="w-100" type="submit" value="config" /></a></td></tr>
 			<tr><td colspan="2"><a href="/web/debug"><input class="w-100" type="submit" value="debug" class:hidden=move|| !auth.present() /></a></td></tr>
 		</table>
 	}

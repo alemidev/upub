@@ -3,8 +3,10 @@ mod auth;
 mod components;
 mod page;
 mod control;
+mod config;
 
 pub use app::App;
+pub use config::Config;
 
 pub mod prelude;
 
