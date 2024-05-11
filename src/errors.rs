@@ -1,4 +1,4 @@
-use axum::{http::StatusCode, response::{IntoResponse, Redirect}};
+use axum::{http::StatusCode, response::Redirect};
 
 #[derive(Debug, thiserror::Error)]
 pub enum UpubError {
@@ -79,12 +79,7 @@ impl axum::response::IntoResponse for UpubError {
 			UpubError::Redirect(to) => Redirect::to(&to).into_response(),
 			UpubError::Status(status) => (status, descr).into_response(),
 			UpubError::Database(_) => (StatusCode::SERVICE_UNAVAILABLE, descr).into_response(),
-			UpubError::FetchError(e, body) =>
-				(
-					e.status().unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
-					format!("failed fetching '{}': {descr} -- server responded with {body}", e.url().map(|x| x.to_string()).unwrap_or_default()),
-				).into_response(),
-			UpubError::Reqwest(x) =>
+			UpubError::Reqwest(x) | UpubError::FetchError(x, _) =>
 				(
 					x.status().unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
 					format!("failed fetching '{}': {descr}", x.url().map(|x| x.to_string()).unwrap_or_default())
