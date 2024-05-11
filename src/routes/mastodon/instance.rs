@@ -8,9 +8,9 @@ pub async fn get(
 ) -> crate::Result<Json<mastodon_async_entities::instance::Instance>> {
 	Ok(Json(mastodon_async_entities::instance::Instance {
 		uri: ctx.domain().to_string(),
-		title: "μpub".to_string(),
-		description: "micro social network, federated".to_string(),
-		email: "me@alemi.dev".to_string(),
+		title: ctx.cfg().instance.name.clone(),
+		description: ctx.cfg().instance.description.clone(),
+		email: ctx.cfg().instance.contact.as_deref().unwrap_or_default().to_string(),
 		version: crate::VERSION.to_string(),
 		urls: None,
 		stats: None,

@@ -3,7 +3,7 @@ use std::{collections::BTreeSet, sync::Arc};
 use openssl::rsa::Rsa;
 use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect, SelectColumns, Set};
 
-use crate::{model, server::fetcher::Fetcher};
+use crate::{config::Config, model, server::fetcher::Fetcher};
 
 use super::dispatcher::Dispatcher;
 
@@ -12,6 +12,7 @@ use super::dispatcher::Dispatcher;
 pub struct Context(Arc<ContextInner>);
 struct ContextInner {
 	db: DatabaseConnection,
+	config: Config,
 	domain: String,
 	protocol: String,
 	dispatcher: Dispatcher,
@@ -30,7 +31,7 @@ macro_rules! url {
 impl Context {
 
 	// TODO slim constructor down, maybe make a builder?
-	pub async fn new(db: DatabaseConnection, mut domain: String) -> crate::Result<Self> {
+	pub async fn new(db: DatabaseConnection, mut domain: String, config: Config) -> crate::Result<Self> {
 		let protocol = if domain.starts_with("http://")
 		{ "http://" } else { "https://" }.to_string();
 		if domain.ends_with('/') {
@@ -71,7 +72,7 @@ impl Context {
 			.await?;
 
 		Ok(Context(Arc::new(ContextInner {
-			db, domain, protocol, app, dispatcher,
+			db, domain, protocol, app, dispatcher, config,
 			relays: BTreeSet::from_iter(relays.into_iter()),
 		})))
 	}
@@ -82,6 +83,10 @@ impl Context {
 
 	pub fn db(&self) -> &DatabaseConnection {
 		&self.0.db
+	}
+
+	pub fn cfg(&self) -> &Config {
+		&self.0.config
 	}
 
 	pub fn domain(&self) -> &str {

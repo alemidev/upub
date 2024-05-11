@@ -3,7 +3,6 @@ mod model;
 mod routes;
 
 mod errors;
-
 mod config;
 
 #[cfg(feature = "cli")]
@@ -14,6 +13,8 @@ mod migrations;
 
 #[cfg(feature = "migrations")]
 use sea_orm_migration::MigratorTrait;
+use std::path::PathBuf;
+use config::Config;
 
 use clap::{Parser, Subcommand};
 use sea_orm::{ConnectOptions, Database};
@@ -30,13 +31,17 @@ struct Args {
 	/// command to run
 	command: Mode,
 
-	#[arg(short = 'd', long = "db", default_value = "sqlite://./upub.db")]
-	/// database connection uri
-	database: String,
+	/// path to config file, leave empty to not use any
+	#[arg(short, long)]
+	config: Option<PathBuf>,
 
-	#[arg(short = 'D', long, default_value = "http://localhost:3000")]
-	/// instance base domain, for AP ids
-	domain: String,
+	#[arg(long = "db")]
+	/// database connection uri, overrides config value
+	database: Option<String>,
+
+	#[arg(long)]
+	/// instance base domain, for AP ids, overrides config value
+	domain: Option<String>,
 
 	#[arg(long, default_value_t=false)]
 	/// run with debug level tracing
@@ -46,7 +51,10 @@ struct Args {
 #[derive(Clone, Subcommand)]
 enum Mode {
 	/// run fediverse server
-	Serve ,
+	Serve,
+
+	/// print current or default configuration
+	Config,
 
 	#[cfg(feature = "migrations")]
 	/// apply database migrations
@@ -71,11 +79,24 @@ async fn main() {
 		.with_max_level(if args.debug { tracing::Level::DEBUG } else { tracing::Level::INFO })
 		.init();
 
+	let config = Config::load(args.config);
+
+	let database = args.database.unwrap_or(config.datasource.connection_string.clone());
+	let domain = args.domain.unwrap_or(config.instance.domain.clone());
+
 	// TODO can i do connectoptions.into() or .connect() and skip these ugly bindings?
-	let mut opts = ConnectOptions::new(&args.database);
+	let mut opts = ConnectOptions::new(&database);
 
 	opts
-		.sqlx_logging_level(tracing::log::LevelFilter::Debug);
+		.sqlx_logging_level(tracing::log::LevelFilter::Debug)
+		.max_connections(config.datasource.max_connections)
+		.min_connections(config.datasource.min_connections)
+		.acquire_timeout(std::time::Duration::from_secs(config.datasource.acquire_timeout_seconds))
+		.connect_timeout(std::time::Duration::from_secs(config.datasource.connect_timeout_seconds))
+		.sqlx_slow_statements_logging_settings(
+			if config.datasource.slow_query_warn_enable { tracing::log::LevelFilter::Warn } else { tracing::log::LevelFilter::Off },
+			std::time::Duration::from_secs(config.datasource.slow_query_warn_seconds)
+		);
 
 	let db = Database::connect(opts)
 		.await.expect("error connecting to db");
@@ -88,11 +109,13 @@ async fn main() {
 
 		#[cfg(feature = "cli")]
 		Mode::Cli { command } =>
-			cli::run(command, db, args.domain)
+			cli::run(command, db, domain, config)
 				.await.expect("failed running cli task"),
 
+		Mode::Config => println!("{}", toml::to_string_pretty(&config).expect("failed serializing config")),
+
 		Mode::Serve => {
-			let ctx = server::Context::new(db, args.domain)
+			let ctx = server::Context::new(db, domain, config)
 				.await.expect("failed creating server context");
 
 			use routes::activitypub::ActivityPubRouter;
