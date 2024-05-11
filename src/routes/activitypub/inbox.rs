@@ -73,8 +73,9 @@ pub async fn post(
 			Err(StatusCode::UNPROCESSABLE_ENTITY.into()) // won't ingest useless stuff
 		},
 
+		// TODO emojireacts are NOT likes, but let's process them like ones for now maybe?
+		ActivityType::Like | ActivityType::EmojiReact => Ok(ctx.like(server, activity).await?),
 		ActivityType::Create => Ok(ctx.create(server, activity).await?),
-		ActivityType::Like => Ok(ctx.like(server, activity).await?),
 		ActivityType::Follow => Ok(ctx.follow(server, activity).await?),
 		ActivityType::Announce => Ok(ctx.announce(server, activity).await?),
 		ActivityType::Accept(_) => Ok(ctx.accept(server, activity).await?),
