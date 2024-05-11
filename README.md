@@ -53,8 +53,8 @@ all help is extremely welcome! if [my cgit](https://git.alemi.dev/upub.git/) loo
  - [x] advanced composer
  - [x] api for fetching
  - [x] like, share, reply via frontend
- - [ ] backend config
- - [ ] frontend config
+ - [x] backend config
+ - [x] frontend config
  - [ ] mentions, notifications
  - [ ] mastodon-like search bar
  - [ ] polls
