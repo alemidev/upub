@@ -28,7 +28,7 @@ pub fn Attachment(
 			view! {
 				<p class="center">
 					<img
-						class="attachment ml-1"
+						class="attachment"
 						class:expand=expand
 						src={move || if sensitive && !expand.get() {
 							URL_SENSITIVE.to_string()
