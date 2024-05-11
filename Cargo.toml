@@ -1,5 +1,5 @@
 [workspace]
-members = ["apb", "web"]
+members = ["apb", "web", "mdhtml"]
 
 [package]
 name = "upub"
