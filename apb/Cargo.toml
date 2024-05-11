@@ -29,6 +29,7 @@ default = ["activitypub-miscellaneous-terms"]
 activitypub-miscellaneous-terms = [] # https://swicg.github.io/miscellany/
 activitypub-counters = [] # https://ns.alemi.dev/as/counters/#
 activitypub-fe = [] # https://ns.alemi.dev/as/fe/#
+litepub = [] # incomplete, https://litepub.social/
 # builtin utils
 orm = ["dep:sea-orm"]
 fetch = ["dep:reqwest"]

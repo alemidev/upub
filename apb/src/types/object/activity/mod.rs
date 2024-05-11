@@ -11,6 +11,38 @@ use offer::OfferType;
 use intransitive::IntransitiveActivityType;
 use ignore::IgnoreType;
 
+#[cfg(feature = "litepub")]
+crate::strenum! {
+	pub enum ActivityType {
+		Activity,
+		Add,
+		Announce,
+		Create,
+		Delete,
+		Dislike,
+		EmojiReact,
+		Flag,
+		Follow,
+		Join,
+		Leave,
+		Like,
+		Listen,
+		Move,
+		Read,
+		Remove,
+		Undo,
+		Update,
+		View;
+
+		IntransitiveActivity(IntransitiveActivityType),
+		Accept(AcceptType),
+		Ignore(IgnoreType),
+		Offer(OfferType),
+		Reject(RejectType)
+	};
+}
+
+#[cfg(not(feature = "litepub"))]
 crate::strenum! {
 	pub enum ActivityType {
 		Activity,
