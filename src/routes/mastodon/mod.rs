@@ -1,4 +1,5 @@
 pub mod accounts;
+pub mod instance;
 
 use axum::{http::StatusCode, routing::{delete, get, patch, post}, Router};
 use crate::server::Context;
@@ -70,6 +71,8 @@ impl MastodonRouter for Router<Context> {
 				.route("/profile/avatar", delete(todo))
 				.route("/profile/header", delete(todo))
 				.route("/statuses", post(todo))
+				// ...
+				.route("/instance", get(mas::instance::get))
 		)
 	}
 }
