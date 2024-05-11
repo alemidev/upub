@@ -92,44 +92,15 @@ pub fn TimelineRepliesRecursive(tl: Timeline, root: String) -> impl IntoView {
 		<For
 			each=root_values
 			key=|k| k.id().unwrap_or_default().to_string()
-			children=move |object: crate::Object| {
-				match object.object_type() {
-					Some(apb::ObjectType::Activity(apb::ActivityType::Create)) => {
-						let oid = object.object().id().unwrap_or_default().to_string();
-						if let Some(note) = CACHE.get(&oid) {
-							view! {
-								<div class="context depth-r">
-									<ActivityLine activity=object />
-									<Object object=note />
-									<div class="depth-r">
-										<TimelineRepliesRecursive tl=tl root=oid />
-									</div>
-								</div>
-							}
-						} else {
-							view! {
-								<div class="context depth-r">
-									<ActivityLine activity=object />
-								</div>
-							}
-						}
-					},
-					Some(apb::ObjectType::Activity(_)) => view! {
-						<div class="context depth-r">
-							<ActivityLine activity=object />
+			children=move |obj: crate::Object| {
+				let oid = obj.id().unwrap_or_default().to_string();
+				view! {
+					<div class="context depth-r">
+						<Item item=obj />
+						<div class="depth-r">
+							<TimelineRepliesRecursive tl=tl root=oid />
 						</div>
-					},
-					_ => {
-						let oid = object.id().unwrap_or_default().to_string();
-						view! {
-							<div class="context depth-r">
-								<Object object=object />
-								<div class="depth-r">
-									<TimelineRepliesRecursive tl=tl root=oid />
-								</div>
-							</div>
-						}
-					},
+					</div>
 				}
 			}
 		/ >
@@ -168,42 +139,13 @@ pub fn TimelineFeed(tl: Timeline) -> impl IntoView {
 			key=|k| k.to_string()
 			children=move |id: String| {
 				match CACHE.get(&id) {
-					Some(item) => match item.object_type() {
-						// special case for placeholder activities
-						Some(apb::ObjectType::Note) => view! {
-								<Object object=item.clone() />
-								<hr/ >
-							}.into_view(),
-						// everything else
-						Some(apb::ObjectType::Activity(t)) => {
-							let object_id = item.object().id().unwrap_or_default();
-							let object = match t {
-								apb::ActivityType::Create | apb::ActivityType::Announce => 
-									CACHE.get(&object_id).map(|obj| {
-										view! { <Object object=obj /> }
-									}.into_view()),
-								apb::ActivityType::Follow =>
-									CACHE.get(&object_id).map(|obj| {
-										view! {
-											<div class="ml-1">
-												<ActorBanner object=obj />
-												<FollowRequestButtons activity_id=id actor_id=object_id />
-											</div>
-										}
-									}.into_view()),
-								_ => None,
-							};
-							view! {
-								<ActivityLine activity=item />
-								{object}
-								<hr/ >
-							}.into_view()
-						},
-						// should never happen
-						_ => view! { <p><code>type not implemented</code></p><hr /> }.into_view(),
-					},
+					Some(i) => view! {
+						<Item item=i />
+						<hr />
+					}.into_view(),
 					None => view! {
 						<p><code>{id}</code>" "[<a href={uri}>go</a>]</p>
+						<hr />
 					}.into_view(),
 				}
 			}
