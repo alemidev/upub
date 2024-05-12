@@ -19,11 +19,14 @@ pub fn Navigator() -> impl IntoView {
 					<a href={move|| format!("/web/search?q={}", query.get())}><input type="submit" value="go" /></a>
 				</td>
 			</tr>
+		</table>
+		<table class="align w-100">
 			<tr><td colspan="2"><a href="/web/home"><input class="w-100" type="submit" class:hidden=move || !auth.present() value="home timeline" /></a></td></tr>
 			<tr><td colspan="2"><a href="/web/server"><input class="w-100" type="submit" value="server timeline" /></a></td></tr>
-			<tr><td colspan="2"><a href="/web/about"><input class="w-100" type="submit" value="about" /></a></td></tr>
-			<tr><td colspan="2"><a href="/web/config"><input class="w-100" type="submit" value="config" /></a></td></tr>
-			<tr><td colspan="2"><a href="/web/debug"><input class="w-100" type="submit" value="debug" class:hidden=move|| !auth.present() /></a></td></tr>
+			<tr>
+				<td class="w-50"><a href="/web/about"><input class="w-100" type="submit" value="about" /></a></td>
+				<td class="w-50"><a href="/web/config"><input class="w-100" type="submit" value="config" /></a></td>
+			</tr>
 		</table>
 	}
 }
@@ -65,7 +68,7 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 	let followers_ref: NodeRef<html::Input> = create_node_ref();
 	let private_ref: NodeRef<html::Input> = create_node_ref();
 	view! {
-		<div class:hidden=move || !auth.present() >
+		<div>
 			{move ||
 				reply.reply_to.get().map(|r| {
 					let actor_strip = post_author(&r).map(|x| view! { <ActorStrip object=x /> });
@@ -165,7 +168,7 @@ pub fn AdvancedPostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 	let cc_ref: NodeRef<html::Input> = create_node_ref();
 	let bcc_ref: NodeRef<html::Input> = create_node_ref();
 	view! {
-		<div class:hidden=move || !auth.present() >
+		<div>
 							 
 				<table class="align w-100">
 					<tr>
