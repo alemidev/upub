@@ -11,6 +11,8 @@ use super::{auth::HttpSignature, Context};
 
 #[axum::async_trait]
 pub trait Fetcher {
+	async fn webfinger(&self, user: &str, host: &str) -> crate::Result<String>;
+
 	async fn fetch_user(&self, id: &str) -> crate::Result<model::user::Model>;
 	async fn pull_user(&self, id: &str) -> crate::Result<model::user::Model>;
 
@@ -81,6 +83,36 @@ pub trait Fetcher {
 
 #[axum::async_trait]
 impl Fetcher for Context {
+	async fn webfinger(&self, user: &str, host: &str) -> crate::Result<String> {
+		let subject = format!("acct:{user}@{host}");
+		let webfinger_uri = format!("https://{host}/.well-known/webfinger?resource={subject}");
+		let resource = Self::request(
+			Method::GET, &webfinger_uri, None, &self.base(), &self.app().private_key, self.domain(),
+		)
+			.await?
+			.json::<jrd::JsonResourceDescriptor>()
+			.await?;
+
+		if resource.subject != subject {
+			return Err(UpubError::unprocessable());
+		}
+
+		for link in resource.links {
+			if link.rel == "self" {
+				if let Some(href) = link.href {
+					return Ok(href);
+				}
+			}
+		}
+
+		if let Some(alias) = resource.aliases.into_iter().next() {
+			return Ok(alias);
+		}
+
+		Err(UpubError::not_found())
+	}
+
+
 	async fn fetch_user(&self, id: &str) -> crate::Result<model::user::Model> {
 		if let Some(x) = model::user::Entity::find_by_id(id).one(self.db()).await? {
 			return Ok(x); // already in db, easy
