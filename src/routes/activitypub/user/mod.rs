@@ -7,7 +7,7 @@ pub mod following;
 use axum::extract::{Path, Query, State};
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QuerySelect, SelectColumns};
 
-use apb::{ActorMut, Node, ObjectMut};
+use apb::{ActorMut, Node};
 use crate::{errors::UpubError, model::{self, user}, server::{auth::AuthIdentity, fetcher::Fetcher, Context}, url};
 
 use super::{jsonld::LD, JsonLD, TryFetch};
@@ -19,8 +19,13 @@ pub async fn view(
 	Path(id): Path<String>,
 	Query(query): Query<TryFetch>,
 ) -> crate::Result<JsonLD<serde_json::Value>> {
-	let uid = ctx.uri("users", id.clone());
+	let mut uid = ctx.uri("users", id.clone());
 	if auth.is_local() && query.fetch && !ctx.is_local(&uid) {
+		if id.starts_with('@') {
+			if let Some((user, host)) = id.replacen('@', "", 1).split_once('@') {
+				uid = ctx.webfinger(user, host).await?;
+			}
+		}
 		ctx.fetch_user(&uid).await?;
 	}
 
