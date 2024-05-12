@@ -69,11 +69,11 @@ pub async fn view(
 				.set_followed_by_me(followed_by_me);
 
 			if !auth.is(&uid) && !cfg.show_followers_count {
-				user = user.set_audience(apb::Node::Empty);
+				user = user.set_followers_count(None);
 			}
 
 			if !auth.is(&uid) && !cfg.show_following_count {
-				user = user.set_generator(apb::Node::Empty);
+				user = user.set_following_count(None);
 			}
 
 			Ok(JsonLD(user.ld_context()))
