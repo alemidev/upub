@@ -90,6 +90,7 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 	let sensitive = object.sensitive().unwrap_or_default();
 	let addressed = object.addressed();
 	let public = addressed.iter().any(|x| x.as_str() == apb::target::PUBLIC);
+	let external_url = object.url().id().unwrap_or_else(|| oid.clone());
 	let attachments = object.attachment()
 		.map(|x| view! { <Attachment object=x sensitive=sensitive /> })
 		.collect_view();
@@ -143,7 +144,7 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 					<a class="clean hover ml-s" href={Uri::web(FetchKind::Object, object.id().unwrap_or_default())}>
 						<DateTime t=object.published() />
 					</a>
-					<sup><small><a class="clean ml-s" href={oid.clone()} target="_blank">"↗"</a></small></sup>
+					<sup><small><a class="clean ml-s" href={external_url} target="_blank">"↗"</a></small></sup>
 				</td>
 			</tr>
 		</table>
