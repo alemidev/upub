@@ -33,10 +33,11 @@ pub trait Fetcher {
 		let host = Context::server(url);
 		let date = chrono::Utc::now().format("%a, %d %b %Y %H:%M:%S GMT").to_string(); // lmao @ "GMT"
 		let path = url.replace("https://", "").replace("http://", "").replace(&host, "");
-		let digest = match payload {
-			Some(x) => format!("sha-256={}", base64::prelude::BASE64_STANDARD.encode(openssl::sha::sha256(x.as_bytes()))),
-			None => "sha-256=".to_string(),
-		};
+		let digest = format!("sha-256={}",
+			base64::prelude::BASE64_STANDARD.encode(
+				openssl::sha::sha256(payload.unwrap_or("").as_bytes())
+			)
+		);
 
 		let headers = vec!["(request-target)", "host", "date", "digest"];
 		let headers_map : BTreeMap<String, String> = [
