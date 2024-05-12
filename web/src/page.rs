@@ -53,46 +53,34 @@ pub fn ConfigPage(setter: WriteSignal<Config>) -> impl IntoView {
 	view! {
 		<div>
 			<Breadcrumb>config</Breadcrumb>
+			<p class="center mt-0"><small>config is saved in your browser local storage</small></p>
 			<p>
-				<input type="checkbox" title="likes" class="mr-1"
-					prop:checked=get_cfg!(loop_videos)
-					on:input=set_cfg!(loop_videos)
-				/> loop videos
+				<span title="embedded video attachments will loop like gifs if this option is enabled">
+					<input type="checkbox" class="mr-1"
+						prop:checked=get_cfg!(loop_videos)
+						on:input=set_cfg!(loop_videos)
+					/> loop videos
+				</span>
 			</p>
 			<p>
-				<input type="checkbox" title="likes" class="mr-1"
-					prop:checked=get_cfg!(collapse_content_warnings)
-					on:input=set_cfg!(collapse_content_warnings)
-				/> collapse content warnings
+				<span title="any post with a summary is considered to have a content warning, and collapsed by default if this option is enabled">
+					<input type="checkbox" class="mr-1"
+						prop:checked=get_cfg!(collapse_content_warnings)
+						on:input=set_cfg!(collapse_content_warnings)
+					/> collapse content warnings
+				</span>
 			</p>
-			<div class="mt-s mb-s" >
-				<table class="ma-3 center">
-					<tr>
-						<th></th>
-						<th>filters</th>
-					</tr>
-					<tr>
-						<td><input type="checkbox" prop:checked=get_cfg!(filter likes) on:input=set_cfg!(filter likes) /></td>
-						<td>likes</td>
-					</tr>
-					<tr>
-						<td><input type="checkbox" prop:checked=get_cfg!(filter creates) on:input=set_cfg!(filter creates)/></td>
-						<td>creates</td>
-					</tr>
-					<tr>
-						<td><input type="checkbox" prop:checked=get_cfg!(filter announces) on:input=set_cfg!(filter announces) /></td>
-						<td>announces</td>
-					</tr>
-					<tr>
-						<td><input type="checkbox" prop:checked=get_cfg!(filter follows) on:input=set_cfg!(filter follows) /></td>
-						<td>follows</td>
-					</tr>
-					<tr>
-						<td><input type="checkbox" prop:checked=get_cfg!(filter orphans) on:input=set_cfg!(filter orphans) /></td>
-						<td>orphans</td>
-					</tr>
-				</table>
-			</div>
+			<hr />
+			<p><code title="unchecked elements won't show in timelines">filters</code></p>
+			<ul>
+					<li><span title="like activities"><input type="checkbox" prop:checked=get_cfg!(filter likes) on:input=set_cfg!(filter likes) />" likes"</span></li>
+					<li><span title="create activities with object"><input type="checkbox" prop:checked=get_cfg!(filter creates) on:input=set_cfg!(filter creates)/>" creates"</span></li>
+					<li><span title="announce activities with object"><input type="checkbox" prop:checked=get_cfg!(filter announces) on:input=set_cfg!(filter announces) />" announces"</span></li>
+					<li><span title="follow, accept and reject activities"><input type="checkbox" prop:checked=get_cfg!(filter follows) on:input=set_cfg!(filter follows) />" follows"</span></li>
+					<li><span title="objects without a related activity to display"><input type="checkbox" prop:checked=get_cfg!(filter orphans) on:input=set_cfg!(filter orphans) />" orphans"</span></li>
+			</ul>
+			<hr />
+			<p><a href="/web/config/dev" title="access the devtools page">devtools</a></p>
 		</div>
 	}
 }
@@ -359,7 +347,7 @@ pub fn DebugPage() -> impl IntoView {
 	let (query, set_query) = create_signal("".to_string());
 	view! {
 		<div>
-			<Breadcrumb back=true>debug</Breadcrumb>
+			<Breadcrumb back=true>config :: devtools</Breadcrumb>
 			<div class="mt-1" >
 				<form on:submit=move|ev| {
 					ev.prevent_default();

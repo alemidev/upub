@@ -107,13 +107,13 @@ pub fn App() -> impl IntoView {
 											<Route path="/web/home" view=move || view! { <TimelinePage name="home" tl=home_tl /> } />
 											<Route path="/web/server" view=move || view! { <TimelinePage name="server" tl=server_tl /> } />
 
-											<Route path="/web/config" view=move || view! { <ConfigPage setter=set_config /> } />
 											<Route path="/web/about" view=AboutPage />
+											<Route path="/web/config" view=move || view! { <ConfigPage setter=set_config /> } />
+											<Route path="/web/config/dev" view=DebugPage />
 
 											<Route path="/web/users/:id" view=move || view! { <UserPage tl=user_tl /> } />
 											<Route path="/web/objects/:id" view=move || view! { <ObjectPage tl=context_tl /> } />
 
-											<Route path="/web/debug" view=DebugPage />
 											<Route path="/web/search" view=SearchPage />
 
 											<Route path="/" view=move || view! { <Redirect path="/web" /> } />
