@@ -97,14 +97,16 @@
 			display: block;
 		}
 		hr.sep {
+			border: 1px solid #bf616a70;
+		}
+		hr.sticky {
+			position: sticky;
 			z-index: 100;
 			margin-top: 0;
 			padding-top: 0;
 			margin-bottom: 0;
 			padding-bottom: 0;
-			border: 1px solid #bf616a70;
 			top: 1.65rem;
-			position: sticky;
 		}
 		div.sticky {
 			z-index: 100;
@@ -244,6 +246,9 @@
 		.depth-r {
 			margin-left: .5em;
 		}
+		.only-on-mobile {
+			display: none;
+		}
 		@media screen and (max-width: 786px) {
 			.depth-r {
 				margin-left: .125em;
@@ -251,8 +256,14 @@
 			.ml-1-r {
 				margin-left: 0;
 			}
+			.only-on-mobile {
+				display: inherit;
+			}
 			.hidden-on-mobile {
 				display: none;
+			}
+			div.col-side {
+				padding-right: .25em;
 			}
 			main {
 				margin: 0;

@@ -59,10 +59,12 @@ pub fn App() -> impl IntoView {
 			/* TODO kinda jank with the float but whatever, will do for now */
 			<input type="submit" class="mr-2 rev" on:click=move |_| set_menu.set(!menu.get()) value="menu" style="float: right" />
 		</nav>
-		<hr class="sep" />
+		<hr class="sep sticky" />
 		<div class="container mt-2 pt-2" >
 			<div class="two-col" >
 				<div class="col-side sticky pb-s" class:hidden=move || menu.get() >
+					<Navigator />
+					<hr class="mt-1 mb-1" />
 					<LoginBox
 						token_tx=set_token
 						userid_tx=set_userid
@@ -70,13 +72,14 @@ pub fn App() -> impl IntoView {
 						server_tl=server_tl
 					/>
 					<hr class="mt-1 mb-1" />
-					<Navigator />
-					<hr class="mt-1 mb-1" />
-					{move || if advanced.get() { view! {
-						<AdvancedPostBox advanced=set_advanced/>
-					}} else { view! {
-						<PostBox advanced=set_advanced/>
-					}}}
+					<div class:hidden=move || !auth.present() >
+						{move || if advanced.get() { view! {
+							<AdvancedPostBox advanced=set_advanced/>
+						}} else { view! {
+							<PostBox advanced=set_advanced/>
+						}}}
+						<hr class="only-on-mobile sep mb-0 pb-0" />
+					</div>
 				</div>
 				<div class="col-main" class:w-100=move || menu.get() >
 					<Router // TODO maybe set base="/web" ?
