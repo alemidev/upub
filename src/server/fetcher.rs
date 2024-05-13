@@ -86,9 +86,11 @@ impl Fetcher for Context {
 	async fn webfinger(&self, user: &str, host: &str) -> crate::Result<String> {
 		let subject = format!("acct:{user}@{host}");
 		let webfinger_uri = format!("https://{host}/.well-known/webfinger?resource={subject}");
-		let resource = Self::request(
-			Method::GET, &webfinger_uri, None, &self.base(), &self.app().private_key, self.domain(),
-		)
+		let resource = reqwest::Client::new()
+			.get(webfinger_uri)
+			.header(ACCEPT, "application/jrd+json")
+			.header(USER_AGENT, format!("upub+{VERSION} ({})", self.domain()))
+			.send()
 			.await?
 			.json::<jrd::JsonResourceDescriptor>()
 			.await?;
