@@ -48,6 +48,7 @@ pub async fn post(
 		Identity::Anonymous => Err(StatusCode::UNAUTHORIZED.into()),
 		Identity::Remote(_) => Err(StatusCode::NOT_IMPLEMENTED.into()),
 		Identity::Local(uid) => if ctx.uid(id.clone()) == uid {
+			tracing::debug!("processing new local activity: {}", serde_json::to_string(&activity).unwrap_or_default());
 			match activity.base_type() {
 				None => Err(StatusCode::BAD_REQUEST.into()),
 

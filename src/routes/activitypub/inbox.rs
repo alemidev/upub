@@ -66,6 +66,8 @@ pub async fn post(
 		return Err(UpubError::unauthorized());
 	}
 
+	tracing::debug!("processing federated activity: '{}'", serde_json::to_string(&activity).unwrap_or_default());
+
 	// TODO we could process Links and bare Objects maybe, but probably out of AP spec?
 	match activity.activity_type().ok_or_else(UpubError::bad_request)? {
 		ActivityType::Activity => {
