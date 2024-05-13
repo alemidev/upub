@@ -20,13 +20,15 @@ pub async fn view(
 	Query(query): Query<TryFetch>,
 ) -> crate::Result<JsonLD<serde_json::Value>> {
 	let mut uid = ctx.uri("users", id.clone());
-	if auth.is_local() && query.fetch && !ctx.is_local(&uid) {
+	if auth.is_local() {
 		if id.starts_with('@') {
 			if let Some((user, host)) = id.replacen('@', "", 1).split_once('@') {
 				uid = ctx.webfinger(user, host).await?;
 			}
 		}
-		ctx.fetch_user(&uid).await?;
+		if query.fetch && !ctx.is_local(&uid) {
+			ctx.fetch_user(&uid).await?;
+		}
 	}
 
 	let (followed_by_me, following_me) = match auth.my_id() {
