@@ -1,5 +1,6 @@
 use apb::{server::Inbox, Activity, ActivityType};
 use axum::{extract::{Query, State}, http::StatusCode, Json};
+use sea_orm::{sea_query::IntoCondition, ColumnTrait};
 
 use crate::{errors::UpubError, server::{auth::{AuthIdentity, Identity}, Context}, url};
 
@@ -19,7 +20,8 @@ pub async fn page(
 ) -> crate::Result<JsonLD<serde_json::Value>> {
 	crate::server::builders::paginate(
 		url!(ctx, "/inbox/page"),
-		auth.filter_condition(),
+		crate::model::addressing::Column::Actor.eq(apb::target::PUBLIC)
+			.into_condition(),
 		ctx.db(),
 		page,
 		auth.my_id(),
