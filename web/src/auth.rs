@@ -80,9 +80,18 @@ pub fn LoginBox(
 						});
 					});
 				} >
-					<input class="w-100" type="text" node_ref=username_ref placeholder="username" />
-					<input class="w-100" type="password" node_ref=password_ref placeholder="password" />
-					<input class="w-100" type="submit" value="login" />
+					<table class="w-100 align">
+						<tr>
+							<td colspan="2"><input class="w-100" type="text" node_ref=username_ref placeholder="username" /></td>
+						</tr>
+						<tr>
+							<td colspan="2"><input class="w-100" type="password" node_ref=password_ref placeholder="password" /></td>
+						</tr>
+						<tr>
+							<td class="w-50"><input class="w-100" type="submit" value="login" /></td>
+							<td class="w-50"><a href="/web/register"><input class="w-100" type="button" value="register" /></a></td>
+						</tr>
+					</table>
 				</form>
 			</div>
 		</div>
