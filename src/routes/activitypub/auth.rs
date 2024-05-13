@@ -2,7 +2,7 @@ use axum::{http::StatusCode, extract::State, Json};
 use rand::Rng;
 use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter};
 
-use crate::{errors::UpubError, model, server::Context};
+use crate::{errors::UpubError, model, server::{admin::Administrable, Context}};
 
 
 #[derive(Debug, Clone, serde::Deserialize)]
@@ -18,7 +18,10 @@ pub struct AuthSuccess {
 	expires: chrono::DateTime<chrono::Utc>,
 }
 
-pub async fn login(State(ctx): State<Context>, Json(login): Json<LoginForm>) -> crate::Result<Json<AuthSuccess>> {
+pub async fn login(
+	State(ctx): State<Context>,
+	Json(login): Json<LoginForm>
+) -> crate::Result<Json<AuthSuccess>> {
 	// TODO salt the pwd
 	match model::credential::Entity::find()
 		.filter(Condition::all()
@@ -52,4 +55,34 @@ pub async fn login(State(ctx): State<Context>, Json(login): Json<LoginForm>) -> 
 		},
 		None => Err(UpubError::unauthorized()),
 	}
+}
+
+#[derive(Debug, Clone, serde::Deserialize)]
+pub struct RegisterForm {
+	username: String,
+	password: String,
+	display_name: Option<String>,
+	summary: Option<String>,
+	avatar_url: Option<String>,
+	banner_url: Option<String>,
+}
+
+pub async fn register(
+	State(ctx): State<Context>,
+	Json(registration): Json<RegisterForm>
+) -> crate::Result<Json<String>> {
+	if !ctx.cfg().security.allow_registration {
+		return Err(UpubError::forbidden());
+	}
+
+	ctx.register_user(
+		registration.username.clone(),
+		registration.password,
+		registration.display_name,
+		registration.summary,
+		registration.avatar_url,
+		registration.banner_url
+	).await?;
+
+	Ok(Json(ctx.uid(registration.username)))
 }

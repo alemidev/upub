@@ -11,7 +11,7 @@ pub mod well_known;
 pub mod jsonld;
 pub use jsonld::JsonLD;
 
-use axum::{http::StatusCode, response::IntoResponse, routing::{get, post}, Router};
+use axum::{http::StatusCode, response::IntoResponse, routing::{get, post, put}, Router};
 
 pub trait ActivityPubRouter {
 	fn ap_routes(self) -> Self;
@@ -35,6 +35,7 @@ impl ActivityPubRouter for Router<crate::server::Context> {
 			.route("/outbox/page", get(ap::outbox::page))
 			// AUTH routes
 			.route("/auth", post(ap::auth::login))
+			.route("/auth", put(ap::auth::register))
 			// .well-known and discovery
 			.route("/.well-known/webfinger", get(ap::well_known::webfinger))
 			.route("/.well-known/host-meta", get(ap::well_known::host_meta))

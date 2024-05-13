@@ -10,8 +10,8 @@ pub use faker::*;
 mod relay;
 pub use relay::*;
 
-//mod register;
-//pub use register::*;
+mod register;
+pub use register::*;
 
 mod update;
 pub use update::*;
@@ -64,6 +64,32 @@ pub enum CliCommand {
 		#[arg(long, short, default_value_t = 7)]
 		/// number of days after which users should get updated
 		days: i64,
+	},
+
+	/// register a new local user
+	Register {
+		/// username for new user, must be unique locally and cannot be changed
+		username: String,
+
+		/// password for new user
+		// TODO get this with getpass rather than argv!!!!
+		password: String,
+
+		/// display name for new user
+		#[arg(long = "name")]
+		display_name: Option<String>,
+
+		/// summary text for new user
+		#[arg(long = "summary")]
+		summary: Option<String>,
+
+		/// url for avatar image of new user
+		#[arg(long = "avatar")]
+		avatar_url: Option<String>,
+
+		/// url for banner image of new user
+		#[arg(long = "banner")]
+		banner_url: Option<String>,
 	}
 }
 
@@ -87,5 +113,7 @@ pub async fn run(
 			Ok(fix(ctx, likes, shares, replies).await?),
 		CliCommand::Update { days } =>
 			Ok(update_users(ctx, days).await?),
+		CliCommand::Register { username, password, display_name, summary, avatar_url, banner_url } =>
+			Ok(register(ctx, username, password, display_name, summary, avatar_url, banner_url).await?),
 	}
 }

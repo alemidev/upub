@@ -9,7 +9,29 @@ pub struct Config {
 	#[serde(default)]
 	pub datasource: DatasourceConfig,
 
+	#[serde(default)]
+	pub security: SecurityConfig,
+
 	// TODO should i move app keys here?
+}
+
+#[serde_inline_default::serde_inline_default]
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize, serde_default::DefaultFromSerde)]
+pub struct InstanceConfig {
+	#[serde_inline_default("μpub".into())]
+	pub name: String,
+
+	#[serde_inline_default("micro social network, federated".into())]
+	pub description: String,
+
+	#[serde_inline_default("upub.social".into())]
+	pub domain: String,
+
+	#[serde(default)]
+	pub contact: Option<String>,
+
+	#[serde(default)]
+	pub frontend: Option<String>,
 }
 
 #[serde_inline_default::serde_inline_default]
@@ -39,24 +61,10 @@ pub struct DatasourceConfig {
 
 #[serde_inline_default::serde_inline_default]
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize, serde_default::DefaultFromSerde)]
-pub struct InstanceConfig {
-	#[serde_inline_default("μpub".into())]
-	pub name: String,
-
-	#[serde_inline_default("micro social network, federated".into())]
-	pub description: String,
-
-	#[serde_inline_default("upub.social".into())]
-	pub domain: String,
-
+pub struct SecurityConfig {
 	#[serde(default)]
-	pub contact: Option<String>,
-
-	#[serde(default)]
-	pub frontend: Option<String>,
+	pub allow_registration: bool,
 }
-
-
 
 
 impl Config {
