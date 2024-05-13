@@ -1,5 +1,4 @@
-use openssl::rsa::Rsa;
-use sea_orm::{EntityTrait, IntoActiveModel};
+use crate::server::admin::Administrable;
 
 pub async fn register(
 	ctx: crate::server::Context,
@@ -20,12 +19,6 @@ pub async fn register(
 	).await?;
 
 	tracing::info!("registered new user: {username}");
-}
-
-// TODO duplicated, make an util?? idk
-fn clean_domain(domain: &str) -> String {
-	domain
-		.replace("http://", "")
-		.replace("https://", "")
-		.replace('/', "")
+	
+	Ok(())
 }
