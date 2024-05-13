@@ -8,18 +8,20 @@ pub fn Navigator() -> impl IntoView {
 	let auth = use_context::<Auth>().expect("missing auth context");
 	let (query, set_query) = create_signal("".to_string());
 	view! {
-		<table class="align">
-			<tr>
-				<td class="w-100">
-					<input type="text" class="w-100" on:input=move |ev| {
-						set_query.set(event_target_value(&ev))
-					} />
-				</td>
-				<td>
-					<a href={move|| format!("/web/search?q={}", query.get())}><input type="submit" value="go" /></a>
-				</td>
-			</tr>
-		</table>
+		<form action={move|| format!("/web/search?q={}", query.get())}>
+			<table class="align">
+				<tr>
+					<td class="w-100">
+						<input type="text" class="w-100" on:input=move |ev| {
+							set_query.set(event_target_value(&ev))
+						} />
+					</td>
+					<td>
+						<a href={move|| format!("/web/search?q={}", query.get())}><input type="submit" value="go" /></a>
+					</td>
+				</tr>
+			</table>
+		</form>
 		<table class="align w-100">
 			<tr><td colspan="2"><a href="/web/home"><input class="w-100" type="submit" class:hidden=move || !auth.present() value="home timeline" /></a></td></tr>
 			<tr><td colspan="2"><a href="/web/server"><input class="w-100" type="submit" value="server timeline" /></a></td></tr>
