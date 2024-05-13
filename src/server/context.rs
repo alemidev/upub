@@ -105,10 +105,11 @@ impl Context {
 		if id.starts_with("http") { // ready-to-use id
 			id
 		} else if id.starts_with('+') { // compacted id
-			id
+			let reconstructed = id
 				.replace('@', "/")
 				.replace("//", "/@") // oops my method sucks!! TODO
-				.replacen('+', "https://", 1)
+				.replacen('+', "https://", 1);
+			url::form_urlencoded::byte_serialize(reconstructed.as_bytes()).collect()
 		} else { // bare local id
 			format!("{}{}/{}/{}", self.0.protocol, self.0.domain, entity, id)
 		}
