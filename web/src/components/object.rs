@@ -3,7 +3,7 @@ use std::sync::Arc;
 use leptos::*;
 use crate::{prelude::*, URL_SENSITIVE};
 
-use apb::{target::Addressed, ActivityMut, Base, Collection, CollectionMut, Object, ObjectMut};
+use apb::{target::Addressed, ActivityMut, Base, Collection, CollectionMut, Document, Object, ObjectMut};
 
 #[component]
 pub fn Attachment(
@@ -17,11 +17,21 @@ pub fn Attachment(
 	let media_type = object.media_type()
 		.unwrap_or("image/png") // TODO weird defaulting to png?????
 		.to_string();
-	let kind = media_type
+	let mut kind = media_type
 		.split('/')
 		.next()
 		.unwrap_or("image")
 		.to_string();
+
+	// TODO in theory we should match on document_type, but mastodon and misskey send all attachments
+	// as "Documents" regardless of type, so we're forced to ignore the actual AP type and just match
+	// using media_type, uffff
+	//
+	// those who correctly send Image type objects without a media type get shown as links here, this
+	// is a dirty fix to properly display as images
+	if kind == "link" && matches!(object.document_type(), Some(apb::DocumentType::Image)) {
+		kind = "image".to_string();
+	}
 
 	match kind.as_str() {
 		"image" =>
