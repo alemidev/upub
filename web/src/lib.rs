@@ -1,12 +1,12 @@
-mod app;
 mod auth;
+mod app;
 mod components;
 mod page;
-mod control;
 mod config;
 
 pub use app::App;
 pub use config::Config;
+pub use auth::Auth;
 
 pub mod prelude;
 
@@ -17,7 +17,6 @@ pub const DEFAULT_AVATAR_URL: &str = "https://cdn.alemi.dev/social/gradient.png"
 pub const NAME: &str = "μ";
 
 use std::sync::Arc;
-use auth::Auth;
 
 
 
