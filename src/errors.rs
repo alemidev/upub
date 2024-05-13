@@ -2,7 +2,7 @@ use axum::{http::StatusCode, response::Redirect};
 
 #[derive(Debug, thiserror::Error)]
 pub enum UpubError {
-	#[error("database error: {0}")]
+	#[error("database error: {0:?}")]
 	Database(#[from] sea_orm::DbErr),
 
 	#[error("{0}")]
@@ -11,21 +11,21 @@ pub enum UpubError {
 	#[error("missing field: {0}")]
 	Field(#[from] crate::model::FieldError),
 
-	#[error("openssl error: {0}")]
+	#[error("openssl error: {0:?}")]
 	OpenSSL(#[from] openssl::error::ErrorStack),
 
-	#[error("invalid UTF8 in key: {0}")]
+	#[error("invalid UTF8 in key: {0:?}")]
 	OpenSSLParse(#[from] std::str::Utf8Error),
 
-	#[error("fetch error: {0}")]
+	#[error("fetch error: {0:?}")]
 	Reqwest(#[from] reqwest::Error),
 
 	// TODO this is quite ugly because its basically a reqwest::Error but with extra string... buuut
 	// helps with debugging!
-	#[error("fetch error: {0} -- server responded with {1}")]
+	#[error("fetch error: {0:?} -- server responded with {1}")]
 	FetchError(reqwest::Error, String),
 
-	#[error("invalid base64 string: {0}")]
+	#[error("invalid base64 string: {0:?}")]
 	Base64(#[from] base64::DecodeError),
 
 	// TODO this isn't really an error but i need to redirect from some routes so this allows me to
