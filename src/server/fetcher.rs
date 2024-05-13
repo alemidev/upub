@@ -7,7 +7,7 @@ use sea_orm::{sea_query::Expr, ColumnTrait, EntityTrait, IntoActiveModel, QueryF
 
 use crate::{errors::UpubError, model, VERSION};
 
-use super::{auth::HttpSignature, Context};
+use super::{httpsign::HttpSignature, Context};
 
 #[axum::async_trait]
 pub trait Fetcher {

@@ -5,5 +5,6 @@ pub mod inbox;
 pub mod outbox;
 pub mod auth;
 pub mod builders;
+pub mod httpsign;
 
 pub use context::Context;
