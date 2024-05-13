@@ -105,11 +105,12 @@ impl Context {
 		if id.starts_with("http") { // ready-to-use id
 			id
 		} else if id.starts_with('+') { // compacted id
-			let reconstructed = id
+			// TODO theres already 2 edge cases, i really need to get rid of this
+			id
 				.replace('@', "/")
 				.replace("//", "/@") // oops my method sucks!! TODO
-				.replacen('+', "https://", 1);
-			url::form_urlencoded::byte_serialize(reconstructed.as_bytes()).collect()
+				.replacen('+', "https://", 1)
+				.replace(" ", "%20") // omg wordpress
 		} else { // bare local id
 			format!("{}{}/{}/{}", self.0.protocol, self.0.domain, entity, id)
 		}
