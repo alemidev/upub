@@ -92,9 +92,10 @@ impl<T : super::Base> Node<T> {
 	/// returns id of object: url for link, id for object, None if empty or array
 	pub fn id(&self) -> Option<String> {
 		match self {
-			Node::Empty | Node::Array(_) => None,
+			Node::Empty => None,
 			Node::Link(uri) => Some(uri.href().to_string()),
-			Node::Object(obj) => obj.id().map(|x| x.to_string()),
+			Node::Object(obj) => Some(obj.id()?.to_string()),
+			Node::Array(arr) => Some(arr.front()?.id()?.to_string()),
 		}
 	}
 }
