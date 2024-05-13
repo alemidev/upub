@@ -111,7 +111,7 @@ impl Context {
 				.replace("///", "/@/") // omg wordpress PLEASE AAAAAAAAAAAAAAAAAAAA
 				.replace("//", "/@") // oops my method sucks!! TODO
 				.replacen('+', "https://", 1)
-				.replace(" ", "%20") // omg wordpress
+				.replace(' ', "%20") // omg wordpress
 		} else { // bare local id
 			format!("{}{}/{}/{}", self.0.protocol, self.0.domain, entity, id)
 		}
