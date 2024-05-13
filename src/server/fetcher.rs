@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use apb::{target::Addressed, Activity, Collection, CollectionPage, Link, Object};
+use apb::{target::Addressed, Activity, Base, Collection, CollectionPage, Link, Object};
 use base64::Engine;
 use reqwest::{header::{ACCEPT, CONTENT_TYPE, USER_AGENT}, Method, Response};
 use sea_orm::{sea_query::Expr, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
@@ -287,6 +287,14 @@ async fn fetch_object_inner(ctx: &Context, id: &str, depth: usize) -> crate::Res
 	let object = Context::request(
 		Method::GET, id, None, &format!("https://{}", ctx.domain()), &ctx.app().private_key, ctx.domain(),
 	).await?.json::<serde_json::Value>().await?;
+
+	if let Some(oid) = object.id() {
+		if oid != id {
+			if let Some(x) = model::object::Entity::find_by_id(oid).one(ctx.db()).await? {
+				return Ok(x); // already in db, but with id different that given url
+			}
+		}
+	}
 
 	if let Some(attributed_to) = object.attributed_to().id() {
 		if let Err(e) = ctx.fetch_user(&attributed_to).await {
