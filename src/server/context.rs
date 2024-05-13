@@ -108,6 +108,7 @@ impl Context {
 			// TODO theres already 2 edge cases, i really need to get rid of this
 			id
 				.replace('@', "/")
+				.replace("///", "/@/") // omg wordpress PLEASE AAAAAAAAAAAAAAAAAAAA
 				.replace("//", "/@") // oops my method sucks!! TODO
 				.replacen('+', "https://", 1)
 				.replace(" ", "%20") // omg wordpress
