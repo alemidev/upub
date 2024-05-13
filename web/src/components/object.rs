@@ -125,21 +125,32 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 		</Summary>
 	};
 	let post = match object.object_type() {
-		Some(apb::ObjectType::Document(apb::DocumentType::Page)) => view! {
+		// mastodon, pleroma, misskey
+		Some(apb::ObjectType::Note) => view! {
+			<blockquote class="tl">{post_inner}</blockquote>
+		}.into_view(),
+		// lemmy with Page, peertube with Video
+		Some(apb::ObjectType::Document(_)) => view! {
 			<div class="border ml-1 mr-1 mt-1">
 				<b>{object.name().unwrap_or_default().to_string()}</b>
 				<hr />
 				{post_inner}
 			</div>
-		}.into_view(), // lemmy
-		Some(apb::ObjectType::Document(apb::DocumentType::Video)) => post_inner.into_view(), // peertube?
-		Some(apb::ObjectType::Note) => view! {
-			<blockquote class="tl">{post_inner}</blockquote>
 		}.into_view(),
+		// wordpress, ... ?
+		Some(apb::ObjectType::Article) => view! {
+			<div>
+				<h3>{object.name().unwrap_or_default().to_string()}</h3>
+				<hr />
+				{post_inner}
+			</div>
+		}.into_view(),
+		// everything else
 		Some(t) => view! {
 			<h3>{t.as_ref().to_string()}</h3>
 			{post_inner}
 		}.into_view(),
+		// object without type?
 		None => view! { <code>missing object type</code> }.into_view(),
 	};
 	view! {
