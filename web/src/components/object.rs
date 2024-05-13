@@ -15,12 +15,12 @@ pub fn Attachment(
 	let (expand, set_expand) = create_signal(false);
 	let href = object.url().id().unwrap_or_default();
 	let media_type = object.media_type()
-		.unwrap_or("image/png") // TODO weird defaulting to png?????
+		.unwrap_or("link") // TODO make it an Option rather than defaulting to link everywhere
 		.to_string();
 	let mut kind = media_type
 		.split('/')
 		.next()
-		.unwrap_or("image")
+		.unwrap_or("link")
 		.to_string();
 
 	// TODO in theory we should match on document_type, but mastodon and misskey send all attachments
@@ -76,15 +76,29 @@ pub fn Attachment(
 				</p>
 			}.into_view(),
 
+		"link" =>
+			view! {
+				<code class="cw color center">
+					<a href={href.clone()} title={href.clone()} rel="noreferrer nofollow" target="_blank">
+						{Uri::pretty(&href)}
+					</a>
+				</code>
+				{object.name().map(|name| {
+					view! {
+						<p class="center mt-0"><small>{name.to_string()}</small></p>
+					}
+				})}
+			}.into_view(),
+
 		_ => 
 			view! {
 				<p class="center box">
 					<code class="cw color center">
 						<a href={href} target="_blank">{media_type}</a>
 					</code>
-					<p class="tiny-text">
-						<small>{object.name().unwrap_or_default().to_string()}</small>
-					</p>
+					{object.name().map(|name| {
+						view! { <p class="tiny-text"><small>{name.to_string()}</small></p> }
+					})}
 				</p>
 			}.into_view(),
 	}
@@ -130,11 +144,14 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 			<blockquote class="tl">{post_inner}</blockquote>
 		}.into_view(),
 		// lemmy with Page, peertube with Video
-		Some(apb::ObjectType::Document(_)) => view! {
+		Some(apb::ObjectType::Document(t)) => view! {
 			<div class="border ml-1 mr-1 mt-1">
 				<b>{object.name().unwrap_or_default().to_string()}</b>
 				<hr />
 				{post_inner}
+				<a class="clean color" rel="nofollow noreferrer" href={oid.clone()} target="_blank">
+					<input class="w-100" type="button" value={t.as_ref().to_string()} />
+				</a>
 			</div>
 		}.into_view(),
 		// wordpress, ... ?
