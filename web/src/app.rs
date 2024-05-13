@@ -85,6 +85,7 @@ pub fn App() -> impl IntoView {
 					<Router // TODO maybe set base="/web" ?
 						trailing_slash=TrailingSlash::Redirect
 						fallback=move || view! { 
+							<Breadcrumb back=true >404</Breadcrumb>
 							<div class="center">
 								<h3>nothing to see here!</h3>
 								<p><a href="/web"><button type="button">back to root</button></a></p>

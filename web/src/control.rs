@@ -12,7 +12,7 @@ pub fn Navigator() -> impl IntoView {
 			<table class="align">
 				<tr>
 					<td class="w-100">
-						<input type="text" class="w-100" on:input=move |ev| {
+						<input type="text" placeholder="search" class="w-100" on:input=move |ev| {
 							set_query.set(event_target_value(&ev))
 						} />
 					</td>
@@ -90,12 +90,12 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 			}
 			<table class="align w-100">
 				<tr>
-					<td><input type="checkbox" on:input=move |ev| advanced.set(event_target_checked(&ev)) title="advanced" /></td>
+					<td><input type="checkbox" on:input=move |ev| advanced.set(event_target_checked(&ev)) title="toggle advanced controls" /></td>
 					<td class="w-100"><input class="w-100" type="text" node_ref=summary_ref title="summary" /></td>
 				</tr>
 			</table>
 
-			<textarea rows="6" class="w-100" node_ref=content_ref title="content" ></textarea>
+			<textarea rows="6" class="w-100" node_ref=content_ref title="content" placeholder="\n look at nothing\n  what do you see?" ></textarea>
 
 			<table class="align rev w-100">
 				<tr>
