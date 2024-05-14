@@ -1,7 +1,7 @@
 # μpub
 > micro social network, federated
 
-![screenshot of upub simple frontend](https://cdn.alemi.dev/proj/upub/fe/20240424.png)
+![screenshot of upub simple frontend](https://cdn.alemi.dev/proj/upub/fe/20240514.png)
 
 μpub aims to be a private, lightweight, modular and **secure** [ActivityPub](https://www.w3.org/TR/activitypub/) server
 
