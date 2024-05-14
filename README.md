@@ -33,7 +33,11 @@ note that followers get expanded: addressing to example.net/actor/followers will
 
 ## contributing
 
-all help is extremely welcome! if [my cgit](https://git.alemi.dev/upub.git/) looks too scary there's a [github mirror](https://github.com/alemidev/upub) you can open issues or PRs on. get in touch with me ([fedi](https://social.alemi.dev/users/alemi) is fine, but a mail works too), i'd be thrilled to showcase the project to you!
+all help is extremely welcome! development mostly happens on [moonlit.technology](https://moonlit.technology/alemi/upub.git), but there's a [github mirror](https://github.com/alemidev/upub) available too
+
+if you prefer a forge-less development you can browse the repo on [my cgit](https://git.alemi.dev/upub.git), and send me patches on any contact listed on [my site](https://alemi.dev/about/contact)
+
+don't hesitate to get in touch, i'd be thrilled to showcase the project to you!
 
 ## progress
 
