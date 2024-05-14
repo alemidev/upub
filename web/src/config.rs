@@ -35,7 +35,7 @@ impl FiltersConfig {
 	pub fn visible(&self, object_type: apb::ObjectType) -> bool {
 		match object_type {
 			apb::ObjectType::Note | apb::ObjectType::Document(_) => self.orphans,
-			apb::ObjectType::Activity(apb::ActivityType::Like) => self.likes,
+			apb::ObjectType::Activity(apb::ActivityType::Like | apb::ActivityType::EmojiReact) => self.likes,
 			apb::ObjectType::Activity(apb::ActivityType::Create) => self.creates,
 			apb::ObjectType::Activity(apb::ActivityType::Announce) => self.announces,
 			apb::ObjectType::Activity(
