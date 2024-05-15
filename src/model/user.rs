@@ -1,6 +1,6 @@
 use sea_orm::entity::prelude::*;
 
-use apb::{Actor, ActorMut, ActorType, BaseMut, DocumentMut, Object, ObjectMut, PublicKey, PublicKeyMut};
+use apb::{Actor, ActorMut, ActorType, BaseMut, DocumentMut, Endpoints, EndpointsMut, Object, ObjectMut, PublicKey, PublicKeyMut};
 
 use crate::routes::activitypub::jsonld::LD;
 
@@ -50,11 +50,11 @@ impl Model {
 			actor_type: object.actor_type().ok_or(super::FieldError("type"))?,
 			name: object.name().map(|x| x.to_string()),
 			summary: object.summary().map(|x| x.to_string()),
-			icon: object.icon().get().map(|x| x.url().id().unwrap_or_default()),
-			image: object.image().get().map(|x| x.url().id().unwrap_or_default()),
+			icon: object.icon().get().and_then(|x| x.url().id()),
+			image: object.image().get().and_then(|x| x.url().id()),
 			inbox: object.inbox().id(),
 			outbox: object.outbox().id(),
-			shared_inbox: None, // TODO!!! parse endpoints
+			shared_inbox: object.endpoints().get().and_then(|x| Some(x.shared_inbox()?.to_string())),
 			followers: object.followers().id(),
 			following: object.following().id(),
 			created: object.published().unwrap_or(chrono::Utc::now()),
@@ -98,8 +98,11 @@ impl Model {
 					.set_owner(Some(&self.id))
 					.set_public_key_pem(&self.public_key)
 			))
+			.set_endpoints(apb::Node::object(
+				serde_json::Value::new_object()
+					.set_shared_inbox(self.shared_inbox.as_deref())
+			))
 			.set_discoverable(Some(true))
-			.set_endpoints(apb::Node::Empty)
 	}
 }
 

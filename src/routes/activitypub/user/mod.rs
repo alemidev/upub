@@ -7,7 +7,7 @@ pub mod following;
 use axum::extract::{Path, Query, State};
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QuerySelect, SelectColumns};
 
-use apb::{ActorMut, Node};
+use apb::{ActorMut, EndpointsMut, Node};
 use crate::{errors::UpubError, model::{self, user}, server::{auth::AuthIdentity, fetcher::Fetcher, Context}, url};
 
 use super::{jsonld::LD, JsonLD, TryFetch};
@@ -73,7 +73,11 @@ pub async fn view(
 				.set_following(Node::link(url!(ctx, "/users/{id}/following")))
 				.set_followers(Node::link(url!(ctx, "/users/{id}/followers")))
 				.set_following_me(following_me)
-				.set_followed_by_me(followed_by_me);
+				.set_followed_by_me(followed_by_me)
+				.set_endpoints(Node::object(
+					serde_json::Value::new_object()
+						.set_shared_inbox(Some(&url!(ctx, "/inbox")))
+				));
 
 			if !auth.is(&uid) && !cfg.show_followers_count {
 				user = user.set_followers_count(None);
