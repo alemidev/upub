@@ -113,7 +113,7 @@ pub use types::{
 			offer::{Offer, OfferMut, OfferType},
 			reject::{Reject, RejectMut, RejectType},
 		},
-		actor::{Actor, ActorMut, ActorType},
+		actor::{Actor, ActorMut, ActorType, Endpoints, EndpointsMut},
 		collection::{
 			Collection, CollectionMut, CollectionType,
 			page::{CollectionPage, CollectionPageMut}

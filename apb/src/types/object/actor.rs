@@ -12,6 +12,7 @@ crate::strenum! {
 
 pub trait Actor : Object {
 	type PublicKey : crate::PublicKey;
+	type Endpoints : Endpoints;
 
 	fn actor_type(&self) -> Option<ActorType> { None }
 	fn preferred_username(&self) -> Option<&str> { None }
@@ -21,7 +22,7 @@ pub trait Actor : Object {
 	fn followers(&self) -> Node<Self::Collection> { Node::Empty }
 	fn liked(&self) -> Node<Self::Collection> { Node::Empty }
 	fn streams(&self) -> Node<Self::Collection> { Node::Empty }
-	fn endpoints(&self) -> Node<Self::Object> { Node::Empty }
+	fn endpoints(&self) -> Node<Self::Endpoints> { Node::Empty }
 	fn public_key(&self) -> Node<Self::PublicKey> { Node::Empty }
 
 	#[cfg(feature = "activitypub-miscellaneous-terms")]
@@ -45,8 +46,24 @@ pub trait Actor : Object {
 	fn discoverable(&self) -> Option<bool> { None }
 }
 
+pub trait Endpoints : Object {
+	/// Endpoint URI so this actor's clients may access remote ActivityStreams objects which require authentication to access. To use this endpoint, the client posts an x-www-form-urlencoded id parameter with the value being the id of the requested ActivityStreams object. 
+	fn proxy_url(&self) -> Option<&str> { None }
+	/// If OAuth 2.0 bearer tokens [RFC6749] [RFC6750] are being used for authenticating client to server interactions, this endpoint specifies a URI at which a browser-authenticated user may obtain a new authorization grant. 
+	fn oauth_authorization_endpoint(&self) -> Option<&str> { None }
+	/// If OAuth 2.0 bearer tokens [RFC6749] [RFC6750] are being used for authenticating client to server interactions, this endpoint specifies a URI at which a client may acquire an access token. 
+	fn oauth_token_endpoint(&self) -> Option<&str> { None }
+	/// If Linked Data Signatures and HTTP Signatures are being used for authentication and authorization, this endpoint specifies a URI at which browser-authenticated users may authorize a client's public key for client to server interactions. 
+	fn provide_client_key(&self) -> Option<&str> { None }
+	/// If Linked Data Signatures and HTTP Signatures are being used for authentication and authorization, this endpoint specifies a URI at which a client key may be signed by the actor's key for a time window to act on behalf of the actor in interacting with foreign servers. 
+	fn sign_client_key(&self) -> Option<&str> { None }
+	/// An optional endpoint used for wide delivery of publicly addressed activities and activities sent to followers. sharedInbox endpoints SHOULD also be publicly readable OrderedCollection objects containing objects addressed to the Public special collection. Reading from the sharedInbox endpoint MUST NOT present objects which are not addressed to the Public endpoint.
+	fn shared_inbox(&self) -> Option<&str> { None }
+}
+
 pub trait ActorMut : ObjectMut {
 	type PublicKey : crate::PublicKey;
+	type Endpoints : Endpoints;
 
 	fn set_actor_type(self, val: Option<ActorType>) -> Self;
 	fn set_preferred_username(self, val: Option<&str>) -> Self;
@@ -56,7 +73,7 @@ pub trait ActorMut : ObjectMut {
 	fn set_followers(self, val: Node<Self::Collection>) -> Self;
 	fn set_liked(self, val: Node<Self::Collection>) -> Self;
 	fn set_streams(self, val: Node<Self::Collection>) -> Self;
-	fn set_endpoints(self, val: Node<Self::Object>) -> Self; // TODO it's more complex than this!
+	fn set_endpoints(self, val: Node<Self::Endpoints>) -> Self;
 	fn set_public_key(self, val: Node<Self::PublicKey>) -> Self;
 
 	#[cfg(feature = "activitypub-miscellaneous-terms")]
@@ -79,9 +96,25 @@ pub trait ActorMut : ObjectMut {
 	fn set_discoverable(self, val: Option<bool>) -> Self;
 }
 
+pub trait EndpointsMut : ObjectMut {
+	/// Endpoint URI so this actor's clients may access remote ActivityStreams objects which require authentication to access. To use this endpoint, the client posts an x-www-form-urlencoded id parameter with the value being the id of the requested ActivityStreams object. 
+	fn set_proxy_url(self, val: Option<&str>) -> Self;
+	/// If OAuth 2.0 bearer tokens [RFC6749] [RFC6750] are being used for authenticating client to server interactions, this endpoint specifies a URI at which a browser-authenticated user may obtain a new authorization grant. 
+	fn set_oauth_authorization_endpoint(self, val: Option<&str>) -> Self;
+	/// If OAuth 2.0 bearer tokens [RFC6749] [RFC6750] are being used for authenticating client to server interactions, this endpoint specifies a URI at which a client may acquire an access token. 
+	fn set_oauth_token_endpoint(self, val: Option<&str>) -> Self;
+	/// If Linked Data Signatures and HTTP Signatures are being used for authentication and authorization, this endpoint specifies a URI at which browser-authenticated users may authorize a client's public key for client to server interactions. 
+	fn set_provide_client_key(self, val: Option<&str>) -> Self;
+	/// If Linked Data Signatures and HTTP Signatures are being used for authentication and authorization, this endpoint specifies a URI at which a client key may be signed by the actor's key for a time window to act on behalf of the actor in interacting with foreign servers. 
+	fn set_sign_client_key(self, val: Option<&str>) -> Self;
+	/// An optional endpoint used for wide delivery of publicly addressed activities and activities sent to followers. sharedInbox endpoints SHOULD also be publicly readable OrderedCollection objects containing objects addressed to the Public special collection. Reading from the sharedInbox endpoint MUST NOT present objects which are not addressed to the Public endpoint.
+	fn set_shared_inbox(self, val: Option<&str>) -> Self;
+}
+
 #[cfg(feature = "unstructured")]
 impl Actor for serde_json::Value {
 	type PublicKey = serde_json::Value;
+	type Endpoints = serde_json::Value;
 
 	crate::getter! { actor_type -> type ActorType }
 	crate::getter! { preferred_username::preferredUsername -> &str }
@@ -118,8 +151,19 @@ impl Actor for serde_json::Value {
 }
 
 #[cfg(feature = "unstructured")]
+impl Endpoints for serde_json::Value {
+	crate::getter! { proxy_url::proxyUrl -> &str }
+	crate::getter! { oauth_authorization_endpoint::oauthAuthorizationEndpoint -> &str }
+	crate::getter! { oauth_token_endpoint::oauthTokenEndpoint -> &str }
+	crate::getter! { provide_client_key::provideClientKey -> &str }
+	crate::getter! { sign_client_key::signClientKey -> &str }
+	crate::getter! { shared_inbox::sharedInbox -> &str }
+}
+
+#[cfg(feature = "unstructured")]
 impl ActorMut for serde_json::Value {
 	type PublicKey = serde_json::Value;
+	type Endpoints = serde_json::Value;
 
 	crate::setter! { actor_type -> type ActorType }
 	crate::setter! { preferred_username::preferredUsername -> &str }
@@ -153,4 +197,14 @@ impl ActorMut for serde_json::Value {
 		self.as_object_mut().unwrap().insert("endpoints".to_string(), serde_json::Value::Object(serde_json::Map::default()));
 		self
 	}
+}
+
+#[cfg(feature = "unstructured")]
+impl EndpointsMut for serde_json::Value {
+	crate::setter! { proxy_url::proxyUrl -> &str }
+	crate::setter! { oauth_authorization_endpoint::oauthAuthorizationEndpoint -> &str }
+	crate::setter! { oauth_token_endpoint::oauthTokenEndpoint -> &str }
+	crate::setter! { provide_client_key::provideClientKey -> &str }
+	crate::setter! { sign_client_key::signClientKey -> &str }
+	crate::setter! { shared_inbox::sharedInbox -> &str }
 }
