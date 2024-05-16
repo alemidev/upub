@@ -125,6 +125,7 @@ impl Actor for serde_json::Value {
 	crate::getter! { liked -> node Self::Collection }
 	crate::getter! { streams -> node Self::Collection }
 	crate::getter! { public_key::publicKey -> node Self::PublicKey }
+	crate::getter! { endpoints -> node Self::Endpoints }
 
 	#[cfg(feature = "activitypub-miscellaneous-terms")]
 	crate::getter! { moved_to::movedTo -> node Self::Actor }
@@ -144,10 +145,6 @@ impl Actor for serde_json::Value {
 	crate::getter! { statuses_count::statusesCount -> u64 }
 
 	crate::getter! { discoverable -> bool }
-
-	fn endpoints(&self) -> Node<<Self as Object>::Object> {
-		todo!()
-	}
 }
 
 #[cfg(feature = "unstructured")]
@@ -174,6 +171,7 @@ impl ActorMut for serde_json::Value {
 	crate::setter! { liked -> node Self::Collection }
 	crate::setter! { streams -> node Self::Collection }
 	crate::setter! { public_key::publicKey -> node Self::PublicKey }
+	crate::setter! { endpoints -> node Self::Endpoints }
 	crate::setter! { discoverable -> bool }
 
 	#[cfg(feature = "activitypub-miscellaneous-terms")]
@@ -192,11 +190,6 @@ impl ActorMut for serde_json::Value {
 	crate::setter! { followers_count::followersCount -> u64 }
 	#[cfg(feature = "activitypub-counters")]
 	crate::setter! { statuses_count::statusesCount -> u64 }
-
-	fn set_endpoints(mut self, _val: Node<<Self as Object>::Object>) -> Self {
-		self.as_object_mut().unwrap().insert("endpoints".to_string(), serde_json::Value::Object(serde_json::Map::default()));
-		self
-	}
 }
 
 #[cfg(feature = "unstructured")]
