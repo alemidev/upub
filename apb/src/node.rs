@@ -19,18 +19,23 @@ impl<T : super::Base> From<Option<T>> for Node<T> {
 // TODO how do i move out of the box for a moment? i need to leave it uninitialized while i update
 // the value and then put it back, i think it should be safe to do so! but i'm not sure how, so i'm
 // using a clone (expensive but simple solution)
-impl<T : super::Base + Clone> Iterator for Node<T> {
+impl<T : super::Base> Iterator for Node<T> {
 	type Item = T;
 
 	fn next(&mut self) -> Option<Self::Item> {
-		let x = match self {
-			Self::Empty => return None,
-			Self::Link(_) => return None,
-			Self::Array(arr) => return arr.pop_front(), // TODO weird that we iter in reverse
-			Self::Object(x) => *x.clone(), // TODO needed because next() on object can't get value without owning
-		};
-		*self = Self::Empty;
-		Some(x)
+		match std::mem::replace(self, Self::Empty) {
+			Self::Empty => None,
+			Self::Object(res) => Some(*res),
+			Self::Link(lnk) => {
+				*self = Self::Link(lnk);
+				None
+			},
+			Self::Array(mut arr) => {
+				let res = arr.pop_front();
+				*self = Self::Array(arr);
+				res
+			}
+		}
 	}
 }
 
