@@ -116,6 +116,15 @@ impl<T : super::Base> Node<T> {
 			Node::Array(x) => x.iter().filter_map(Self::id).collect()
 		}
 	}
+
+	pub fn flat(self) -> Vec<Node<T>> {
+		match self {
+			Node::Empty => vec![],
+			Node::Link(_) | Node::Object(_) => vec![self],
+			// i think AP disallows array of arrays so no need to make this recursive
+			Node::Array(arr) => arr.into()
+		}
+	}
 }
 
 #[cfg(feature = "unstructured")]
