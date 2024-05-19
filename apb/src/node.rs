@@ -1,12 +1,13 @@
 /// ActivityPub object node, representing either nothing, something, a link to something or
 /// multiple things
 pub enum Node<T : super::Base> {
-	Array(std::collections::VecDeque<T>), // TODO would be cool to make it Box<[T]> so that Node is just a ptr
+	Array(std::collections::VecDeque<Node<T>>), // TODO would be cool to make it Box<[T]> so that Node is just a ptr
 	Object(Box<T>),
 	Link(Box<dyn crate::Link + Sync + Send>), // TODO feature flag to toggle these maybe?
 	Empty,
 }
 
+// TODO convert in a from_residual (iirc?) so that in rust nightly we can do ?
 impl<T : super::Base> From<Option<T>> for Node<T> {
 	fn from(value: Option<T>) -> Self {
 		match value {
@@ -16,9 +17,6 @@ impl<T : super::Base> From<Option<T>> for Node<T> {
 	}
 }
 
-// TODO how do i move out of the box for a moment? i need to leave it uninitialized while i update
-// the value and then put it back, i think it should be safe to do so! but i'm not sure how, so i'm
-// using a clone (expensive but simple solution)
 impl<T : super::Base> Iterator for Node<T> {
 	type Item = T;
 
@@ -31,30 +29,36 @@ impl<T : super::Base> Iterator for Node<T> {
 				None
 			},
 			Self::Array(mut arr) => {
-				let res = arr.pop_front();
+				let mut out = None;
+				while let Some(res) = arr.pop_front() {
+					if let Some(inner) = res.extract() {
+						out = Some(inner);
+						break;
+					}
+				}
 				*self = Self::Array(arr);
-				res
+				out
 			}
 		}
 	}
 }
 
 impl<T : super::Base> Node<T> {
-	/// return reference to embedded object (or last if many are present)
+	/// return reference to embedded object (or first if many are present)
 	pub fn get(&self) -> Option<&T> {
 		match self {
 			Node::Empty | Node::Link(_) => None,
 			Node::Object(x) => Some(x),
-			Node::Array(v) => v.front(),
+			Node::Array(v) => v.iter().filter_map(|x| x.get()).next(),
 		}
 	}
 
-	/// consume node and extract embedded object (or last if many are present)
+	/// return reference to embedded object (or first if many are present)
 	pub fn extract(self) -> Option<T> {
 		match self {
 			Node::Empty | Node::Link(_) => None,
 			Node::Object(x) => Some(*x),
-			Node::Array(mut v) => v.pop_front(),
+			Node::Array(mut v) => v.pop_front()?.extract(),
 		}
 	}
 
@@ -103,6 +107,15 @@ impl<T : super::Base> Node<T> {
 			Node::Array(arr) => Some(arr.front()?.id()?.to_string()),
 		}
 	}
+
+	pub fn ids(&self) -> Vec<String> {
+		match self {
+			Node::Empty => vec![],
+			Node::Link(uri) => vec![uri.href().to_string()],
+			Node::Object(x) => x.id().map_or(vec![], |x| vec![x.to_string()]),
+			Node::Array(x) => x.iter().filter_map(Self::id).collect()
+		}
+	}
 }
 
 #[cfg(feature = "unstructured")]
@@ -115,7 +128,7 @@ impl Node<serde_json::Value> {
 		Node::Array(
 			uris
 				.into_iter()
-				.map(serde_json::Value::String)
+				.map(Node::link)
 				.collect()
 		)
 	}
@@ -139,7 +152,12 @@ impl Node<serde_json::Value> {
 	}
 
 	pub fn array(values: Vec<serde_json::Value>) -> Self {
-		Node::Array(values.into())
+		Node::Array(
+			std::collections::VecDeque::from_iter(
+				values.into_iter()
+					.map(Node::object)
+			)
+		)
 	}
 
 	#[cfg(feature = "fetch")]
@@ -180,7 +198,12 @@ impl From<serde_json::Value> for Node<serde_json::Value> {
 	fn from(value: serde_json::Value) -> Self {
 		match value {
 			serde_json::Value::String(uri) => Node::Link(Box::new(uri)),
-			serde_json::Value::Array(arr) => Node::Array(arr.into()),
+			serde_json::Value::Array(arr) => Node::Array(
+				std::collections::VecDeque::from_iter(
+					arr.into_iter()
+						.map(Node::from)
+				)
+			),
 			serde_json::Value::Object(_) => match value.get("href") {
 				None => Node::Object(Box::new(value)),
 				Some(_) => Node::Link(Box::new(value)),
