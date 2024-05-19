@@ -65,17 +65,15 @@ impl Link for serde_json::Value {
 
 #[cfg(feature = "unstructured")]
 impl LinkMut for serde_json::Value {
-	// TODO this can fail, but it should never do!
 	fn set_href(mut self, href: &str) -> Self {
 		match &mut self {
-			serde_json::Value::String(x) => *x = href.to_string(),
 			serde_json::Value::Object(map) => {
 				map.insert(
 					"href".to_string(),
 					serde_json::Value::String(href.to_string())
 				);
 			},
-			_ => tracing::error!("failed setting href on invalid json Link object"),
+			x => *x = serde_json::Value::String(href.to_string()),
 		}
 		self
 	}
