@@ -94,10 +94,9 @@ impl apb::server::Inbox for Context {
 	async fn like(&self, _: String, activity: serde_json::Value) -> crate::Result<()> {
 		let aid = activity.id().ok_or(UpubError::bad_request())?;
 		let uid = activity.actor().id().ok_or(UpubError::bad_request())?;
-		let oid = activity.object().id().ok_or(UpubError::bad_request())?;
-		if let Err(e) = self.fetch_object(&oid).await {
-			tracing::warn!("failed fetching liked object: {e}");
-		}
+		let object_uri = activity.object().id().ok_or(UpubError::bad_request())?;
+		let obj = self.fetch_object(&object_uri).await?;
+		let oid = obj.id;
 		let like = model::like::ActiveModel {
 			id: sea_orm::ActiveValue::NotSet,
 			actor: sea_orm::Set(uid.clone()),
@@ -143,10 +142,12 @@ impl apb::server::Inbox for Context {
 	async fn follow(&self, _: String, activity: serde_json::Value) -> crate::Result<()> {
 		let activity_model = model::activity::Model::new(&activity)?;
 		let aid = activity_model.id.clone();
-		let target_user_id = activity_model.object
+		let target_user_uri = activity_model.object
 			.as_deref()
 			.ok_or_else(UpubError::bad_request)?
 			.to_string();
+		let usr = self.fetch_user(&target_user_uri).await?;
+		let target_user_id = usr.id;
 		tracing::info!("{} wants to follow {}", activity_model.actor, target_user_id);
 		model::activity::Entity::insert(activity_model.into_active_model())
 			.exec(self.db()).await?;
@@ -327,6 +328,9 @@ impl apb::server::Inbox for Context {
 			return Err(UpubError::forbidden());
 		};
 
+		let obj = self.fetch_object(&undone_object_uri).await?;
+		let undone_object_id = obj.id;
+
 		match activity_type {
 			apb::ActivityType::Like => {
 				model::like::Entity::delete_many()
@@ -367,10 +371,11 @@ impl apb::server::Inbox for Context {
 	
 	async fn announce(&self, _: String, activity: serde_json::Value) -> crate::Result<()> {
 		let activity_model = model::activity::Model::new(&activity)?;
-		let Some(oid) = &activity_model.object else {
+		let Some(object_uri) = &activity_model.object else {
 			return Err(FieldError("object").into());
 		};
-		self.fetch_object(oid).await?;
+		let obj = self.fetch_object(object_uri).await?;
+		let oid = obj.id;
 
 		// relays send us activities as Announce, but we don't really want to count those towards the
 		// total shares count of an object, so just fetch the object and be done with it
