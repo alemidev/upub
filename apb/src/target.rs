@@ -6,8 +6,7 @@ pub trait Addressed {
 	fn addressed(&self) -> Vec<String>;
 }
 
-#[cfg(feature = "unstructured")]
-impl Addressed for serde_json::Value {
+impl<T: Object> Addressed for T {
 	fn addressed(&self) -> Vec<String> {
 		let mut to : Vec<String> = self.to().map(|x| x.href().to_string()).collect();
 		to.append(&mut self.bto().map(|x| x.href().to_string()).collect());
