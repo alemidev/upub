@@ -60,7 +60,7 @@ pub async fn debug(
 			None,
 			&ctx.base(),
 			&ctx.app().private_key,
-			ctx.domain(),
+			&format!("{}|devtools", ctx.domain()),
 		)
 			.await?
 			.json::<serde_json::Value>()
