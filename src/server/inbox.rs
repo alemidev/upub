@@ -319,7 +319,7 @@ impl apb::server::Inbox for Context {
 		// TODO in theory we could work with just object_id but right now only accept embedded
 		let undone_activity = activity.object().extract().ok_or_else(UpubError::bad_request)?;
 		let undone_aid = undone_activity.id().ok_or_else(UpubError::bad_request)?;
-		let undone_object_id = undone_activity.object().id().ok_or_else(UpubError::bad_request)?;
+		let undone_object_uri = undone_activity.object().id().ok_or_else(UpubError::bad_request)?;
 		let activity_type = undone_activity.activity_type().ok_or_else(UpubError::bad_request)?;
 		let undone_activity_author = undone_activity.actor().id().ok_or_else(UpubError::bad_request)?;
 

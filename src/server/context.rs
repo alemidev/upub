@@ -117,6 +117,18 @@ impl Context {
 		}
 	}
 
+	/// get bare id, usually an uuid but unspecified
+	pub fn id(&self, uri: &str) -> String {
+		if uri.starts_with(&self.0.domain) {
+			uri.split('/').last().unwrap_or("").to_string()
+		} else {
+			uri
+				.replace("https://", "+")
+				.replace("http://", "+")
+				.replace('/', "@")
+		}
+	}
+
 	/// get full user id uri
 	pub fn uid(&self, id: String) -> String {
 		self.uri("users", id)
@@ -132,17 +144,6 @@ impl Context {
 		self.uri("activities", id)
 	}
 
-	/// get bare id, usually an uuid but unspecified
-	pub fn id(&self, uri: &str) -> String {
-		if uri.starts_with(&self.0.domain) {
-			uri.split('/').last().unwrap_or("").to_string()
-		} else {
-			uri
-				.replace("https://", "+")
-				.replace("http://", "+")
-				.replace('/', "@")
-		}
-	}
 
 	pub fn server(id: &str) -> String {
 		id
