@@ -50,7 +50,7 @@ pub async fn debug(
 	AuthIdentity(auth): AuthIdentity,
 ) -> crate::Result<Json<serde_json::Value>> {
 	// only local users can request debug fetches
-	if !matches!(auth, Identity::Local(_)) {
+	if !ctx.cfg().security.allow_public_debugger && !matches!(auth, Identity::Local(_)) {
 		return Err(UpubError::unauthorized());
 	}
 	Ok(Json(

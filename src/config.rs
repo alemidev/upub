@@ -64,6 +64,9 @@ pub struct DatasourceConfig {
 pub struct SecurityConfig {
 	#[serde(default)]
 	pub allow_registration: bool,
+
+	#[serde(default)]
+	pub allow_public_debugger: bool,
 }
 
 
