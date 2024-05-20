@@ -26,13 +26,7 @@ pub async fn page(
 	Query(page): Query<Pagination>,
 	AuthIdentity(auth): AuthIdentity,
 ) -> crate::Result<JsonLD<serde_json::Value>> {
-	let context = if id.starts_with('+') {
-		id.replacen('+', "https://", 1).replace('@', "/")
-	} else if id.starts_with("tag:") {
-		id.clone()
-	} else {
-		url!(ctx, "/context/{id}") // TODO need a better way to figure out which ones are our contexts
-	};
+	let context = ctx.context_id(&id);
 
 	crate::server::builders::paginate(
 		url!(ctx, "/context/{id}/page"),

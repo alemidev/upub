@@ -121,6 +121,9 @@ impl Context {
 
 	// TODO remove this!!
 	pub fn context_id(&self, id: &str) -> String {
+		if id.starts_with("tag:") {
+			return id.to_string();
+		}
 		uriproxy::uri(self.base(), UriClass::Context, id)
 	}
 
