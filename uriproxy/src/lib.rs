@@ -22,7 +22,7 @@ impl AsRef<str> for UriClass {
 /// unpack uri in id if valid, otherwise compose full uri with "{base}/{entity}/{id}"
 pub fn uri(base: &str, entity: UriClass, id: &str) -> String {
 	if id.starts_with('+') { // ready-to-use base64-encoded id
-		if let Ok(bytes) = base64::prelude::BASE64_URL_SAFE.decode(id) {
+		if let Ok(bytes) = base64::prelude::BASE64_URL_SAFE.decode(id.replacen('+', "", 1)) {
 			if let Ok(uri) = std::str::from_utf8(&bytes) {
 				return uri.to_string();
 			}
