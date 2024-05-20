@@ -118,10 +118,12 @@ impl Uri {
 	}
 
 	pub fn short(url: &str) -> String {
-		if url.starts_with(URL_BASE) {
+		if url.starts_with(URL_BASE) || url.starts_with('/') {
 			uriproxy::decompose_id(url)
-		} else {
+		} else if url.starts_with("https://") || url.starts_with("http") {
 			uriproxy::compact_id(url)
+		} else {
+			url.to_string()
 		}
 	}
 

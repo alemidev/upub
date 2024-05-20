@@ -28,7 +28,8 @@ pub fn UserPage(tl: Timeline) -> impl IntoView {
 		.cloned()
 		.unwrap_or_default();
 	let uid = uriproxy::uri(URL_BASE, uriproxy::UriClass::User, &id);
-	let actor = create_local_resource(move || params.get().get("id").cloned().unwrap_or_default(), move |id| {
+	let _uid = uid.clone();
+	let actor = create_local_resource(move || _uid.clone(), move |id| {
 		async move {
 			match CACHE.get(&Uri::full(U::User, &id)) {
 				Some(x) => Some(x.clone()),
