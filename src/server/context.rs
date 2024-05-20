@@ -124,7 +124,7 @@ impl Context {
 		uriproxy::uri(self.base(), UriClass::Context, id)
 	}
 
-	/// get bare id, which is uuid for local stuff and ~{uri|base64} for remote stuff
+	/// get bare id, which is uuid for local stuff and +{uri|base64} for remote stuff
 	pub fn id(&self, full_id: &str) -> String {
 		if self.is_local(full_id) {
 			uriproxy::decompose_id(full_id)
