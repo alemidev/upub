@@ -13,7 +13,7 @@ pub async fn view(
 ) -> crate::Result<Response> {
 	if let Some(accept) = headers.get("Accept") {
 		if let Ok(accept) = accept.to_str() {
-			if accept.contains("text/html") {
+			if accept.contains("text/html") && !accept.contains("application/ld+json") {
 				return Ok(Redirect::to("/web").into_response());
 			}
 		}
