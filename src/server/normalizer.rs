@@ -38,7 +38,7 @@ impl Normalizer for super::Context {
 			(Some(reply_id), None) => // get context from replied object
 				object_model.context = self.fetch_object(reply_id).await?.context,
 			(None, None) => // generate a new context
-				object_model.context = Some(crate::url!(self, "/context/{}", uuid::Uuid::new_v4().to_string())),
+				object_model.context = Some(object_model.id.clone()),
 			(_, Some(_)) => {}, // leave it as set by user
 		}
 
