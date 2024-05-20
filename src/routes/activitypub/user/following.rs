@@ -11,7 +11,7 @@ pub async fn get<const OUTGOING: bool>(
 ) -> crate::Result<JsonLD<serde_json::Value>> {
 	let follow___ = if OUTGOING { "following" } else { "followers" };
 	let count = model::relation::Entity::find()
-		.filter(if OUTGOING { Follower } else { Following }.eq(ctx.uid(id.clone())))
+		.filter(if OUTGOING { Follower } else { Following }.eq(ctx.uid(&id)))
 		.count(ctx.db()).await.unwrap_or_else(|e| {
 			tracing::error!("failed counting {follow___} for {id}: {e}");
 			0
@@ -30,7 +30,7 @@ pub async fn page<const OUTGOING: bool>(
 	let offset = page.offset.unwrap_or(0);
 
 	let following = model::relation::Entity::find()
-		.filter(if OUTGOING { Follower } else { Following }.eq(ctx.uid(id.clone())))
+		.filter(if OUTGOING { Follower } else { Following }.eq(ctx.uid(&id)))
 		.select_only()
 		.select_column(if OUTGOING { Following } else { Follower })
 		.limit(limit)

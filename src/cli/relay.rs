@@ -1,12 +1,12 @@
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, QueryOrder};
 
 pub async fn relay(ctx: crate::server::Context, actor: String, accept: bool) -> crate::Result<()> {
-	let aid = ctx.aid(uuid::Uuid::new_v4().to_string());
+	let aid = ctx.aid(&uuid::Uuid::new_v4().to_string());
 
 	let mut activity_model = crate::model::activity::Model {
 		id: aid.clone(),
 		activity_type: apb::ActivityType::Follow,
-		actor: ctx.base(),
+		actor: ctx.base().to_string(),
 		object: Some(actor.clone()),
 		target: None,
 		published: chrono::Utc::now(),
@@ -32,7 +32,7 @@ pub async fn relay(ctx: crate::server::Context, actor: String, accept: bool) -> 
 	crate::model::activity::Entity::insert(activity_model.into_active_model())
 		.exec(ctx.db()).await?;
 
-	ctx.dispatch(&ctx.base(), vec![actor, apb::target::PUBLIC.to_string()], &aid, None).await?;
+	ctx.dispatch(ctx.base(), vec![actor, apb::target::PUBLIC.to_string()], &aid, None).await?;
 
 	Ok(())
 }

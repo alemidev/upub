@@ -4489,6 +4489,7 @@ dependencies = [
  "tower-http",
  "tracing",
  "tracing-subscriber",
+ "uriproxy",
  "uuid",
 ]
 
@@ -4515,7 +4516,15 @@ dependencies = [
  "serde_json",
  "thiserror",
  "tracing",
+ "uriproxy",
  "web-sys",
+]
+
+[[package]]
+name = "uriproxy"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.0",
 ]
 
 [[package]]

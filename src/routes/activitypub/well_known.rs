@@ -105,12 +105,12 @@ pub async fn webfinger(State(ctx): State<Context>, Query(query): Query<Webfinger
 		if user == ctx.domain() && domain == ctx.domain() {
 			return Ok(JsonRD(JsonResourceDescriptor {
 				subject: format!("acct:{user}@{domain}"),
-				aliases: vec![ctx.base()],
+				aliases: vec![ctx.base().to_string()],
 				links: vec![
 					JsonResourceDescriptorLink {
 						rel: "self".to_string(),
 						link_type: Some("application/ld+json".to_string()),
-						href: Some(ctx.base()),
+						href: Some(ctx.base().to_string()),
 						properties: jrd::Map::default(),
 						titles: jrd::Map::default(),
 					},
@@ -119,7 +119,7 @@ pub async fn webfinger(State(ctx): State<Context>, Query(query): Query<Webfinger
 				properties: jrd::Map::default(),
 			}));
 		}
-		let uid = ctx.uid(user.to_string());
+		let uid = ctx.uid(user);
 		match model::user::Entity::find_by_id(uid)
 			.one(ctx.db())
 			.await

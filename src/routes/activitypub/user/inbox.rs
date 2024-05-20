@@ -11,7 +11,7 @@ pub async fn get(
 	match auth {
 		Identity::Anonymous => Err(StatusCode::FORBIDDEN.into()),
 		Identity::Remote(_) => Err(StatusCode::FORBIDDEN.into()),
-		Identity::Local(user) => if ctx.uid(id.clone()) == user {
+		Identity::Local(user) => if ctx.uid(&id) == user {
 			crate::server::builders::collection(&url!(ctx, "/users/{id}/inbox"), None)
 		} else {
 			Err(StatusCode::FORBIDDEN.into())
@@ -29,7 +29,7 @@ pub async fn page(
 		// local inbox is only for local users
 		return Err(UpubError::forbidden());
 	};
-	if uid != &ctx.uid(id.clone()) {
+	if uid != &ctx.uid(&id) {
 		return Err(UpubError::forbidden());
 	}
 

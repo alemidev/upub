@@ -19,7 +19,7 @@ pub async fn view(
 	Path(id): Path<String>,
 	Query(query): Query<TryFetch>,
 ) -> crate::Result<JsonLD<serde_json::Value>> {
-	let mut uid = ctx.uri("users", id.clone());
+	let mut uid = ctx.uid(&id);
 	if auth.is_local() {
 		if id.starts_with('@') {
 			if let Some((user, host)) = id.replacen('@', "", 1).split_once('@') {

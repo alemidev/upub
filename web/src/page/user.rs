@@ -36,12 +36,12 @@ pub fn UserPage(tl: Timeline) -> impl IntoView {
 	}
 	let actor = create_local_resource(move || params.get().get("id").cloned().unwrap_or_default(), move |id| {
 		async move {
-			match CACHE.get(&Uri::full(FetchKind::User, &id)) {
+			match CACHE.get(&Uri::full(U::User, &id)) {
 				Some(x) => Some(x.clone()),
 				None => {
-					let user : serde_json::Value = Http::fetch(&Uri::api(FetchKind::User, &id, true), auth).await.ok()?;
+					let user : serde_json::Value = Http::fetch(&Uri::api(U::User, &id, true), auth).await.ok()?;
 					let user = Arc::new(user);
-					CACHE.put(Uri::full(FetchKind::User, &id), user.clone());
+					CACHE.put(Uri::full(U::User, &id), user.clone());
 					Some(user)
 				},
 			}
@@ -89,7 +89,7 @@ pub fn UserPage(tl: Timeline) -> impl IntoView {
 							let following = object.following_count().unwrap_or(0);
 							let followers = object.followers_count().unwrap_or(0);
 							let statuses = object.statuses_count().unwrap_or(0);
-							let tl_url = format!("{}/outbox/page", Uri::api(FetchKind::User, &id.clone(), false));
+							let tl_url = format!("{}/outbox/page", Uri::api(U::User, &id.clone(), false));
 							if !tl.next.get().starts_with(&tl_url) {
 								tl.reset(tl_url);
 							}

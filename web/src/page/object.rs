@@ -21,19 +21,19 @@ pub fn ObjectPage(tl: Timeline) -> impl IntoView {
 	}
 	let object = create_local_resource(move || params.get().get("id").cloned().unwrap_or_default(), move |oid| {
 		async move {
-			match CACHE.get(&Uri::full(FetchKind::Object, &oid)) {
+			match CACHE.get(&Uri::full(U::Object, &oid)) {
 				Some(x) => Some(x.clone()),
 				None => {
-					let obj = Http::fetch::<serde_json::Value>(&Uri::api(FetchKind::Object, &oid, true), auth).await.ok()?;
+					let obj = Http::fetch::<serde_json::Value>(&Uri::api(U::Object, &oid, true), auth).await.ok()?;
 					let obj = Arc::new(obj);
 					if let Some(author) = obj.attributed_to().id() {
 						if let Ok(user) = Http::fetch::<serde_json::Value>(
-							&Uri::api(FetchKind::User, &author, true), auth
+							&Uri::api(U::User, &author, true), auth
 						).await {
-							CACHE.put(Uri::full(FetchKind::User, &author), Arc::new(user));
+							CACHE.put(Uri::full(U::User, &author), Arc::new(user));
 						}
 					}
-					CACHE.put(Uri::full(FetchKind::Object, &oid), obj.clone());
+					CACHE.put(Uri::full(U::Object, &oid), obj.clone());
 					Some(obj)
 				}
 			}
@@ -66,7 +66,7 @@ pub fn ObjectPage(tl: Timeline) -> impl IntoView {
 					},
 					Some(Some(o)) => {
 						let object = o.clone();
-						let tl_url = format!("{}/page", Uri::api(FetchKind::Context, &o.context().id().unwrap_or_default(), false));
+						let tl_url = format!("{}/page", Uri::api(U::Context, &o.context().id().unwrap_or_default(), false));
 						if !tl.next.get().starts_with(&tl_url) {
 							tl.reset(tl_url);
 						}

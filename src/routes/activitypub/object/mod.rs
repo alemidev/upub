@@ -14,7 +14,7 @@ pub async fn view(
 	AuthIdentity(auth): AuthIdentity,
 	Query(query): Query<TryFetch>,
 ) -> crate::Result<JsonLD<serde_json::Value>> {
-	let oid = ctx.uri("objects", id);
+	let oid = ctx.oid(&id);
 	if auth.is_local() && query.fetch && !ctx.is_local(&oid) {
 		let obj = ctx.fetch_object(&oid).await?;
 		// some implementations serve statuses on different urls than their AP id

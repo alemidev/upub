@@ -84,5 +84,5 @@ pub async fn register(
 		registration.banner_url
 	).await?;
 
-	Ok(Json(ctx.uid(registration.username)))
+	Ok(Json(ctx.uid(&registration.username)))
 }

@@ -4,6 +4,7 @@ use openssl::rsa::Rsa;
 use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect, SelectColumns, Set};
 
 use crate::{config::Config, model, server::fetcher::Fetcher};
+use uriproxy::UriClass;
 
 use super::dispatcher::Dispatcher;
 
@@ -15,6 +16,7 @@ struct ContextInner {
 	config: Config,
 	domain: String,
 	protocol: String,
+	base_url: String,
 	dispatcher: Dispatcher,
 	// TODO keep these pre-parsed
 	app: model::application::Model,
@@ -72,6 +74,7 @@ impl Context {
 			.await?;
 
 		Ok(Context(Arc::new(ContextInner {
+			base_url: format!("{}{}", protocol, domain),
 			db, domain, protocol, app, dispatcher, config,
 			relays: BTreeSet::from_iter(relays.into_iter()),
 		})))
@@ -97,53 +100,38 @@ impl Context {
 		&self.0.protocol
 	}
 
-	pub fn base(&self) -> String {
-		format!("{}{}", self.0.protocol, self.0.domain)
-	}
-
-	pub fn uri(&self, entity: &str, id: String) -> String {
-		if id.starts_with("http") { // ready-to-use id
-			id
-		} else if id.starts_with('+') { // compacted id
-			// TODO theres already 2 edge cases, i really need to get rid of this
-			id
-				.replace('@', "/")
-				.replace("///", "/@/") // omg wordpress PLEASE AAAAAAAAAAAAAAAAAAAA
-				.replace("//", "/@") // oops my method sucks!! TODO
-				.replacen('+', "https://", 1)
-				.replace(' ', "%20") // omg wordpress
-		} else { // bare local id
-			format!("{}{}/{}/{}", self.0.protocol, self.0.domain, entity, id)
-		}
-	}
-
-	/// get bare id, usually an uuid but unspecified
-	pub fn id(&self, uri: &str) -> String {
-		if uri.starts_with(&self.0.domain) {
-			uri.split('/').last().unwrap_or("").to_string()
-		} else {
-			uri
-				.replace("https://", "+")
-				.replace("http://", "+")
-				.replace('/', "@")
-		}
+	pub fn base(&self) -> &str {
+		&self.0.base_url
 	}
 
 	/// get full user id uri
-	pub fn uid(&self, id: String) -> String {
-		self.uri("users", id)
+	pub fn uid(&self, id: &str) -> String {
+		uriproxy::uri(self.base(), UriClass::User, id)
 	}
 
 	/// get full object id uri
-	pub fn oid(&self, id: String) -> String {
-		self.uri("objects", id)
+	pub fn oid(&self, id: &str) -> String {
+		uriproxy::uri(self.base(), UriClass::Object, id)
 	}
 
 	/// get full activity id uri
-	pub fn aid(&self, id: String) -> String {
-		self.uri("activities", id)
+	pub fn aid(&self, id: &str) -> String {
+		uriproxy::uri(self.base(), UriClass::Activity, id)
 	}
 
+	// TODO remove this!!
+	pub fn context_id(&self, id: &str) -> String {
+		uriproxy::uri(self.base(), UriClass::Context, id)
+	}
+
+	/// get bare id, which is uuid for local stuff and ~{uri|base64} for remote stuff
+	pub fn id(&self, full_id: &str) -> String {
+		if self.is_local(full_id) {
+			uriproxy::decompose_id(full_id)
+		} else {
+			uriproxy::compact_id(full_id)
+		}
+	}
 
 	pub fn server(id: &str) -> String {
 		id
@@ -156,8 +144,7 @@ impl Context {
 	}
 
 	pub fn is_local(&self, id: &str) -> bool {
-		// TODO consider precalculating once this format!
-		id.starts_with(&format!("{}{}", self.0.protocol, self.0.domain))
+		id.starts_with(self.base())
 	}
 
 	pub async fn expand_addressing(&self, targets: Vec<String>) -> crate::Result<Vec<String>> {

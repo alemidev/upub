@@ -9,7 +9,7 @@ pub async fn get(
 	AuthIdentity(auth): AuthIdentity,
 ) -> crate::Result<JsonLD<serde_json::Value>> {
 	let local_context_id = url!(ctx, "/context/{id}");
-	let context = ctx.uri("context", id);
+	let context = ctx.context_id(&id);
 
 	let count = model::addressing::Entity::find_addressed(auth.my_id())
 		.filter(auth.filter_condition())

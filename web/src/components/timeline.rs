@@ -187,8 +187,8 @@ async fn process_activities(activities: Vec<serde_json::Value>, auth: Auth) -> V
 			if let Some(object_id) = activity.object().id() {
 				if !gonna_fetch.contains(&object_id) {
 					let fetch_kind = match activity_type {
-						apb::ActivityType::Follow => FetchKind::User,
-						_ => FetchKind::Object,
+						apb::ActivityType::Follow => U::User,
+						_ => U::Object,
 					};
 					gonna_fetch.insert(object_id.clone());
 					sub_tasks.push(Box::pin(fetch_and_update_with_user(fetch_kind, object_id, auth)));
@@ -211,20 +211,20 @@ async fn process_activities(activities: Vec<serde_json::Value>, auth: Auth) -> V
 		if let Some(uid) = activity.attributed_to().id() {
 			if CACHE.get(&uid).is_none() && !gonna_fetch.contains(&uid) {
 				gonna_fetch.insert(uid.clone());
-				sub_tasks.push(Box::pin(fetch_and_update(FetchKind::User, uid, auth)));
+				sub_tasks.push(Box::pin(fetch_and_update(U::User, uid, auth)));
 			}
 		}
 	
 		if let Some(uid) = activity.actor().id() {
 			if CACHE.get(&uid).is_none() && !gonna_fetch.contains(&uid) {
 				gonna_fetch.insert(uid.clone());
-				sub_tasks.push(Box::pin(fetch_and_update(FetchKind::User, uid, auth)));
+				sub_tasks.push(Box::pin(fetch_and_update(U::User, uid, auth)));
 			}
 		}
 	}
 
 	for user in actors_seen {
-		sub_tasks.push(Box::pin(fetch_and_update(FetchKind::User, user, auth)));
+		sub_tasks.push(Box::pin(fetch_and_update(U::User, user, auth)));
 	}
 
 	futures::future::join_all(sub_tasks).await;
@@ -232,22 +232,22 @@ async fn process_activities(activities: Vec<serde_json::Value>, auth: Auth) -> V
 	out
 }
 
-async fn fetch_and_update(kind: FetchKind, id: String, auth: Auth) {
+async fn fetch_and_update(kind: U, id: String, auth: Auth) {
 	match Http::fetch(&Uri::api(kind, &id, false), auth).await {
 		Ok(data) => CACHE.put(id, Arc::new(data)),
 		Err(e) => console_warn(&format!("could not fetch '{id}': {e}")),
 	}
 }
 
-async fn fetch_and_update_with_user(kind: FetchKind, id: String, auth: Auth) {
-	fetch_and_update(kind.clone(), id.clone(), auth).await;
+async fn fetch_and_update_with_user(kind: U, id: String, auth: Auth) {
+	fetch_and_update(kind, id.clone(), auth).await;
 	if let Some(obj) = CACHE.get(&id) {
 		if let Some(actor_id) = match kind {
-			FetchKind::Object => obj.attributed_to().id(),
-			FetchKind::Activity => obj.actor().id(),
-			FetchKind::User | FetchKind::Context => None,
+			U::Object => obj.attributed_to().id(),
+			U::Activity => obj.actor().id(),
+			U::User | U::Context => None,
 		} {
-			fetch_and_update(FetchKind::User, actor_id, auth).await;
+			fetch_and_update(U::User, actor_id, auth).await;
 		}
 	}
 }

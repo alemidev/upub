@@ -15,8 +15,8 @@ impl apb::server::Outbox for Context {
 
 	async fn create_note(&self, uid: String, object: serde_json::Value) -> crate::Result<String> {
 		let raw_oid = uuid::Uuid::new_v4().to_string();
-		let oid = self.oid(raw_oid.clone());
-		let aid = self.aid(uuid::Uuid::new_v4().to_string());
+		let oid = self.oid(&raw_oid);
+		let aid = self.aid(&uuid::Uuid::new_v4().to_string());
 		let activity_targets = object.addressed();
 		let object_model = self.insert_object(
 			object
@@ -24,7 +24,7 @@ impl apb::server::Outbox for Context {
 				.set_attributed_to(Node::link(uid.clone()))
 				.set_published(Some(chrono::Utc::now()))
 				.set_url(Node::maybe_link(self.cfg().instance.frontend.as_ref().map(|x| format!("{x}/objects/{raw_oid}")))),
-			Some(self.base()),
+			Some(self.base().to_string()),
 		).await?;
 
 		let activity_model = model::activity::Model {
@@ -54,8 +54,8 @@ impl apb::server::Outbox for Context {
 		};
 
 		let raw_oid = uuid::Uuid::new_v4().to_string();
-		let oid = self.oid(raw_oid.clone());
-		let aid = self.aid(uuid::Uuid::new_v4().to_string());
+		let oid = self.oid(&raw_oid);
+		let aid = self.aid(&uuid::Uuid::new_v4().to_string());
 		let activity_targets = activity.addressed();
 
 		self.insert_object(
@@ -67,7 +67,7 @@ impl apb::server::Outbox for Context {
 				.set_bto(activity.bto())
 				.set_cc(activity.cc())
 				.set_bcc(activity.bcc()),
-			Some(self.base()),
+			Some(self.base().to_string()),
 		).await?;
 
 		let activity_model = model::activity::Model::new(
@@ -86,7 +86,7 @@ impl apb::server::Outbox for Context {
 	}
 
 	async fn like(&self, uid: String, activity: serde_json::Value) -> crate::Result<String> {
-		let aid = self.aid(uuid::Uuid::new_v4().to_string());
+		let aid = self.aid(&uuid::Uuid::new_v4().to_string());
 		let activity_targets = activity.addressed();
 		let oid = activity.object().id().ok_or_else(UpubError::bad_request)?;
 		self.fetch_object(&oid).await?;
@@ -118,7 +118,7 @@ impl apb::server::Outbox for Context {
 	}
 
 	async fn follow(&self, uid: String, activity: serde_json::Value) -> crate::Result<String> {
-		let aid = self.aid(uuid::Uuid::new_v4().to_string());
+		let aid = self.aid(&uuid::Uuid::new_v4().to_string());
 		let activity_targets = activity.addressed();
 		if activity.object().id().is_none() {
 			return Err(UpubError::bad_request());
@@ -139,7 +139,7 @@ impl apb::server::Outbox for Context {
 	}
 
 	async fn accept(&self, uid: String, activity: serde_json::Value) -> crate::Result<String> {
-		let aid = self.aid(uuid::Uuid::new_v4().to_string());
+		let aid = self.aid(&uuid::Uuid::new_v4().to_string());
 		let activity_targets = activity.addressed();
 		if activity.object().id().is_none() {
 			return Err(UpubError::bad_request());
@@ -192,7 +192,7 @@ impl apb::server::Outbox for Context {
 	}
 
 	async fn undo(&self, uid: String, activity: serde_json::Value) -> crate::Result<String> {
-		let aid = self.aid(uuid::Uuid::new_v4().to_string());
+		let aid = self.aid(&uuid::Uuid::new_v4().to_string());
 		let activity_targets = activity.addressed();
 		let old_aid = activity.object().id().ok_or_else(UpubError::bad_request)?;
 		let old_activity = model::activity::Entity::find_by_id(old_aid)
@@ -235,7 +235,7 @@ impl apb::server::Outbox for Context {
 	}
 
 	async fn delete(&self, uid: String, activity: serde_json::Value) -> crate::Result<String> {
-		let aid = self.aid(uuid::Uuid::new_v4().to_string());
+		let aid = self.aid(&uuid::Uuid::new_v4().to_string());
 		let oid = activity.object().id().ok_or_else(UpubError::bad_request)?;
 
 		let object = model::object::Entity::find_by_id(&oid)
@@ -275,7 +275,7 @@ impl apb::server::Outbox for Context {
 	}
 
 	async fn update(&self, uid: String, activity: serde_json::Value) -> crate::Result<String> {
-		let aid = self.aid(uuid::Uuid::new_v4().to_string());
+		let aid = self.aid(&uuid::Uuid::new_v4().to_string());
 		let object_node = activity.object().extract().ok_or_else(UpubError::bad_request)?;
 
 		match object_node.object_type() {
@@ -364,7 +364,7 @@ impl apb::server::Outbox for Context {
 	}
 
 	async fn announce(&self, uid: String, activity: serde_json::Value) -> crate::Result<String> {
-		let aid = self.aid(uuid::Uuid::new_v4().to_string());
+		let aid = self.aid(&uuid::Uuid::new_v4().to_string());
 		let activity_targets = activity.addressed();
 		let oid = activity.object().id().ok_or_else(UpubError::bad_request)?;
 		self.fetch_object(&oid).await?;

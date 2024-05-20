@@ -10,7 +10,7 @@ pub async fn get(
 	Query(q): Query<TryFetch>,
 ) -> crate::Result<JsonLD<serde_json::Value>> {
 	let replies_id = url!(ctx, "/objects/{id}/replies");
-	let oid = ctx.uri("objects", id);
+	let oid = ctx.oid(&id);
 
 	if auth.is_local() && q.fetch {
 		ctx.fetch_thread(&oid).await?;
@@ -32,7 +32,7 @@ pub async fn page(
 	AuthIdentity(auth): AuthIdentity,
 ) -> crate::Result<JsonLD<serde_json::Value>> {
 	let page_id = url!(ctx, "/objects/{id}/replies/page");
-	let oid = ctx.uri("objects", id);
+	let oid = ctx.oid(&id);
 
 	crate::server::builders::paginate(
 		page_id,

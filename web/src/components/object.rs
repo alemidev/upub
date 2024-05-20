@@ -176,10 +176,10 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 				<td><ActorBanner object=author /></td>
 				<td class="rev" >
 					{object.in_reply_to().id().map(|reply| view! {
-							<small><i><a class="clean" href={Uri::web(FetchKind::Object, &reply)} title={reply}>reply</a></i></small> 
+							<small><i><a class="clean" href={Uri::web(U::Object, &reply)} title={reply}>reply</a></i></small> 
 					})}
 					<PrivacyMarker addressed=addressed />
-					<a class="clean hover ml-s" href={Uri::web(FetchKind::Object, object.id().unwrap_or_default())}>
+					<a class="clean hover ml-s" href={Uri::web(U::Object, object.id().unwrap_or_default())}>
 						<DateTime t=object.published() />
 					</a>
 					<sup><small><a class="clean ml-s" href={external_url} target="_blank">"↗"</a></small></sup>

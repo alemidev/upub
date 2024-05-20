@@ -33,11 +33,11 @@ pub fn DebugPage() -> impl IntoView {
 					<tr>
 						<td>
 							<small><a
-								href={move|| Uri::web(FetchKind::Object, &query.get())}
+								href={move|| Uri::web(U::Object, &query.get())}
 							>obj</a>
 								" "
 							<a
-								href={move|| Uri::web(FetchKind::User, &query.get())}
+								href={move|| Uri::web(U::User, &query.get())}
 							>usr</a></small>
 						</td>
 						<td class="w-100"><input class="w-100" type="text" on:input=move|ev| set_query.set(event_target_value(&ev)) placeholder="AP id" /></td>

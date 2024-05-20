@@ -1,5 +1,5 @@
 [workspace]
-members = ["apb", "web", "mdhtml"]
+members = ["apb", "web", "mdhtml", "uriproxy"]
 
 [package]
 name = "upub"
@@ -28,6 +28,7 @@ serde_default = "0.1"
 serde-inline-default = "0.2"
 toml = "0.8"
 mdhtml = { path = "mdhtml", features = ["markdown"] }
+uriproxy = { path = "uriproxy" }
 jrd = "0.1"
 tracing = "0.1"
 tracing-subscriber = "0.3"

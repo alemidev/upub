@@ -58,7 +58,7 @@ pub async fn proxy_get(
 			Method::GET,
 			&query.id,
 			None,
-			&ctx.base(),
+			ctx.base(),
 			&ctx.app().private_key,
 			&format!("{}+proxy", ctx.domain()),
 		)
@@ -82,7 +82,7 @@ pub async fn proxy_form(
 			Method::GET,
 			&query.id,
 			None,
-			&ctx.base(),
+			ctx.base(),
 			&ctx.app().private_key,
 			&format!("{}+proxy", ctx.domain()),
 		)

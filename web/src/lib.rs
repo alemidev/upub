@@ -17,6 +17,7 @@ pub const DEFAULT_AVATAR_URL: &str = "https://cdn.alemi.dev/social/gradient.png"
 pub const NAME: &str = "μ";
 
 use std::sync::Arc;
+use uriproxy::UriClass;
 
 
 
@@ -42,7 +43,7 @@ impl ObjectCache {
 		self.0.insert(k, v);
 	}
 
-	pub async fn fetch(&self, k: &str, kind: FetchKind) -> reqwest::Result<Object> {
+	pub async fn fetch(&self, k: &str, kind: UriClass) -> reqwest::Result<Object> {
 		match self.get(k) {
 			Some(x) => Ok(x),
 			None => {
@@ -57,25 +58,6 @@ impl ObjectCache {
 	}
 }
 
-
-#[derive(Debug, Clone)]
-pub enum FetchKind {
-	User,
-	Object,
-	Activity,
-	Context,
-}
-
-impl AsRef<str> for FetchKind {
-	fn as_ref(&self) -> &str {
-		match self {
-			Self::User => "users",
-			Self::Object => "objects",
-			Self::Activity => "activities",
-			Self::Context => "context",
-		}
-	}
-}
 
 pub struct Http;
 
@@ -121,28 +103,24 @@ impl Http {
 pub struct Uri;
 
 impl Uri {
-	pub fn full(kind: FetchKind, id: &str) -> String {
-		let kind = kind.as_ref();
-		if id.starts_with('+') {
-			id.replace('+', "https://").replace('@', "/")
-		} else {
-			format!("{URL_BASE}/{kind}/{id}")
-		}
+	pub fn full(kind: UriClass, id: &str) -> String {
+		uriproxy::uri(URL_BASE, kind, id)
 	}
 
 	pub fn pretty(url: &str) -> String {
+		let bare = url.replace("https://", "");
 		if url.len() < 50 {
-			url.replace("https://", "")
+			bare
 		} else {
-			format!("{}..", url.replace("https://", "").get(..50).unwrap_or_default())
+			format!("{}..", bare.get(..50).unwrap_or_default())
 		}.replace('/', "\u{200B}/\u{200B}")
 	}
 
 	pub fn short(url: &str) -> String {
 		if url.starts_with(URL_BASE) {
-			url.split('/').last().unwrap_or_default().to_string()
+			uriproxy::decompose_id(url)
 		} else {
-			url.replace("https://", "+").replace('/', "@")
+			uriproxy::compact_id(url)
 		}
 	}
 
@@ -154,7 +132,7 @@ impl Uri {
 	///  - https://other.domain.net/unexpected/path/root
 	///  - +other.domain.net@users@root
 	///  - root
-	pub fn web(kind: FetchKind, url: &str) -> String {
+	pub fn web(kind: UriClass, url: &str) -> String {
 		let kind = kind.as_ref();
 		format!("/web/{kind}/{}", Self::short(url))
 	}
@@ -167,7 +145,7 @@ impl Uri {
 	///  - https://other.domain.net/unexpected/path/root
 	///  - +other.domain.net@users@root
 	///  - root
-	pub fn api(kind: FetchKind, url: &str, fetch: bool) -> String {
+	pub fn api(kind: UriClass, url: &str, fetch: bool) -> String {
 		let kind = kind.as_ref();
 		format!("{URL_BASE}/{kind}/{}{}", Self::short(url), if fetch { "?fetch=true" } else { "" })
 	}

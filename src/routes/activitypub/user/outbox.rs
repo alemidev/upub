@@ -17,11 +17,7 @@ pub async fn page(
 	Query(page): Query<Pagination>,
 	AuthIdentity(auth): AuthIdentity,
 ) -> crate::Result<JsonLD<serde_json::Value>> {
-	let uid = if id.starts_with('+') {
-		format!("https://{}", id.replacen('+', "", 1).replace('@', "/"))
-	} else {
-		ctx.uid(id.clone())
-	};
+	let uid = ctx.uid(&id);
 	crate::server::builders::paginate(
 		url!(ctx, "/users/{id}/outbox/page"),
 		Condition::all()
@@ -47,7 +43,7 @@ pub async fn post(
 	match auth {
 		Identity::Anonymous => Err(StatusCode::UNAUTHORIZED.into()),
 		Identity::Remote(_) => Err(StatusCode::NOT_IMPLEMENTED.into()),
-		Identity::Local(uid) => if ctx.uid(id.clone()) == uid {
+		Identity::Local(uid) => if ctx.uid(&id) == uid {
 			tracing::debug!("processing new local activity: {}", serde_json::to_string(&activity).unwrap_or_default());
 			match activity.base_type() {
 				None => Err(StatusCode::BAD_REQUEST.into()),

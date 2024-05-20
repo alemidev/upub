@@ -25,7 +25,7 @@ impl Administrable for super::Context {
 		banner_url: Option<String>,
 	) -> crate::Result<()> {
 		let key = openssl::rsa::Rsa::generate(2048).unwrap();
-		let ap_id = self.uid(username.clone());
+		let ap_id = self.uid(&username);
 		let db = self.db();
 		let domain = self.domain().to_string();
 		let user_model = crate::model::user::Model {
