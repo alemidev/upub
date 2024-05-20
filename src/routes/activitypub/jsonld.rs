@@ -19,6 +19,7 @@ impl LD for serde_json::Value {
 		if let Some(obj) = self.as_object_mut() {
 			let mut ctx = serde_json::Map::new();
 			ctx.insert("sensitive".to_string(), serde_json::Value::String("as:sensitive".into()));
+			ctx.insert("quoteUrl".to_string(), serde_json::Value::String("as:quoteUrl".into()));
 			match o_type {
 				Some(apb::ObjectType::Actor(_)) => {
 					ctx.insert("counters".to_string(), serde_json::Value::String("https://ns.alemi.dev/as/counters/#".into()));

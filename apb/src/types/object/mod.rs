@@ -72,6 +72,8 @@ pub trait Object : Base {
 
 	#[cfg(feature = "activitypub-miscellaneous-terms")]
 	fn sensitive(&self) -> Option<bool> { None }
+	#[cfg(feature = "activitypub-miscellaneous-terms")]
+	fn quote_url(&self) -> Node<Self::Object> { Node::Empty }
 
 	#[cfg(feature = "activitypub-fe")]
 	fn liked_by_me(&self) -> Option<bool> { None }
@@ -121,6 +123,8 @@ pub trait ObjectMut : BaseMut {
 
 	#[cfg(feature = "activitypub-miscellaneous-terms")]
 	fn set_sensitive(self, val: Option<bool>) -> Self;
+	#[cfg(feature = "activitypub-miscellaneous-terms")]
+	fn set_quote_url(self, val: Node<Self::Object>) -> Self;
 
 	#[cfg(feature = "activitypub-fe")]
 	fn set_liked_by_me(self, val: Option<bool>) -> Self;
@@ -166,6 +170,8 @@ impl Object for serde_json::Value {
 
 	#[cfg(feature = "activitypub-miscellaneous-terms")]
 	crate::getter! { sensitive -> bool }
+	#[cfg(feature = "activitypub-miscellaneous-terms")]
+	crate::getter! { quote_url::quoteUrl -> node <Self as Object>::Object }
 
 	#[cfg(feature = "activitypub-fe")]
 	crate::getter! { liked_by_me::likedByMe -> bool }
@@ -250,6 +256,8 @@ impl ObjectMut for serde_json::Value {
 
 	#[cfg(feature = "activitypub-miscellaneous-terms")]
 	crate::setter! { sensitive -> bool }
+	#[cfg(feature = "activitypub-miscellaneous-terms")]
+	crate::setter! { quote_url::quoteUrl -> node <Self as Object>::Object }
 
 	#[cfg(feature = "activitypub-fe")]
 	crate::setter! { liked_by_me::likedByMe -> bool }
