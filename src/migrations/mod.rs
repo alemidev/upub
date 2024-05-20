@@ -15,6 +15,7 @@ mod m20240424_000001_add_sensitive_field;
 mod m20240429_000001_add_relays_table;
 mod m20240502_000001_add_object_updated;
 mod m20240512_000001_add_url_to_objects;
+mod m20240520_000001_add_published_to_addressing_actor_index;
 
 pub struct Migrator;
 
@@ -37,6 +38,7 @@ impl MigratorTrait for Migrator {
 			Box::new(m20240429_000001_add_relays_table::Migration),
 			Box::new(m20240502_000001_add_object_updated::Migration),
 			Box::new(m20240512_000001_add_url_to_objects::Migration),
+			Box::new(m20240520_000001_add_published_to_addressing_actor_index::Migration),
 		]
 	}
 }
