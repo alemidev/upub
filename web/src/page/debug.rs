@@ -25,7 +25,7 @@ pub fn DebugPage() -> impl IntoView {
 							None => set_object.set(Arc::new(serde_json::Value::String("not in cache!".into()))),
 						}
 					} else {
-						let url = format!("{URL_BASE}/dbg?id={fetch_url}");
+						let url = format!("{URL_BASE}/proxy?id={fetch_url}");
 						spawn_local(async move { set_object.set(Arc::new(debug_fetch(&url, auth).await)) });
 					}
 				} >
