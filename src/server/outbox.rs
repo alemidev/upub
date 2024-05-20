@@ -4,7 +4,7 @@ use sea_orm::{sea_query::Expr, ActiveModelTrait, ColumnTrait, EntityTrait, IntoA
 
 use crate::{errors::UpubError, model, routes::activitypub::jsonld::LD};
 
-use super::{fetcher::Fetcher, Context};
+use super::{fetcher::Fetcher, normalizer::Normalizer, Context};
 
 
 #[axum::async_trait]
@@ -18,27 +18,14 @@ impl apb::server::Outbox for Context {
 		let oid = self.oid(raw_oid.clone());
 		let aid = self.aid(uuid::Uuid::new_v4().to_string());
 		let activity_targets = object.addressed();
-		let mut object_model = model::object::Model::new(
-			&object
+		let object_model = self.insert_object(
+			object
 				.set_id(Some(&oid))
 				.set_attributed_to(Node::link(uid.clone()))
 				.set_published(Some(chrono::Utc::now()))
-		)?;
-		if let Some(content) = object_model.content {
-			object_model.content = Some(mdhtml::safe_markdown(&content));
-		}
-		match (&object_model.in_reply_to, &object_model.context) {
-			(Some(reply_id), None) => // get context from replied object
-				object_model.context = self.fetch_object(reply_id).await?.context,
-			(None, None) => // generate a new context
-				object_model.context = Some(crate::url!(self, "/context/{}", uuid::Uuid::new_v4().to_string())),
-			(_, Some(_)) => {}, // leave it as set by user
-		}
-		let reply_to = object_model.in_reply_to.clone();
-
-		if let Some(fe_url) = &self.cfg().instance.frontend {
-			object_model.url = Some(format!("{fe_url}/objects/{raw_oid}")); 
-		}
+				.set_url(Node::maybe_link(self.cfg().instance.frontend.as_ref().map(|x| format!("{x}/objects/{raw_oid}")))),
+			Some(self.base()),
+		).await?;
 
 		let activity_model = model::activity::Model {
 			id: aid.clone(),
@@ -53,22 +40,8 @@ impl apb::server::Outbox for Context {
 			published: object_model.published,
 		};
 
-		model::object::Entity::insert(object_model.into_active_model())
-			.exec(self.db()).await?;
 		model::activity::Entity::insert(activity_model.into_active_model())
 			.exec(self.db()).await?;
-		model::user::Entity::update_many()
-			.col_expr(model::user::Column::StatusesCount, Expr::col(model::user::Column::StatusesCount).add(1))
-			.filter(model::user::Column::Id.eq(&uid))
-			.exec(self.db())
-			.await?;
-		if let Some(reply_to) = reply_to {
-			model::object::Entity::update_many()
-				.filter(model::object::Column::Id.eq(reply_to))
-				.col_expr(model::object::Column::Comments, Expr::col(model::object::Column::Comments).add(1))
-				.exec(self.db())
-				.await?;
-		}
 
 		self.dispatch(&uid, activity_targets, &aid, Some(&oid)).await?;
 
@@ -84,60 +57,33 @@ impl apb::server::Outbox for Context {
 		let oid = self.oid(raw_oid.clone());
 		let aid = self.aid(uuid::Uuid::new_v4().to_string());
 		let activity_targets = activity.addressed();
-		let mut object_model = model::object::Model::new(
-			&object
+
+		self.insert_object(
+			object
 				.set_id(Some(&oid))
 				.set_attributed_to(Node::link(uid.clone()))
 				.set_published(Some(chrono::Utc::now()))
-		)?;
-		let mut activity_model = model::activity::Model::new(
+				.set_to(activity.to())
+				.set_bto(activity.bto())
+				.set_cc(activity.cc())
+				.set_bcc(activity.bcc()),
+			Some(self.base()),
+		).await?;
+
+		let activity_model = model::activity::Model::new(
 			&activity
 				.set_id(Some(&aid))
 				.set_actor(Node::link(uid.clone()))
 				.set_published(Some(chrono::Utc::now()))
+				.set_object(Node::link(oid.clone()))
 		)?;
-		activity_model.object = Some(oid.clone());
-		object_model.to = activity_model.to.clone();
-		object_model.bto = activity_model.bto.clone();
-		object_model.cc = activity_model.cc.clone();
-		object_model.bcc = activity_model.bcc.clone();
-		if let Some(content) = object_model.content {
-			object_model.content = Some(mdhtml::safe_markdown(&content));
-		}
-		match (&object_model.in_reply_to, &object_model.context) {
-			(Some(reply_id), None) => // get context from replied object
-				object_model.context = self.fetch_object(reply_id).await?.context,
-			(None, None) => // generate a new context
-				object_model.context = Some(crate::url!(self, "/context/{}", uuid::Uuid::new_v4().to_string())),
-			(_, Some(_)) => {}, // leave it as set by user
-		}
-		let reply_to = object_model.in_reply_to.clone();
-		if let Some(fe_url) = &self.cfg().instance.frontend {
-			object_model.url = Some(format!("{fe_url}/objects/{raw_oid}")); 
-		}
 
-		model::object::Entity::insert(object_model.into_active_model())
-			.exec(self.db()).await?;
 		model::activity::Entity::insert(activity_model.into_active_model())
 			.exec(self.db()).await?;
-		model::user::Entity::update_many()
-			.col_expr(model::user::Column::StatusesCount, Expr::col(model::user::Column::StatusesCount).add(1))
-			.filter(model::user::Column::Id.eq(&uid))
-			.exec(self.db())
-			.await?;
-		if let Some(reply_to) = reply_to {
-			model::object::Entity::update_many()
-				.filter(model::object::Column::Id.eq(reply_to))
-				.col_expr(model::object::Column::Comments, Expr::col(model::object::Column::Comments).add(1))
-				.exec(self.db())
-				.await?;
-		}
 
 		self.dispatch(&uid, activity_targets, &aid, Some(&oid)).await?;
-
 		Ok(aid)
 	}
-		
 
 	async fn like(&self, uid: String, activity: serde_json::Value) -> crate::Result<String> {
 		let aid = self.aid(uuid::Uuid::new_v4().to_string());

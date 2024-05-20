@@ -2,7 +2,7 @@ use apb::{target::Addressed, Activity, Base, Object};
 use reqwest::StatusCode;
 use sea_orm::{sea_query::Expr, ActiveModelTrait, ColumnTrait, Condition, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect, SelectColumns, Set};
 
-use crate::{errors::{LoggableError, UpubError}, model::{self, FieldError}};
+use crate::{errors::{LoggableError, UpubError}, model::{self, FieldError}, server::normalizer::Normalizer};
 
 use super::{fetcher::Fetcher, Context};
 
@@ -20,74 +20,10 @@ impl apb::server::Inbox for Context {
 			tracing::error!("refusing to process activity without embedded object: {}", serde_json::to_string_pretty(&activity).unwrap());
 			return Err(UpubError::unprocessable());
 		};
-		let mut object_model = model::object::Model::new(&object_node)?;
-		let oid = object_model.id.clone();
-		let uid = object_model.attributed_to.clone();
-		// make sure we're allowed to edit this object
-		if let Some(object_author) = &object_model.attributed_to {
-			if server != Context::server(object_author) {
-				return Err(UpubError::forbidden());
-			}
-		} else if server != Context::server(&object_model.id) {
-			return Err(UpubError::forbidden());
-		};
-		// fix context also for remote posts
-		// TODO this is not really appropriate because we're mirroring incorrectly remote objects, but
-		// it makes it SOO MUCH EASIER for us to fetch threads and stuff, so we're filling it for them
-		match (&object_model.in_reply_to, &object_model.context) {
-			(Some(reply_id), None) => // get context from replied object
-				object_model.context = self.fetch_object(reply_id).await?.context,
-			(None, None) => // generate a new context
-				object_model.context = Some(crate::url!(self, "/context/{}", uuid::Uuid::new_v4().to_string())),
-			(_, Some(_)) => {}, // leave it as set by user
-		}
-		// update replies counter
-		if let Some(ref in_reply_to) = object_model.in_reply_to {
-			if self.fetch_object(in_reply_to).await.is_ok() {
-				model::object::Entity::update_many()
-					.filter(model::object::Column::Id.eq(in_reply_to))
-					.col_expr(model::object::Column::Comments, Expr::col(model::object::Column::Comments).add(1))
-					.exec(self.db())
-					.await?;
-			}
-		}
-		model::object::Entity::insert(object_model.into_active_model()).exec(self.db()).await?;
-		model::activity::Entity::insert(activity_model.into_active_model()).exec(self.db()).await?;
-		for attachment in object_node.attachment() {
-			let attachment_model = model::attachment::ActiveModel::new(&attachment, oid.clone(), None)?;
-			model::attachment::Entity::insert(attachment_model)
-				.exec(self.db())
-				.await?;
-		}
-		// lemmy sends us an image field in posts, treat it like an attachment i'd say
-		if let Some(img) = object_node.image().get() {
-			// TODO lemmy doesnt tell us the media type but we use it to display the thing...
-			let img_url = img.url().id().unwrap_or_default();
-			let media_type = if img_url.ends_with("png") {
-				Some("image/png".to_string())
-			} else if img_url.ends_with("webp") {
-				Some("image/webp".to_string())
-			} else if img_url.ends_with("jpeg") || img_url.ends_with("jpg") {
-				Some("image/jpeg".to_string())
-			} else {
-				None
-			};
-			let attachment_model = model::attachment::ActiveModel::new(img, oid.clone(), media_type)?;
-			model::attachment::Entity::insert(attachment_model)
-				.exec(self.db())
-				.await?;
-		}
-		// TODO can we even receive anonymous objects?
-		if let Some(object_author) = uid {
-			model::user::Entity::update_many()
-				.col_expr(model::user::Column::StatusesCount, Expr::col(model::user::Column::StatusesCount).add(1))
-				.filter(model::user::Column::Id.eq(&object_author))
-				.exec(self.db())
-				.await?;
-		}
+		let object_model = self.insert_object(object_node, Some(server)).await?;
 		let expanded_addressing = self.expand_addressing(activity.addressed()).await?;
-		self.address_to(Some(&aid), Some(&oid), &expanded_addressing).await?;
-		tracing::info!("{} posted {}", aid, oid);
+		self.address_to(Some(&aid), Some(&object_model.id), &expanded_addressing).await?;
+		tracing::info!("{} posted {}", aid, object_model.id);
 		Ok(())
 	}
 

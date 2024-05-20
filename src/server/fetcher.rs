@@ -7,7 +7,7 @@ use sea_orm::{sea_query::Expr, ColumnTrait, EntityTrait, IntoActiveModel, QueryF
 
 use crate::{errors::UpubError, model, VERSION};
 
-use super::{httpsign::HttpSignature, Context};
+use super::{httpsign::HttpSignature, normalizer::Normalizer, Context};
 
 #[axum::async_trait]
 pub trait Fetcher {
@@ -300,19 +300,13 @@ async fn fetch_object_inner(ctx: &Context, id: &str, depth: usize) -> crate::Res
 		if let Err(e) = ctx.fetch_user(&attributed_to).await {
 			tracing::warn!("could not get actor of fetched object: {e}");
 		}
-		model::user::Entity::update_many()
-			.col_expr(model::user::Column::StatusesCount, Expr::col(model::user::Column::StatusesCount).add(1))
-			.filter(model::user::Column::Id.eq(&attributed_to))
-			.exec(ctx.db())
-			.await?;
 	}
 
 	let addressed = object.addressed();
-	let mut object_model = model::object::Model::new(&object)?;
 
-	if let Some(reply) = &object_model.in_reply_to {
+	if let Some(reply) = object.in_reply_to().id() {
 		if depth <= 16 {
-			fetch_object_inner(ctx, reply, depth + 1).await?;
+			fetch_object_inner(ctx, &reply, depth + 1).await?;
 			model::object::Entity::update_many()
 				.filter(model::object::Column::Id.eq(reply))
 				.col_expr(model::object::Column::Comments, Expr::col(model::object::Column::Comments).add(1))
@@ -323,47 +317,10 @@ async fn fetch_object_inner(ctx: &Context, id: &str, depth: usize) -> crate::Res
 		}
 	}
 
-	// fix context also for remote posts
-	// TODO this is not really appropriate because we're mirroring incorrectly remote objects, but
-	// it makes it SOO MUCH EASIER for us to fetch threads and stuff, so we're filling it for them
-	match (&object_model.in_reply_to, &object_model.context) {
-		(Some(reply_id), None) => // get context from replied object
-			object_model.context = fetch_object_inner(ctx, reply_id, depth + 1).await?.context,
-		(None, None) => // generate a new context
-			object_model.context = Some(crate::url!(ctx, "/context/{}", uuid::Uuid::new_v4().to_string())),
-		(_, Some(_)) => {}, // leave it as set by user
-	}
-
-	for attachment in object.attachment() {
-		let attachment_model = model::attachment::ActiveModel::new(&attachment, object_model.id.clone(), None)?;
-		model::attachment::Entity::insert(attachment_model)
-			.exec(ctx.db())
-			.await?;
-	}
-	// lemmy sends us an image field in posts, treat it like an attachment i'd say
-	if let Some(img) = object.image().get() {
-		// TODO lemmy doesnt tell us the media type but we use it to display the thing...
-		let img_url = img.url().id().unwrap_or_default();
-		let media_type = if img_url.ends_with("png") {
-			Some("image/png".to_string())
-		} else if img_url.ends_with("webp") {
-			Some("image/webp".to_string())
-		} else if img_url.ends_with("jpeg") || img_url.ends_with("jpg") {
-			Some("image/jpeg".to_string())
-		} else {
-			None
-		};
-		let attachment_model = model::attachment::ActiveModel::new(img, object_model.id.clone(), media_type)?;
-		model::attachment::Entity::insert(attachment_model)
-			.exec(ctx.db())
-			.await?;
-	}
+	let object_model = ctx.insert_object(object, None).await?;
 
 	let expanded_addresses = ctx.expand_addressing(addressed).await?;
 	ctx.address_to(None, Some(&object_model.id), &expanded_addresses).await?;
-
-	model::object::Entity::insert(object_model.clone().into_active_model())
-		.exec(ctx.db()).await?;
 
 	Ok(object_model)
 }

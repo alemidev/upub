@@ -1,5 +1,5 @@
-use apb::{Document, DocumentMut, Link, Object, ObjectMut};
-use sea_orm::{entity::prelude::*, Set};
+use apb::{DocumentMut, ObjectMut};
+use sea_orm::entity::prelude::*;
 
 use crate::routes::activitypub::jsonld::LD;
 
@@ -17,23 +17,6 @@ pub struct Model {
 	pub name: Option<String>,
 	pub media_type: String,
 	pub created: ChronoDateTimeUtc,
-}
-
-impl ActiveModel {
-	// TODO receive an impl, not a specific type!
-	// issue is that it's either an apb::Link or apb::Document, but Document doesnt inherit from link!
-	pub fn new(document: &serde_json::Value, object: String, media_type: Option<String>) -> Result<ActiveModel, super::FieldError> {
-		let media_type = media_type.unwrap_or_else(|| document.media_type().unwrap_or("link").to_string());
-		Ok(ActiveModel {
-			id: sea_orm::ActiveValue::NotSet,
-			object: Set(object),
-			url: Set(document.url().id().unwrap_or_else(|| document.href().to_string())),
-			document_type: Set(document.document_type().unwrap_or(apb::DocumentType::Page)),
-			media_type: Set(media_type),
-			name: Set(document.name().map(|x| x.to_string())),
-			created: Set(document.published().unwrap_or(chrono::Utc::now())),
-		})
-	}
 }
 
 impl Model {
