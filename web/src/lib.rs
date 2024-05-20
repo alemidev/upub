@@ -15,6 +15,7 @@ pub const URL_PREFIX: &str = "/web";
 pub const URL_SENSITIVE: &str = "https://cdn.alemi.dev/social/nsfw.png";
 pub const DEFAULT_AVATAR_URL: &str = "https://cdn.alemi.dev/social/gradient.png";
 pub const NAME: &str = "μ";
+pub const DEFAULT_COLOR: &str = "#BF616A";
 
 use std::sync::Arc;
 use uriproxy::UriClass;

@@ -1,9 +1,15 @@
 use leptos::*;
-use crate::prelude::*;
+use crate::{prelude::*, DEFAULT_COLOR};
 
 #[component]
 pub fn ConfigPage(setter: WriteSignal<crate::Config>) -> impl IntoView {
 	let config = use_context::<Signal<crate::Config>>().expect("missing config context");
+	let (color, set_color) = leptos_use::use_css_var("--accent");
+	let (_color_rgb, set_color_rgb) = leptos_use::use_css_var("--accent-rgb");
+
+	let previous_color = config.get().accent_color;
+	set_color_rgb.set(parse_hex(&previous_color));
+	set_color.set(previous_color);
 
 	macro_rules! get_cfg {
 		(filter $field:ident) => {
@@ -51,6 +57,22 @@ pub fn ConfigPage(setter: WriteSignal<crate::Config>) -> impl IntoView {
 					/> collapse content warnings
 				</span>
 			</p>
+			<p>
+				accent color
+				<input type="text" class="ma-1"
+					style="width: 8ch;"
+					placeholder=DEFAULT_COLOR
+					value=color
+					on:input=move|ev| {
+						let mut val = event_target_value(&ev);
+						if val.is_empty() { val = DEFAULT_COLOR.to_string() };
+						let mut mock = config.get();
+						mock.accent_color = val.clone();
+						setter.set(mock);
+						set_color_rgb.set(parse_hex(&val));
+						set_color.set(val);
+				} />
+			</p>
 			<hr />
 			<p><code title="unchecked elements won't show in timelines">filters</code></p>
 			<ul>
@@ -64,4 +86,12 @@ pub fn ConfigPage(setter: WriteSignal<crate::Config>) -> impl IntoView {
 			<p><a href="/web/config/dev" title="access the devtools page">devtools</a></p>
 		</div>
 	}
+}
+
+fn parse_hex(hex: &str) -> String {
+	if hex.len() < 7 { return "0, 0, 0".into(); }
+	let r = i64::from_str_radix(&hex[1..3], 16).unwrap_or_default();
+	let g = i64::from_str_radix(&hex[3..5], 16).unwrap_or_default();
+	let b = i64::from_str_radix(&hex[5..7], 16).unwrap_or_default();
+	format!("{r}, {g}, {b}")
 }
