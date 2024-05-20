@@ -25,7 +25,8 @@ impl ActivityPubRouter for Router<crate::server::Context> {
 			// core server inbox/outbox, maybe for feeds? TODO do we need these?
 			.route("/", get(ap::application::view))
 			// fetch route, to debug and retreive remote objects
-			.route("/dbg", get(ap::application::debug))
+			.route("/proxy", get(ap::application::proxy_get))
+			.route("/proxy", post(ap::application::proxy_form))
 			// TODO shared inboxes and instance stream will come later, just use users *boxes for now
 			.route("/inbox", post(ap::inbox::post))
 			.route("/inbox", get(ap::inbox::get))

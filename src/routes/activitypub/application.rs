@@ -1,5 +1,5 @@
 use apb::{ActorMut, BaseMut, ObjectMut, PublicKeyMut};
-use axum::{extract::{Query, State}, http::HeaderMap, response::{IntoResponse, Redirect, Response}, Json};
+use axum::{extract::{Query, State}, http::HeaderMap, response::{IntoResponse, Redirect, Response}, Form, Json};
 use reqwest::Method;
 
 use crate::{errors::UpubError, server::{auth::{AuthIdentity, Identity}, fetcher::Fetcher, Context}, url};
@@ -44,12 +44,12 @@ pub struct FetchPath {
 	id: String,
 }
 
-pub async fn debug(
+pub async fn proxy_get(
 	State(ctx): State<Context>,
 	Query(query): Query<FetchPath>,
 	AuthIdentity(auth): AuthIdentity,
 ) -> crate::Result<Json<serde_json::Value>> {
-	// only local users can request debug fetches
+	// only local users can request fetches
 	if !ctx.cfg().security.allow_public_debugger && !matches!(auth, Identity::Local(_)) {
 		return Err(UpubError::unauthorized());
 	}
@@ -60,7 +60,31 @@ pub async fn debug(
 			None,
 			&ctx.base(),
 			&ctx.app().private_key,
-			&format!("{}|devtools", ctx.domain()),
+			&format!("{}+proxy", ctx.domain()),
+		)
+			.await?
+			.json::<serde_json::Value>()
+			.await?
+	))
+}
+
+pub async fn proxy_form(
+	State(ctx): State<Context>,
+	AuthIdentity(auth): AuthIdentity,
+	Form(query): Form<FetchPath>,
+) -> crate::Result<Json<serde_json::Value>> {
+	// only local users can request fetches
+	if !ctx.cfg().security.allow_public_debugger && !matches!(auth, Identity::Local(_)) {
+		return Err(UpubError::unauthorized());
+	}
+	Ok(Json(
+		Context::request(
+			Method::GET,
+			&query.id,
+			None,
+			&ctx.base(),
+			&ctx.app().private_key,
+			&format!("{}+proxy", ctx.domain()),
 		)
 			.await?
 			.json::<serde_json::Value>()

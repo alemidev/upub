@@ -77,6 +77,7 @@ pub async fn view(
 				.set_endpoints(Node::object(
 					serde_json::Value::new_object()
 						.set_shared_inbox(Some(&url!(ctx, "/inbox")))
+						.set_proxy_url(Some(&url!(ctx, "/proxy")))
 				));
 
 			if !auth.is(&uid) && !cfg.show_followers_count {
