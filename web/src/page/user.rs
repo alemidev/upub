@@ -27,13 +27,7 @@ pub fn UserPage(tl: Timeline) -> impl IntoView {
 		.get("id")
 		.cloned()
 		.unwrap_or_default();
-	let mut uid = id
-		.replace("/web/objects/", "")
-		.replacen('+', "https://", 1)
-		.replace('@', "/");
-	if !uid.starts_with("http") {
-		uid = format!("{URL_BASE}/web/objects/{uid}");
-	}
+	let uid = uriproxy::uri(URL_BASE, uriproxy::UriClass::User, &id);
 	let actor = create_local_resource(move || params.get().get("id").cloned().unwrap_or_default(), move |id| {
 		async move {
 			match CACHE.get(&Uri::full(U::User, &id)) {

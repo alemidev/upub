@@ -10,15 +10,8 @@ use apb::{Base, Object};
 pub fn ObjectPage(tl: Timeline) -> impl IntoView {
 	let params = use_params_map();
 	let auth = use_context::<Auth>().expect("missing auth context");
-	let mut uid =  params.get().get("id")
-		.cloned()
-		.unwrap_or_default()
-		.replace("/web/objects/", "")
-		.replacen('+', "https://", 1)
-		.replace('@', "/");
-	if !uid.starts_with("http") {
-		uid = format!("{URL_BASE}/web/objects/{uid}");
-	}
+	let id = params.get().get("id").cloned().unwrap_or_default();
+	let uid =  uriproxy::uri(URL_BASE, uriproxy::UriClass::Object, &id);
 	let object = create_local_resource(move || params.get().get("id").cloned().unwrap_or_default(), move |oid| {
 		async move {
 			match CACHE.get(&Uri::full(U::Object, &oid)) {
