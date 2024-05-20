@@ -1,4 +1,4 @@
-use apb::{Node, Link, Base, Object, Document};
+use apb::{Node, Base, Object, Document};
 use sea_orm::{sea_query::Expr, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, Set};
 use crate::{errors::UpubError, model, server::Context};
 
@@ -86,7 +86,7 @@ impl Normalizer for super::Context {
 					document_type: Set(o.as_document().map_or(apb::DocumentType::Document, |x| x.document_type().unwrap_or(apb::DocumentType::Page))),
 					name: Set(o.name().map(|x| x.to_string())),
 					media_type: Set(o.media_type().unwrap_or("link").to_string()),
-					created: Set(o.published().unwrap_or_else(|| chrono::Utc::now())),
+					created: Set(o.published().unwrap_or_else(chrono::Utc::now)),
 				},
 			};
 			model::attachment::Entity::insert(attachment_model)
@@ -114,7 +114,7 @@ impl Normalizer for super::Context {
 				document_type: Set(img.as_document().map_or(apb::DocumentType::Document, |x| x.document_type().unwrap_or(apb::DocumentType::Page))),
 				name: Set(img.name().map(|x| x.to_string())),
 				media_type: Set(img.media_type().unwrap_or(media_type.as_deref().unwrap_or("link")).to_string()),
-				created: Set(img.published().unwrap_or_else(|| chrono::Utc::now())),
+				created: Set(img.published().unwrap_or_else(chrono::Utc::now)),
 			};
 			model::attachment::Entity::insert(attachment_model)
 				.exec(self.db())
