@@ -1,3 +1,15 @@
+#[cfg(feature = "send")]
+pub trait MaybeSend : Send {}
+#[cfg(feature = "send")]
+impl<T : Send> MaybeSend for T {}
+
+
+#[cfg(not(feature = "send"))]
+pub trait MaybeSend {}
+#[cfg(not(feature = "send"))]
+impl<T> MaybeSend for T {}
+
+
 #[derive(Debug, thiserror::Error)]
 #[error("invalid type value")]
 pub struct TypeValueError;

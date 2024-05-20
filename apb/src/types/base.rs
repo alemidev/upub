@@ -8,13 +8,13 @@ crate::strenum! {
 	};
 }
 
-pub trait Base {
+pub trait Base : crate::macros::MaybeSend {
 	fn id(&self) -> Option<&str> { None }
 	fn base_type(&self) -> Option<BaseType> { None }
 }
 
 
-pub trait BaseMut {
+pub trait BaseMut : crate::macros::MaybeSend {
 	fn set_id(self, val: Option<&str>) -> Self;
 	fn set_base_type(self, val: Option<BaseType>) -> Self;
 }

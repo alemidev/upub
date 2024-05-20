@@ -24,13 +24,14 @@ sea-orm = { version = "0.12", optional = true }
 reqwest = { version = "0.12", features = ["json"], optional = true }
 
 [features]
-default = ["activitypub-miscellaneous-terms"]
+default = ["activitypub-miscellaneous-terms", "send"]
 # extensions
 activitypub-miscellaneous-terms = [] # https://swicg.github.io/miscellany/
 activitypub-counters = [] # https://ns.alemi.dev/as/counters/#
 activitypub-fe = [] # https://ns.alemi.dev/as/fe/#
 litepub = [] # incomplete, https://litepub.social/
 # builtin utils
+send = []
 orm = ["dep:sea-orm"]
 fetch = ["dep:reqwest"]
 # providers
