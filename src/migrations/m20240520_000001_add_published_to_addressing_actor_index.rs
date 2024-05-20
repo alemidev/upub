@@ -14,7 +14,7 @@ impl MigrationTrait for Migration {
 		manager
 			.create_index(
 				Index::create()
-					.name("addressing-actor-index")
+					.name("addressing-actor-published-index")
 					.table(Addressing::Table)
 					.col(Addressing::Actor)
 					.col(Addressing::Published)
@@ -29,7 +29,7 @@ impl MigrationTrait for Migration {
 		manager
 			.create_index(
 				Index::create()
-					.name("addressing-server-index")
+					.name("addressing-server-published-index")
 					.table(Addressing::Table)
 					.col(Addressing::Server)
 					.col(Addressing::Published)
@@ -42,7 +42,7 @@ impl MigrationTrait for Migration {
 
 	async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
 		manager
-			.drop_index(Index::drop().name("addressing-actor-index").to_owned())
+			.drop_index(Index::drop().name("addressing-actor-published-index").to_owned())
 			.await?;
 
 		manager
@@ -56,7 +56,7 @@ impl MigrationTrait for Migration {
 			.await?;
 
 		manager
-			.drop_index(Index::drop().name("addressing-server-index").to_owned())
+			.drop_index(Index::drop().name("addressing-server-published-index").to_owned())
 			.await?;
 
 		manager
