@@ -132,7 +132,7 @@ pub fn App() -> impl IntoView {
 		</div>
 		<footer>
 			<div class="sep-top">
-				<span class="footer" >"\u{26fc} woven under moonlight  :: "<a class="clean" href="https://git.alemi.dev/upub.git" target="_blank" >src</a>" :: "<a class="clean" href="javascript:window.scrollTo({top:0, behavior:'smooth'})">top</a></span>
+				<span class="footer" >"\u{26fc} woven under moonlight  :: "<a class="clean" href="https://git.alemi.dev/upub.git" target="_blank" >src</a>" :: "<a class="clean" href="mailto:abuse@alemi.dev">contact</a>" :: "<a class="clean" href="javascript:window.scrollTo({top:0, behavior:'smooth'})">top</a></span>
 			</div>
 		</footer>
 	}
