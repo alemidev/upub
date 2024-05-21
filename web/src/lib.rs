@@ -120,7 +120,7 @@ impl Uri {
 	pub fn short(url: &str) -> String {
 		if url.starts_with(URL_BASE) || url.starts_with('/') {
 			uriproxy::decompose_id(url)
-		} else if url.starts_with("https://") || url.starts_with("http") {
+		} else if url.starts_with("https://") || url.starts_with("http://") {
 			uriproxy::compact_id(url)
 		} else {
 			url.to_string()
@@ -128,26 +128,18 @@ impl Uri {
 	}
 
 	/// convert url id to valid frontend view id:
-	///   /web/users/test
-	///   /web/objects/+social.alemi.dev@objects@1204kasfkl
+	///
 	/// accepts:
-	///  - https://my.domain.net/users/root
-	///  - https://other.domain.net/unexpected/path/root
-	///  - +other.domain.net@users@root
-	///  - root
+	///
 	pub fn web(kind: UriClass, url: &str) -> String {
 		let kind = kind.as_ref();
 		format!("/web/{kind}/{}", Self::short(url))
 	}
 	
 	/// convert url id to valid backend api id
-	///   https://feditest.alemi.dev/users/test
-	///   https://feditest.alemi.dev/users/+social.alemi.dev@users@alemi
+	///
 	/// accepts:
-	///  - https://my.domain.net/users/root
-	///  - https://other.domain.net/unexpected/path/root
-	///  - +other.domain.net@users@root
-	///  - root
+	///
 	pub fn api(kind: UriClass, url: &str, fetch: bool) -> String {
 		let kind = kind.as_ref();
 		format!("{URL_BASE}/{kind}/{}{}", Self::short(url), if fetch { "?fetch=true" } else { "" })
