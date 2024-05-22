@@ -1,8 +1,8 @@
 use axum::{extract::{Path, Query, State}, http::StatusCode, response::{IntoResponse, Response}, Json};
 use jrd::{JsonResourceDescriptor, JsonResourceDescriptorLink};
-use sea_orm::{EntityTrait, PaginatorTrait};
+use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter};
 
-use crate::{model, server::Context, url, VERSION};
+use crate::{errors::UpubError, model, server::Context, url, VERSION};
 
 #[derive(serde::Serialize)]
 pub struct NodeInfoDiscovery {
@@ -96,57 +96,85 @@ impl<T: serde::Serialize> IntoResponse for JsonRD<T> {
 	}
 }
 
-pub async fn webfinger(State(ctx): State<Context>, Query(query): Query<WebfingerQuery>) -> Result<JsonRD<JsonResourceDescriptor>, StatusCode> {
+pub async fn webfinger(State(ctx): State<Context>, Query(query): Query<WebfingerQuery>) -> crate::Result<JsonRD<JsonResourceDescriptor>> {
 	if let Some((user, domain)) = query
 		.resource
 		.replace("acct:", "")
 		.split_once('@')
 	{
-		if user == ctx.domain() && domain == ctx.domain() {
-			return Ok(JsonRD(JsonResourceDescriptor {
+		if domain == ctx.domain() {
+			if user == ctx.domain() {
+				// we fetch with our domain as user, they are checking us back, this is a special edge case
+				Ok(JsonRD(JsonResourceDescriptor {
+					subject: format!("acct:{user}@{domain}"),
+					aliases: vec![ctx.base().to_string()],
+					links: vec![
+						JsonResourceDescriptorLink {
+							rel: "self".to_string(),
+							link_type: Some("application/ld+json".to_string()),
+							href: Some(ctx.base().to_string()),
+							properties: jrd::Map::default(),
+							titles: jrd::Map::default(),
+						},
+					],
+					expires: None,
+					properties: jrd::Map::default(),
+				}))
+
+			} else {
+				// local user
+				let uid = ctx.uid(user);
+				let usr = model::user::Entity::find_by_id(uid)
+					.one(ctx.db())
+					.await?
+					.ok_or_else(UpubError::not_found)?;
+
+				Ok(JsonRD(JsonResourceDescriptor {
+					subject: format!("acct:{user}@{domain}"),
+					aliases: vec![usr.id.clone()],
+					links: vec![
+						JsonResourceDescriptorLink {
+							rel: "self".to_string(),
+							link_type: Some("application/ld+json".to_string()),
+							href: Some(usr.id),
+							properties: jrd::Map::default(),
+							titles: jrd::Map::default(),
+						},
+					],
+					expires: None,
+					properties: jrd::Map::default(),
+				}))
+			}
+
+		} else {
+			// remote user
+			let usr = model::user::Entity::find()
+				.filter(model::user::Column::PreferredUsername.eq(user))
+				.filter(model::user::Column::Domain.eq(domain))
+				.one(ctx.db())
+				.await?
+				.ok_or_else(UpubError::not_found)?;
+			
+			Ok(JsonRD(JsonResourceDescriptor {
 				subject: format!("acct:{user}@{domain}"),
-				aliases: vec![ctx.base().to_string()],
+				aliases: vec![usr.id.clone()],
 				links: vec![
 					JsonResourceDescriptorLink {
 						rel: "self".to_string(),
 						link_type: Some("application/ld+json".to_string()),
-						href: Some(ctx.base().to_string()),
+						href: Some(usr.id),
 						properties: jrd::Map::default(),
 						titles: jrd::Map::default(),
 					},
 				],
-				expires: None,
 				properties: jrd::Map::default(),
-			}));
-		}
-		let uid = ctx.uid(user);
-		match model::user::Entity::find_by_id(uid)
-			.one(ctx.db())
-			.await
-		{
-			Ok(Some(x)) => Ok(JsonRD(JsonResourceDescriptor {
-				subject: format!("acct:{user}@{domain}"),
-				aliases: vec![x.id.clone()],
-				links: vec![
-					JsonResourceDescriptorLink {
-						rel: "self".to_string(),
-						link_type: Some("application/ld+json".to_string()),
-						href: Some(x.id),
-						properties: jrd::Map::default(),
-						titles: jrd::Map::default(),
-					},
-				],
-				expires: None,
-				properties: jrd::Map::default(),
-			})),
-			Ok(None) => Err(StatusCode::NOT_FOUND),
-			Err(e) => {
-				tracing::error!("error executing webfinger query: {e}");
-				Err(StatusCode::INTERNAL_SERVER_ERROR)
-			},
+				// we are no authority on local users, this info should be considered already outdated,
+				// but can still be relevant, for example for our frontend
+				expires: Some(chrono::Utc::now()),
+			}))
 		}
 	} else {
-		Err(StatusCode::UNPROCESSABLE_ENTITY)
+		Err(StatusCode::UNPROCESSABLE_ENTITY.into())
 	}
 }
 
