@@ -1,54 +1,73 @@
 use std::sync::Arc;
 
 use leptos::*;
+use leptos_router::*;
 use crate::prelude::*;
 
 #[component]
 pub fn DebugPage() -> impl IntoView {
-	let (object, set_object) = create_signal(Arc::new(serde_json::Value::String(
-		"use this view to fetch remote AP objects and inspect their content".into())
-	));
+	let query_params = use_query_map();
+	let query = move || {
+		query_params.with(|params| params.get("q").cloned().unwrap_or_default())
+	};
 	let cached_ref: NodeRef<html::Input> = create_node_ref();
 	let auth = use_context::<Auth>().expect("missing auth context");
-	let (query, set_query) = create_signal("".to_string());
+	let (text, set_text) = create_signal("".to_string());
+	let navigate = use_navigate();
+
+	let object = create_local_resource(
+		query,
+		move |q| async move {
+			set_text.set(q.clone());
+			if q.is_empty() { return serde_json::Value::Null };
+			let cached = cached_ref.get().map(|x| x.checked()).unwrap_or_default();
+			if cached {
+				match CACHE.get(&q) {
+					Some(x) => (*x).clone(),
+					None => serde_json::Value::Null,
+				}
+			} else {
+				debug_fetch(&format!("{URL_BASE}/proxy?id={q}"), auth).await
+			}
+		}
+	);
+	let loading = object.loading();
+
+
 	view! {
 		<div>
 			<Breadcrumb back=true>config :: devtools</Breadcrumb>
 			<div class="mt-1" >
 				<form on:submit=move|ev| {
 					ev.prevent_default();
-					let cached = cached_ref.get().map(|x| x.checked()).unwrap_or_default();
-					let fetch_url = query.get();
-					if cached {
-						match CACHE.get(&fetch_url) {
-							Some(x) => set_object.set(x),
-							None => set_object.set(Arc::new(serde_json::Value::String("not in cache!".into()))),
-						}
-					} else {
-						let url = format!("{URL_BASE}/proxy?id={fetch_url}");
-						spawn_local(async move { set_object.set(Arc::new(debug_fetch(&url, auth).await)) });
-					}
+					navigate(&format!("/web/config/dev?q={}", text.get()), NavigateOptions::default());
 				} >
 				<table class="align w-100" >
 					<tr>
 						<td>
 							<small><a
-								href={move|| Uri::web(U::Object, &query.get())}
+								href={move|| Uri::web(U::Object, &text.get())}
 							>obj</a>
 								" "
 							<a
-								href={move|| Uri::web(U::User, &query.get())}
+								href={move|| Uri::web(U::User, &text.get())}
 							>usr</a></small>
 						</td>
-						<td class="w-100"><input class="w-100" type="text" on:input=move|ev| set_query.set(event_target_value(&ev)) placeholder="AP id" /></td>
+						<td class="w-100">
+							<input class="w-100" type="text"
+								prop:value=text
+								on:input=move|ev| set_text.set(event_target_value(&ev))
+								placeholder="AP id"
+							/>
+						</td>
 						<td><input type="submit" class="w-100" value="fetch" /></td>
-						<td><input type="checkbox" title="cached" value="cached" node_ref=cached_ref /></td>
+						<td><input type="checkbox" class:loader=loading title="cached" value="cached" node_ref=cached_ref /></td>
 					</tr>
 				</table>
 				</form>
 			</div>
-			<pre class="ma-1" >
-				{move || serde_json::to_string_pretty(object.get().as_ref()).unwrap_or("unserializable".to_string())}
+			<pre class="ma-1">
+				{move || object.get().map(|o| view! { <DocumentNode obj=o /> })}
 			</pre>
 		</div>
 	}
@@ -65,5 +84,52 @@ async fn debug_fetch(url: &str, token: Auth) -> serde_json::Value {
 				Ok(v) => v,
 			},
 		}
+	}
+}
+
+#[component]
+fn DocumentNode(obj: serde_json::Value, #[prop(optional)] depth: usize) -> impl IntoView {
+	let prefix = "  ".repeat(depth);
+	match obj {
+		serde_json::Value::Null => view! { <b>null</b> }.into_view(),
+		serde_json::Value::Bool(x) => view! { <b>{x}</b> }.into_view(),
+		serde_json::Value::Number(n) => view! { <b>{n.to_string()}</b> }.into_view(),
+		serde_json::Value::String(s) => {
+			if s.starts_with("https://") || s.starts_with("http://") {
+				view! {
+					"\""<a href=format!("/web/config/dev?q={s}")>{s}</a>"\""
+				}.into_view()
+			} else {
+				view! {
+					"\""<span class="json-text"><i>{s}</i></span>"\""
+				}.into_view()
+			}
+		},
+		serde_json::Value::Array(arr) => if arr.is_empty() { 
+			view! { "[]" }.into_view()
+		} else {
+			view! {
+				"[\n"
+					{arr.into_iter().map(|x| view! {
+						{prefix.clone()}"  "<DocumentNode obj=x depth=depth+1 />",\n"
+					}).collect_view()}
+				{prefix.clone()}"]"
+			}.into_view()
+		},
+		serde_json::Value::Object(map) => if map.is_empty() {
+			view! { "{}" }.into_view()
+		} else {
+			view! {
+				"{\n"
+					{
+						map.into_iter()
+							.map(|(k, v)| view! {
+								{prefix.clone()}"  \""<span class="json-key"><b>{k}</b></span>"\": "<DocumentNode obj=v depth=depth+1 />",\n"
+							})
+							.collect_view()
+					}
+				{prefix.clone()}"}"
+			}.into_view()
+		},
 	}
 }
