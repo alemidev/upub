@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use leptos::*;
 use leptos_router::*;
 use crate::prelude::*;
@@ -12,6 +10,7 @@ pub fn DebugPage() -> impl IntoView {
 	};
 	let cached_ref: NodeRef<html::Input> = create_node_ref();
 	let auth = use_context::<Auth>().expect("missing auth context");
+	let (plain, set_plain) = create_signal(false);
 	let (text, set_text) = create_signal("".to_string());
 	let navigate = use_navigate();
 
@@ -67,8 +66,25 @@ pub fn DebugPage() -> impl IntoView {
 				</form>
 			</div>
 			<pre class="ma-1">
-				{move || object.get().map(|o| view! { <DocumentNode obj=o /> })}
+				{move || object.get().map(|o| if plain.get() {
+					serde_json::to_string_pretty(&o).unwrap_or_else(|e| e.to_string()).into_view()
+				} else {
+					view! { <DocumentNode obj=o /> }.into_view()
+				})}
 			</pre>
+			<p class="center">
+				<input type="checkbox" title="show plain (and valid) json" value="plain" prop:checked=plain on:input=move |ev| set_plain.set(event_target_checked(&ev)) />
+				" plain :: "
+				<a href=query target="_blank" rel="nofollow noreferrer">external</a>
+				" :: "
+				<a href="#"
+					onclick={move ||
+						format!(
+							"javascript:navigator.clipboard.writeText(`{}`)",
+							object.get().map(|x| serde_json::to_string(&x).unwrap_or_default()).unwrap_or_default()
+						)
+				} >copy</a>
+			</p>
 		</div>
 	}
 }
@@ -97,7 +113,7 @@ fn DocumentNode(obj: serde_json::Value, #[prop(optional)] depth: usize) -> impl 
 		serde_json::Value::String(s) => {
 			if s.starts_with("https://") || s.starts_with("http://") {
 				view! {
-					"\""<a href=format!("/web/config/dev?q={s}")>{s}</a>"\""
+					<a href=format!("/web/config/dev?q={s}")>{s}</a>
 				}.into_view()
 			} else {
 				view! {
@@ -111,7 +127,7 @@ fn DocumentNode(obj: serde_json::Value, #[prop(optional)] depth: usize) -> impl 
 			view! {
 				"[\n"
 					{arr.into_iter().map(|x| view! {
-						{prefix.clone()}"  "<DocumentNode obj=x depth=depth+1 />",\n"
+						{prefix.clone()}"  "<DocumentNode obj=x depth=depth+1 />"\n"
 					}).collect_view()}
 				{prefix.clone()}"]"
 			}.into_view()
@@ -124,7 +140,7 @@ fn DocumentNode(obj: serde_json::Value, #[prop(optional)] depth: usize) -> impl 
 					{
 						map.into_iter()
 							.map(|(k, v)| view! {
-								{prefix.clone()}"  \""<span class="json-key"><b>{k}</b></span>"\": "<DocumentNode obj=v depth=depth+1 />",\n"
+								{prefix.clone()}"  "<span class="json-key"><b>{k}</b></span>": "<DocumentNode obj=v depth=depth+1 />"\n"
 							})
 							.collect_view()
 					}
