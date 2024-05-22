@@ -28,7 +28,7 @@ impl Normalizer for super::Context {
 
 		// make sure content only contains a safe subset of html
 		if let Some(content) = object_model.content {
-			object_model.content = Some(mdhtml::safe_markdown(&content));
+			object_model.content = Some(mdhtml::safe_html(&content));
 		}
 
 		// fix context also for remote posts
