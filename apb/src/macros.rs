@@ -339,27 +339,10 @@ pub(crate) use setter;
 
 #[cfg(feature = "unstructured")]
 pub fn set_maybe_node(obj: &mut serde_json::Value, key: &str, node: crate::Node<serde_json::Value>) {
-	match node {
-		crate::Node::Object(x) => {
-			set_maybe_value(
-				obj, key, Some(*x),
-			);
-		},
-		crate::Node::Link(l) => {
-			set_maybe_value(
-				obj, key, Some(serde_json::Value::String(l.href().to_string())),
-			);
-		},
-		crate::Node::Array(_) => {
-			set_maybe_value(
-				obj, key, Some(serde_json::Value::Array(node.into_iter().collect())),
-			);
-		},
-		crate::Node::Empty => {
-			set_maybe_value(
-				obj, key, None,
-			);
-		},
+	if node.is_nothing() {
+		set_maybe_value(obj, key, None)
+	} else {
+		set_maybe_value(obj, key, Some(node.into()))
 	}
 }
 
@@ -386,27 +369,9 @@ pub(crate) trait InsertValue {
 #[cfg(feature = "unstructured")]
 impl InsertValue for serde_json::Map<String, serde_json::Value> {
 	fn insert_node(&mut self, k: &str, node: crate::Node<serde_json::Value>) {
-		match node {
-			crate::Node::Object(x) => {
-				self.insert(
-					k.to_string(),
-					*x,
-				);
-			},
-			crate::Node::Array(ref _arr) => {
-				self.insert(
-					k.to_string(),
-					serde_json::Value::Array(node.into_iter().collect()),
-				);
-			},
-			crate::Node::Link(l) => {
-				self.insert(
-					k.to_string(),
-					serde_json::Value::String(l.href().to_string()),
-				);
-			},
-			crate::Node::Empty => {},
-		};
+		if !node.is_nothing() {
+			self.insert(k.to_string(), node.into());
+		}
 	}
 
 	fn insert_str(&mut self, k: &str, v: Option<&str>) {

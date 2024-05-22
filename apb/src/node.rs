@@ -222,3 +222,15 @@ impl From<serde_json::Value> for Node<serde_json::Value> {
 	}
 }
 
+#[cfg(feature = "unstructured")]
+impl From<Node<serde_json::Value>> for serde_json::Value {
+	fn from(value: Node<serde_json::Value>) -> Self {
+		match value {
+			Node::Empty => serde_json::Value::Null,
+			Node::Link(l) => serde_json::Value::String(l.href().to_string()), // TODO there could be more
+			Node::Object(o) => *o,
+			Node::Array(arr) =>
+				serde_json::Value::Array(arr.into_iter().map(|x| x.into()).collect()),
+		}
+	}
+}
