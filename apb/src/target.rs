@@ -1,4 +1,4 @@
-use crate::{Object, Link};
+use crate::Object;
 
 pub const PUBLIC : &str = "https://www.w3.org/ns/activitystreams#Public";
 
