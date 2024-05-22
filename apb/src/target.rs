@@ -8,10 +8,10 @@ pub trait Addressed {
 
 impl<T: Object> Addressed for T {
 	fn addressed(&self) -> Vec<String> {
-		let mut to : Vec<String> = self.to().map(|x| x.href().to_string()).collect();
-		to.append(&mut self.bto().map(|x| x.href().to_string()).collect());
-		to.append(&mut self.cc().map(|x| x.href().to_string()).collect());
-		to.append(&mut self.bcc().map(|x| x.href().to_string()).collect());
+		let mut to : Vec<String> = self.to().ids();
+		to.append(&mut self.bto().ids());
+		to.append(&mut self.cc().ids());
+		to.append(&mut self.bcc().ids());
 		to
 	}
 }
