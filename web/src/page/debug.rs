@@ -5,28 +5,29 @@ use crate::prelude::*;
 #[component]
 pub fn DebugPage() -> impl IntoView {
 	let query_params = use_query_map();
-	let query = move || {
-		query_params.with(|params| params.get("q").cloned().unwrap_or_default())
-	};
 	let cached_ref: NodeRef<html::Input> = create_node_ref();
 	let auth = use_context::<Auth>().expect("missing auth context");
+	let (cached, set_cached) = create_signal(false);
 	let (plain, set_plain) = create_signal(false);
 	let (text, set_text) = create_signal("".to_string());
 	let navigate = use_navigate();
 
+	let cached_query = move || (
+		query_params.with(|params| params.get("q").cloned().unwrap_or_default()),
+		cached.get(),
+	);
 	let object = create_local_resource(
-		query,
-		move |q| async move {
-			set_text.set(q.clone());
-			if q.is_empty() { return serde_json::Value::Null };
-			let cached = cached_ref.get().map(|x| x.checked()).unwrap_or_default();
+		cached_query,
+		move |(query, cached)| async move {
+			set_text.set(query.clone());
+			if query.is_empty() { return serde_json::Value::Null };
 			if cached {
-				match CACHE.get(&q) {
+				match CACHE.get(&query) {
 					Some(x) => (*x).clone(),
 					None => serde_json::Value::Null,
 				}
 			} else {
-				debug_fetch(&format!("{URL_BASE}/proxy?id={q}"), auth).await
+				debug_fetch(&format!("{URL_BASE}/proxy?id={query}"), auth).await
 			}
 		}
 	);
@@ -60,7 +61,7 @@ pub fn DebugPage() -> impl IntoView {
 							/>
 						</td>
 						<td><input type="submit" class="w-100" value="fetch" /></td>
-						<td><input type="checkbox" class:loader=loading title="cached" value="cached" node_ref=cached_ref /></td>
+						<td><input type="checkbox" class:loader=loading title="cached" value="cached" prop:checked=cached on:input=move |ev| set_cached.set(event_target_checked(&ev)) /></td>
 					</tr>
 				</table>
 				</form>
@@ -75,7 +76,7 @@ pub fn DebugPage() -> impl IntoView {
 			<p class="center">
 				<input type="checkbox" title="show plain (and valid) json" value="plain" prop:checked=plain on:input=move |ev| set_plain.set(event_target_checked(&ev)) />
 				" plain :: "
-				<a href=query target="_blank" rel="nofollow noreferrer">external</a>
+				<a href=move || cached_query().0 target="_blank" rel="nofollow noreferrer">external</a>
 				" :: "
 				<a href="#"
 					onclick={move ||
@@ -106,6 +107,7 @@ async fn debug_fetch(url: &str, token: Auth) -> serde_json::Value {
 #[component]
 fn DocumentNode(obj: serde_json::Value, #[prop(optional)] depth: usize) -> impl IntoView {
 	let prefix = "  ".repeat(depth);
+	let newline_replace = format!("\n{prefix}  ");
 	match obj {
 		serde_json::Value::Null => view! { <b>null</b> }.into_view(),
 		serde_json::Value::Bool(x) => view! { <b>{x}</b> }.into_view(),
@@ -117,7 +119,7 @@ fn DocumentNode(obj: serde_json::Value, #[prop(optional)] depth: usize) -> impl 
 				}.into_view()
 			} else {
 				view! {
-					"\""<span class="json-text"><i>{s}</i></span>"\""
+					"\""<span class="json-text"><i>{s.replace("<br/>", "<br/>\n").replace('\n', &newline_replace)}</i></span>"\""
 				}.into_view()
 			}
 		},
