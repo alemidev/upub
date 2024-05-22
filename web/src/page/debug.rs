@@ -5,7 +5,6 @@ use crate::prelude::*;
 #[component]
 pub fn DebugPage() -> impl IntoView {
 	let query_params = use_query_map();
-	let cached_ref: NodeRef<html::Input> = create_node_ref();
 	let auth = use_context::<Auth>().expect("missing auth context");
 	let (cached, set_cached) = create_signal(false);
 	let (plain, set_plain) = create_signal(false);
@@ -42,28 +41,27 @@ pub fn DebugPage() -> impl IntoView {
 					ev.prevent_default();
 					navigate(&format!("/web/config/dev?q={}", text.get()), NavigateOptions::default());
 				} >
-				<table class="align w-100" >
-					<tr>
-						<td>
-							<small><a
-								href={move|| Uri::web(U::Object, &text.get())}
-							>obj</a>
-								" "
-							<a
-								href={move|| Uri::web(U::User, &text.get())}
-							>usr</a></small>
-						</td>
-						<td class="w-100">
-							<input class="w-100" type="text"
-								prop:value=text
-								on:input=move|ev| set_text.set(event_target_value(&ev))
-								placeholder="AP id"
-							/>
-						</td>
-						<td><input type="submit" class="w-100" value="fetch" /></td>
-						<td><input type="checkbox" class:loader=loading title="cached" value="cached" prop:checked=cached on:input=move |ev| set_cached.set(event_target_checked(&ev)) /></td>
-					</tr>
-				</table>
+					<table class="align w-100">
+						<tr>
+							<td class="w-100">
+								<input class="w-100" type="text"
+									prop:value=text
+									on:input=move|ev| set_text.set(event_target_value(&ev))
+									placeholder="AP id"
+								/>
+							</td>
+							<td>
+								<input type="submit" class="w-100" value="fetch" />
+							</td>
+							<td>
+								<input type="checkbox" title="load from local cache" value="cached"
+									class:loader=loading
+									prop:checked=cached
+									on:input=move |ev| set_cached.set(event_target_checked(&ev))
+								/>
+							</td>
+						</tr>
+					</table>
 				</form>
 			</div>
 			<pre class="ma-1">
@@ -74,17 +72,21 @@ pub fn DebugPage() -> impl IntoView {
 				})}
 			</pre>
 			<p class="center">
-				<input type="checkbox" title="show plain (and valid) json" value="plain" prop:checked=plain on:input=move |ev| set_plain.set(event_target_checked(&ev)) />
-				" plain :: "
-				<a href=move || cached_query().0 target="_blank" rel="nofollow noreferrer">external</a>
-				" :: "
-				<a href="#"
-					onclick={move ||
-						format!(
-							"javascript:navigator.clipboard.writeText(`{}`)",
-							object.get().map(|x| serde_json::to_string(&x).unwrap_or_default()).unwrap_or_default()
-						)
-				} >copy</a>
+					<input type="checkbox" title="show plain (and valid) json" value="plain" prop:checked=plain on:input=move |ev| set_plain.set(event_target_checked(&ev)) />
+					" plain :: "
+					<a href={move|| Uri::web(U::Object, &text.get())} >obj</a>
+					" :: "
+					<a href={move|| Uri::web(U::User, &text.get())} >usr</a>
+					" :: "
+					<a href=move || cached_query().0 target="_blank" rel="nofollow noreferrer">ext</a>
+					" :: "
+					<a href="#"
+						onclick={move ||
+							format!(
+								"javascript:navigator.clipboard.writeText(`{}`)",
+								object.get().map(|x| serde_json::to_string(&x).unwrap_or_default()).unwrap_or_default()
+							)
+					} >copy</a>
 			</p>
 		</div>
 	}
