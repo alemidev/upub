@@ -15,6 +15,9 @@ development is still active, so expect more stuff to come! since most fediverse 
 
 a test instance is _usually_ available at [feditest.alemi.dev](https://feditest.alemi.dev)
 
+## about the database schema
+im going to be very real i tried to do migrations but its getting super messy so until further notice assume db to be volatile. next change may be a migration (easy!) or a whole db rebuild (aaaaaaaaaa...), so if you're not comfortable with either manually exporting/importing or dropping and starting from scratch, **you really shouldn't put upub in prod yet**!
+
 ## about security
 most activitypub implementations don't really validate fetches: knowing an activity/object id will allow anyone to resolve it on most fedi software. this is of course unacceptable: "security through obscurity" just doesn't work
 
