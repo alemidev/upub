@@ -24,7 +24,7 @@ impl apb::server::Outbox for Context {
 				.set_attributed_to(Node::link(uid.clone()))
 				.set_published(Some(chrono::Utc::now()))
 				.set_url(Node::maybe_link(self.cfg().instance.frontend.as_ref().map(|x| format!("{x}/objects/{raw_oid}")))),
-			Some(self.base().to_string()),
+			Some(self.domain().to_string()),
 		).await?;
 
 		let activity_model = model::activity::Model {
@@ -67,7 +67,7 @@ impl apb::server::Outbox for Context {
 				.set_bto(activity.bto())
 				.set_cc(activity.cc())
 				.set_bcc(activity.bcc()),
-			Some(self.base().to_string()),
+			Some(self.domain().to_string()),
 		).await?;
 
 		let activity_model = model::activity::Model::new(
