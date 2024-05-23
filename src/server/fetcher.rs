@@ -307,11 +307,6 @@ async fn fetch_object_inner(ctx: &Context, id: &str, depth: usize) -> crate::Res
 	if let Some(reply) = object.in_reply_to().id() {
 		if depth <= 16 {
 			fetch_object_inner(ctx, &reply, depth + 1).await?;
-			model::object::Entity::update_many()
-				.filter(model::object::Column::Id.eq(reply))
-				.col_expr(model::object::Column::Comments, Expr::col(model::object::Column::Comments).add(1))
-				.exec(ctx.db())
-				.await?;
 		} else {
 			tracing::warn!("thread deeper than 16, giving up fetching more replies");
 		}
