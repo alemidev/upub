@@ -1,7 +1,8 @@
 use apb::{ActivityMut, Base, BaseMut, Object, ObjectMut};
 
 use leptos::*;
-use crate::prelude::*;
+use leptos_use::DebounceOptions;
+use crate::{prelude::*, WEBFINGER};
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ReplyControls {
@@ -34,11 +35,34 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 	let reply = use_context::<ReplyControls>().expect("missing reply controls");
 	let (posting, set_posting) = create_signal(false);
 	let (error, set_error) = create_signal(None);
+	let (content, set_content) = create_signal("".to_string());
 	let summary_ref: NodeRef<html::Input> = create_node_ref();
-	let content_ref: NodeRef<html::Textarea> = create_node_ref();
 	let public_ref: NodeRef<html::Input> = create_node_ref();
 	let followers_ref: NodeRef<html::Input> = create_node_ref();
 	let private_ref: NodeRef<html::Input> = create_node_ref();
+
+	// TODO is this too abusive with resources? im even checking if TLD exists...
+	let mentions = create_local_resource(
+		move || content.get(),
+		move |c| async move {
+			let mut out = Vec::new();
+			for word in c.split(' ') {
+				if !word.starts_with('@') { break };
+				let stripped = word.replacen('@', "", 1);
+				if let Some((user, domain)) = stripped.split_once('@') {
+					if let Some(tld) = domain.split('.').last() {
+						if tld::exist(tld) {
+							if let Some(uid) = WEBFINGER.blocking_resolve(user, domain).await {
+								out.push(uid);
+							}
+						}
+					}
+				}
+			}
+			out
+		},
+	);
+
 	view! {
 		<div>
 			{move ||
@@ -51,12 +75,21 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 								on:click=move|_| reply.clear()
 								title={format!("> {r} | ctx: {}", reply.context.get().unwrap_or_default())}
 							>
-								"📨"
+								"✒️"
 							</span>
-							<small>{actor_strip}</small>
+							{actor_strip}
+							<small class="tiny ml-1">"["<a class="clean" title="remove reply" href="#" on:click=move |_| reply.clear() >reply</a>"]"</small>
 						</span>
 					}
 				})
+			}
+			{move ||
+				mentions.get()
+					.map(|x| x.into_iter().map(|u| match CACHE.get(&u) {
+						Some(u) => view! { <span class="nowrap"><span class="emoji mr-s ml-s">"📨"</span><ActorStrip object=u /></span> }.into_view(),
+						None => view! { <span class="nowrap"><span class="emoji mr-s ml-s">"📨"</span><a href={Uri::web(U::User, &u)}>{u}</a></span> }.into_view(),
+					})
+					.collect_view())
 			}
 			<table class="align w-100">
 				<tr>
@@ -65,7 +98,10 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 				</tr>
 			</table>
 
-			<textarea rows="6" class="w-100" node_ref=content_ref title="content" placeholder="\n look at nothing\n  what do you see?" ></textarea>
+			<textarea rows="6" class="w-100" title="content" placeholder="\n look at nothing\n  what do you see?"
+				prop:value=content
+				on:input=move |ev| set_content.set(event_target_value(&ev))
+			></textarea>
 
 			<table class="align rev w-100">
 				<tr>
@@ -76,7 +112,7 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 							set_posting.set(true);
 							spawn_local(async move {
 								let summary = get_if_some(summary_ref);
-								let content = content_ref.get().map(|x| x.value()).unwrap_or_default();
+								let content = content.get();
 								let mut cc_vec = Vec::new();
 								let mut to_vec = Vec::new();
 								if get_checked(followers_ref) {
@@ -92,6 +128,9 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 										}
 									}
 								}
+								for mention in mentions.get().as_deref().unwrap_or(&[]) {
+									to_vec.push(mention.to_string());
+								}
 								let payload = serde_json::Value::Object(serde_json::Map::default())
 									.set_object_type(Some(apb::ObjectType::Note))
 									.set_summary(summary.as_deref())
@@ -105,7 +144,7 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 									Ok(()) => {
 										set_error.set(None);
 										if let Some(x) = summary_ref.get() { x.set_value("") }
-										if let Some(x) = content_ref.get() { x.set_value("") }
+										set_content.set("".to_string());
 									},
 								}
 								set_posting.set(false);
