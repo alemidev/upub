@@ -142,8 +142,12 @@ fn DocumentNode(obj: serde_json::Value, #[prop(optional)] depth: usize) -> impl 
 					<a href=format!("/web/config/dev?q={s}")>{s}</a>
 				}.into_view()
 			} else {
+				let pretty_string = s
+					.replace("<br/>", "<br/>\n")
+					.replace("<br>", "<br>\n")
+					.replace('\n', &newline_replace);
 				view! {
-					"\""<span class="json-text"><i>{s.replace("<br/>", "<br/>\n").replace('\n', &newline_replace)}</i></span>"\""
+					"\""<span class="json-text"><i>{pretty_string}</i></span>"\""
 				}.into_view()
 			}
 		},
