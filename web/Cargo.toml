@@ -34,3 +34,4 @@ lazy_static = "1.4"
 chrono = { version = "0.4", features = ["serde"] }
 web-sys = { version = "0.3", features = ["Screen"] }
 mdhtml = { path = "../mdhtml/" }
+jrd = "0.1.0"

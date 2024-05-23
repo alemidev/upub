@@ -24,12 +24,13 @@ use uriproxy::UriClass;
 
 lazy_static::lazy_static! {
 	pub static ref CACHE: ObjectCache = ObjectCache::default();
+	pub static ref WEBFINGER: WebfingerCache = WebfingerCache::default();
 }
 
 pub type Object = Arc<serde_json::Value>;
 
 #[derive(Debug, Clone, Default)]
-pub struct ObjectCache(pub Arc<dashmap::DashMap<String, Object>>);
+pub struct ObjectCache(Arc<dashmap::DashMap<String, Object>>);
 
 impl ObjectCache {
 	pub fn get(&self, k: &str) -> Option<Object> {
@@ -55,6 +56,69 @@ impl ObjectCache {
 				self.put(k.to_string(), Arc::new(obj));
 				Ok(self.get(k).expect("not found in cache after insertion"))
 			}
+		}
+	}
+}
+
+#[derive(Debug, Clone)]
+enum LookupStatus {
+	Resolving,
+	Found(String),
+	NotFound,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct WebfingerCache(Arc<dashmap::DashMap<String, LookupStatus>>);
+
+impl WebfingerCache {
+	pub async fn blocking_resolve(&self, user: &str, domain: &str) -> Option<String> {
+		if let Some(x) = self.get(user, domain) { return Some(x); }
+		self.fetch(user, domain).await;
+		self.get(user, domain)
+	}
+
+	pub fn resolve(&self, user: &str, domain: &str) -> Option<String> {
+		if let Some(x) = self.get(user, domain) { return Some(x); }
+		let (_self, user, domain) = (self.clone(), user.to_string(), domain.to_string());
+		leptos::spawn_local(async move { _self.fetch(&user, &domain).await });
+		None
+	}
+
+	fn get(&self, user: &str, domain: &str) -> Option<String> {
+		let query = format!("{user}@{domain}");
+		match self.0.get(&query).map(|x| (*x).clone())? {
+			LookupStatus::Resolving | LookupStatus::NotFound => None,
+			LookupStatus::Found(x) => Some(x),
+		}
+	}
+
+	async fn fetch(&self, user: &str, domain: &str) {
+		let query = format!("{user}@{domain}");
+		self.0.insert(query.to_string(), LookupStatus::Resolving);
+		match reqwest::get(format!("{URL_BASE}/.well-known/webfinger?resource=acct:{query}")).await {
+			Ok(res) => match res.error_for_status() {
+				Ok(res) => match res.json::<jrd::JsonResourceDescriptor>().await {
+					Ok(doc) => {
+						if let Some(uid) = doc.links.into_iter().find(|x| x.rel == "self").map(|x| x.href).flatten() {
+							self.0.insert(query, LookupStatus::Found(uid));
+						} else {
+							self.0.insert(query, LookupStatus::NotFound);
+						}
+					},
+					Err(e) => {
+						tracing::error!("invalid webfinger response: {e:?}");
+						self.0.remove(&query);
+					},
+				},
+				Err(e) => {
+					tracing::error!("could not resolve webfinbger: {e:?}");
+					self.0.insert(query, LookupStatus::NotFound);
+				},
+			},
+			Err(e) => {
+				tracing::error!("failed accessing webfinger server: {e:?}");
+				self.0.remove(&query);
+			},
 		}
 	}
 }
