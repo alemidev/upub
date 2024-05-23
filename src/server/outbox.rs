@@ -1,6 +1,6 @@
 use apb::{target::Addressed, Activity, ActivityMut, ActorMut, BaseMut, Node, Object, ObjectMut, PublicKeyMut};
 use reqwest::StatusCode;
-use sea_orm::{sea_query::Expr, ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, Set};
+use sea_orm::{sea_query::Expr, ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect, SelectColumns, Set};
 
 use crate::{errors::UpubError, model, routes::activitypub::jsonld::LD};
 
@@ -14,15 +14,37 @@ impl apb::server::Outbox for Context {
 	type Activity = serde_json::Value;
 
 	async fn create_note(&self, uid: String, object: serde_json::Value) -> crate::Result<String> {
+		let re = regex::Regex::new(r"@(\w+)@(\w+)").expect("failed compiling regex pattern");
 		let raw_oid = uuid::Uuid::new_v4().to_string();
 		let oid = self.oid(&raw_oid);
 		let aid = self.aid(&uuid::Uuid::new_v4().to_string());
 		let activity_targets = object.addressed();
+
+		let mut content = object.content().map(|x| x.to_string());
+		if let Some(c) = content {
+			let mut tmp = mdhtml::safe_markdown(&c);
+			for (full, [user, domain]) in re.captures_iter(&tmp.clone()).map(|x| x.extract()) {
+				if let Ok(Some(uid)) = model::user::Entity::find()
+					.filter(model::user::Column::PreferredUsername.eq(user))
+					.filter(model::user::Column::Domain.eq(domain))
+					.select_only()
+					.select_column(model::user::Column::Id)
+					.into_tuple::<String>()
+					.one(self.db())
+					.await
+				{
+					tmp = tmp.replacen(full, &format!("<a href=\"{uid}\" class=\"u-url mention\">@{user}</a>"), 1);
+				}
+			}
+			content = Some(tmp);
+		}
+
 		let object_model = self.insert_object(
 			object
 				.set_id(Some(&oid))
 				.set_attributed_to(Node::link(uid.clone()))
 				.set_published(Some(chrono::Utc::now()))
+				.set_content(content.as_deref())
 				.set_url(Node::maybe_link(self.cfg().instance.frontend.as_ref().map(|x| format!("{x}/objects/{raw_oid}")))),
 			Some(self.domain().to_string()),
 		).await?;
