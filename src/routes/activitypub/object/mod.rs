@@ -2,7 +2,7 @@ pub mod replies;
 
 use apb::{CollectionMut, ObjectMut};
 use axum::extract::{Path, Query, State};
-use sea_orm::{ColumnTrait, ModelTrait, QueryFilter};
+use sea_orm::{ColumnTrait, EntityTrait, ModelTrait, QueryFilter, QuerySelect, SelectColumns};
 
 use crate::{errors::UpubError, model::{self, addressing::Event}, server::{auth::AuthIdentity, fetcher::Fetcher, Context}};
 
@@ -31,11 +31,11 @@ pub async fn view(
 		.await?
 		.ok_or_else(UpubError::not_found)?;
 
-	let (object, liked) = match item {
+	let object = match item {
 		Event::Tombstone => return Err(UpubError::not_found()),
 		Event::Activity(_) => return Err(UpubError::not_found()),
-		Event::StrayObject { object, liked } => (object, liked),
-		Event::DeepActivity { activity: _, liked, object } => (object, liked),
+		Event::StrayObject { liked: _, object } => object,
+		Event::DeepActivity { activity: _, liked: _, object } => object,
 	};
 
 	let attachments = object.find_related(model::attachment::Entity)
@@ -45,24 +45,32 @@ pub async fn view(
 		.map(|x| x.ap())
 		.collect::<Vec<serde_json::Value>>();
 
-	// let replies = 
-	// 	serde_json::Value::new_object()
-	// 		.set_id(Some(&crate::url!(ctx, "/objects/{id}/replies")))
-	// 		.set_collection_type(Some(apb::CollectionType::OrderedCollection))
-	// 		.set_first(apb::Node::link(crate::url!(ctx, "/objects/{id}/replies/page")))
-	// 		.set_total_items(Some(object.comments as u64));
+	let mut replies = apb::Node::Empty;
 	
-	let likes_count = object.likes as u64;
-	let mut obj = object.ap().set_attachment(apb::Node::array(attachments));
+	if ctx.cfg().security.show_reply_ids {
+		let replies_ids = model::addressing::Entity::find_addressed(None)
+			.filter(model::object::Column::InReplyTo.eq(oid))
+			.filter(auth.filter_condition())
+			.select_only()
+			.select_column(model::object::Column::Id)
+			.into_tuple::<String>()
+			.all(ctx.db())
+			.await?;
 
-	if let Some(liked) = liked {
-		obj = obj.set_audience(apb::Node::object( // TODO setting this again ewww...
+		replies = apb::Node::object(
 			serde_json::Value::new_object()
-				.set_collection_type(Some(apb::CollectionType::OrderedCollection))
-				.set_total_items(Some(likes_count))
-				.set_ordered_items(apb::Node::links(vec![liked]))
-		));
+				// .set_id(Some(&crate::url!(ctx, "/objects/{id}/replies")))
+				// .set_first(apb::Node::link(crate::url!(ctx, "/objects/{id}/replies/page")))
+				.set_collection_type(Some(apb::CollectionType::Collection))
+				.set_total_items(Some(object.comments as u64))
+				.set_items(apb::Node::links(replies_ids))
+		);
 	}
-
-	Ok(JsonLD(obj.ld_context()))
+	
+	Ok(JsonLD(
+		object.ap()
+			.set_attachment(apb::Node::array(attachments))
+			.set_replies(replies)
+			.ld_context()
+	))
 }
