@@ -22,6 +22,9 @@ pub struct Config {
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, serde_default::DefaultFromSerde)]
 pub struct FiltersConfig {
 	#[serde_inline_default(false)]
+	pub replies: bool,
+
+	#[serde_inline_default(false)]
 	pub likes: bool,
 
 	#[serde_inline_default(true)]

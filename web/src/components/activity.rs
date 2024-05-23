@@ -43,7 +43,9 @@ pub fn Item(
 	match item.object_type() {
 		// special case for placeholder activities
 		Some(apb::ObjectType::Note) | Some(apb::ObjectType::Document(_)) => (move || {
-			if config.get().filters.orphans {
+			if !config.get().filters.replies && item.in_reply_to().id().is_some() {
+				None
+			} else if config.get().filters.orphans {
 				Some(view! { <Object object=item.clone() />{sep.clone()} })
 			} else {
 				None
@@ -53,27 +55,31 @@ pub fn Item(
 		Some(apb::ObjectType::Activity(t)) => (move || {
 			if config.get().filters.visible(apb::ObjectType::Activity(t)) {
 				let object_id = item.object().id().unwrap_or_default();
-				let object = match t {
-					apb::ActivityType::Create | apb::ActivityType::Announce => 
-						CACHE.get(&object_id).map(|obj| {
-							view! { <Object object=obj /> }
-						}.into_view()),
-					apb::ActivityType::Follow =>
-						CACHE.get(&object_id).map(|obj| {
-							view! {
-								<div class="ml-1">
-									<ActorBanner object=obj />
-									<FollowRequestButtons activity_id=id.clone() actor_id=object_id />
-								</div>
-							}
-						}.into_view()),
-					_ => None,
-				};
-				Some(view! {
-					<ActivityLine activity=item.clone() />
-					{object}
-					{sep.clone()}
-				})
+				if !config.get().filters.replies && CACHE.get(&object_id).map(|x| x.in_reply_to().id().is_some()).unwrap_or(false) {
+					None
+				} else {
+					let object = match t {
+						apb::ActivityType::Create | apb::ActivityType::Announce => 
+							CACHE.get(&object_id).map(|obj| {
+								view! { <Object object=obj /> }
+							}.into_view()),
+						apb::ActivityType::Follow =>
+							CACHE.get(&object_id).map(|obj| {
+								view! {
+									<div class="ml-1">
+										<ActorBanner object=obj />
+										<FollowRequestButtons activity_id=id.clone() actor_id=object_id />
+									</div>
+								}
+							}.into_view()),
+						_ => None,
+					};
+					Some(view! {
+						<ActivityLine activity=item.clone() />
+						{object}
+						{sep.clone()}
+					})
+				}
 			} else {
 				None
 			}

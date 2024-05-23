@@ -85,6 +85,7 @@ pub fn ConfigPage(setter: WriteSignal<crate::Config>) -> impl IntoView {
 			<hr />
 			<p><code title="unchecked elements won't show in timelines">filters</code></p>
 			<ul>
+					<li><span title="replies to other posts"><input type="checkbox" prop:checked=get_cfg!(filter replies) on:input=set_cfg!(filter replies) />" replies"</span></li>
 					<li><span title="like activities"><input type="checkbox" prop:checked=get_cfg!(filter likes) on:input=set_cfg!(filter likes) />" likes"</span></li>
 					<li><span title="create activities with object"><input type="checkbox" prop:checked=get_cfg!(filter creates) on:input=set_cfg!(filter creates)/>" creates"</span></li>
 					<li><span title="announce activities with object"><input type="checkbox" prop:checked=get_cfg!(filter announces) on:input=set_cfg!(filter announces) />" announces"</span></li>
