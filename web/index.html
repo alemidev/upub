@@ -316,19 +316,20 @@
 			&:after {
 				animation: dots 1.5s linear infinite;
 				display: inline-block;
-				content: "";
+				content: "\00a0\00a0\00a0";
 			}
 		}
 		@keyframes spin {
 			0% { transform: rotate(0deg); }
 			100% { transform: rotate(360deg); }
 		}
+		/* \00a0 is unicode for "space", because otherwise it gets removed */
 		@keyframes dots {
-			0% { content: ""; }
-			25% { content: "."; }
-			50% { content: ".."; }
+			0% { content: "\00a0\00a0\00a0"; }
+			25% { content: ".\00a0\00a0"; }
+			50% { content: "..\00a0"; }
 			75% { content: "..."; }
-			100% { content: ""; }
+			100% { content: "\00a0\00a0\00a0"; }
 		}
 	</style>
 </head>
