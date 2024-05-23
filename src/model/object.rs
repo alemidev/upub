@@ -69,6 +69,7 @@ impl Model {
 			.set_summary(self.summary.as_deref())
 			.set_content(self.content.as_deref())
 			.set_context(apb::Node::maybe_link(self.context.clone()))
+			.set_conversation(apb::Node::maybe_link(self.context.clone())) // duplicate context for mastodon
 			.set_in_reply_to(apb::Node::maybe_link(self.in_reply_to.clone()))
 			.set_published(Some(self.published))
 			.set_updated(self.updated)
