@@ -7,7 +7,8 @@ pub fn ConfigPage(setter: WriteSignal<crate::Config>) -> impl IntoView {
 	let (color, set_color) = leptos_use::use_css_var("--accent");
 	let (_color_rgb, set_color_rgb) = leptos_use::use_css_var("--accent-rgb");
 
-	let previous_color = config.get().accent_color;
+	// TODO should this be responsive? idk
+	let previous_color = config.get_untracked().accent_color;
 	set_color_rgb.set(parse_hex(&previous_color));
 	set_color.set(previous_color);
 
