@@ -73,7 +73,7 @@ pub fn DebugPage() -> impl IntoView {
 			</pre>
 			<p class="center">
 					<input type="checkbox" title="show plain (and valid) json" value="plain" prop:checked=plain on:input=move |ev| set_plain.set(event_target_checked(&ev)) />
-					" plain :: "
+					" raw :: "
 					<a href={move|| Uri::web(U::Object, &text.get())} >obj</a>
 					" :: "
 					<a href={move|| Uri::web(U::User, &text.get())} >usr</a>
