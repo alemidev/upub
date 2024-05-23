@@ -42,6 +42,8 @@ impl Normalizer for super::Context {
 			(_, Some(_)) => {}, // leave it as set by user
 		}
 
+		model::object::Entity::insert(object_model.clone().into_active_model()).exec(self.db()).await?;
+
 		// update replies counter
 		if let Some(ref in_reply_to) = object_model.in_reply_to {
 			if self.fetch_object(in_reply_to).await.is_ok() {
@@ -60,8 +62,6 @@ impl Normalizer for super::Context {
 				.exec(self.db())
 				.await?;
 		}
-
-		model::object::Entity::insert(object_model.clone().into_active_model()).exec(self.db()).await?;
 
 		for attachment in object_node.attachment().flat() {
 			let attachment_model = match attachment {
