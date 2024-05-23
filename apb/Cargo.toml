@@ -29,6 +29,8 @@ default = ["activitypub-miscellaneous-terms", "send"]
 activitypub-miscellaneous-terms = [] # https://swicg.github.io/miscellany/
 activitypub-counters = [] # https://ns.alemi.dev/as/counters/#
 activitypub-fe = [] # https://ns.alemi.dev/as/fe/#
+ostatus = [] # https://ostatus.org#  , but it redirects and 403??? just need this for conversation
+toot = [] # http://joinmastodon.org/ns#  , mastodon is weird tho??
 litepub = [] # incomplete, https://litepub.social/
 # builtin utils
 send = []

@@ -78,6 +78,9 @@ pub trait Object : Base {
 	#[cfg(feature = "activitypub-fe")]
 	fn liked_by_me(&self) -> Option<bool> { None }
 
+	#[cfg(feature = "ostatus")]
+	fn conversation(&self) -> Node<Self::Object> { Node::Empty }
+
 	fn as_activity(&self) -> Option<&Self::Activity> { None }
 	fn as_actor(&self) -> Option<&Self::Actor> { None }
 	fn as_collection(&self) -> Option<&Self::Collection> { None }
@@ -128,6 +131,9 @@ pub trait ObjectMut : BaseMut {
 
 	#[cfg(feature = "activitypub-fe")]
 	fn set_liked_by_me(self, val: Option<bool>) -> Self;
+
+	#[cfg(feature = "ostatus")]
+	fn set_conversation(self, val: Node<Self::Object>) -> Self;
 }
 
 #[cfg(feature = "unstructured")]
@@ -144,6 +150,7 @@ impl Object for serde_json::Value {
 	crate::getter! { attributed_to::attributedTo -> node Self::Actor }
 	crate::getter! { audience -> node Self::Actor }
 	crate::getter! { content -> &str }
+	crate::getter! { context -> node <Self as Object>::Object }
 	crate::getter! { name -> &str }
 	crate::getter! { end_time::endTime -> chrono::DateTime<chrono::Utc> }
 	crate::getter! { generator -> node Self::Actor }
@@ -176,16 +183,8 @@ impl Object for serde_json::Value {
 	#[cfg(feature = "activitypub-fe")]
 	crate::getter! { liked_by_me::likedByMe -> bool }
 
-	// TODO Mastodon doesn't use a "context" field on the object but makes up a new one!!
-	fn context(&self) -> Node<<Self as Object>::Object> {
-		match self.get("context") {
-			Some(x) => Node::from(x.clone()),
-			None => match self.get("conversation") {
-				Some(x) => Node::from(x.clone()),
-				None => Node::Empty,
-			}
-		}
-	}
+	#[cfg(feature = "ostatus")]
+	crate::getter! { conversation -> node <Self as Object>::Object }
 
 	fn as_activity(&self) -> Option<&Self::Activity> {
 		match self.object_type() {
@@ -229,6 +228,7 @@ impl ObjectMut for serde_json::Value {
 	crate::setter! { attributed_to::attributedTo -> node Self::Actor }
 	crate::setter! { audience -> node Self::Actor }
 	crate::setter! { content -> &str }
+	crate::setter! { context -> node <Self as Object>::Object }
 	crate::setter! { name -> &str }
 	crate::setter! { end_time::endTime -> chrono::DateTime<chrono::Utc> }
 	crate::setter! { generator -> node Self::Actor }
@@ -252,7 +252,6 @@ impl ObjectMut for serde_json::Value {
 	crate::setter! { media_type::mediaType -> &str }
 	crate::setter! { duration -> &str }
 	crate::setter! { url -> node Self::Link }
-	crate::setter! { context -> node <Self as Object>::Object }
 
 	#[cfg(feature = "activitypub-miscellaneous-terms")]
 	crate::setter! { sensitive -> bool }
@@ -261,4 +260,7 @@ impl ObjectMut for serde_json::Value {
 
 	#[cfg(feature = "activitypub-fe")]
 	crate::setter! { liked_by_me::likedByMe -> bool }
+
+	#[cfg(feature = "ostatus")]
+	crate::setter! { conversation -> node <Self as Object>::Object }
 }

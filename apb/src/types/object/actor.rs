@@ -42,7 +42,7 @@ pub trait Actor : Object {
 	#[cfg(feature = "activitypub-counters")]
 	fn statuses_count(&self) -> Option<u64> { None }
 
-	// idk about this? everyone has it but AP doesn't mention it
+	#[cfg(feature = "toot")]
 	fn discoverable(&self) -> Option<bool> { None }
 }
 
@@ -93,6 +93,7 @@ pub trait ActorMut : ObjectMut {
 	#[cfg(feature = "activitypub-counters")]
 	fn set_statuses_count(self, val: Option<u64>) -> Self;
 
+	#[cfg(feature = "toot")]
 	fn set_discoverable(self, val: Option<bool>) -> Self;
 }
 
@@ -144,6 +145,7 @@ impl Actor for serde_json::Value {
 	#[cfg(feature = "activitypub-counters")]
 	crate::getter! { statuses_count::statusesCount -> u64 }
 
+	#[cfg(feature = "toot")]
 	crate::getter! { discoverable -> bool }
 }
 
@@ -172,7 +174,6 @@ impl ActorMut for serde_json::Value {
 	crate::setter! { streams -> node Self::Collection }
 	crate::setter! { public_key::publicKey -> node Self::PublicKey }
 	crate::setter! { endpoints -> node Self::Endpoints }
-	crate::setter! { discoverable -> bool }
 
 	#[cfg(feature = "activitypub-miscellaneous-terms")]
 	crate::setter! { moved_to::movedTo -> node Self::Actor }
@@ -190,6 +191,9 @@ impl ActorMut for serde_json::Value {
 	crate::setter! { followers_count::followersCount -> u64 }
 	#[cfg(feature = "activitypub-counters")]
 	crate::setter! { statuses_count::statusesCount -> u64 }
+
+	#[cfg(feature = "toot")]
+	crate::setter! { discoverable -> bool }
 }
 
 #[cfg(feature = "unstructured")]
