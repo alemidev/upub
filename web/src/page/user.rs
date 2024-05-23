@@ -104,7 +104,7 @@ pub fn UserPage(tl: Timeline) -> impl IntoView {
 										<table class="pl-2 pr-2 align w-100" style="table-layout: fixed">
 											<tr>
 												<td rowspan=4 style="width: 8em">
-													<img class="avatar-circle avatar-border mr-s" src={avatar_url} style="height: 7em; width: 7em"/>
+													<img class="avatar avatar-border mr-s" src={avatar_url} style="height: 7em; width: 7em"/>
 												</td>
 												<td rowspan=2 class="bottom">
 													<b class="big">{display_name}</b>{actor_type_tag}

@@ -91,7 +91,7 @@ pub fn ConfigPage(setter: WriteSignal<crate::Config>) -> impl IntoView {
 					<li><span title="objects without a related activity to display"><input type="checkbox" prop:checked=get_cfg!(filter orphans) on:input=set_cfg!(filter orphans) />" orphans"</span></li>
 			</ul>
 			<hr />
-			<p><a href="/web/config/dev" title="access the devtools page">devtools</a></p>
+			<p class="center"><a href="/web/config/dev" title="access the devtools page">devtools</a></p>
 		</div>
 	}
 }

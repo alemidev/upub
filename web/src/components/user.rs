@@ -11,7 +11,7 @@ pub fn ActorStrip(object: crate::Object) -> impl IntoView {
 	let avatar = object.icon().get().map(|x| x.url().id().unwrap_or(DEFAULT_AVATAR_URL.into())).unwrap_or(DEFAULT_AVATAR_URL.into());
 	view! {
 		<a href={Uri::web(U::User, &actor_id)} class="clean hover">
-			<img src={avatar} class="avatar-inline mr-s" /><b>{username}</b><small>@{domain}</small>
+			<img src={avatar} class="avatar inline mr-s" /><b>{username}</b><small>@{domain}</small>
 		</a>
 	}
 }
@@ -33,7 +33,7 @@ pub fn ActorBanner(object: crate::Object) -> impl IntoView {
 				<div>
 					<table class="align" >
 					<tr>
-						<td rowspan="2" ><a href={uri.clone()} ><img class="avatar-circle inline-avatar" src={avatar_url} /></a></td>
+						<td rowspan="2" ><a href={uri.clone()} ><img class="avatar avatar-actor" src={avatar_url} /></a></td>
 						<td><b>{display_name}</b></td>
 					</tr>
 					<tr>

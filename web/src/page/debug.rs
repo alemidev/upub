@@ -56,7 +56,7 @@ pub fn DebugPage() -> impl IntoView {
 							</td>
 							<td>
 								<input type="checkbox" title="load from local cache" value="cached"
-									class:loader=loading
+									class:spinner=loading
 									prop:checked=cached
 									on:input=move |ev| set_cached.set(event_target_checked(&ev))
 								/>
