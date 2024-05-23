@@ -20,11 +20,15 @@ pub fn DebugPage() -> impl IntoView {
 		cached_query,
 		move |(query, cached)| async move {
 			set_text.set(query.clone());
+			set_error.set(false);
 			if query.is_empty() { return serde_json::Value::Null };
 			if cached {
 				match CACHE.get(&query) {
 					Some(x) => (*x).clone(),
-					None => serde_json::Value::Null,
+					None => {
+						set_error.set(true);
+						serde_json::Value::Null
+					},
 				}
 			} else {
 				debug_fetch(&format!("{URL_BASE}/proxy?id={query}"), auth, set_error).await
@@ -98,7 +102,6 @@ pub fn DebugPage() -> impl IntoView {
 
 // this is a rather weird way to fetch but i want to see the bare error text if it fails!
 async fn debug_fetch(url: &str, token: Auth, error: WriteSignal<bool>) -> serde_json::Value {
-	error.set(false);
 	match Http::request::<()>(reqwest::Method::GET, url, None, token).await {
 		Ok(res) => {
 			if res.error_for_status_ref().is_err() {
