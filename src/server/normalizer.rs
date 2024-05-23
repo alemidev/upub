@@ -31,15 +31,20 @@ impl Normalizer for super::Context {
 			object_model.content = Some(mdhtml::safe_html(&content));
 		}
 
-		// fix context also for remote posts
-		// TODO this is not really appropriate because we're mirroring incorrectly remote objects, but
-		// it makes it SOO MUCH EASIER for us to fetch threads and stuff, so we're filling it for them
-		match (&object_model.in_reply_to, &object_model.context) {
-			(Some(reply_id), None) => // get context from replied object
-				object_model.context = self.fetch_object(reply_id).await?.context,
-			(None, None) => // generate a new context
-				object_model.context = Some(object_model.id.clone()),
-			(_, Some(_)) => {}, // leave it as set by user
+		// fix context for remote posts
+		// > note that this will effectively recursively try to fetch the parent object, in order to find
+		// > the context (which is id of topmost object). there's a recursion limit of 16 hidden inside
+		// > btw! also if any link is broken or we get rate limited, the whole insertion fails which is
+		// > kind of dumb. there should be a job system so this can be done in waves. or maybe there's
+		// > some whole other way to do this?? im thinking but misskey aaaa!! TODO
+		if let Some(ref reply) = object_model.in_reply_to {
+			if let Some(o) = model::object::Entity::find_by_id(reply).one(self.db()).await? {
+				object_model.context = o.context;
+			} else {
+				object_model.context = None; // TODO to be filled by some other task
+			}
+		} else {
+			object_model.context = Some(object_model.id.clone());
 		}
 
 		model::object::Entity::insert(object_model.clone().into_active_model()).exec(self.db()).await?;
