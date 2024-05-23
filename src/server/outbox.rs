@@ -14,7 +14,8 @@ impl apb::server::Outbox for Context {
 	type Activity = serde_json::Value;
 
 	async fn create_note(&self, uid: String, object: serde_json::Value) -> crate::Result<String> {
-		let re = regex::Regex::new(r"@(\w+)@(\w+)").expect("failed compiling regex pattern");
+		// TODO regex hell, here i come...
+		let re = regex::Regex::new(r"@(.+)@([^ ]+)").expect("failed compiling regex pattern");
 		let raw_oid = uuid::Uuid::new_v4().to_string();
 		let oid = self.oid(&raw_oid);
 		let aid = self.aid(&uuid::Uuid::new_v4().to_string());
