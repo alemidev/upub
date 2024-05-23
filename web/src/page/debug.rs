@@ -7,6 +7,7 @@ pub fn DebugPage() -> impl IntoView {
 	let query_params = use_query_map();
 	let auth = use_context::<Auth>().expect("missing auth context");
 	let (cached, set_cached) = create_signal(false);
+	let (error, set_error) = create_signal(false);
 	let (plain, set_plain) = create_signal(false);
 	let (text, set_text) = create_signal("".to_string());
 	let navigate = use_navigate();
@@ -26,7 +27,7 @@ pub fn DebugPage() -> impl IntoView {
 					None => serde_json::Value::Null,
 				}
 			} else {
-				debug_fetch(&format!("{URL_BASE}/proxy?id={query}"), auth).await
+				debug_fetch(&format!("{URL_BASE}/proxy?id={query}"), auth, set_error).await
 			}
 		}
 	);
@@ -64,7 +65,7 @@ pub fn DebugPage() -> impl IntoView {
 					</table>
 				</form>
 			</div>
-			<pre class="ma-1">
+			<pre class="ma-1" class:striped=error>
 				{move || object.get().map(|o| if plain.get() {
 					serde_json::to_string_pretty(&o).unwrap_or_else(|e| e.to_string()).into_view()
 				} else {
@@ -93,16 +94,31 @@ pub fn DebugPage() -> impl IntoView {
 }
 
 // this is a rather weird way to fetch but i want to see the bare error text if it fails!
-async fn debug_fetch(url: &str, token: Auth) -> serde_json::Value {
+async fn debug_fetch(url: &str, token: Auth, error: WriteSignal<bool>) -> serde_json::Value {
+	error.set(false);
 	match Http::request::<()>(reqwest::Method::GET, url, None, token).await {
-		Err(e) => serde_json::Value::String(format!("[!] failed sending request: {e}")),
-		Ok(res) => match res.text().await {
-			Err(e) => serde_json::Value::String(format!("[!] invalid response body: {e}")),
-			Ok(x) => match serde_json::from_str(&x) {
-				Err(_) => serde_json::Value::String(x),
-				Ok(v) => v,
-			},
-		}
+		Ok(res) => {
+			if res.error_for_status_ref().is_err() {
+				error.set(true); // this is an error but body could still be useful json
+			}
+			match res.text().await {
+				Ok(x) => match serde_json::from_str(&x) {
+					Ok(v) => v,
+					Err(_) => {
+						error.set(true);
+						serde_json::Value::String(x)
+					},
+				},
+				Err(e) => {
+					error.set(true);
+					serde_json::Value::String(format!("[!] invalid response body: {e}"))
+				},
+			}
+		},
+		Err(e) => {
+			error.set(true);
+			serde_json::Value::String(format!("[!] failed sending request: {e}"))
+		},
 	}
 }
 
