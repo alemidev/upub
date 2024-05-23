@@ -74,18 +74,40 @@ impl From<axum::http::StatusCode> for UpubError {
 
 impl axum::response::IntoResponse for UpubError {
 	fn into_response(self) -> axum::response::Response {
-		let descr = self.to_string();
 		match self {
 			UpubError::Redirect(to) => Redirect::to(&to).into_response(),
-			UpubError::Status(status) => (status, descr).into_response(),
-			UpubError::Database(_) => (StatusCode::SERVICE_UNAVAILABLE, descr).into_response(),
-			UpubError::Reqwest(x) | UpubError::FetchError(x, _) =>
-				(
-					x.status().unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
-					format!("failed fetching '{}': {descr}", x.url().map(|x| x.to_string()).unwrap_or_default())
-				).into_response(),
-			UpubError::Field(_) => (axum::http::StatusCode::BAD_REQUEST, descr).into_response(),
-			_ => (StatusCode::INTERNAL_SERVER_ERROR, descr).into_response(),
+			UpubError::Status(status) => status.into_response(),
+			UpubError::Database(e) => (
+				StatusCode::SERVICE_UNAVAILABLE,
+				axum::Json(serde_json::json!({
+					"error": "database",
+					"description": format!("{e:#?}"),
+				}))
+			).into_response(),
+			UpubError::Reqwest(x) | UpubError::FetchError(x, _) => (
+				x.status().unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
+				axum::Json(serde_json::json!({
+					"error": "request",
+					"status": x.status().map(|s| s.to_string()).unwrap_or_default(),
+					"url": x.url().map(|x| x.to_string()).unwrap_or_default(),
+					"description": format!("{x:#?}"),
+				}))
+			).into_response(),
+			UpubError::Field(x) => (
+				axum::http::StatusCode::BAD_REQUEST,
+				axum::Json(serde_json::json!({
+					"error": "field",
+					"field": x.0.to_string(),
+					"description": format!("missing required field from request: '{}'", x.0),
+				}))
+			).into_response(),
+			_ => (
+				StatusCode::INTERNAL_SERVER_ERROR,
+				axum::Json(serde_json::json!({
+					"error": "unknown",
+					"description": self.to_string(),
+				}))
+			).into_response(),
 		}
 	}
 }
