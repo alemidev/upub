@@ -77,23 +77,29 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 							spawn_local(async move {
 								let summary = get_if_some(summary_ref);
 								let content = content_ref.get().map(|x| x.value()).unwrap_or_default();
-								let (to, cc) = if get_checked(public_ref) {
-									(apb::Node::links(vec![apb::target::PUBLIC.to_string()]), apb::Node::links(vec![format!("{URL_BASE}/users/{}/followers", auth.username())]))
-								} else if get_checked(followers_ref) {
-									(apb::Node::links(vec![format!("{URL_BASE}/users/{}/followers", auth.username())]), apb::Node::Empty)
-								} else if get_checked(private_ref) {
-									(apb::Node::links(vec![]), apb::Node::Empty)
-								} else {
-									(apb::Node::Empty, apb::Node::Empty)
-								};
+								let mut cc_vec = Vec::new();
+								let mut to_vec = Vec::new();
+								if get_checked(followers_ref) {
+									cc_vec.push(format!("{URL_BASE}/users/{}/followers", auth.username()));
+								}
+								if get_checked(public_ref) {
+									cc_vec.push(apb::target::PUBLIC.to_string());
+								}
+								if let Some(r) = reply.reply_to.get() {
+									if let Some(au) = post_author(&r) {
+										if let Some(uid) = au.id() {
+											to_vec.push(uid.to_string());
+										}
+									}
+								}
 								let payload = serde_json::Value::Object(serde_json::Map::default())
 									.set_object_type(Some(apb::ObjectType::Note))
 									.set_summary(summary.as_deref())
 									.set_content(Some(&content))
 									.set_context(apb::Node::maybe_link(reply.context.get()))
 									.set_in_reply_to(apb::Node::maybe_link(reply.reply_to.get()))
-									.set_to(to)
-									.set_cc(cc);
+									.set_to(apb::Node::links(to_vec))
+									.set_cc(apb::Node::links(cc_vec));
 								match Http::post(&auth.outbox(), &payload, auth).await {
 									Err(e) => set_error.set(Some(e.to_string())),
 									Ok(()) => {
