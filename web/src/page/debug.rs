@@ -66,11 +66,14 @@ pub fn DebugPage() -> impl IntoView {
 				</form>
 			</div>
 			<pre class="ma-1" class:striped=error>
-				{move || object.get().map(|o| if plain.get() {
-					serde_json::to_string_pretty(&o).unwrap_or_else(|e| e.to_string()).into_view()
-				} else {
-					view! { <DocumentNode obj=o /> }.into_view()
-				})}
+				{move || match object.get() {
+					None => view! { <p class="center"><span class="dots"></span></p> }.into_view(),
+					Some(o) => if plain.get() {
+						serde_json::to_string_pretty(&o).unwrap_or_else(|e| e.to_string()).into_view()
+					} else {
+						view! { <DocumentNode obj=o /> }.into_view()
+					},
+				}}
 			</pre>
 			<p class="center">
 					<input type="checkbox" title="show plain (and valid) json" value="plain" prop:checked=plain on:input=move |ev| set_plain.set(event_target_checked(&ev)) />

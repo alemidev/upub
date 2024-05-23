@@ -125,7 +125,11 @@ pub fn TimelineReplies(tl: Timeline, root: String) -> impl IntoView {
 						}
 					})
 				}
-			>{move || if tl.loading.get() { "loading" } else { "more" }}</button>
+			>
+				{move || if tl.loading.get() {
+					view! { "loading"<span class="dots"></span> }.into_view()
+				} else { "more".into_view() }}
+			</button>
 		</div>
 	}
 }
@@ -159,7 +163,11 @@ pub fn TimelineFeed(tl: Timeline) -> impl IntoView {
 						}
 					})
 				}
-			>{move || if tl.loading.get() { "loading" } else { "more" }}</button>
+				>
+					{move || if tl.loading.get() {
+						view! { "loading"<span class="dots"></span> }.into_view()
+					} else { "more".into_view() }}
+				</button>
 		</div>
 	}
 }
