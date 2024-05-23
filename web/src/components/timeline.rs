@@ -2,6 +2,7 @@ use std::{collections::BTreeSet, pin::Pin, sync::Arc};
 
 use apb::{Activity, ActivityMut, Base, Object};
 use leptos::*;
+use leptos_use::{signal_debounced, signal_throttled, use_display_media, use_document_visibility, use_element_size, use_infinite_scroll_with_options, use_scroll, use_scroll_with_options, use_window, use_window_scroll, UseDisplayMediaReturn, UseElementSizeReturn, UseInfiniteScrollOptions, UseScrollOptions, UseScrollReturn};
 use crate::prelude::*;
 
 #[derive(Debug, Clone, Copy)]
@@ -137,38 +138,64 @@ pub fn TimelineReplies(tl: Timeline, root: String) -> impl IntoView {
 #[component]
 pub fn TimelineFeed(tl: Timeline) -> impl IntoView {
 	let auth = use_context::<Auth>().expect("missing auth context");
-	view! {
-		<For
-			each=move || tl.feed.get()
-			key=|k| k.to_string()
-			children=move |id: String| {
-				match CACHE.get(&id) {
-					Some(i) => view! {
-						<Item item=i sep=true />
-					}.into_view(),
-					None => view! {
-						<p><code>{id}</code>" "[<a href={uri}>go</a>]</p>
-						<hr />
-					}.into_view(),
+	let config = use_context::<Signal<crate::Config>>().expect("missing config context");
+	// double view height: preload when 1 screen away
+	let view_height = 2.0 * window()
+		.inner_height()
+		.map_or(500.0, |v| v.as_f64().unwrap_or_default());
+	let scroll_ref = create_node_ref();
+	let UseElementSizeReturn { width: _w, height } = use_element_size(scroll_ref);
+	let (_x, scroll) = use_window_scroll();
+	let scroll_debounced = signal_throttled(scroll, 500.0);
+	let _auto_loader = create_local_resource(
+		move || (scroll_debounced.get(), height.get()),
+		move |(s, h)| async move {
+			if !config.get().infinite_scroll { return }
+			if s > 0.0 && h - s < view_height && !tl.loading.get() {
+				if let Err(e) = tl.more(auth).await {
+					tracing::error!("auto load failed: {e}");
 				}
 			}
-		/ >
+		},
+	);
+	view! {
+		<div ref=scroll_ref>
+			<For
+				each=move || tl.feed.get()
+				key=|k| k.to_string()
+				children=move |id: String| {
+					match CACHE.get(&id) {
+						Some(i) => view! {
+							<Item item=i sep=true />
+						}.into_view(),
+						None => view! {
+							<p><code>{id}</code>" "[<a href={uri}>go</a>]</p>
+							<hr />
+						}.into_view(),
+					}
+				}
+			/ >
+		</div>
 		<div class="center mt-1 mb-1" class:hidden=tl.over >
 			<button type="button"
 				prop:disabled=tl.loading 
-				on:click=move |_| {
-					spawn_local(async move {
-						if let Err(e) = tl.more(auth).await {
-							tracing::error!("error fetching more items for timeline: {e}");
-						}
-					})
-				}
-				>
-					{move || if tl.loading.get() {
-						view! { "loading"<span class="dots"></span> }.into_view()
-					} else { "more".into_view() }}
-				</button>
+				on:click=move |_| load_more(tl, auth)
+			>
+				{move || if tl.loading.get() {
+					view! { "loading"<span class="dots"></span> }.into_view()
+				} else { "more".into_view() }}
+			</button>
 		</div>
+	}
+}
+
+fn load_more(tl: Timeline, auth: Auth) {
+	if !tl.loading.get() {
+		spawn_local(async move {
+			if let Err(e) = tl.more(auth).await {
+				tracing::error!("error fetching more items for timeline: {e}");
+			}
+		})
 	}
 }
 

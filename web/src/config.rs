@@ -11,6 +11,9 @@ pub struct Config {
 	#[serde_inline_default(true)]
 	pub loop_videos: bool,
 
+	#[serde_inline_default(true)]
+	pub infinite_scroll: bool,
+
 	#[serde_inline_default("#BF616A".to_string())]
 	pub accent_color: String,
 }

@@ -58,6 +58,14 @@ pub fn ConfigPage(setter: WriteSignal<crate::Config>) -> impl IntoView {
 				</span>
 			</p>
 			<p>
+				<span title="new posts will be fetched automatically when scrolling down enough">
+					<input type="checkbox" class="mr-1"
+						prop:checked=get_cfg!(infinite_scroll)
+						on:input=set_cfg!(infinite_scroll)
+					/> infinite scroll
+				</span>
+			</p>
+			<p>
 				accent color
 				<input type="text" class="ma-1"
 					style="width: 8ch;"
