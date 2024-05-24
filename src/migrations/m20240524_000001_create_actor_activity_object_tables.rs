@@ -180,63 +180,6 @@ impl MigrationTrait for Migration {
 		manager
 			.create_table(
 				Table::create()
-					.table(Activities::Table)
-					.comment("all activities this instance ever received or generated")
-					.col(
-						ColumnDef::new(Activities::Id)
-							.integer()
-							.not_null()
-							.primary_key()
-							.auto_increment()
-					)
-					.col(ColumnDef::new(Activities::ApId).string().not_null().unique_key())
-					.col(ColumnDef::new(Activities::ActivityType).string().not_null())
-					.col(ColumnDef::new(Activities::Actor).integer().not_null())
-					.foreign_key(
-						ForeignKey::create()
-							.name("fkey-activities-actors")
-							.from(Activities::Table, Activities::Actor)
-							.to(Actors::Table, Actors::Id)
-							.on_update(ForeignKeyAction::Cascade)
-					)
-					.col(ColumnDef::new(Activities::Object).integer().null())
-					.foreign_key(
-						ForeignKey::create()
-							.name("fkey-activities-objects")
-							.from(Activities::Table, Activities::Object)
-							.to(Objects::Table, Objects::Id)
-							.on_update(ForeignKeyAction::Cascade)
-					)
-					.col(ColumnDef::new(Activities::Target).string().null())
-					.col(ColumnDef::new(Activities::To).json().null())
-					.col(ColumnDef::new(Activities::Bto).json().null())
-					.col(ColumnDef::new(Activities::Cc).json().null())
-					.col(ColumnDef::new(Activities::Bcc).json().null())
-					.col(ColumnDef::new(Activities::Published).date_time().not_null().default(Expr::current_timestamp()))
-					.to_owned()
-			).await?;
-
-		manager
-			.create_index(Index::create().unique().name("index-activities-ap-id").table(Activities::Table).col(Activities::ApId).to_owned())
-			.await?;
-
-		manager
-			.create_index(Index::create().name("index-activities-actor").table(Activities::Table).col(Activities::Actor).to_owned())
-			.await?;
-
-		manager
-			.create_index(Index::create().name("activities-object-index").table(Activities::Table).col(Activities::Object).to_owned())
-			.await?;
-
-		manager
-			.create_index(Index::create().name("index-activities-published-descending").table(Activities::Table).col((Activities::Published, IndexOrder::Desc)).to_owned())
-			.await?;
-
-
-
-		manager
-			.create_table(
-				Table::create()
 					.table(Objects::Table)
 					.comment("objects are all AP documents which are neither actors nor activities")
 					.col(
@@ -293,6 +236,63 @@ impl MigrationTrait for Migration {
 
 		manager
 			.create_index(Index::create().name("index-objects-context").table(Objects::Table).col(Objects::Context).to_owned())
+			.await?;
+
+
+
+		manager
+			.create_table(
+				Table::create()
+					.table(Activities::Table)
+					.comment("all activities this instance ever received or generated")
+					.col(
+						ColumnDef::new(Activities::Id)
+							.integer()
+							.not_null()
+							.primary_key()
+							.auto_increment()
+					)
+					.col(ColumnDef::new(Activities::ApId).string().not_null().unique_key())
+					.col(ColumnDef::new(Activities::ActivityType).string().not_null())
+					.col(ColumnDef::new(Activities::Actor).integer().not_null())
+					.foreign_key(
+						ForeignKey::create()
+							.name("fkey-activities-actors")
+							.from(Activities::Table, Activities::Actor)
+							.to(Actors::Table, Actors::Id)
+							.on_update(ForeignKeyAction::Cascade)
+					)
+					.col(ColumnDef::new(Activities::Object).integer().null())
+					.foreign_key(
+						ForeignKey::create()
+							.name("fkey-activities-objects")
+							.from(Activities::Table, Activities::Object)
+							.to(Objects::Table, Objects::Id)
+							.on_update(ForeignKeyAction::Cascade)
+					)
+					.col(ColumnDef::new(Activities::Target).string().null())
+					.col(ColumnDef::new(Activities::To).json().null())
+					.col(ColumnDef::new(Activities::Bto).json().null())
+					.col(ColumnDef::new(Activities::Cc).json().null())
+					.col(ColumnDef::new(Activities::Bcc).json().null())
+					.col(ColumnDef::new(Activities::Published).date_time().not_null().default(Expr::current_timestamp()))
+					.to_owned()
+			).await?;
+
+		manager
+			.create_index(Index::create().unique().name("index-activities-ap-id").table(Activities::Table).col(Activities::ApId).to_owned())
+			.await?;
+
+		manager
+			.create_index(Index::create().name("index-activities-actor").table(Activities::Table).col(Activities::Actor).to_owned())
+			.await?;
+
+		manager
+			.create_index(Index::create().name("activities-object-index").table(Activities::Table).col(Activities::Object).to_owned())
+			.await?;
+
+		manager
+			.create_index(Index::create().name("index-activities-published-descending").table(Activities::Table).col((Activities::Published, IndexOrder::Desc)).to_owned())
 			.await?;
 
 		Ok(())
