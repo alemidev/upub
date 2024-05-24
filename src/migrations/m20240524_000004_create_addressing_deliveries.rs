@@ -67,7 +67,7 @@ impl MigrationTrait for Migration {
 							.to(Activities::Table, Activities::Id)
 							.on_update(ForeignKeyAction::Cascade)
 					)
-					.col(ColumnDef::new(Addressing::Object).string().null())
+					.col(ColumnDef::new(Addressing::Object).integer().null())
 					.foreign_key(
 						ForeignKey::create()
 							.name("fkey-addressing-object")
