@@ -9,57 +9,137 @@ use super::Audience;
 #[sea_orm(table_name = "objects")]
 pub struct Model {
 	#[sea_orm(primary_key)]
-	pub id: String,
-	pub object_type: apb::ObjectType,
-	pub attributed_to: Option<String>,
+	pub id: i32,
+	#[sea_orm(unique)]
+	pub ap_id: String,
+	pub object_type: String,
+	pub attributed_to: Option<i32>,
 	pub name: Option<String>,
 	pub summary: Option<String>,
 	pub content: Option<String>,
-	pub likes: i64,
-	pub shares: i64,
-	pub comments: i64,
-	pub context: Option<String>,
-	pub in_reply_to: Option<String>,
-	pub cc: Audience,
-	pub bcc: Audience,
-	pub to: Audience,
-	pub bto: Audience,
-	pub url: Option<String>,
-	pub published: ChronoDateTimeUtc,
-	pub updated: Option<ChronoDateTimeUtc>,
-
 	pub sensitive: bool,
+	pub in_reply_to: Option<String>,
+	pub url: Option<String>,
+	pub likes: i32,
+	pub announces: i32,
+	pub replies: i32,
+	pub context: Option<String>,
+	pub to: Option<Json>,
+	pub bto: Option<Json>,
+	pub cc: Option<Json>,
+	pub bcc: Option<Json>,
+	pub published: ChronoDateTimeUtc,
+	pub updated: ChronoDateTimeUtc,
+}
+
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+pub enum Relation {
+	#[sea_orm(has_many = "super::activity::Entity")]
+	Activities,
+	#[sea_orm(
+		belongs_to = "super::actor::Entity",
+		from = "Column::AttributedTo",
+		to = "super::actor::Column::Id",
+		on_update = "Cascade",
+		on_delete = "NoAction"
+	)]
+	Actors,
+	#[sea_orm(has_many = "super::addressing::Entity")]
+	Addressing,
+	#[sea_orm(has_many = "super::announce::Entity")]
+	Announces,
+	#[sea_orm(has_many = "super::attachment::Entity")]
+	Attachments,
+	#[sea_orm(has_many = "super::hashtag::Entity")]
+	Hashtags,
+	#[sea_orm(has_many = "super::like::Entity")]
+	Likes,
+	#[sea_orm(has_many = "super::mention::Entity")]
+	Mentions,
+}
+
+impl Related<super::activity::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Activities.def()
+	}
+}
+
+impl Related<super::actor::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Actors.def()
+	}
+}
+
+impl Related<super::addressing::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Addressing.def()
+	}
+}
+
+impl Related<super::announce::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Announces.def()
+	}
+}
+
+impl Related<super::attachment::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Attachments.def()
+	}
+}
+
+impl Related<super::hashtag::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Hashtags.def()
+	}
+}
+
+impl Related<super::like::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Likes.def()
+	}
+}
+
+impl Related<super::mention::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Mentions.def()
+	}
+}
+
+impl ActiveModelBehavior for ActiveModel {}
+
+impl ActiveModel {
+	pub fn new(object: &impl apb::Object) -> Result<Self, super::FieldError> {
+		Ok(ActiveModel {
+			id: sea_orm::ActiveValue::NotSet,
+			ap_id: sea_orm::ActiveValue::Set(object.id().ok_or(super::FieldError("id"))?.to_string()),
+			object_type: sea_orm::ActiveValue::Set(object.object_type().ok_or(super::FieldError("type"))?),
+			attributed_to: sea_orm::ActiveValue::Set(object.attributed_to().id()),
+			name: sea_orm::ActiveValue::Set(object.name().map(|x| x.to_string())),
+			summary: sea_orm::ActiveValue::Set(object.summary().map(|x| x.to_string())),
+			content: sea_orm::ActiveValue::Set(object.content().map(|x| x.to_string())),
+			context: sea_orm::ActiveValue::Set(object.context().id()),
+			in_reply_to: sea_orm::ActiveValue::Set(object.in_reply_to().id()),
+			published: sea_orm::ActiveValue::Set(object.published().ok_or(super::FieldError("published"))?),
+			updated: sea_orm::ActiveValue::Set(object.updated()),
+			url: sea_orm::ActiveValue::Set(object.url().id()),
+			replies: sea_orm::ActiveValue::Set(object.replies().get()
+				.map_or(0, |x| x.total_items().unwrap_or(0)) as i64),
+			likes: sea_orm::ActiveValue::Set(object.likes().get()
+				.map_or(0, |x| x.total_items().unwrap_or(0)) as i64),
+			announces: sea_orm::ActiveValue::Set(object.shares().get()
+				.map_or(0, |x| x.total_items().unwrap_or(0)) as i64),
+			to: sea_orm::ActiveValue::Set(object.to().into()),
+			bto: sea_orm::ActiveValue::Set(object.bto().into()),
+			cc: sea_orm::ActiveValue::Set(object.cc().into()),
+			bcc: sea_orm::ActiveValue::Set(object.bcc().into()),
+
+			sensitive: sea_orm::ActiveValue::Set(object.sensitive().unwrap_or(false)),
+		})
+	}
 }
 
 impl Model {
-	pub fn new(object: &impl apb::Object) -> Result<Self, super::FieldError> {
-		Ok(Model {
-			id: object.id().ok_or(super::FieldError("id"))?.to_string(),
-			object_type: object.object_type().ok_or(super::FieldError("type"))?,
-			attributed_to: object.attributed_to().id(),
-			name: object.name().map(|x| x.to_string()),
-			summary: object.summary().map(|x| x.to_string()),
-			content: object.content().map(|x| x.to_string()),
-			context: object.context().id(),
-			in_reply_to: object.in_reply_to().id(),
-			published: object.published().ok_or(super::FieldError("published"))?,
-			updated: object.updated(),
-			url: object.url().id(),
-			comments: object.replies().get()
-				.map_or(0, |x| x.total_items().unwrap_or(0)) as i64,
-			likes: object.likes().get()
-				.map_or(0, |x| x.total_items().unwrap_or(0)) as i64,
-			shares: object.shares().get()
-				.map_or(0, |x| x.total_items().unwrap_or(0)) as i64,
-			to: object.to().into(),
-			bto: object.bto().into(),
-			cc: object.cc().into(),
-			bcc: object.bcc().into(),
-
-			sensitive: object.sensitive().unwrap_or(false),
-		})
-	}
-
 	pub fn ap(self) -> serde_json::Value {
 		serde_json::Value::new_object()
 			.set_id(Some(&self.id))
@@ -72,7 +152,7 @@ impl Model {
 			.set_conversation(apb::Node::maybe_link(self.context.clone())) // duplicate context for mastodon
 			.set_in_reply_to(apb::Node::maybe_link(self.in_reply_to.clone()))
 			.set_published(Some(self.published))
-			.set_updated(self.updated)
+			.set_updated(Some(self.updated))
 			.set_to(apb::Node::links(self.to.0.clone()))
 			.set_bto(apb::Node::Empty)
 			.set_cc(apb::Node::links(self.cc.0.clone()))
@@ -96,69 +176,6 @@ impl Model {
 			))
 	}
 }
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
-	#[sea_orm(has_many = "super::activity::Entity")]
-	Activity,
-
-	#[sea_orm(
-		belongs_to = "super::user::Entity",
-		from = "Column::AttributedTo",
-		to = "super::user::Column::Id",
-	)]
-	User,
-
-	#[sea_orm(has_many = "super::addressing::Entity")]
-	Addressing,
-
-	#[sea_orm(has_many = "super::attachment::Entity")]
-	Attachment,
-
-	#[sea_orm(has_many = "super::like::Entity")]
-	Like,
-
-	#[sea_orm(has_many = "super::share::Entity")]
-	Share,
-}
-
-impl Related<super::activity::Entity> for Entity {
-	fn to() -> RelationDef {
-		Relation::Activity.def()
-	}
-}
-
-impl Related<super::user::Entity> for Entity {
-	fn to() -> RelationDef {
-		Relation::User.def()
-	}
-}
-
-impl Related<super::addressing::Entity> for Entity {
-	fn to() -> RelationDef {
-		Relation::Addressing.def()
-	}
-}
-
-impl Related<super::attachment::Entity> for Entity {
-	fn to() -> RelationDef {
-		Relation::Attachment.def()
-	}
-}
-
-impl Related<super::like::Entity> for Entity {
-	fn to() -> RelationDef {
-		Relation::Like.def()
-	}
-}
-
-impl Related<super::share::Entity> for Entity {
-	fn to() -> RelationDef {
-		Relation::Share.def()
-	}
-}
-
-impl ActiveModelBehavior for ActiveModel {}
 
 impl apb::target::Addressed for Model {
 	fn addressed(&self) -> Vec<String> {

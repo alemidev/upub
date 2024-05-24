@@ -9,15 +9,35 @@ use super::addressing::Event;
 #[sea_orm(table_name = "attachments")]
 pub struct Model {
 	#[sea_orm(primary_key)]
-	pub id: i64,
-
+	pub id: i32,
+	#[sea_orm(unique)]
 	pub url: String,
-	pub object: String,
-	pub document_type: apb::DocumentType,
+	pub object: i32,
+	pub document_type: String,
 	pub name: Option<String>,
 	pub media_type: String,
 	pub created: ChronoDateTimeUtc,
 }
+
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+pub enum Relation {
+	#[sea_orm(
+		belongs_to = "super::object::Entity",
+		from = "Column::Object",
+		to = "super::object::Column::Id",
+		on_update = "Cascade",
+		on_delete = "Cascade"
+	)]
+	Objects,
+}
+
+impl Related<super::object::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Objects.def()
+	}
+}
+
+impl ActiveModelBehavior for ActiveModel {}
 
 impl Model {
 	pub fn ap(self) -> serde_json::Value {
@@ -29,25 +49,6 @@ impl Model {
 			.set_published(Some(self.created))
 	}
 }
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
-	#[sea_orm(
-		belongs_to = "super::object::Entity",
-		from = "Column::Object",
-		to = "super::object::Column::Id"
-	)]
-	Object,
-}
-
-impl Related<super::object::Entity> for Entity {
-	fn to() -> RelationDef {
-		Relation::Object.def()
-	}
-}
-
-impl ActiveModelBehavior for ActiveModel {}
-
 
 #[axum::async_trait]
 pub trait BatchFillable {

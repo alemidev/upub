@@ -4,7 +4,8 @@ use sea_orm::entity::prelude::*;
 #[sea_orm(table_name = "configs")]
 pub struct Model {
 	#[sea_orm(primary_key)]
-	pub id: String,
+	pub id: i32,
+	pub actor: i32,
 	pub accept_follow_requests: bool,
 	pub show_followers_count: bool,
 	pub show_following_count: bool,
@@ -15,7 +16,7 @@ pub struct Model {
 impl Default for Model {
 	fn default() -> Self {
 		Model {
-			id: "".to_string(),
+			id: 0, actor: 0,
 			accept_follow_requests: true,
 			show_following_count: true,
 			show_following: true,
@@ -28,16 +29,18 @@ impl Default for Model {
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
 	#[sea_orm(
-		belongs_to = "super::user::Entity",
-		from = "Column::Id",
-		to = "super::user::Column::Id"
+		belongs_to = "super::actor::Entity",
+		from = "Column::Actor",
+		to = "super::actor::Column::Id",
+		on_update = "Cascade",
+		on_delete = "Cascade"
 	)]
-	User,
+	Actors,
 }
 
-impl Related<super::user::Entity> for Entity {
+impl Related<super::actor::Entity> for Entity {
 	fn to() -> RelationDef {
-		Relation::User.def()
+		Relation::Actors.def()
 	}
 }
 

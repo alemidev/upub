@@ -7,53 +7,71 @@ use crate::routes::activitypub::jsonld::LD;
 #[sea_orm(table_name = "addressing")]
 pub struct Model {
 	#[sea_orm(primary_key)]
-	pub id: i64,
-	pub actor: String,
-	pub server: String,
-	pub activity: Option<String>,
-	pub object: Option<String>,
+	pub id: i32,
+	pub actor: i32,
+	pub instance: i32,
+	pub activity: Option<i32>,
+	pub object: Option<i32>,
 	pub published: ChronoDateTimeUtc,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
 	#[sea_orm(
-		belongs_to = "super::user::Entity",
-		from = "Column::Actor",
-		to = "super::user::Column::Id"
-	)]
-	User,
-
-	#[sea_orm(
 		belongs_to = "super::activity::Entity",
 		from = "Column::Activity",
-		to = "super::activity::Column::Id"
+		to = "super::activity::Column::Id",
+		on_update = "Cascade",
+		on_delete = "NoAction"
 	)]
-	Activity,
-
+	Activities,
+	#[sea_orm(
+		belongs_to = "super::actor::Entity",
+		from = "Column::Actor",
+		to = "super::actor::Column::Id",
+		on_update = "Cascade",
+		on_delete = "NoAction"
+	)]
+	Actors,
+	#[sea_orm(
+		belongs_to = "super::instance::Entity",
+		from = "Column::Instance",
+		to = "super::instance::Column::Id",
+		on_update = "Cascade",
+		on_delete = "NoAction"
+	)]
+	Instances,
 	#[sea_orm(
 		belongs_to = "super::object::Entity",
 		from = "Column::Object",
-		to = "super::object::Column::Id"
+		to = "super::object::Column::Id",
+		on_update = "Cascade",
+		on_delete = "NoAction"
 	)]
-	Object,
-}
-
-impl Related<super::user::Entity> for Entity {
-	fn to() -> RelationDef {
-		Relation::User.def()
-	}
+	Objects,
 }
 
 impl Related<super::activity::Entity> for Entity {
 	fn to() -> RelationDef {
-		Relation::Activity.def()
+		Relation::Activities.def()
+	}
+}
+
+impl Related<super::actor::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Actors.def()
+	}
+}
+
+impl Related<super::instance::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Instances.def()
 	}
 }
 
 impl Related<super::object::Entity> for Entity {
 	fn to() -> RelationDef {
-		Relation::Object.def()
+		Relation::Objects.def()
 	}
 }
 

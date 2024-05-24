@@ -4,10 +4,10 @@ use sea_orm::entity::prelude::*;
 #[sea_orm(table_name = "deliveries")]
 pub struct Model {
 	#[sea_orm(primary_key)]
-	pub id: i64,
-	pub actor: String,
+	pub id: i32,
+	pub actor: i32,
 	pub target: String,
-	pub activity: String,
+	pub activity: i32,
 	pub created: ChronoDateTimeUtc,
 	pub not_before: ChronoDateTimeUtc,
 	pub attempt: i32,
@@ -18,14 +18,30 @@ pub enum Relation {
 	#[sea_orm(
 		belongs_to = "super::activity::Entity",
 		from = "Column::Activity",
-		to = "super::activity::Column::Id"
+		to = "super::activity::Column::Id",
+		on_update = "Cascade",
+		on_delete = "Cascade"
 	)]
-	Activity,
+	Activities,
+	#[sea_orm(
+		belongs_to = "super::actor::Entity",
+		from = "Column::Actor",
+		to = "super::actor::Column::Id",
+		on_update = "Cascade",
+		on_delete = "Cascade"
+	)]
+	Actors,
 }
 
 impl Related<super::activity::Entity> for Entity {
 	fn to() -> RelationDef {
-		Relation::Activity.def()
+		Relation::Activities.def()
+	}
+}
+
+impl Related<super::actor::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Actors.def()
 	}
 }
 

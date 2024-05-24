@@ -1,46 +1,95 @@
-use apb::{ActivityMut, BaseMut, ObjectMut};
+use apb::{ActivityMut, ActivityType, BaseMut, ObjectMut};
 use sea_orm::entity::prelude::*;
 
 use crate::routes::activitypub::jsonld::LD;
-
-use super::Audience;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "activities")]
 pub struct Model {
 	#[sea_orm(primary_key)]
-	pub id: String,
-
-	pub activity_type: apb::ActivityType,
-	pub actor: String,
-	pub object: Option<String>,
-
-	pub target: Option<String>, // TODO relates to USER maybe??
-	pub cc: Audience,
-	pub bcc: Audience,
-	pub to: Audience,
-	pub bto: Audience,
+	pub id: i32,
+	#[sea_orm(unique)]
+	pub ap_id: String,
+	pub activity_type: ActivityType,
+	pub actor: i32,
+	pub object: Option<i32>,
+	pub target: Option<String>,
+	pub to: Option<Json>,
+	pub bto: Option<Json>,
+	pub cc: Option<Json>,
+	pub bcc: Option<Json>,
 	pub published: ChronoDateTimeUtc,
+}
 
-	// TODO: origin, result, instrument
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+pub enum Relation {
+	#[sea_orm(
+		belongs_to = "super::actor::Entity",
+		from = "Column::Actor",
+		to = "super::actor::Column::Id",
+		on_update = "Cascade",
+		on_delete = "NoAction"
+	)]
+	Actors,
+	#[sea_orm(has_many = "super::addressing::Entity")]
+	Addressing,
+	#[sea_orm(has_many = "super::delivery::Entity")]
+	Deliveries,
+	#[sea_orm(
+		belongs_to = "super::object::Entity",
+		from = "Column::Object",
+		to = "super::object::Column::Id",
+		on_update = "Cascade",
+		on_delete = "NoAction"
+	)]
+	Objects,
+}
+
+impl Related<super::actor::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Actors.def()
+	}
+}
+
+impl Related<super::addressing::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Addressing.def()
+	}
+}
+
+impl Related<super::delivery::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Deliveries.def()
+	}
+}
+
+impl Related<super::object::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Objects.def()
+	}
+}
+
+impl ActiveModelBehavior for ActiveModel {}
+
+impl ActiveModel {
+	pub fn new(activity: &impl apb::Activity) -> Result<Self, super::FieldError> {
+		Ok(ActiveModel {
+			id: sea_orm::ActiveValue::NotSet,
+			ap_id: sea_orm::ActiveValue::Set(activity.id().ok_or(super::FieldError("id"))?.to_string()),
+			activity_type: sea_orm::ActiveValue::Set(activity.activity_type().ok_or(super::FieldError("type"))?),
+			actor: sea_orm::ActiveValue::Set(activity.actor().id().ok_or(super::FieldError("actor"))?),
+			object: sea_orm::ActiveValue::Set(activity.object().id()),
+			target: sea_orm::ActiveValue::Set(activity.target().id()),
+			published: sea_orm::ActiveValue::Set(activity.published().unwrap_or(chrono::Utc::now())),
+			to: sea_orm::ActiveValue::Set(activity.to().into()),
+			bto: sea_orm::ActiveValue::Set(activity.bto().into()),
+			cc: sea_orm::ActiveValue::Set(activity.cc().into()),
+			bcc: sea_orm::ActiveValue::Set(activity.bcc().into()),
+		})
+	}
 }
 
 impl Model {
-	pub fn new(activity: &impl apb::Activity) -> Result<Self, super::FieldError> {
-		Ok(Model {
-			id: activity.id().ok_or(super::FieldError("id"))?.to_string(),
-			activity_type: activity.activity_type().ok_or(super::FieldError("type"))?,
-			actor: activity.actor().id().ok_or(super::FieldError("actor"))?,
-			object: activity.object().id(),
-			target: activity.target().id(),
-			published: activity.published().unwrap_or(chrono::Utc::now()),
-			to: activity.to().into(),
-			bto: activity.bto().into(),
-			cc: activity.cc().into(),
-			bcc: activity.bcc().into(),
-		})
-	}
-
 	pub fn ap(self) -> serde_json::Value {
 		serde_json::Value::new_object()
 			.set_id(Some(&self.id))
@@ -55,49 +104,6 @@ impl Model {
 			.set_bcc(apb::Node::Empty)
 	}
 }
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
-	#[sea_orm(
-		belongs_to = "super::user::Entity",
-		from = "Column::Actor",
-		to = "super::user::Column::Id"
-	)]
-	User,
-
-	#[sea_orm(
-		belongs_to = "super::object::Entity",
-		from = "Column::Object",
-		to = "super::object::Column::Id"
-	)]
-	Object,
-
-	#[sea_orm(has_many = "super::addressing::Entity")]
-	Addressing,
-
-	#[sea_orm(has_many = "super::delivery::Entity")]
-	Delivery,
-}
-
-impl Related<super::user::Entity> for Entity {
-	fn to() -> RelationDef {
-		Relation::User.def()
-	}
-}
-
-impl Related<super::object::Entity> for Entity {
-	fn to() -> RelationDef {
-		Relation::Object.def()
-	}
-}
-
-impl Related<super::addressing::Entity> for Entity {
-	fn to() -> RelationDef {
-		Relation::Addressing.def()
-	}
-}
-
-impl ActiveModelBehavior for ActiveModel {}
 
 impl apb::target::Addressed for Model {
 	fn addressed(&self) -> Vec<String> {
