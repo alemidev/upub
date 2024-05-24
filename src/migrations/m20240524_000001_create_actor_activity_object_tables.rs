@@ -92,6 +92,37 @@ impl MigrationTrait for Migration {
 		manager
 			.create_table(
 				Table::create()
+					.table(Instances::Table)
+					.comment("known other instances in the fediverse")
+					.col(
+						ColumnDef::new(Instances::Id)
+							.integer()
+							.not_null()
+							.auto_increment()
+							.primary_key()
+					)
+					.col(ColumnDef::new(Instances::Name).string().null())
+					.col(ColumnDef::new(Instances::Domain).string().not_null())
+					.col(ColumnDef::new(Instances::Software).string().null())
+					.col(ColumnDef::new(Instances::Version).string().null())
+					.col(ColumnDef::new(Instances::DownSince).date_time().null())
+					.col(ColumnDef::new(Instances::Users).integer().null())
+					.col(ColumnDef::new(Instances::Posts).integer().null())
+					.col(ColumnDef::new(Instances::Published).date_time().not_null().default(Expr::current_timestamp()))
+					.col(ColumnDef::new(Instances::Updated).date_time().not_null().default(Expr::current_timestamp()))
+					.to_owned()
+			)
+			.await?;
+
+		manager
+			.create_index(Index::create().name("index-instances-domain").table(Instances::Table).col(Instances::Domain).to_owned())
+			.await?;
+
+
+
+		manager
+			.create_table(
+				Table::create()
 					.table(Actors::Table)
 					.comment("main actors table, with users and applications")
 					.col(
@@ -262,37 +293,6 @@ impl MigrationTrait for Migration {
 
 		manager
 			.create_index(Index::create().name("index-objects-context").table(Objects::Table).col(Objects::Context).to_owned())
-			.await?;
-
-
-
-		manager
-			.create_table(
-				Table::create()
-					.table(Instances::Table)
-					.comment("known other instances in the fediverse")
-					.col(
-						ColumnDef::new(Instances::Id)
-							.integer()
-							.not_null()
-							.auto_increment()
-							.primary_key()
-					)
-					.col(ColumnDef::new(Instances::Name).string().null())
-					.col(ColumnDef::new(Instances::Domain).string().not_null())
-					.col(ColumnDef::new(Instances::Software).string().null())
-					.col(ColumnDef::new(Instances::Version).string().null())
-					.col(ColumnDef::new(Instances::DownSince).date_time().null())
-					.col(ColumnDef::new(Instances::Users).integer().null())
-					.col(ColumnDef::new(Instances::Posts).integer().null())
-					.col(ColumnDef::new(Instances::Published).date_time().not_null().default(Expr::current_timestamp()))
-					.col(ColumnDef::new(Instances::Updated).date_time().not_null().default(Expr::current_timestamp()))
-					.to_owned()
-			)
-			.await?;
-
-		manager
-			.create_index(Index::create().name("index-instances-domain").table(Instances::Table).col(Instances::Domain).to_owned())
 			.await?;
 
 		Ok(())
