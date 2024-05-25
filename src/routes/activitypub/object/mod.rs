@@ -2,7 +2,7 @@ pub mod replies;
 
 use apb::{CollectionMut, ObjectMut};
 use axum::extract::{Path, Query, State};
-use sea_orm::{ColumnTrait, EntityTrait, ModelTrait, QueryFilter, QuerySelect, SelectColumns};
+use sea_orm::{ColumnTrait, ModelTrait, QueryFilter, QuerySelect, SelectColumns};
 
 use crate::{errors::UpubError, model::{self, addressing::Event}, server::{auth::AuthIdentity, fetcher::Fetcher, Context}};
 
@@ -62,7 +62,7 @@ pub async fn view(
 				// .set_id(Some(&crate::url!(ctx, "/objects/{id}/replies")))
 				// .set_first(apb::Node::link(crate::url!(ctx, "/objects/{id}/replies/page")))
 				.set_collection_type(Some(apb::CollectionType::Collection))
-				.set_total_items(Some(object.comments as u64))
+				.set_total_items(Some(object.replies as u64))
 				.set_items(apb::Node::links(replies_ids))
 		);
 	}

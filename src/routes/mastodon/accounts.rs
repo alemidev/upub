@@ -1,6 +1,5 @@
 use axum::{extract::{Path, State}, http::StatusCode, Json};
 use mastodon_async_entities::account::{Account, AccountId};
-use sea_orm::EntityTrait;
 
 use crate::{model, server::{auth::AuthIdentity, Context}};
 
@@ -9,7 +8,7 @@ pub async fn view(
 	AuthIdentity(_auth): AuthIdentity,
 	Path(id): Path<String>
 ) -> Result<Json<Account>, StatusCode> {
-	match model::user::Entity::find_by_id(ctx.uid(&id))
+	match model::actor::Entity::find_by_ap_id(&ctx.uid(&id))
 		.find_also_related(model::config::Entity)
 		.one(ctx.db())
 		.await

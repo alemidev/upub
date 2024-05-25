@@ -154,12 +154,12 @@ impl FromQueryResult for Event {
 
 
 impl Entity {
-	pub fn find_addressed(uid: Option<&str>) -> Select<Entity> {
+	pub fn find_addressed(uid: Option<i64>) -> Select<Entity> {
 		let mut select = Entity::find()
 			.distinct()
 			.select_only()
-			.join(sea_orm::JoinType::LeftJoin, Relation::Object.def())
-			.join(sea_orm::JoinType::LeftJoin, Relation::Activity.def())
+			.join(sea_orm::JoinType::LeftJoin, Relation::Objects.def())
+			.join(sea_orm::JoinType::LeftJoin, Relation::Activities.def())
 			.filter(
 				// TODO ghetto double inner join because i want to filter out tombstones
 				Condition::any()
@@ -169,12 +169,11 @@ impl Entity {
 			.order_by(Column::Published, Order::Desc);
 
 		if let Some(uid) = uid {
-			let uid = uid.to_string();
 			select = select
 				.join(
 					sea_orm::JoinType::LeftJoin,
-					crate::model::object::Relation::Like.def()
-						.on_condition(move |_l, _r| crate::model::like::Column::Actor.eq(uid.clone()).into_condition()),
+					crate::model::object::Relation::Likes.def()
+						.on_condition(move |_l, _r| crate::model::like::Column::Actor.eq(uid).into_condition()),
 				)
 				.select_column_as(crate::model::like::Column::Actor, format!("{}{}", crate::model::like::Entity.table_name(), crate::model::like::Column::Actor.to_string()));
 		}

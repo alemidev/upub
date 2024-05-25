@@ -1,4 +1,4 @@
-use apb::{DocumentMut, ObjectMut};
+use apb::{DocumentMut, DocumentType, ObjectMut};
 use sea_orm::entity::prelude::*;
 
 use crate::routes::activitypub::jsonld::LD;
@@ -13,7 +13,7 @@ pub struct Model {
 	#[sea_orm(unique)]
 	pub url: String,
 	pub object: i64,
-	pub document_type: String,
+	pub document_type: DocumentType,
 	pub name: Option<String>,
 	pub media_type: String,
 	pub created: ChronoDateTimeUtc,
@@ -52,12 +52,12 @@ impl Model {
 
 #[axum::async_trait]
 pub trait BatchFillable {
-	async fn load_attachments_batch(&self, db: &DatabaseConnection) -> Result<std::collections::BTreeMap<String, Vec<Model>>, DbErr>;
+	async fn load_attachments_batch(&self, db: &DatabaseConnection) -> Result<std::collections::BTreeMap<i64, Vec<Model>>, DbErr>;
 }
 
 #[axum::async_trait]
 impl BatchFillable for &[Event] {
-	async fn load_attachments_batch(&self, db: &DatabaseConnection) -> Result<std::collections::BTreeMap<String, Vec<Model>>, DbErr> {
+	async fn load_attachments_batch(&self, db: &DatabaseConnection) -> Result<std::collections::BTreeMap<i64, Vec<Model>>, DbErr> {
 		let objects : Vec<crate::model::object::Model> = self
 			.iter()
 			.filter_map(|x| match x {
@@ -70,12 +70,12 @@ impl BatchFillable for &[Event] {
 
 		let attachments = objects.load_many(Entity, db).await?;
 
-		let mut out : std::collections::BTreeMap<String, Vec<Model>> = std::collections::BTreeMap::new();
+		let mut out : std::collections::BTreeMap<i64, Vec<Model>> = std::collections::BTreeMap::new();
 		for attach in attachments.into_iter().flatten() {
 			if out.contains_key(&attach.object) {
 				out.get_mut(&attach.object).expect("contains but get failed?").push(attach);
 			} else {
-				out.insert(attach.object.clone(), vec![attach]);
+				out.insert(attach.object, vec![attach]);
 			}
 		}
 
@@ -85,14 +85,14 @@ impl BatchFillable for &[Event] {
 
 #[axum::async_trait]
 impl BatchFillable for Vec<Event> {
-	async fn load_attachments_batch(&self, db: &DatabaseConnection) -> Result<std::collections::BTreeMap<String, Vec<Model>>, DbErr> {
+	async fn load_attachments_batch(&self, db: &DatabaseConnection) -> Result<std::collections::BTreeMap<i64, Vec<Model>>, DbErr> {
 		self.as_slice().load_attachments_batch(db).await
 	}
 }
 
 #[axum::async_trait]
 impl BatchFillable for Event {
-	async fn load_attachments_batch(&self, db: &DatabaseConnection) -> Result<std::collections::BTreeMap<String, Vec<Model>>, DbErr> {
+	async fn load_attachments_batch(&self, db: &DatabaseConnection) -> Result<std::collections::BTreeMap<i64, Vec<Model>>, DbErr> {
 		let x = vec![self.clone()]; // TODO wasteful clone and vec![] but ehhh convenient
 		x.load_attachments_batch(db).await
 	}

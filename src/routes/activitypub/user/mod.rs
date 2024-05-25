@@ -8,7 +8,7 @@ use axum::extract::{Path, Query, State};
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QuerySelect, SelectColumns};
 
 use apb::{ActorMut, EndpointsMut, Node};
-use crate::{errors::UpubError, model::{self, user}, server::{auth::AuthIdentity, fetcher::Fetcher, Context}, url};
+use crate::{errors::UpubError, model, server::{auth::AuthIdentity, fetcher::Fetcher, Context}, url};
 
 use super::{jsonld::LD, JsonLD, TryFetch};
 
@@ -61,7 +61,7 @@ pub async fn view(
 		},
 	};
 
-	match user::Entity::find_by_id(&uid)
+	match model::actor::Entity::find_by_ap_id(&uid)
 		.find_also_related(model::config::Entity)
 		.one(ctx.db()).await?
 	{

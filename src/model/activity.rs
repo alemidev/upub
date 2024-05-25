@@ -1,7 +1,7 @@
 use apb::{ActivityMut, ActivityType, BaseMut, ObjectMut};
-use sea_orm::entity::prelude::*;
+use sea_orm::{entity::prelude::*, QuerySelect, SelectColumns};
 
-use crate::routes::activitypub::jsonld::LD;
+use crate::{model::Audience, errors::UpubError, routes::activitypub::jsonld::LD};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "activities")]
@@ -14,10 +14,10 @@ pub struct Model {
 	pub actor: String,
 	pub object: Option<String>,
 	pub target: Option<String>,
-	pub to: Option<Json>,
-	pub bto: Option<Json>,
-	pub cc: Option<Json>,
-	pub bcc: Option<Json>,
+	pub to: Audience,
+	pub bto: Audience,
+	pub cc: Audience,
+	pub bcc: Audience,
 	pub published: ChronoDateTimeUtc,
 }
 
@@ -71,11 +71,28 @@ impl Related<super::object::Entity> for Entity {
 
 impl ActiveModelBehavior for ActiveModel {}
 
+impl Entity {
+	pub fn find_by_ap_id(id: &str) -> Select<Entity> {
+		Entity::find().filter(Column::Id.eq(id))
+	}
+
+	pub async fn ap_to_internal(id: &str, db: &DatabaseConnection) -> crate::Result<i64> {
+		Entity::find()
+			.filter(Column::Id.eq(id))
+			.select_only()
+			.select_column(Column::Internal)
+			.into_tuple::<i64>()
+			.one(db)
+			.await?
+			.ok_or_else(UpubError::not_found)
+	}
+}
+
 impl ActiveModel {
 	pub fn new(activity: &impl apb::Activity) -> Result<Self, super::FieldError> {
 		Ok(ActiveModel {
-			id: sea_orm::ActiveValue::NotSet,
-			ap_id: sea_orm::ActiveValue::Set(activity.id().ok_or(super::FieldError("id"))?.to_string()),
+			internal: sea_orm::ActiveValue::NotSet,
+			id: sea_orm::ActiveValue::Set(activity.id().ok_or(super::FieldError("id"))?.to_string()),
 			activity_type: sea_orm::ActiveValue::Set(activity.activity_type().ok_or(super::FieldError("type"))?),
 			actor: sea_orm::ActiveValue::Set(activity.actor().id().ok_or(super::FieldError("actor"))?),
 			object: sea_orm::ActiveValue::Set(activity.object().id()),

@@ -1,8 +1,8 @@
-use sea_orm::entity::prelude::*;
+use sea_orm::{entity::prelude::*, QuerySelect, SelectColumns};
 
 use apb::{Actor, ActorMut, ActorType, BaseMut, DocumentMut, Endpoints, EndpointsMut, Object, ObjectMut, PublicKey, PublicKeyMut};
 
-use crate::routes::activitypub::jsonld::LD;
+use crate::{errors::UpubError, routes::activitypub::jsonld::LD};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "actors")]
@@ -133,14 +133,31 @@ impl Related<super::session::Entity> for Entity {
 
 impl ActiveModelBehavior for ActiveModel {}
 
+impl Entity {
+	pub fn find_by_ap_id(id: &str) -> Select<Entity> {
+		Entity::find().filter(Column::Id.eq(id))
+	}
+
+	pub async fn ap_to_internal(id: &str, db: &DatabaseConnection) -> crate::Result<i64> {
+		Entity::find()
+			.filter(Column::Id.eq(id))
+			.select_only()
+			.select_column(Column::Internal)
+			.into_tuple::<i64>()
+			.one(db)
+			.await?
+			.ok_or_else(UpubError::not_found)
+	}
+}
+
 impl ActiveModel {
-	pub fn new(object: &impl Actor, instance: i32) -> Result<Self, super::FieldError> {
+	pub fn new(object: &impl Actor) -> Result<Self, super::FieldError> {
 		let ap_id = object.id().ok_or(super::FieldError("id"))?.to_string();
-		let (_domain, fallback_preferred_username) = split_user_id(&ap_id);
+		let (domain, fallback_preferred_username) = split_user_id(&ap_id);
 		Ok(ActiveModel {
-			instance: sea_orm::ActiveValue::Set(instance), // TODO receiving it from outside is cheap
-			id: sea_orm::ActiveValue::NotSet,
-			ap_id: sea_orm::ActiveValue::Set(ap_id),
+			internal: sea_orm::ActiveValue::NotSet,
+			domain: sea_orm::ActiveValue::Set(domain),
+			id: sea_orm::ActiveValue::Set(ap_id),
 			preferred_username: sea_orm::ActiveValue::Set(object.preferred_username().unwrap_or(&fallback_preferred_username).to_string()),
 			actor_type: sea_orm::ActiveValue::Set(object.actor_type().ok_or(super::FieldError("type"))?),
 			name: sea_orm::ActiveValue::Set(object.name().map(|x| x.to_string())),
@@ -154,9 +171,9 @@ impl ActiveModel {
 			following: sea_orm::ActiveValue::Set(object.following().id()),
 			created: sea_orm::ActiveValue::Set(object.published().unwrap_or(chrono::Utc::now())),
 			updated: sea_orm::ActiveValue::Set(chrono::Utc::now()),
-			following_count: sea_orm::ActiveValue::Set(object.following_count().unwrap_or(0) as i64),
-			followers_count: sea_orm::ActiveValue::Set(object.followers_count().unwrap_or(0) as i64),
-			statuses_count: sea_orm::ActiveValue::Set(object.statuses_count().unwrap_or(0) as i64),
+			following_count: sea_orm::ActiveValue::Set(object.following_count().unwrap_or(0) as i32),
+			followers_count: sea_orm::ActiveValue::Set(object.followers_count().unwrap_or(0) as i32),
+			statuses_count: sea_orm::ActiveValue::Set(object.statuses_count().unwrap_or(0) as i32),
 			public_key: sea_orm::ActiveValue::Set(object.public_key().get().ok_or(super::FieldError("publicKey"))?.public_key_pem().to_string()),
 			private_key: sea_orm::ActiveValue::Set(None), // there's no way to transport privkey over AP json, must come from DB
 		})

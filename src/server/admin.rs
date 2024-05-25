@@ -1,4 +1,4 @@
-use sea_orm::{EntityTrait, IntoActiveModel};
+use sea_orm::{ActiveValue::{Set, NotSet}, EntityTrait};
 
 #[axum::async_trait]
 pub trait Administrable {
@@ -28,52 +28,56 @@ impl Administrable for super::Context {
 		let ap_id = self.uid(&username);
 		let db = self.db();
 		let domain = self.domain().to_string();
-		let user_model = crate::model::user::Model {
-			id: ap_id.clone(),
-			name: display_name,
-			domain, summary,
-			preferred_username: username.clone(),
-			following: None,
-			following_count: 0,
-			followers: None,
-			followers_count: 0,
-			statuses_count: 0,
-			icon: avatar_url,
-			image: banner_url,
-			inbox: None,
-			shared_inbox: None,
-			outbox: None,
-			actor_type: apb::ActorType::Person,
-			created: chrono::Utc::now(),
-			updated: chrono::Utc::now(),
-			private_key: Some(std::str::from_utf8(&key.private_key_to_pem().unwrap()).unwrap().to_string()),
-			public_key: std::str::from_utf8(&key.public_key_to_pem().unwrap()).unwrap().to_string(),
+		let user_model = crate::model::actor::Model {
+			internal: NotSet,
+			id: Set(ap_id.clone()),
+			name: Set(display_name),
+			domain: Set(domain),
+			summary: Set(summary),
+			preferred_username: Set(username.clone()),
+			following: Set(None),
+			following_count: Set(0),
+			followers: Set(None),
+			followers_count: Set(0),
+			statuses_count: Set(0),
+			icon: Set(avatar_url),
+			image: Set(banner_url),
+			inbox: Set(None),
+			shared_inbox: Set(None),
+			outbox: Set(None),
+			actor_type: Set(apb::ActorType::Person),
+			created: Set(chrono::Utc::now()),
+			updated: Set(chrono::Utc::now()),
+			private_key: Set(Some(std::str::from_utf8(&key.private_key_to_pem().unwrap()).unwrap().to_string())),
+			public_key: Set(std::str::from_utf8(&key.public_key_to_pem().unwrap()).unwrap().to_string()),
 		};
 
-		crate::model::user::Entity::insert(user_model.into_active_model())
+		crate::model::actor::Entity::insert(user_model)
 			.exec(db)
 			.await?;
 
-		let config_model = crate::model::config::Model {
-			id: ap_id.clone(),
-			accept_follow_requests: true,
-			show_followers_count: true,
-			show_following_count: true,
-			show_followers: false,
-			show_following: false,
+		let config_model = crate::model::config::ActiveModel {
+			internal: NotSet,
+			actor: Set(ap_id.clone()),
+			accept_follow_requests: Set(true),
+			show_followers_count: Set(true),
+			show_following_count: Set(true),
+			show_followers: Set(false),
+			show_following: Set(false),
 		};
 
-		crate::model::config::Entity::insert(config_model.into_active_model())
+		crate::model::config::Entity::insert(config_model)
 			.exec(db)
 			.await?;
 
-		let credentials_model = crate::model::credential::Model {
-			id: ap_id,
-			email: username,
-			password,
+		let credentials_model = crate::model::credential::ActiveModel {
+			internal: NotSet,
+			actor: Set(ap_id),
+			login: Set(username),
+			password: Set(password),
 		};
 
-		crate::model::credential::Entity::insert(credentials_model.into_active_model())
+		crate::model::credential::Entity::insert(credentials_model)
 			.exec(db)
 			.await?;
 		

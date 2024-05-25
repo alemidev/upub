@@ -1,7 +1,7 @@
-use apb::{BaseMut, Collection, CollectionMut, ObjectMut};
-use sea_orm::entity::prelude::*;
+use apb::{BaseMut, Collection, CollectionMut, ObjectMut, ObjectType};
+use sea_orm::{entity::prelude::*, QuerySelect, SelectColumns};
 
-use crate::routes::activitypub::jsonld::LD;
+use crate::{errors::UpubError, routes::activitypub::jsonld::LD};
 
 use super::Audience;
 
@@ -12,7 +12,7 @@ pub struct Model {
 	pub internal: i64,
 	#[sea_orm(unique)]
 	pub id: String,
-	pub object_type: String,
+	pub object_type: ObjectType,
 	pub attributed_to: Option<String>,
 	pub name: Option<String>,
 	pub summary: Option<String>,
@@ -24,10 +24,10 @@ pub struct Model {
 	pub announces: i32,
 	pub replies: i32,
 	pub context: Option<String>,
-	pub to: Option<Json>,
-	pub bto: Option<Json>,
-	pub cc: Option<Json>,
-	pub bcc: Option<Json>,
+	pub to: Audience,
+	pub bto: Audience,
+	pub cc: Audience,
+	pub bcc: Audience,
 	pub published: ChronoDateTimeUtc,
 	pub updated: ChronoDateTimeUtc,
 }
@@ -122,11 +122,28 @@ impl Related<Entity> for Entity {
 
 impl ActiveModelBehavior for ActiveModel {}
 
+impl Entity {
+	pub fn find_by_ap_id(id: &str) -> Select<Entity> {
+		Entity::find().filter(Column::Id.eq(id))
+	}
+
+	pub async fn ap_to_internal(id: &str, db: &DatabaseConnection) -> crate::Result<i64> {
+		Entity::find()
+			.filter(Column::Id.eq(id))
+			.select_only()
+			.select_column(Column::Internal)
+			.into_tuple::<i64>()
+			.one(db)
+			.await?
+			.ok_or_else(UpubError::not_found)
+	}
+}
+
 impl ActiveModel {
 	pub fn new(object: &impl apb::Object) -> Result<Self, super::FieldError> {
 		Ok(ActiveModel {
-			id: sea_orm::ActiveValue::NotSet,
-			ap_id: sea_orm::ActiveValue::Set(object.id().ok_or(super::FieldError("id"))?.to_string()),
+			internal: sea_orm::ActiveValue::NotSet,
+			id: sea_orm::ActiveValue::Set(object.id().ok_or(super::FieldError("id"))?.to_string()),
 			object_type: sea_orm::ActiveValue::Set(object.object_type().ok_or(super::FieldError("type"))?),
 			attributed_to: sea_orm::ActiveValue::Set(object.attributed_to().id()),
 			name: sea_orm::ActiveValue::Set(object.name().map(|x| x.to_string())),
@@ -135,14 +152,14 @@ impl ActiveModel {
 			context: sea_orm::ActiveValue::Set(object.context().id()),
 			in_reply_to: sea_orm::ActiveValue::Set(object.in_reply_to().id()),
 			published: sea_orm::ActiveValue::Set(object.published().ok_or(super::FieldError("published"))?),
-			updated: sea_orm::ActiveValue::Set(object.updated()),
+			updated: sea_orm::ActiveValue::Set(object.updated().unwrap_or_else(chrono::Utc::now)),
 			url: sea_orm::ActiveValue::Set(object.url().id()),
 			replies: sea_orm::ActiveValue::Set(object.replies().get()
-				.map_or(0, |x| x.total_items().unwrap_or(0)) as i64),
+				.map_or(0, |x| x.total_items().unwrap_or(0)) as i32),
 			likes: sea_orm::ActiveValue::Set(object.likes().get()
-				.map_or(0, |x| x.total_items().unwrap_or(0)) as i64),
+				.map_or(0, |x| x.total_items().unwrap_or(0)) as i32),
 			announces: sea_orm::ActiveValue::Set(object.shares().get()
-				.map_or(0, |x| x.total_items().unwrap_or(0)) as i64),
+				.map_or(0, |x| x.total_items().unwrap_or(0)) as i32),
 			to: sea_orm::ActiveValue::Set(object.to().into()),
 			bto: sea_orm::ActiveValue::Set(object.bto().into()),
 			cc: sea_orm::ActiveValue::Set(object.cc().into()),
@@ -176,7 +193,7 @@ impl Model {
 			.set_shares(apb::Node::object(
 				serde_json::Value::new_object()
 					.set_collection_type(Some(apb::CollectionType::OrderedCollection))
-					.set_total_items(Some(self.shares as u64))
+					.set_total_items(Some(self.announces as u64))
 			))
 			.set_likes(apb::Node::object(
 				serde_json::Value::new_object()
@@ -186,7 +203,7 @@ impl Model {
 			.set_replies(apb::Node::object(
 				serde_json::Value::new_object()
 					.set_collection_type(Some(apb::CollectionType::OrderedCollection))
-					.set_total_items(Some(self.comments as u64))
+					.set_total_items(Some(self.replies as u64))
 			))
 	}
 }
