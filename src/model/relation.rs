@@ -1,4 +1,4 @@
-use sea_orm::entity::prelude::*;
+use sea_orm::{entity::prelude::*, sea_query::Alias, QuerySelect, SelectColumns};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "relations")]
@@ -20,7 +20,7 @@ pub enum Relation {
 		on_update = "Cascade",
 		on_delete = "NoAction"
 	)]
-	Activities2,
+	ActivitiesAccept,
 	#[sea_orm(
 		belongs_to = "super::activity::Entity",
 		from = "Column::Activity",
@@ -28,7 +28,7 @@ pub enum Relation {
 		on_update = "Cascade",
 		on_delete = "NoAction"
 	)]
-	Activities1,
+	ActivitiesFollow,
 	#[sea_orm(
 		belongs_to = "super::actor::Entity",
 		from = "Column::Follower",
@@ -36,7 +36,7 @@ pub enum Relation {
 		on_update = "Cascade",
 		on_delete = "Cascade"
 	)]
-	Actors2,
+	ActorsFollower,
 	#[sea_orm(
 		belongs_to = "super::actor::Entity",
 		from = "Column::Following",
@@ -44,7 +44,19 @@ pub enum Relation {
 		on_update = "Cascade",
 		on_delete = "Cascade"
 	)]
-	Actors1,
+	ActorsFollowing,
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+impl Entity {
+	pub fn find_followers(id: &str) -> Select<Entity> {
+		Entity::find()
+			.inner_join(Relation::ActorsFollowing.def())
+			.filter(super::actor::Column::ApId.eq(id))
+			.left_join(Relation::ActorsFollower.def())
+			.select_only()
+			.select_column(super::actor::Column::ApId)
+			.into_tuple::<String>()
+	}
+}

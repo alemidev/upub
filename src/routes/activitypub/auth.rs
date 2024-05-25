@@ -25,13 +25,17 @@ pub async fn login(
 	// TODO salt the pwd
 	match model::credential::Entity::find()
 		.filter(Condition::all()
-			.add(model::credential::Column::Email.eq(login.email))
+			.add(model::credential::Column::Login.eq(login.email))
 			.add(model::credential::Column::Password.eq(sha256::digest(login.password)))
 		)
 		.one(ctx.db())
 		.await?
 	{
 		Some(x) => {
+			let user = model::actor::Entity::find_by_id(x.actor)
+				.one(ctx.db())
+				.await?
+				.ok_or_else(UpubError::not_found)?;
 			// TODO should probably use crypto-safe rng
 			let token : String = rand::thread_rng()
 				.sample_iter(&rand::distributions::Alphanumeric)
@@ -41,7 +45,8 @@ pub async fn login(
 			let expires = chrono::Utc::now() + std::time::Duration::from_secs(3600 * 6);
 			model::session::Entity::insert(
 				model::session::ActiveModel {
-					id: sea_orm::ActiveValue::Set(token.clone()),
+					id: sea_orm::ActiveValue::NotSet,
+					secret: sea_orm::ActiveValue::Set(token.clone()),
 					actor: sea_orm::ActiveValue::Set(x.id.clone()),
 					expires: sea_orm::ActiveValue::Set(expires),
 				}
@@ -50,7 +55,7 @@ pub async fn login(
 				.await.map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
 			Ok(Json(AuthSuccess {
 				token, expires,
-				user: x.id
+				user: user.ap_id,
 			}))
 		},
 		None => Err(UpubError::unauthorized()),

@@ -13,7 +13,7 @@ pub struct Model {
 	#[sea_orm(unique)]
 	pub ap_id: String,
 	pub object_type: String,
-	pub attributed_to: Option<i32>,
+	pub attributed_to: Option<String>,
 	pub name: Option<String>,
 	pub summary: Option<String>,
 	pub content: Option<String>,
@@ -107,6 +107,12 @@ impl Related<super::mention::Entity> for Entity {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+impl Entity {
+	pub fn find_by_ap_id(ap_id: &str) -> Select<Entity> {
+		Entity::find().filter(Column::ApId.eq(ap_id))
+	}
+}
 
 impl ActiveModel {
 	pub fn new(object: &impl apb::Object) -> Result<Self, super::FieldError> {

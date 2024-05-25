@@ -18,8 +18,8 @@ pub async fn view(
 	if auth.is_local() && query.fetch && !ctx.is_local(&oid) {
 		let obj = ctx.fetch_object(&oid).await?;
 		// some implementations serve statuses on different urls than their AP id
-		if obj.id != oid {
-			return Err(UpubError::Redirect(crate::url!(ctx, "/objects/{}", ctx.id(&obj.id))));
+		if obj.ap_id != oid {
+			return Err(UpubError::Redirect(crate::url!(ctx, "/objects/{}", ctx.id(&obj.ap_id))));
 		}
 	}
 
@@ -62,7 +62,7 @@ pub async fn view(
 				// .set_id(Some(&crate::url!(ctx, "/objects/{id}/replies")))
 				// .set_first(apb::Node::link(crate::url!(ctx, "/objects/{id}/replies/page")))
 				.set_collection_type(Some(apb::CollectionType::Collection))
-				.set_total_items(Some(object.comments as u64))
+				.set_total_items(Some(object.replies as u64))
 				.set_items(apb::Node::links(replies_ids))
 		);
 	}

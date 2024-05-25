@@ -1,9 +1,9 @@
 use std::collections::BTreeMap;
 
-use apb::{target::Addressed, Activity, Base, Collection, CollectionPage, Link, Object};
+use apb::{target::Addressed, Activity, Actor, ActorMut, Base, Collection, CollectionPage, Link, Object};
 use base64::Engine;
 use reqwest::{header::{ACCEPT, CONTENT_TYPE, USER_AGENT}, Method, Response};
-use sea_orm::{sea_query::Expr, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
+use sea_orm::EntityTrait;
 
 use crate::{errors::UpubError, model, VERSION};
 
@@ -13,14 +13,14 @@ use super::{httpsign::HttpSignature, normalizer::Normalizer, Context};
 pub trait Fetcher {
 	async fn webfinger(&self, user: &str, host: &str) -> crate::Result<String>;
 
-	async fn fetch_user(&self, id: &str) -> crate::Result<model::user::Model>;
-	async fn pull_user(&self, id: &str) -> crate::Result<model::user::Model>;
+	async fn fetch_user(&self, id: &str) -> crate::Result<model::actor::Model>;
+	async fn pull_user(&self, id: &str) -> crate::Result<serde_json::Value>;
 
 	async fn fetch_object(&self, id: &str) -> crate::Result<model::object::Model>;
-	async fn pull_object(&self, id: &str) -> crate::Result<model::object::Model>;
+	async fn pull_object(&self, id: &str) -> crate::Result<serde_json::Value>;
 
 	async fn fetch_activity(&self, id: &str) -> crate::Result<model::activity::Model>;
-	async fn pull_activity(&self, id: &str) -> crate::Result<model::activity::Model>;
+	async fn pull_activity(&self, id: &str) -> crate::Result<serde_json::Value>;
 
 	async fn fetch_thread(&self, id: &str) -> crate::Result<()>;
 
@@ -115,80 +115,100 @@ impl Fetcher for Context {
 	}
 
 
-	async fn fetch_user(&self, id: &str) -> crate::Result<model::user::Model> {
-		if let Some(x) = model::user::Entity::find_by_id(id).one(self.db()).await? {
+	async fn fetch_user(&self, id: &str) -> crate::Result<model::actor::Model> {
+		if let Some(x) = model::actor::Entity::find_by_ap_id(id).one(self.db()).await? {
 			return Ok(x); // already in db, easy
 		}
 
-		let user_model = self.pull_user(id).await?;
+		// TODO PULL INSTANCE!!!!!!!
+
+		let user = self.pull_user(id).await?;
+		let user_model = model::actor::ActiveModel::new(&user, 0)?;
 
 		// TODO this may fail: while fetching, remote server may fetch our service actor.
 		//      if it does so with http signature, we will fetch that actor in background
 		//      meaning that, once we reach here, it's already inserted and returns an UNIQUE error
-		model::user::Entity::insert(user_model.clone().into_active_model())
+		model::actor::Entity::insert(user_model)
 			.exec(self.db()).await?;
 
-		Ok(user_model)
+		// TODO we could fetch only the internal id and avoid getting back the whole user, but this
+		// happens rarely anyway because after the first time we just get the cached one in our db
+		let user = model::actor::Entity::find_by_ap_id(id)
+			.one(self.db())
+			.await?
+			.ok_or_else(UpubError::internal_server_error)?;
+
+		Ok(user)
 	}
 
-	async fn pull_user(&self, id: &str) -> crate::Result<model::user::Model> {
-		let user = Self::request(
-			Method::GET, id, None, &format!("https://{}", self.domain()), &self.app().private_key, self.domain(),
-		).await?.json::<serde_json::Value>().await?;
-		let mut user_model = model::user::Model::new(&user)?;
+	async fn pull_user(&self, id: &str) -> crate::Result<serde_json::Value> {
+		let pkey = self.app().private_key.ok_or_else(UpubError::internal_server_error)?;
 
-		// TODO try fetching these numbers from audience/generator fields to avoid making 2 more GETs
-		if let Some(followers_url) = &user_model.followers {
+		let mut user = Self::request(
+			Method::GET, id, None, &format!("https://{}", self.domain()), &pkey, self.domain(),
+		)
+			.await?
+			.json::<serde_json::Value>()
+			.await?;
+
+		// TODO try fetching these numbers from audience/generator fields
+		if let Some(followers_url) = user.followers().id() {
 			let req = Self::request(
-				Method::GET, followers_url, None,
-				&format!("https://{}", self.domain()), &self.app().private_key, self.domain(),
+				Method::GET, &followers_url, None,
+				&format!("https://{}", self.domain()), &pkey, self.domain(),
 			).await;
 			if let Ok(res) = req {
 				if let Ok(user_followers) = res.json::<serde_json::Value>().await {
 					if let Some(total) = user_followers.total_items() {
-						user_model.followers_count = total as i64;
+						user = user.set_followers_count(Some(total));
 					}
 				}
 			}
 		}
 
-		if let Some(following_url) = &user_model.following {
+		if let Some(following_url) = user.following().id() {
 			let req =  Self::request(
-				Method::GET, following_url, None,
-				&format!("https://{}", self.domain()), &self.app().private_key, self.domain(),
+				Method::GET, &following_url, None,
+				&format!("https://{}", self.domain()), &pkey, self.domain(),
 			).await;
 			if let Ok(res) = req {
 				if let Ok(user_following) = res.json::<serde_json::Value>().await {
 					if let Some(total) = user_following.total_items() {
-						user_model.following_count = total as i64;
+						user = user.set_following_count(Some(total));
 					}
 				}
 			}
 		}
 
-		Ok(user_model)
+		Ok(user)
 	}
 
 	async fn fetch_activity(&self, id: &str) -> crate::Result<model::activity::Model> {
-		if let Some(x) = model::activity::Entity::find_by_id(id).one(self.db()).await? {
+		if let Some(x) = model::activity::Entity::find_by_ap_id(id).one(self.db()).await? {
 			return Ok(x); // already in db, easy
 		}
 
-		let activity_model = self.pull_activity(id).await?;
+		let activity = self.pull_activity(id).await?;
+		let activity_model = model::activity::ActiveModel::new(&activity)?;
 
-		model::activity::Entity::insert(activity_model.clone().into_active_model())
-			.exec(self.db()).await?;
+		model::activity::Entity::insert(activity_model).exec(self.db()).await?;
+	
+		let activity = model::activity::Entity::find_by_ap_id(id)
+			.one(self.db())
+			.await?
+			.ok_or_else(UpubError::internal_server_error)?;
 
-		let addressed = activity_model.addressed();
+		let addressed = activity.addressed();
 		let expanded_addresses = self.expand_addressing(addressed).await?;
-		self.address_to(Some(&activity_model.id), None, &expanded_addresses).await?;
+		self.address_to(Some(&activity.ap_id), None, &expanded_addresses).await?;
 
-		Ok(activity_model)
+		Ok(activity)
 	}
 
-	async fn pull_activity(&self, id: &str) -> crate::Result<model::activity::Model> {
+	async fn pull_activity(&self, id: &str) -> crate::Result<serde_json::Value> {
+		let pkey = self.app().private_key.ok_or_else(UpubError::internal_server_error)?;
 		let activity = Self::request(
-			Method::GET, id, None, &format!("https://{}", self.domain()), &self.app().private_key, self.domain(),
+			Method::GET, id, None, &format!("https://{}", self.domain()), &pkey, self.domain(),
 		).await?.json::<serde_json::Value>().await?;
 
 		if let Some(activity_actor) = activity.actor().id() {
@@ -203,94 +223,47 @@ impl Fetcher for Context {
 			}
 		}
 
-		let activity_model = model::activity::Model::new(&activity)?;
-
-		Ok(activity_model)
+		Ok(activity)
 	}
 
 	async fn fetch_thread(&self, id: &str) -> crate::Result<()> {
-		crawl_replies(self, id, 0).await
+		// crawl_replies(self, id, 0).await
+		todo!()
 	}
 
 	async fn fetch_object(&self, id: &str) -> crate::Result<model::object::Model> {
 		fetch_object_inner(self, id, 0).await
 	}
 
-	async fn pull_object(&self, id: &str) -> crate::Result<model::object::Model> {
+	async fn pull_object(&self, id: &str) -> crate::Result<serde_json::Value> {
+		let pkey = self.app().private_key.ok_or_else(UpubError::internal_server_error)?;
+
 		let object = Context::request(
-			Method::GET, id, None, &format!("https://{}", self.domain()), &self.app().private_key, self.domain(),
-		).await?.json::<serde_json::Value>().await?;
+			Method::GET, id, None, &format!("https://{}", self.domain()), &pkey, self.domain(),
+		)
+			.await?
+			.json::<serde_json::Value>()
+			.await?;
 
-		Ok(model::object::Model::new(&object)?)
+		Ok(object)
 	}
-}
-
-#[async_recursion::async_recursion]
-async fn crawl_replies(ctx: &Context, id: &str, depth: usize) -> crate::Result<()> {
-	tracing::info!("crawling replies of '{id}'");
-	let object = Context::request(
-		Method::GET, id, None, &format!("https://{}", ctx.domain()), &ctx.app().private_key, ctx.domain(),
-	).await?.json::<serde_json::Value>().await?;
-
-	let object_model = model::object::Model::new(&object)?;
-	match model::object::Entity::insert(object_model.into_active_model())
-		.exec(ctx.db()).await
-	{
-		Ok(_) => {},
-		Err(sea_orm::DbErr::RecordNotInserted) => {},
-		Err(sea_orm::DbErr::Exec(_)) => {}, // ughhh bad fix for sqlite
-		Err(e) => return Err(e.into()),
-	}
-
-	if depth > 16 {
-		tracing::warn!("stopping thread crawling: too deep!");
-		return Ok(());
-	}
-
-	let mut page_url = match object.replies().get() {
-		Some(serde_json::Value::String(x)) => {
-			let replies = Context::request(
-				Method::GET, x, None, &format!("https://{}", ctx.domain()), &ctx.app().private_key, ctx.domain(),
-			).await?.json::<serde_json::Value>().await?;
-			replies.first().id()
-		},
-		Some(serde_json::Value::Object(x)) => {
-			let obj = serde_json::Value::Object(x.clone()); // lol putting it back, TODO!
-			obj.first().id()
-		},
-		_ => return Ok(()),
-	};
-
-	while let Some(ref url) = page_url {
-		let replies = Context::request(
-			Method::GET, url, None, &format!("https://{}", ctx.domain()), &ctx.app().private_key, ctx.domain(),
-		).await?.json::<serde_json::Value>().await?;
-
-		for reply in replies.items() {
-			// TODO right now it crawls one by one, could be made in parallel but would be quite more
-			// abusive, so i'll keep it like this while i try it out
-			crawl_replies(ctx, reply.href(), depth + 1).await?;
-		}
-
-		page_url = replies.next().id();
-	}
-
-	Ok(())
 }
 
 #[async_recursion::async_recursion]
 async fn fetch_object_inner(ctx: &Context, id: &str, depth: usize) -> crate::Result<model::object::Model> {
-	if let Some(x) = model::object::Entity::find_by_id(id).one(ctx.db()).await? {
+	if let Some(x) = model::object::Entity::find_by_ap_id(id).one(ctx.db()).await? {
 		return Ok(x); // already in db, easy
 	}
 
+	let pkey = ctx.app().private_key.ok_or_else(UpubError::internal_server_error)?;
+
 	let object = Context::request(
-		Method::GET, id, None, &format!("https://{}", ctx.domain()), &ctx.app().private_key, ctx.domain(),
+		Method::GET, id, None, &format!("https://{}", ctx.domain()), &pkey, ctx.domain(),
 	).await?.json::<serde_json::Value>().await?;
 
 	if let Some(oid) = object.id() {
 		if oid != id {
-			if let Some(x) = model::object::Entity::find_by_id(oid).one(ctx.db()).await? {
+			if let Some(x) = model::object::Entity::find_by_ap_id(oid).one(ctx.db()).await? {
 				return Ok(x); // already in db, but with id different that given url
 			}
 		}
@@ -315,7 +288,7 @@ async fn fetch_object_inner(ctx: &Context, id: &str, depth: usize) -> crate::Res
 	let object_model = ctx.insert_object(object, None).await?;
 
 	let expanded_addresses = ctx.expand_addressing(addressed).await?;
-	ctx.address_to(None, Some(&object_model.id), &expanded_addresses).await?;
+	ctx.address_to(None, Some(&object_model.ap_id), &expanded_addresses).await?;
 
 	Ok(object_model)
 }
@@ -330,7 +303,7 @@ impl Fetchable for apb::Node<serde_json::Value> {
 	async fn fetch(&mut self, ctx: &crate::server::Context) -> crate::Result<&mut Self> {
 		if let apb::Node::Link(uri) = self {
 			let from = format!("{}{}", ctx.protocol(), ctx.domain()); // TODO helper to avoid this?
-			let pkey = &ctx.app().private_key;
+			let pkey = &ctx.app().private_key.ok_or_else(UpubError::internal_server_error)?;
 			*self = Context::request(Method::GET, uri.href(), None, &from, pkey, ctx.domain())
 				.await?
 				.json::<serde_json::Value>()
@@ -341,3 +314,58 @@ impl Fetchable for apb::Node<serde_json::Value> {
 		Ok(self)
 	}
 }
+
+
+
+// #[async_recursion::async_recursion]
+// async fn crawl_replies(ctx: &Context, id: &str, depth: usize) -> crate::Result<()> {
+// 	tracing::info!("crawling replies of '{id}'");
+// 	let object = Context::request(
+// 		Method::GET, id, None, &format!("https://{}", ctx.domain()), &ctx.app().private_key, ctx.domain(),
+// 	).await?.json::<serde_json::Value>().await?;
+// 
+// 	let object_model = model::object::Model::new(&object)?;
+// 	match model::object::Entity::insert(object_model.into_active_model())
+// 		.exec(ctx.db()).await
+// 	{
+// 		Ok(_) => {},
+// 		Err(sea_orm::DbErr::RecordNotInserted) => {},
+// 		Err(sea_orm::DbErr::Exec(_)) => {}, // ughhh bad fix for sqlite
+// 		Err(e) => return Err(e.into()),
+// 	}
+// 
+// 	if depth > 16 {
+// 		tracing::warn!("stopping thread crawling: too deep!");
+// 		return Ok(());
+// 	}
+// 
+// 	let mut page_url = match object.replies().get() {
+// 		Some(serde_json::Value::String(x)) => {
+// 			let replies = Context::request(
+// 				Method::GET, x, None, &format!("https://{}", ctx.domain()), &ctx.app().private_key, ctx.domain(),
+// 			).await?.json::<serde_json::Value>().await?;
+// 			replies.first().id()
+// 		},
+// 		Some(serde_json::Value::Object(x)) => {
+// 			let obj = serde_json::Value::Object(x.clone()); // lol putting it back, TODO!
+// 			obj.first().id()
+// 		},
+// 		_ => return Ok(()),
+// 	};
+// 
+// 	while let Some(ref url) = page_url {
+// 		let replies = Context::request(
+// 			Method::GET, url, None, &format!("https://{}", ctx.domain()), &ctx.app().private_key, ctx.domain(),
+// 		).await?.json::<serde_json::Value>().await?;
+// 
+// 		for reply in replies.items() {
+// 			// TODO right now it crawls one by one, could be made in parallel but would be quite more
+// 			// abusive, so i'll keep it like this while i try it out
+// 			crawl_replies(ctx, reply.href(), depth + 1).await?;
+// 		}
+// 
+// 		page_url = replies.next().id();
+// 	}
+// 
+// 	Ok(())
+// }

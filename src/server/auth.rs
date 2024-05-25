@@ -9,8 +9,8 @@ use super::{fetcher::Fetcher, httpsign::HttpSignature};
 #[derive(Debug, Clone)]
 pub enum Identity {
 	Anonymous,
-	Local(String),
-	Remote(String),
+	Local(i64),
+	Remote(i64),
 }
 
 impl Identity {
@@ -18,27 +18,34 @@ impl Identity {
 		let base_cond = Condition::any().add(model::addressing::Column::Actor.eq(apb::target::PUBLIC));
 		match self {
 			Identity::Anonymous => base_cond,
-			Identity::Remote(server) => base_cond.add(model::addressing::Column::Server.eq(server)),
+			Identity::Remote(server_id) => base_cond.add(model::addressing::Column::Instance.eq(*server_id)),
 			// TODO should we allow all users on same server to see? or just specific user??
-			Identity::Local(uid) => base_cond
-				.add(model::addressing::Column::Actor.eq(uid))
-				.add(model::activity::Column::Actor.eq(uid))
-				.add(model::object::Column::AttributedTo.eq(uid)),
+			Identity::Local(user_id) => base_cond
+				.add(model::addressing::Column::Actor.eq(*user_id))
+				.add(model::activity::Column::Actor.eq(*user_id))
+				.add(model::object::Column::AttributedTo.eq(*user_id)),
 		}
 	}
 
-	pub fn my_id(&self) -> Option<&str> {
+	pub fn user_id(&self) -> Option<i64> {
 		match self {
-			Identity::Local(x) => Some(x.as_str()),
+			Identity::Local(x) => Some(*x),
 			_ => None,
 		}
 	}
 
-	pub fn is(&self, id: &str) -> bool {
+	pub fn server_id(&self) -> Option<i64> {
+		match self {
+			Identity::Remote(x) => Some(*x),
+			_ => None,
+		}
+	}
+
+	pub fn is(&self, id: i64) -> bool {
 		match self {
 			Identity::Anonymous => false,
 			Identity::Remote(_) => false, // TODO per-actor server auth should check this
-			Identity::Local(uid) => uid.as_str() == id
+			Identity::Local(user_id) => *user_id == id
 		}
 	}
 
@@ -54,18 +61,12 @@ impl Identity {
 		matches!(self, Self::Remote(_))
 	}
 
-	pub fn is_local_user(&self, uid: &str) -> bool {
-		match self {
-			Self::Local(x) => x == uid,
-			_ => false,
-		}
+	pub fn is_user(&self, usr: i64) -> bool {
+		self.user_id().map(|id| id == usr).unwrap_or(false)
 	}
 
-	pub fn is_remote_server(&self, uid: &str) -> bool {
-		match self {
-			Self::Remote(x) => x == uid,
-			_ => false,
-		}
+	pub fn is_server(&self, server: i64) -> bool {
+		self.server_id().map(|id| id == server).unwrap_or(false)
 	}
 }
 
@@ -90,7 +91,7 @@ where
 			.unwrap_or("");
 
 		if auth_header.starts_with("Bearer ") {
-			match model::session::Entity::find_by_id(auth_header.replace("Bearer ", ""))
+			match model::session::Entity::find_by_secret(&auth_header.replace("Bearer ", ""))
 				.filter(model::session::Column::Expires.gt(chrono::Utc::now()))
 				.one(ctx.db())
 				.await

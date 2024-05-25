@@ -41,9 +41,9 @@ pub enum Relation {
 	Addressing,
 	#[sea_orm(has_many = "super::announce::Entity")]
 	Announces,
-	#[sea_orm(has_many = "super::config::Entity")]
+	#[sea_orm(has_one = "super::config::Entity")]
 	Configs,
-	#[sea_orm(has_many = "super::credential::Entity")]
+	#[sea_orm(has_one = "super::credential::Entity")]
 	Credentials,
 	#[sea_orm(has_many = "super::delivery::Entity")]
 	Deliveries,
@@ -132,6 +132,17 @@ impl Related<super::session::Entity> for Entity {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+impl Entity {
+	pub fn find_by_ap_id(ap_id: &str) -> Select<Entity> {
+		Entity::find().filter(Column::ApId.eq(ap_id))
+	}
+
+	pub fn find_with_instance() -> Select<Entity> {
+		Entity::find()
+			.left_join(Relation::Instances.def())
+	}
+}
 
 impl ActiveModel {
 	pub fn new(object: &impl Actor, instance: i32) -> Result<Self, super::FieldError> {

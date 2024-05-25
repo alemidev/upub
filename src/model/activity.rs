@@ -71,6 +71,12 @@ impl Related<super::object::Entity> for Entity {
 
 impl ActiveModelBehavior for ActiveModel {}
 
+impl Entity {
+	pub fn find_by_ap_id(ap_id: &str) -> Select<Entity> {
+		Entity::find().filter(Column::ApId.eq(ap_id))
+	}
+}
+
 impl ActiveModel {
 	pub fn new(activity: &impl apb::Activity) -> Result<Self, super::FieldError> {
 		Ok(ActiveModel {

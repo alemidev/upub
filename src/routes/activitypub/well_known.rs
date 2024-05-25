@@ -35,7 +35,7 @@ pub async fn nodeinfo_discovery(State(ctx): State<Context>) -> Json<NodeInfoDisc
 pub async fn nodeinfo(State(ctx): State<Context>, Path(version): Path<String>) -> Result<Json<nodeinfo::NodeInfoOwned>, StatusCode> {
 	// TODO it's unsustainable to count these every time, especially comments since it's a complex
 	// filter! keep these numbers caches somewhere, maybe db, so that we can just look them up
-	let total_users = model::user::Entity::find().count(ctx.db()).await.ok();
+	let total_users = model::actor::Entity::find().count(ctx.db()).await.ok();
 	let total_posts = None;
 	let total_comments = None; 
 	let (software, version) = match version.as_str() {
@@ -124,19 +124,19 @@ pub async fn webfinger(State(ctx): State<Context>, Query(query): Query<Webfinger
 			} else {
 				// local user
 				let uid = ctx.uid(user);
-				let usr = model::user::Entity::find_by_id(uid)
+				let usr = model::actor::Entity::find_by_ap_id(&uid)
 					.one(ctx.db())
 					.await?
 					.ok_or_else(UpubError::not_found)?;
 
 				Ok(JsonRD(JsonResourceDescriptor {
 					subject: format!("acct:{user}@{domain}"),
-					aliases: vec![usr.id.clone()],
+					aliases: vec![usr.ap_id.clone()],
 					links: vec![
 						JsonResourceDescriptorLink {
 							rel: "self".to_string(),
 							link_type: Some("application/ld+json".to_string()),
-							href: Some(usr.id),
+							href: Some(usr.ap_id),
 							properties: jrd::Map::default(),
 							titles: jrd::Map::default(),
 						},
@@ -148,21 +148,21 @@ pub async fn webfinger(State(ctx): State<Context>, Query(query): Query<Webfinger
 
 		} else {
 			// remote user
-			let usr = model::user::Entity::find()
-				.filter(model::user::Column::PreferredUsername.eq(user))
-				.filter(model::user::Column::Domain.eq(domain))
+			let usr = model::actor::Entity::find_with_instance()
+				.filter(model::actor::Column::PreferredUsername.eq(user))
+				.filter(model::instance::Column::Domain.eq(domain))
 				.one(ctx.db())
 				.await?
 				.ok_or_else(UpubError::not_found)?;
 			
 			Ok(JsonRD(JsonResourceDescriptor {
 				subject: format!("acct:{user}@{domain}"),
-				aliases: vec![usr.id.clone()],
+				aliases: vec![usr.ap_id.clone()],
 				links: vec![
 					JsonResourceDescriptorLink {
 						rel: "self".to_string(),
 						link_type: Some("application/ld+json".to_string()),
-						href: Some(usr.id),
+						href: Some(usr.ap_id),
 						properties: jrd::Map::default(),
 						titles: jrd::Map::default(),
 					},

@@ -72,7 +72,7 @@ async fn worker(db: &DatabaseConnection, domain: &str, poll_interval: u64, waker
 
 		tracing::info!("delivering {} to {}", delivery.activity, delivery.target);
 
-		let payload = match model::activity::Entity::find_by_id(&delivery.activity)
+		let payload = match model::activity::Entity::find_by_id(delivery.activity)
 			.find_also_related(model::object::Entity)
 			.one(db)
 			.await? // TODO probably should not fail here and at least re-insert the delivery
@@ -99,29 +99,23 @@ async fn worker(db: &DatabaseConnection, domain: &str, poll_interval: u64, waker
 			},
 		};
 
-		let key = if delivery.actor == format!("https://{domain}") {
-			let Some(model::application::Model { private_key: key, .. }) = model::application::Entity::find()
-				.one(db).await?
-			else {
-				tracing::error!("no private key configured for application");
-				continue;
-			};
-			key
-		} else {
-			let Some(model::user::Model{ private_key: Some(key), .. }) = model::user::Entity::find_by_id(&delivery.actor)
-				.one(db).await?
-			else { 
-				tracing::error!("can not dispatch activity for user without private key: {}", delivery.actor);
-				continue;
-			};
-			key
+		let Some(actor) = model::actor::Entity::find_by_id(delivery.actor)
+			.one(db)
+			.await?
+		else {
+			tracing::error!("failed delivery, missing actor {}", delivery.actor);
+			continue;
 		};
 
+		let Some(key) = actor.private_key else {
+			tracing::error!("can not dispatch activity for actor without private key: {}", delivery.actor);
+			continue;
+		};
 
 		if let Err(e) = Context::request(
 			Method::POST, &delivery.target,
 			Some(&serde_json::to_string(&payload).unwrap()),
-			&delivery.actor, &key, domain
+			&actor.ap_id, &key, domain
 		).await {
 			tracing::warn!("failed delivery of {} to {} : {e}", delivery.activity, delivery.target);
 			let new_delivery = model::delivery::ActiveModel {

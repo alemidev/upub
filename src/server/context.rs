@@ -1,7 +1,7 @@
 use std::{collections::BTreeSet, sync::Arc};
 
 use openssl::rsa::Rsa;
-use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect, SelectColumns, Set};
+use sea_orm::{ActiveValue::{Set, NotSet}, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect, SelectColumns, Set};
 
 use crate::{config::Config, model, server::fetcher::Fetcher};
 use uriproxy::UriClass;
@@ -19,7 +19,7 @@ struct ContextInner {
 	base_url: String,
 	dispatcher: Dispatcher,
 	// TODO keep these pre-parsed
-	app: model::application::Model,
+	app: model::actor::Model,
 	relays: BTreeSet<String>,
 }
 
@@ -42,45 +42,52 @@ impl Context {
 		if domain.starts_with("http") {
 			domain = domain.replace("https://", "").replace("http://", "");
 		}
+		let base_url = format!("{}{}", protocol, domain);
+
 		let dispatcher = Dispatcher::default();
 		for _ in 0..1 { // TODO customize delivery workers amount
 			dispatcher.spawn(db.clone(), domain.clone(), 30); // TODO ew don't do it this deep and secretly!!
 		}
-		let app = match model::application::Entity::find().one(&db).await? {
+
+		let app = match model::actor::Entity::find_by_ap_id(&base_url).one(&db).await? {
 			Some(model) => model,
 			None => {
 				tracing::info!("generating application keys");
 				let rsa = Rsa::generate(2048)?;
 				let privk = std::str::from_utf8(&rsa.private_key_to_pem()?)?.to_string();
 				let pubk = std::str::from_utf8(&rsa.public_key_to_pem()?)?.to_string();
-				let system = model::application::ActiveModel {
-					id: sea_orm::ActiveValue::NotSet,
-					private_key: sea_orm::ActiveValue::Set(privk.clone()),
-					public_key: sea_orm::ActiveValue::Set(pubk.clone()),
-					created: sea_orm::ActiveValue::Set(chrono::Utc::now()),
+				let system = model::actor::ActiveModel {
+					id: NotSet,
+					ap_id: Set(base_url.clone()),
+					instance: NotSet, // TODO!!! this will fail
+					preferred_username: Set(domain.clone()),
+					name: Set(Some("μpub".to_string())),
+					icon: Set(Some("https://cdn.alemi.dev/social/circle-square.png".to_string())),
+					actor_type: Set(apb::ActorType::Application),
+					private_key: Set(Some(privk.clone())),
+					public_key: Set(pubk.clone()),
+					created: Set(chrono::Utc::now()),
+					updated: Set(chrono::Utc::now()),
+					..Default::default()
 				};
-				model::application::Entity::insert(system).exec(&db).await?;
+				model::actor::Entity::insert(system).exec(&db).await?;
 				// sqlite doesn't resurn last inserted id so we're better off just querying again, it's just one time
-				model::application::Entity::find().one(&db).await?.expect("could not find app config just inserted")
+				model::actor::Entity::find_by_ap_id(&base_url).one(&db).await?.expect("could not find app config just inserted")
 			}
 		};
 
-		let relays = model::relay::Entity::find()
-			.select_only()
-			.select_column(model::relay::Column::Id)
-			.filter(model::relay::Column::Accepted.eq(true))
+		let relays = model::relation::Entity::find_followers(&base_url)
 			.into_tuple::<String>()
 			.all(&db)
 			.await?;
 
 		Ok(Context(Arc::new(ContextInner {
-			base_url: format!("{}{}", protocol, domain),
-			db, domain, protocol, app, dispatcher, config,
+			base_url, db, domain, protocol, app, dispatcher, config,
 			relays: BTreeSet::from_iter(relays.into_iter()),
 		})))
 	}
 
-	pub fn app(&self) -> &model::application::Model {
+	pub fn app(&self) -> &model::actor::Model {
 		&self.0.app
 	}
 

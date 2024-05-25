@@ -13,8 +13,8 @@ pub async fn view(
 	let aid = ctx.aid(&id);
 	if auth.is_local() && query.fetch && !ctx.is_local(&aid) {
 		let obj = ctx.fetch_activity(&aid).await?;
-		if obj.id != aid {
-			return Err(UpubError::Redirect(obj.id));
+		if obj.ap_id != aid {
+			return Err(UpubError::Redirect(obj.ap_id));
 		}
 	}
 
