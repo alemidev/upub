@@ -83,7 +83,7 @@ impl Normalizer for super::Context {
 					document_type: Set(apb::DocumentType::Page),
 					name: Set(l.link_name().map(|x| x.to_string())),
 					media_type: Set(l.link_media_type().unwrap_or("link").to_string()),
-					created: Set(chrono::Utc::now()),
+					published: Set(chrono::Utc::now()),
 				},
 				Node::Object(o) => model::attachment::ActiveModel {
 					internal: sea_orm::ActiveValue::NotSet,
@@ -92,7 +92,7 @@ impl Normalizer for super::Context {
 					document_type: Set(o.as_document().map_or(apb::DocumentType::Document, |x| x.document_type().unwrap_or(apb::DocumentType::Page))),
 					name: Set(o.name().map(|x| x.to_string())),
 					media_type: Set(o.media_type().unwrap_or("link").to_string()),
-					created: Set(o.published().unwrap_or_else(chrono::Utc::now)),
+					published: Set(o.published().unwrap_or_else(chrono::Utc::now)),
 				},
 			};
 			model::attachment::Entity::insert(attachment_model)
@@ -120,7 +120,7 @@ impl Normalizer for super::Context {
 				document_type: Set(img.as_document().map_or(apb::DocumentType::Document, |x| x.document_type().unwrap_or(apb::DocumentType::Page))),
 				name: Set(img.name().map(|x| x.to_string())),
 				media_type: Set(img.media_type().unwrap_or(media_type.as_deref().unwrap_or("link")).to_string()),
-				created: Set(img.published().unwrap_or_else(chrono::Utc::now)),
+				published: Set(img.published().unwrap_or_else(chrono::Utc::now)),
 			};
 			model::attachment::Entity::insert(attachment_model)
 				.exec(self.db())

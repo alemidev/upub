@@ -29,7 +29,7 @@ pub struct Model {
 	pub statuses_count: i32,
 	pub public_key: String,
 	pub private_key: Option<String>,
-	pub created: ChronoDateTimeUtc,
+	pub published: ChronoDateTimeUtc,
 	pub updated: ChronoDateTimeUtc,
 }
 
@@ -169,7 +169,7 @@ impl ActiveModel {
 			shared_inbox: sea_orm::ActiveValue::Set(object.endpoints().get().and_then(|x| Some(x.shared_inbox()?.to_string()))),
 			followers: sea_orm::ActiveValue::Set(object.followers().id()),
 			following: sea_orm::ActiveValue::Set(object.following().id()),
-			created: sea_orm::ActiveValue::Set(object.published().unwrap_or(chrono::Utc::now())),
+			published: sea_orm::ActiveValue::Set(object.published().unwrap_or(chrono::Utc::now())),
 			updated: sea_orm::ActiveValue::Set(chrono::Utc::now()),
 			following_count: sea_orm::ActiveValue::Set(object.following_count().unwrap_or(0) as i32),
 			followers_count: sea_orm::ActiveValue::Set(object.followers_count().unwrap_or(0) as i32),
@@ -197,7 +197,7 @@ impl Model {
 					.set_document_type(Some(apb::DocumentType::Image))
 					.set_url(apb::Node::link(i.clone()))
 			)))
-			.set_published(Some(self.created))
+			.set_published(Some(self.published))
 			.set_preferred_username(Some(&self.preferred_username))
 			.set_statuses_count(Some(self.statuses_count as u64))
 			.set_followers_count(Some(self.followers_count as u64))

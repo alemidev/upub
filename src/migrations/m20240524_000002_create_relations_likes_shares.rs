@@ -136,7 +136,7 @@ impl MigrationTrait for Migration {
 			.await?;
 
 		manager
-			.create_index(Index::create().name("index-likes-object").table(Likes::Table).col(Likes::Likes).to_owned())
+			.create_index(Index::create().name("index-likes-object").table(Likes::Table).col(Likes::Object).to_owned())
 			.await?;
 
 		manager
@@ -190,7 +190,7 @@ impl MigrationTrait for Migration {
 			.await?;
 
 		manager
-			.create_index(Index::create().name("index-announces-object").table(Announces::Table).col(Announces::Announces).to_owned())
+			.create_index(Index::create().name("index-announces-object").table(Announces::Table).col(Announces::Object).to_owned())
 			.await?;
 
 		Ok(())

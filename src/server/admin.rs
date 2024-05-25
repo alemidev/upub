@@ -28,7 +28,7 @@ impl Administrable for super::Context {
 		let ap_id = self.uid(&username);
 		let db = self.db();
 		let domain = self.domain().to_string();
-		let user_model = crate::model::actor::Model {
+		let user_model = crate::model::actor::ActiveModel {
 			internal: NotSet,
 			id: Set(ap_id.clone()),
 			name: Set(display_name),
@@ -46,7 +46,7 @@ impl Administrable for super::Context {
 			shared_inbox: Set(None),
 			outbox: Set(None),
 			actor_type: Set(apb::ActorType::Person),
-			created: Set(chrono::Utc::now()),
+			published: Set(chrono::Utc::now()),
 			updated: Set(chrono::Utc::now()),
 			private_key: Set(Some(std::str::from_utf8(&key.private_key_to_pem().unwrap()).unwrap().to_string())),
 			public_key: Set(std::str::from_utf8(&key.public_key_to_pem().unwrap()).unwrap().to_string()),

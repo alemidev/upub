@@ -20,7 +20,7 @@ pub async fn view(
 			acct: x.preferred_username.clone(),
 			avatar: x.icon.as_deref().unwrap_or("").to_string(),
 			avatar_static: x.icon.unwrap_or_default(),
-			created_at: time::OffsetDateTime::from_unix_timestamp(x.created.timestamp()).unwrap(),
+			created_at: time::OffsetDateTime::from_unix_timestamp(x.published.timestamp()).unwrap(),
 			display_name: x.name.unwrap_or_default(),
 			// TODO hide these maybe
 			followers_count: x.followers_count as u64,

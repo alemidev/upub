@@ -1,6 +1,6 @@
 use apb::{target::Addressed, Activity, ActivityMut, ActorMut, BaseMut, Node, Object, ObjectMut, PublicKeyMut};
 use reqwest::StatusCode;
-use sea_orm::{sea_query::Expr, ActiveModelTrait, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect, SelectColumns, Set};
+use sea_orm::{sea_query::Expr, ActiveModelTrait, ActiveValue::{Set, NotSet}, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect, SelectColumns};
 
 use crate::{errors::UpubError, model, routes::activitypub::jsonld::LD};
 
@@ -25,11 +25,11 @@ impl apb::server::Outbox for Context {
 		if let Some(c) = content {
 			let mut tmp = mdhtml::safe_markdown(&c);
 			for (full, [user, domain]) in re.captures_iter(&tmp.clone()).map(|x| x.extract()) {
-				if let Ok(Some(uid)) = model::user::Entity::find()
-					.filter(model::user::Column::PreferredUsername.eq(user))
-					.filter(model::user::Column::Domain.eq(domain))
+				if let Ok(Some(uid)) = model::actor::Entity::find()
+					.filter(model::actor::Column::PreferredUsername.eq(user))
+					.filter(model::actor::Column::Domain.eq(domain))
 					.select_only()
-					.select_column(model::user::Column::Id)
+					.select_column(model::actor::Column::Id)
 					.into_tuple::<String>()
 					.one(self.db())
 					.await
@@ -178,12 +178,12 @@ impl apb::server::Outbox for Context {
 
 		match accepted_activity.activity_type {
 			apb::ActivityType::Follow => {
-				model::user::Entity::update_many()
+				model::actor::Entity::update_many()
 					.col_expr(
-						model::user::Column::FollowersCount,
-						Expr::col(model::user::Column::FollowersCount).add(1)
+						model::actor::Column::FollowersCount,
+						Expr::col(model::actor::Column::FollowersCount).add(1)
 					)
-					.filter(model::user::Column::Id.eq(&uid))
+					.filter(model::actor::Column::Id.eq(&uid))
 					.exec(self.db())
 					.await?;
 				model::relation::Entity::insert(
@@ -303,7 +303,7 @@ impl apb::server::Outbox for Context {
 
 		match object_node.object_type() {
 			Some(apb::ObjectType::Actor(_)) => {
-				let mut actor_model = model::user::Model::new(
+				let mut actor_model = model::actor::Model::new(
 					&object_node
 						// TODO must set these, but we will ignore them
 						.set_actor_type(Some(apb::ActorType::Person))
@@ -311,7 +311,7 @@ impl apb::server::Outbox for Context {
 							serde_json::Value::new_object().set_public_key_pem("")
 						))
 				)?;
-				let old_actor_model = model::user::Entity::find_by_id(&actor_model.id)
+				let old_actor_model = model::actor::Entity::find_by_id(&actor_model.id)
 					.one(self.db())
 					.await?
 					.ok_or_else(UpubError::not_found)?;
@@ -328,12 +328,12 @@ impl apb::server::Outbox for Context {
 
 				let mut update_model = actor_model.into_active_model();
 				update_model.updated = sea_orm::Set(chrono::Utc::now());
-				update_model.reset(model::user::Column::Name);
-				update_model.reset(model::user::Column::Summary);
-				update_model.reset(model::user::Column::Image);
-				update_model.reset(model::user::Column::Icon);
+				update_model.reset(model::actor::Column::Name);
+				update_model.reset(model::actor::Column::Summary);
+				update_model.reset(model::actor::Column::Image);
+				update_model.reset(model::actor::Column::Icon);
 
-				model::user::Entity::update(update_model)
+				model::actor::Entity::update(update_model)
 					.exec(self.db()).await?;
 			},
 			Some(apb::ObjectType::Note) => {
@@ -398,17 +398,17 @@ impl apb::server::Outbox for Context {
 				.set_actor(Node::link(uid.clone()))
 		)?;
 
-		let share_model = model::share::ActiveModel {
+		let share_model = model::announce::ActiveModel {
+			internal: NotSet,
 			actor: Set(uid.clone()),
-			shares: Set(oid.clone()),
-			date: Set(chrono::Utc::now()),
-			..Default::default()
+			object: Set(oid.clone()),
+			published: Set(chrono::Utc::now()),
 		};
-		model::share::Entity::insert(share_model).exec(self.db()).await?;
+		model::announce::Entity::insert(share_model).exec(self.db()).await?;
 		model::activity::Entity::insert(activity_model.into_active_model())
 			.exec(self.db()).await?;
 		model::object::Entity::update_many()
-			.col_expr(model::object::Column::Shares, Expr::col(model::object::Column::Shares).add(1))
+			.col_expr(model::object::Column::Announces, Expr::col(model::object::Column::Announces).add(1))
 			.filter(model::object::Column::Id.eq(oid))
 			.exec(self.db())
 			.await?;

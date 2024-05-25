@@ -16,7 +16,7 @@ pub struct Model {
 	pub document_type: DocumentType,
 	pub name: Option<String>,
 	pub media_type: String,
-	pub created: ChronoDateTimeUtc,
+	pub published: ChronoDateTimeUtc,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -46,7 +46,7 @@ impl Model {
 			.set_document_type(Some(self.document_type))
 			.set_media_type(Some(&self.media_type))
 			.set_name(self.name.as_deref())
-			.set_published(Some(self.created))
+			.set_published(Some(self.published))
 	}
 }
 

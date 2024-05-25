@@ -8,7 +8,7 @@ pub async fn paginate(
 	filter: Condition,
 	db: &DatabaseConnection,
 	page: Pagination,
-	my_id: Option<&str>,
+	my_id: Option<i64>,
 ) -> crate::Result<JsonLD<serde_json::Value>> {
 	let limit = page.batch.unwrap_or(20).min(50);
 	let offset = page.offset.unwrap_or(0);
@@ -27,7 +27,7 @@ pub async fn paginate(
 	let items : Vec<serde_json::Value> = items
 		.into_iter()
 		.map(|item| {
-			let attach = attachments.remove(item.id());
+			let attach = attachments.remove(&item.internal());
 			item.ap(attach)
 		})
 		.collect();

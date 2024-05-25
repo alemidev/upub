@@ -11,7 +11,7 @@ pub enum Attachments {
 	Object,
 	Name,
 	MediaType,
-	Created,
+	Published,
 }
 
 #[derive(DeriveIden)]
@@ -63,7 +63,7 @@ impl MigrationTrait for Migration {
 					.col(ColumnDef::new(Attachments::DocumentType).string().not_null())
 					.col(ColumnDef::new(Attachments::Name).string().null())
 					.col(ColumnDef::new(Attachments::MediaType).string().not_null())
-					.col(ColumnDef::new(Attachments::Created).date_time().not_null().default(Expr::current_timestamp()))
+					.col(ColumnDef::new(Attachments::Published).date_time().not_null().default(Expr::current_timestamp()))
 					.to_owned()
 			)
 			.await?;

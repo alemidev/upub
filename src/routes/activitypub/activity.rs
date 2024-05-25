@@ -27,7 +27,7 @@ pub async fn view(
 		.ok_or_else(UpubError::not_found)?;
 
 	let mut attachments = row.load_attachments_batch(ctx.db()).await?;
-	let attach = attachments.remove(row.id());
+	let attach = attachments.remove(&row.internal());
 
 	Ok(JsonLD(row.ap(attach).ld_context()))
 }

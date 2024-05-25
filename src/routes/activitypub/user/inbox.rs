@@ -10,8 +10,8 @@ pub async fn get(
 ) -> crate::Result<JsonLD<serde_json::Value>> {
 	match auth {
 		Identity::Anonymous => Err(StatusCode::FORBIDDEN.into()),
-		Identity::Remote(_) => Err(StatusCode::FORBIDDEN.into()),
-		Identity::Local(user) => if ctx.uid(&id) == user {
+		Identity::Remote { .. } => Err(StatusCode::FORBIDDEN.into()),
+		Identity::Local { id: user, .. } => if ctx.uid(&id) == user {
 			crate::server::builders::collection(&url!(ctx, "/users/{id}/inbox"), None)
 		} else {
 			Err(StatusCode::FORBIDDEN.into())
@@ -25,7 +25,7 @@ pub async fn page(
 	AuthIdentity(auth): AuthIdentity,
 	Query(page): Query<Pagination>,
 ) -> crate::Result<JsonLD<serde_json::Value>> {
-	let Identity::Local(uid) = &auth else {
+	let Identity::Local { id: uid, .. } = &auth else {
 		// local inbox is only for local users
 		return Err(UpubError::forbidden());
 	};

@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use apb::{target::Addressed, Activity, Actor, ActorMut, Base, Collection, Link, Object};
+use apb::{target::Addressed, Activity, Actor, ActorMut, Base, Collection, Object};
 use base64::Engine;
 use reqwest::{header::{ACCEPT, CONTENT_TYPE, USER_AGENT}, Method, Response};
 use sea_orm::EntityTrait;
@@ -139,14 +139,14 @@ impl Fetcher for Context {
 
 	async fn pull_user(&self, id: &str) -> crate::Result<serde_json::Value> {
 		let mut user = Self::request(
-			Method::GET, id, None, &format!("https://{}", self.domain()), &self.app().private_key, self.domain(),
+			Method::GET, id, None, &format!("https://{}", self.domain()), self.pkey(), self.domain(),
 		).await?.json::<serde_json::Value>().await?;
 
 		// TODO try fetching these numbers from audience/generator fields to avoid making 2 more GETs
 		if let Some(followers_url) = &user.followers().id() {
 			let req = Self::request(
 				Method::GET, followers_url, None,
-				&format!("https://{}", self.domain()), &self.app().private_key, self.domain(),
+				&format!("https://{}", self.domain()), self.pkey(), self.domain(),
 			).await;
 			if let Ok(res) = req {
 				if let Ok(user_followers) = res.json::<serde_json::Value>().await {
@@ -160,7 +160,7 @@ impl Fetcher for Context {
 		if let Some(following_url) = &user.following().id() {
 			let req =  Self::request(
 				Method::GET, following_url, None,
-				&format!("https://{}", self.domain()), &self.app().private_key, self.domain(),
+				&format!("https://{}", self.domain()), self.pkey(), self.domain(),
 			).await;
 			if let Ok(res) = req {
 				if let Ok(user_following) = res.json::<serde_json::Value>().await {
@@ -191,14 +191,14 @@ impl Fetcher for Context {
 
 		let addressed = activity.addressed();
 		let expanded_addresses = self.expand_addressing(addressed).await?;
-		self.address_to(Some(&activity.id), None, &expanded_addresses).await?;
+		self.address_to(Some(activity.internal), None, &expanded_addresses).await?;
 
 		Ok(activity)
 	}
 
 	async fn pull_activity(&self, id: &str) -> crate::Result<serde_json::Value> {
 		let activity = Self::request(
-			Method::GET, id, None, &format!("https://{}", self.domain()), &self.app().private_key, self.domain(),
+			Method::GET, id, None, &format!("https://{}", self.domain()), self.pkey(), self.domain(),
 		).await?.json::<serde_json::Value>().await?;
 
 		if let Some(activity_actor) = activity.actor().id() {
@@ -228,7 +228,7 @@ impl Fetcher for Context {
 	async fn pull_object(&self, id: &str) -> crate::Result<serde_json::Value> {
 		Ok(
 			Context::request(
-				Method::GET, id, None, &format!("https://{}", self.domain()), &self.app().private_key, self.domain(),
+				Method::GET, id, None, &format!("https://{}", self.domain()), self.pkey(), self.domain(),
 			)
 				.await?
 				.json::<serde_json::Value>()
@@ -244,7 +244,7 @@ async fn fetch_object_inner(ctx: &Context, id: &str, depth: usize) -> crate::Res
 	}
 
 	let object = Context::request(
-		Method::GET, id, None, &format!("https://{}", ctx.domain()), &ctx.app().private_key, ctx.domain(),
+		Method::GET, id, None, &format!("https://{}", ctx.domain()), ctx.pkey(), ctx.domain(),
 	).await?.json::<serde_json::Value>().await?;
 
 	if let Some(oid) = object.id() {
@@ -274,7 +274,7 @@ async fn fetch_object_inner(ctx: &Context, id: &str, depth: usize) -> crate::Res
 	let object_model = ctx.insert_object(object, None).await?;
 
 	let expanded_addresses = ctx.expand_addressing(addressed).await?;
-	ctx.address_to(None, Some(&object_model.id), &expanded_addresses).await?;
+	ctx.address_to(None, Some(object_model.internal), &expanded_addresses).await?;
 
 	Ok(object_model)
 }
@@ -288,9 +288,7 @@ pub trait Fetchable : Sync + Send {
 impl Fetchable for apb::Node<serde_json::Value> {
 	async fn fetch(&mut self, ctx: &crate::server::Context) -> crate::Result<&mut Self> {
 		if let apb::Node::Link(uri) = self {
-			let from = format!("{}{}", ctx.protocol(), ctx.domain()); // TODO helper to avoid this?
-			let pkey = &ctx.app().private_key;
-			*self = Context::request(Method::GET, uri.href(), None, &from, pkey, ctx.domain())
+			*self = Context::request(Method::GET, uri.href(), None, ctx.base(), ctx.pkey(), ctx.domain())
 				.await?
 				.json::<serde_json::Value>()
 				.await?

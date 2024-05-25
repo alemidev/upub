@@ -1,9 +1,9 @@
 use std::{collections::BTreeSet, sync::Arc};
 
 use openssl::rsa::Rsa;
-use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect, SelectColumns, Set};
+use sea_orm::{ActiveValue::NotSet, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect, RelationTrait, SelectColumns, Set};
 
-use crate::{config::Config, model, server::fetcher::Fetcher};
+use crate::{config::Config, errors::UpubError, model, server::fetcher::Fetcher};
 use uriproxy::UriClass;
 
 use super::dispatcher::Dispatcher;
@@ -19,7 +19,8 @@ struct ContextInner {
 	base_url: String,
 	dispatcher: Dispatcher,
 	// TODO keep these pre-parsed
-	app: model::application::Model,
+	app: model::actor::Model,
+	pkey: String,
 	relays: BTreeSet<String>,
 }
 
@@ -46,42 +47,71 @@ impl Context {
 		for _ in 0..1 { // TODO customize delivery workers amount
 			dispatcher.spawn(db.clone(), domain.clone(), 30); // TODO ew don't do it this deep and secretly!!
 		}
-		let app = match model::application::Entity::find().one(&db).await? {
+		let base_url = format!("{}{}", protocol, domain);
+		let app = match model::actor::Entity::find_by_ap_id(&base_url).one(&db).await? {
 			Some(model) => model,
 			None => {
 				tracing::info!("generating application keys");
 				let rsa = Rsa::generate(2048)?;
 				let privk = std::str::from_utf8(&rsa.private_key_to_pem()?)?.to_string();
 				let pubk = std::str::from_utf8(&rsa.public_key_to_pem()?)?.to_string();
-				let system = model::application::ActiveModel {
-					id: sea_orm::ActiveValue::NotSet,
-					private_key: sea_orm::ActiveValue::Set(privk.clone()),
-					public_key: sea_orm::ActiveValue::Set(pubk.clone()),
-					created: sea_orm::ActiveValue::Set(chrono::Utc::now()),
+				let system = model::actor::ActiveModel {
+					internal: NotSet,
+					id: NotSet,
+					domain: Set(domain.clone()),
+					preferred_username: Set(domain.clone()),
+					actor_type: Set(apb::ActorType::Application),
+					private_key: Set(Some(privk)),
+					public_key: Set(pubk),
+					following: Set(None),
+					following_count: Set(0),
+					followers: Set(None),
+					followers_count: Set(0),
+					statuses_count: Set(0),
+					summary: Set(Some("micro social network, federated".to_string())),
+					name: Set(Some("μpub".to_string())),
+					image: Set(None),
+					icon: Set(Some("https://cdn.alemi.dev/social/circle-square.png".to_string())),
+					inbox: Set(Some(format!("{base_url}/inbox"))),
+					shared_inbox: Set(Some(format!("{base_url}/inbox"))),
+					outbox: Set(Some(format!("{base_url}/outbox"))),
+					published: Set(chrono::Utc::now()),
+					updated: Set(chrono::Utc::now()),
 				};
-				model::application::Entity::insert(system).exec(&db).await?;
+				model::actor::Entity::insert(system).exec(&db).await?;
 				// sqlite doesn't resurn last inserted id so we're better off just querying again, it's just one time
-				model::application::Entity::find().one(&db).await?.expect("could not find app config just inserted")
+				model::actor::Entity::find().one(&db).await?.expect("could not find app config just inserted")
 			}
 		};
 
-		let relays = model::relay::Entity::find()
-			.select_only()
-			.select_column(model::relay::Column::Id)
-			.filter(model::relay::Column::Accepted.eq(true))
-			.into_tuple::<String>()
-			.all(&db)
-			.await?;
+		// TODO maybe we could provide a more descriptive error...
+		let pkey = app.private_key.as_deref().ok_or_else(UpubError::internal_server_error)?.to_string();
+
+		// TODO how to handle relations when there's two to the same model???
+		// let relays = model::relation::Entity::find()
+		// 	.filter(model::relation::Column::Following.eq(app.internal))
+		// 	.filter(model::relation::Column::Accept.is_not_null())
+		// 	.left_join(model::relation::Relation::ActorsFollower.def())
+		// 	.select_only()
+		// 	.select_column(model::actor::Column::Id)
+		// 	.into_tuple::<String>()
+		// 	.all(&db)
+		// 	.await?;
+
+		let relays = Vec::new();
 
 		Ok(Context(Arc::new(ContextInner {
-			base_url: format!("{}{}", protocol, domain),
-			db, domain, protocol, app, dispatcher, config,
+			base_url, db, domain, protocol, app, dispatcher, config, pkey,
 			relays: BTreeSet::from_iter(relays.into_iter()),
 		})))
 	}
 
-	pub fn app(&self) -> &model::application::Model {
+	pub fn app(&self) -> &model::actor::Model {
 		&self.0.app
+	}
+
+	pub fn pkey(&self) -> &str {
+		&self.0.pkey
 	}
 
 	pub fn db(&self) -> &DatabaseConnection {
@@ -150,6 +180,18 @@ impl Context {
 		id.starts_with(self.base())
 	}
 
+	pub async fn is_local_internal_object(&self, internal: i64) -> crate::Result<bool> {
+		Ok(model::object::Entity::find_by_id(internal).select_only().one(self.db()).await?.is_some())
+	}
+
+	pub async fn is_local_internal_activity(&self, internal: i64) -> crate::Result<bool> {
+		Ok(model::activity::Entity::find_by_id(internal).select_only().one(self.db()).await?.is_some())
+	}
+
+	pub async fn is_local_internal_actor(&self, internal: i64) -> crate::Result<bool> {
+		Ok(model::actor::Entity::find_by_id(internal).select_only().one(self.db()).await?.is_some())
+	}
+
 	pub async fn expand_addressing(&self, targets: Vec<String>) -> crate::Result<Vec<String>> {
 		let mut out = Vec::new();
 		for target in targets {
@@ -171,26 +213,38 @@ impl Context {
 		Ok(out)
 	}
 
-	pub async fn address_to(&self, aid: Option<&str>, oid: Option<&str>, targets: &[String]) -> crate::Result<()> {
-		let local_activity = aid.map(|x| self.is_local(x)).unwrap_or(false);
-		let local_object = oid.map(|x| self.is_local(x)).unwrap_or(false);
-		let addressings : Vec<model::addressing::ActiveModel> = targets
+	pub async fn address_to(&self, aid: Option<i64>, oid: Option<i64>, targets: &[String]) -> crate::Result<()> {
+		// TODO address_to became kind of expensive, with these two selects right away and then another
+		//      select for each target we're addressing to... can this be improved??
+		let local_activity = if let Some(x) = aid { self.is_local_internal_activity(x).await? } else { false };
+		let local_object = if let Some(x) = oid { self.is_local_internal_object(x).await? } else { false };
+		let mut addressing = Vec::new();
+		for target in targets
 			.iter()
 			.filter(|to| !to.is_empty())
 			.filter(|to| !to.ends_with("/followers"))
 			.filter(|to| local_activity || local_object || to.as_str() == apb::target::PUBLIC || self.is_local(to))
-			.map(|to| model::addressing::ActiveModel {
-				id: sea_orm::ActiveValue::NotSet,
-				server: Set(Context::server(to)),
-				actor: Set(to.to_string()),
-				activity: Set(aid.map(|x| x.to_string())),
-				object: Set(oid.map(|x| x.to_string())),
-				published: Set(chrono::Utc::now()),
-			})
-			.collect();
+		{
+			let (server, actor) = if target == apb::target::PUBLIC { (None, None) } else {
+				(
+					Some(model::instance::Entity::domain_to_internal(&Context::server(&target), self.db()).await?),
+					Some(model::actor::Entity::ap_to_internal(&target, self.db()).await?),
+				)
+			};
+			addressing.push(
+				model::addressing::ActiveModel {
+					internal: sea_orm::ActiveValue::NotSet,
+					instance: Set(server),
+					actor: Set(actor),
+					activity: Set(aid),
+					object: Set(oid),
+					published: Set(chrono::Utc::now()),
+				}
+			);
+		}
 
-		if !addressings.is_empty() {
-			model::addressing::Entity::insert_many(addressings)
+		if !addressing.is_empty() {
+			model::addressing::Entity::insert_many(addressing)
 				.exec(self.db())
 				.await?;
 		}
@@ -207,15 +261,15 @@ impl Context {
 		{
 			// TODO fetch concurrently
 			match self.fetch_user(target).await {
-				Ok(model::user::Model { inbox: Some(inbox), .. }) => deliveries.push(
+				Ok(model::actor::Model { inbox: Some(inbox), .. }) => deliveries.push(
 					model::delivery::ActiveModel {
-						id: sea_orm::ActiveValue::NotSet,
+						internal: sea_orm::ActiveValue::NotSet,
 						actor: Set(from.to_string()),
 						// TODO we should resolve each user by id and check its inbox because we can't assume
 						// it's /users/{id}/inbox for every software, but oh well it's waaaaay easier now
 						target: Set(inbox),
 						activity: Set(aid.to_string()),
-						created: Set(chrono::Utc::now()),
+						published: Set(chrono::Utc::now()),
 						not_before: Set(chrono::Utc::now()),
 						attempt: Set(0),
 					}
@@ -238,7 +292,9 @@ impl Context {
 
 	pub async fn dispatch(&self, uid: &str, activity_targets: Vec<String>, aid: &str, oid: Option<&str>) -> crate::Result<()> {
 		let addressed = self.expand_addressing(activity_targets).await?;
-		self.address_to(Some(aid), oid, &addressed).await?;
+		let internal_aid = model::activity::Entity::ap_to_internal(aid, self.db()).await?;
+		let internal_oid = if let Some(o) = oid { Some(model::object::Entity::ap_to_internal(o, self.db()).await?) } else { None };
+		self.address_to(Some(internal_aid), internal_oid, &addressed).await?;
 		self.deliver_to(aid, uid, &addressed).await?;
 		Ok(())
 	}

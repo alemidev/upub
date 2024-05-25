@@ -20,7 +20,7 @@ pub enum Deliveries {
 	Actor,
 	Target,
 	Activity,
-	Created,
+	Published,
 	NotBefore,
 	Attempt,
 }
@@ -141,7 +141,7 @@ impl MigrationTrait for Migration {
 							.on_update(ForeignKeyAction::Cascade)
 							.on_delete(ForeignKeyAction::Cascade)
 					)
-					.col(ColumnDef::new(Deliveries::Created).date_time().not_null().default(Expr::current_timestamp()))
+					.col(ColumnDef::new(Deliveries::Published).date_time().not_null().default(Expr::current_timestamp()))
 					.col(ColumnDef::new(Deliveries::NotBefore).date_time().not_null().default(Expr::current_timestamp()))
 					.col(ColumnDef::new(Deliveries::Attempt).integer().not_null().default(0))
 					.to_owned()

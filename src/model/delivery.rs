@@ -8,7 +8,7 @@ pub struct Model {
 	pub actor: String,
 	pub target: String,
 	pub activity: String,
-	pub created: ChronoDateTimeUtc,
+	pub published: ChronoDateTimeUtc,
 	pub not_before: ChronoDateTimeUtc,
 	pub attempt: i32,
 }
@@ -61,6 +61,6 @@ impl Model {
 	}
 
 	pub fn expired(&self) -> bool {
-		chrono::Utc::now() - self.created > chrono::Duration::days(7)
+		chrono::Utc::now() - self.published > chrono::Duration::days(7)
 	}
 }

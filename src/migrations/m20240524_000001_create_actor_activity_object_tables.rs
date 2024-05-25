@@ -21,7 +21,7 @@ pub enum Actors {
 	StatusesCount,
 	PublicKey,
 	PrivateKey,
-	Created,
+	Published,
 	Updated,
 }
 
@@ -159,7 +159,7 @@ impl MigrationTrait for Migration {
 					.col(ColumnDef::new(Actors::StatusesCount).integer().not_null().default(0))
 					.col(ColumnDef::new(Actors::PublicKey).string().not_null())
 					.col(ColumnDef::new(Actors::PrivateKey).string().null())
-					.col(ColumnDef::new(Actors::Created).date_time().not_null().default(Expr::current_timestamp()))
+					.col(ColumnDef::new(Actors::Published).date_time().not_null().default(Expr::current_timestamp()))
 					.col(ColumnDef::new(Actors::Updated).date_time().not_null().default(Expr::current_timestamp()))
 					.to_owned()
 			)
@@ -174,7 +174,7 @@ impl MigrationTrait for Migration {
 			.await?;
 
 		manager
-			.create_index(Index::create().name("index-actors-instance").table(Actors::Table).col(Actors::Instance).to_owned())
+			.create_index(Index::create().name("index-actors-domain").table(Actors::Table).col(Actors::Domain).to_owned())
 			.await?;
 
 
@@ -321,7 +321,7 @@ impl MigrationTrait for Migration {
 			.await?;
 
 		manager
-			.drop_index(Index::drop().name("index-actors-instance").table(Actors::Table).to_owned())
+			.drop_index(Index::drop().name("index-actors-domain").table(Actors::Table).to_owned())
 			.await?;
 
 

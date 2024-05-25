@@ -106,6 +106,15 @@ impl Event {
 		}
 	}
 
+	pub fn internal(&self) -> i64 {
+		match self {
+			Event::Tombstone => 0,
+			Event::Activity(x) => x.internal,
+			Event::StrayObject { object, liked: _ } => object.internal,
+			Event::DeepActivity { activity: _, liked: _, object } => object.internal,
+		}
+	}
+
 	pub fn ap(self, attachment: Option<Vec<crate::model::attachment::Model>>) -> serde_json::Value {
 		let attachment = match attachment {
 			None => apb::Node::Empty,

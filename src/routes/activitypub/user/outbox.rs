@@ -42,8 +42,8 @@ pub async fn post(
 ) -> Result<CreationResult, UpubError> {
 	match auth {
 		Identity::Anonymous => Err(StatusCode::UNAUTHORIZED.into()),
-		Identity::Remote(_) => Err(StatusCode::NOT_IMPLEMENTED.into()),
-		Identity::Local(uid) => if ctx.uid(&id) == uid {
+		Identity::Remote { .. } => Err(StatusCode::NOT_IMPLEMENTED.into()),
+		Identity::Local { id: uid, .. } => if ctx.uid(&id) == uid {
 			tracing::debug!("processing new local activity: {}", serde_json::to_string(&activity).unwrap_or_default());
 			match activity.base_type() {
 				None => Err(StatusCode::BAD_REQUEST.into()),

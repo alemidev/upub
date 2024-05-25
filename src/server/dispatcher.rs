@@ -125,7 +125,7 @@ async fn worker(db: &DatabaseConnection, domain: &str, poll_interval: u64, waker
 				actor: sea_orm::ActiveValue::Set(delivery.actor),
 				target: sea_orm::ActiveValue::Set(delivery.target),
 				activity: sea_orm::ActiveValue::Set(delivery.activity),
-				created: sea_orm::ActiveValue::Set(delivery.created),
+				published: sea_orm::ActiveValue::Set(delivery.published),
 				attempt: sea_orm::ActiveValue::Set(delivery.attempt + 1),
 			};
 			model::delivery::Entity::insert(new_delivery).exec(db).await?;
