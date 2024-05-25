@@ -1,15 +1,16 @@
-use crate::model::{addressing, config, credential, activity, object, user, Audience};
+use crate::model::{addressing, config, credential, activity, object, actor, Audience};
 use openssl::rsa::Rsa;
-use sea_orm::IntoActiveModel;
+use sea_orm::{ActiveValue::NotSet, IntoActiveModel};
 
-pub async fn faker(ctx: crate::server::Context, count: u64) -> Result<(), sea_orm::DbErr> {
+pub async fn faker(ctx: crate::server::Context, count: i64) -> Result<(), sea_orm::DbErr> {
 	use sea_orm::{EntityTrait, Set};
 
 	let domain = ctx.domain();
 	let db = ctx.db();
 
 	let key = Rsa::generate(2048).unwrap();
-	let test_user = user::Model {
+	let test_user = actor::Model {
+		internal: 42,
 		id: format!("{domain}/users/test"),
 		name: Some("μpub".into()),
 		domain: clean_domain(domain),
@@ -19,24 +20,25 @@ pub async fn faker(ctx: crate::server::Context, count: u64) -> Result<(), sea_or
 		following_count: 0,
 		followers: None,
 		followers_count: 0,
-		statuses_count: count as i64,
+		statuses_count: count as i32,
 		icon: Some("https://cdn.alemi.dev/social/circle-square.png".to_string()),
 		image: Some("https://cdn.alemi.dev/social/someriver-xs.jpg".to_string()),
 		inbox: None,
 		shared_inbox: None,
 		outbox: None,
 		actor_type: apb::ActorType::Person,
-		created: chrono::Utc::now(),
+		published: chrono::Utc::now(),
 		updated: chrono::Utc::now(),
 		private_key: Some(std::str::from_utf8(&key.private_key_to_pem().unwrap()).unwrap().to_string()),
 		// TODO generate a fresh one every time
 		public_key: std::str::from_utf8(&key.public_key_to_pem().unwrap()).unwrap().to_string(),
 	};
 
-	user::Entity::insert(test_user.clone().into_active_model()).exec(db).await?;
+	actor::Entity::insert(test_user.clone().into_active_model()).exec(db).await?;
 
 	config::Entity::insert(config::ActiveModel {
-		id: Set(test_user.id.clone()),
+		internal: NotSet,
+		actor: Set(test_user.id.clone()),
 		accept_follow_requests: Set(true),
 		show_followers: Set(true),
 		show_following: Set(true),
@@ -45,8 +47,9 @@ pub async fn faker(ctx: crate::server::Context, count: u64) -> Result<(), sea_or
 	}).exec(db).await?;
 
 	credential::Entity::insert(credential::ActiveModel {
-		id: Set(test_user.id.clone()),
-		email: Set("mail@example.net".to_string()),
+		internal: NotSet,
+		actor: Set(test_user.id.clone()),
+		login: Set("mail@example.net".to_string()),
 		password: Set(sha256::digest("very-strong-password")),
 	}).exec(db).await?;
 
@@ -57,15 +60,16 @@ pub async fn faker(ctx: crate::server::Context, count: u64) -> Result<(), sea_or
 		let aid = uuid::Uuid::new_v4();
 
 		addressing::Entity::insert(addressing::ActiveModel {
-			actor: Set(apb::target::PUBLIC.to_string()),
-			server: Set("www.w3.org".to_string()),
-			activity: Set(Some(format!("{domain}/activities/{aid}"))),
-			object: Set(Some(format!("{domain}/objects/{oid}"))),
+			actor: Set(None),
+			instance: Set(None),
+			activity: Set(Some(42 + i)),
+			object: Set(Some(42 + i)),
 			published: Set(chrono::Utc::now()),
 			..Default::default()
 		}).exec(db).await?;
 
 		object::Entity::insert(object::ActiveModel {
+			internal: Set(42 + i),
 			id: Set(format!("{domain}/objects/{oid}")),
 			name: Set(None),
 			object_type: Set(apb::ObjectType::Note),
@@ -74,11 +78,11 @@ pub async fn faker(ctx: crate::server::Context, count: u64) -> Result<(), sea_or
 			context: Set(Some(context.clone())),
 			in_reply_to: Set(None),
 			content: Set(Some(format!("[{i}] Tic(k). Quasiparticle of intensive multiplicity. Tics (or ticks) are intrinsically several components of autonomously numbering anorganic populations, propagating by contagion between segmentary divisions in the order of nature. Ticks - as nonqualitative differentially-decomposable counting marks - each designate a multitude comprehended as a singular variation in tic(k)-density."))),
-			published: Set(chrono::Utc::now() - std::time::Duration::from_secs(60*i)),
-			updated: Set(None),
-			comments: Set(0),
+			published: Set(chrono::Utc::now() - std::time::Duration::from_secs(60*i as u64)),
+			updated: Set(chrono::Utc::now()),
+			replies: Set(0),
 			likes: Set(0),
-			shares: Set(0),
+			announces: Set(0),
 			to: Set(Audience(vec![apb::target::PUBLIC.to_string()])),
 			bto: Set(Audience::default()),
 			cc: Set(Audience(vec![])),
@@ -88,12 +92,13 @@ pub async fn faker(ctx: crate::server::Context, count: u64) -> Result<(), sea_or
 		}).exec(db).await?;
 
 		activity::Entity::insert(activity::ActiveModel {
+			internal: Set(42 + i),
 			id: Set(format!("{domain}/activities/{aid}")),
 			activity_type: Set(apb::ActivityType::Create),
 			actor: Set(format!("{domain}/users/test")),
 			object: Set(Some(format!("{domain}/objects/{oid}"))),
 			target: Set(None),
-			published: Set(chrono::Utc::now() - std::time::Duration::from_secs(60*i)),
+			published: Set(chrono::Utc::now() - std::time::Duration::from_secs(60*i as u64)),
 			to: Set(Audience(vec![apb::target::PUBLIC.to_string()])),
 			bto: Set(Audience::default()),
 			cc: Set(Audience(vec![])),

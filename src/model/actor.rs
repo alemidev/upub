@@ -138,6 +138,10 @@ impl Entity {
 		Entity::find().filter(Column::Id.eq(id))
 	}
 
+	pub fn delete_by_ap_id(id: &str) -> sea_orm::DeleteMany<Entity> {
+		Entity::delete_many().filter(Column::Id.eq(id))
+	}
+
 	pub async fn ap_to_internal(id: &str, db: &DatabaseConnection) -> crate::Result<i64> {
 		Entity::find()
 			.filter(Column::Id.eq(id))

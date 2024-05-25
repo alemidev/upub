@@ -1,4 +1,4 @@
-use sea_orm::{EntityTrait, IntoActiveModel};
+use sea_orm::EntityTrait;
 
 use crate::server::fetcher::Fetchable;
 
@@ -13,18 +13,18 @@ pub async fn fetch(ctx: crate::server::Context, uri: String, save: bool) -> crat
 	if save {
 		match obj.base_type() {
 			Some(apb::BaseType::Object(apb::ObjectType::Actor(_))) => {
-				crate::model::user::Entity::insert(
-					crate::model::user::Model::new(obj).unwrap().into_active_model()
+				crate::model::actor::Entity::insert(
+					crate::model::actor::ActiveModel::new(obj).unwrap()
 				).exec(ctx.db()).await.unwrap();
 			},
 			Some(apb::BaseType::Object(apb::ObjectType::Activity(_))) => {
 				crate::model::activity::Entity::insert(
-					crate::model::activity::Model::new(obj).unwrap().into_active_model()
+					crate::model::activity::ActiveModel::new(obj).unwrap()
 				).exec(ctx.db()).await.unwrap();
 			},
 			Some(apb::BaseType::Object(apb::ObjectType::Note)) => {
 				crate::model::object::Entity::insert(
-					crate::model::object::Model::new(obj).unwrap().into_active_model()
+					crate::model::object::ActiveModel::new(obj).unwrap()
 				).exec(ctx.db()).await.unwrap();
 			},
 			Some(apb::BaseType::Object(t)) => tracing::warn!("not implemented: {:?}", t),

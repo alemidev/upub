@@ -104,7 +104,7 @@ pub async fn run(
 	).await?;
 	match command {
 		CliCommand::Faker { count } =>
-			Ok(faker(ctx, count).await?),
+			Ok(faker(ctx, count as i64).await?),
 		CliCommand::Fetch { uri, save } =>
 			Ok(fetch(ctx, uri, save).await?),
 		CliCommand::Relay { actor, accept } =>
