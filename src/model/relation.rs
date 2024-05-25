@@ -4,11 +4,11 @@ use sea_orm::entity::prelude::*;
 #[sea_orm(table_name = "relations")]
 pub struct Model {
 	#[sea_orm(primary_key)]
-	pub id: i32,
-	pub follower: i32,
-	pub following: i32,
-	pub accept: Option<i32>,
-	pub activity: i32,
+	pub internal: i64,
+	pub follower: i64,
+	pub following: i64,
+	pub accept: Option<i64>,
+	pub activity: i64,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -16,35 +16,35 @@ pub enum Relation {
 	#[sea_orm(
 		belongs_to = "super::activity::Entity",
 		from = "Column::Accept",
-		to = "super::activity::Column::Id",
+		to = "super::activity::Column::Internal",
 		on_update = "Cascade",
 		on_delete = "NoAction"
 	)]
-	Activities2,
+	ActivitiesAccept,
 	#[sea_orm(
 		belongs_to = "super::activity::Entity",
 		from = "Column::Activity",
-		to = "super::activity::Column::Id",
+		to = "super::activity::Column::Internal",
 		on_update = "Cascade",
 		on_delete = "NoAction"
 	)]
-	Activities1,
+	ActivitiesFollow,
 	#[sea_orm(
 		belongs_to = "super::actor::Entity",
 		from = "Column::Follower",
-		to = "super::actor::Column::Id",
+		to = "super::actor::Column::Internal",
 		on_update = "Cascade",
 		on_delete = "Cascade"
 	)]
-	Actors2,
+	ActorsFollower,
 	#[sea_orm(
 		belongs_to = "super::actor::Entity",
 		from = "Column::Following",
-		to = "super::actor::Column::Id",
+		to = "super::actor::Column::Internal",
 		on_update = "Cascade",
 		on_delete = "Cascade"
 	)]
-	Actors1,
+	ActorsFollowing,
 }
 
 impl ActiveModelBehavior for ActiveModel {}

@@ -5,7 +5,7 @@ use super::m20240524_000001_create_actor_activity_object_tables::{Activities, Ac
 #[derive(DeriveIden)]
 pub enum Relations {
 	Table,
-	Id,
+	Internal,
 	Follower,
 	Following,
 	Activity,
@@ -16,9 +16,9 @@ pub enum Relations {
 #[allow(clippy::enum_variant_names)]
 pub enum Likes {
 	Table,
-	Id,
+	Internal,
 	Actor,
-	Likes,
+	Object,
 	Published,
 }
 
@@ -26,9 +26,9 @@ pub enum Likes {
 #[allow(clippy::enum_variant_names)]
 pub enum Announces {
 	Table,
-	Id,
+	Internal,
 	Actor,
-	Announces,
+	Object,
 	Published,
 }
 
@@ -44,44 +44,44 @@ impl MigrationTrait for Migration {
 					.table(Relations::Table)
 					.comment("follow relations between actors (applications too! for relays)")
 					.col(
-						ColumnDef::new(Relations::Id)
-							.integer()
+						ColumnDef::new(Relations::Internal)
+							.big_integer()
 							.not_null()
 							.primary_key()
 							.auto_increment()
 					)
-					.col(ColumnDef::new(Relations::Follower).integer().not_null())
+					.col(ColumnDef::new(Relations::Follower).big_integer().not_null())
 					.foreign_key(
 						ForeignKey::create()
 							.name("fkey-relations-follower")
 							.from(Relations::Table, Relations::Follower)
-							.to(Actors::Table, Actors::Id)
+							.to(Actors::Table, Actors::Internal)
 							.on_update(ForeignKeyAction::Cascade)
 							.on_delete(ForeignKeyAction::Cascade)
 					)
-					.col(ColumnDef::new(Relations::Following).integer().not_null())
+					.col(ColumnDef::new(Relations::Following).big_integer().not_null())
 					.foreign_key(
 						ForeignKey::create()
 							.name("fkey-relations-following")
 							.from(Relations::Table, Relations::Following)
-							.to(Actors::Table, Actors::Id)
+							.to(Actors::Table, Actors::Internal)
 							.on_update(ForeignKeyAction::Cascade)
 							.on_delete(ForeignKeyAction::Cascade)
 					)
-					.col(ColumnDef::new(Relations::Accept).integer().null())
+					.col(ColumnDef::new(Relations::Accept).big_integer().null())
 					.foreign_key(
 						ForeignKey::create()
 							.name("fkey-relations-accept")
 							.from(Relations::Table, Relations::Accept)
-							.to(Activities::Table, Activities::Id)
+							.to(Activities::Table, Activities::Internal)
 							.on_update(ForeignKeyAction::Cascade)
 					)
-					.col(ColumnDef::new(Relations::Activity).integer().not_null())
+					.col(ColumnDef::new(Relations::Activity).big_integer().not_null())
 					.foreign_key(
 						ForeignKey::create()
 							.name("fkey-relations-activity")
 							.from(Relations::Table, Relations::Activity)
-							.to(Activities::Table, Activities::Id)
+							.to(Activities::Table, Activities::Internal)
 							.on_update(ForeignKeyAction::Cascade)
 					)
 					.to_owned()
@@ -102,27 +102,27 @@ impl MigrationTrait for Migration {
 					.table(Likes::Table)
 					.comment("all like events, joining actor to object")
 					.col(
-						ColumnDef::new(Likes::Id)
-							.integer()
+						ColumnDef::new(Likes::Internal)
+							.big_integer()
 							.not_null()
 							.primary_key()
 							.auto_increment()
 					)
-					.col(ColumnDef::new(Likes::Actor).integer().not_null())
+					.col(ColumnDef::new(Likes::Actor).big_integer().not_null())
 					.foreign_key(
 						ForeignKey::create()
 							.name("fkey-likes-actor")
 							.from(Likes::Table, Likes::Actor)
-							.to(Actors::Table, Actors::Id)
+							.to(Actors::Table, Actors::Internal)
 							.on_update(ForeignKeyAction::Cascade)
 							.on_delete(ForeignKeyAction::Cascade)
 					)
-					.col(ColumnDef::new(Likes::Likes).integer().not_null())
+					.col(ColumnDef::new(Likes::Object).big_integer().not_null())
 					.foreign_key(
 						ForeignKey::create()
-							.name("fkey-likes-likes")
-							.from(Likes::Table, Likes::Likes)
-							.to(Objects::Table, Objects::Id)
+							.name("fkey-likes-object")
+							.from(Likes::Table, Likes::Object)
+							.to(Objects::Table, Objects::Internal)
 							.on_update(ForeignKeyAction::Cascade)
 							.on_delete(ForeignKeyAction::Cascade)
 					)
@@ -136,17 +136,17 @@ impl MigrationTrait for Migration {
 			.await?;
 
 		manager
-			.create_index(Index::create().name("index-likes-likes").table(Likes::Table).col(Likes::Likes).to_owned())
+			.create_index(Index::create().name("index-likes-object").table(Likes::Table).col(Likes::Likes).to_owned())
 			.await?;
 
 		manager
 			.create_index(
 				Index::create()
 					.unique()
-					.name("index-likes-actor-likes")
+					.name("index-likes-actor-object")
 					.table(Likes::Table)
 					.col(Likes::Actor)
-					.col(Likes::Likes)
+					.col(Likes::Object)
 					.to_owned()
 			).await?;
 
@@ -156,27 +156,27 @@ impl MigrationTrait for Migration {
 					.table(Announces::Table)
 					.comment("all share/boost/reblog events, joining actor to object")
 					.col(
-						ColumnDef::new(Announces::Id)
-							.integer()
+						ColumnDef::new(Announces::Internal)
+							.big_integer()
 							.not_null()
 							.primary_key()
 							.auto_increment()
 					)
-					.col(ColumnDef::new(Announces::Actor).integer().not_null())
+					.col(ColumnDef::new(Announces::Actor).big_integer().not_null())
 					.foreign_key(
 						ForeignKey::create()
 							.name("fkey-announces-actor")
 							.from(Announces::Table, Announces::Actor)
-							.to(Actors::Table, Actors::Id)
+							.to(Actors::Table, Actors::Internal)
 							.on_update(ForeignKeyAction::Cascade)
 							.on_delete(ForeignKeyAction::Cascade)
 					)
-					.col(ColumnDef::new(Announces::Announces).integer().not_null())
+					.col(ColumnDef::new(Announces::Object).big_integer().not_null())
 					.foreign_key(
 						ForeignKey::create()
-							.name("fkey-announces-announces")
-							.from(Announces::Table, Announces::Announces)
-							.to(Objects::Table, Objects::Id)
+							.name("fkey-announces-object")
+							.from(Announces::Table, Announces::Object)
+							.to(Objects::Table, Objects::Internal)
 							.on_update(ForeignKeyAction::Cascade)
 							.on_delete(ForeignKeyAction::Cascade)
 					)
@@ -190,7 +190,7 @@ impl MigrationTrait for Migration {
 			.await?;
 
 		manager
-			.create_index(Index::create().name("index-announces-announces").table(Announces::Table).col(Announces::Announces).to_owned())
+			.create_index(Index::create().name("index-announces-object").table(Announces::Table).col(Announces::Announces).to_owned())
 			.await?;
 
 		Ok(())
@@ -217,10 +217,10 @@ impl MigrationTrait for Migration {
 			.drop_index(Index::drop().name("index-likes-actor").table(Likes::Table).to_owned())
 			.await?;
 		manager
-			.drop_index(Index::drop().name("index-likes-likes").table(Likes::Table).to_owned())
+			.drop_index(Index::drop().name("index-likes-object").table(Likes::Table).to_owned())
 			.await?;
 		manager
-			.drop_index(Index::drop().name("index-likes-actor-likes").table(Likes::Table).to_owned())
+			.drop_index(Index::drop().name("index-likes-actor-object").table(Likes::Table).to_owned())
 			.await?;
 
 		manager
@@ -228,10 +228,10 @@ impl MigrationTrait for Migration {
 			.await?;
 
 		manager
-			.drop_index(Index::drop().name("shares-actor-index").table(Announces::Table).to_owned())
+			.drop_index(Index::drop().name("index-announces-actor").table(Announces::Table).to_owned())
 			.await?;
 		manager
-			.drop_index(Index::drop().name("shares-shares-index").table(Announces::Table).to_owned())
+			.drop_index(Index::drop().name("index-announces-object").table(Announces::Table).to_owned())
 			.await?;
 
 		Ok(())

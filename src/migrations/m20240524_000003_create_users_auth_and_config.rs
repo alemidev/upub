@@ -5,7 +5,7 @@ use super::m20240524_000001_create_actor_activity_object_tables::Actors;
 #[derive(DeriveIden)]
 pub enum Configs {
 	Table,
-	Id,
+	Internal,
 	Actor,
 	AcceptFollowRequests,
 	ShowFollowersCount,
@@ -17,7 +17,7 @@ pub enum Configs {
 #[derive(DeriveIden)]
 pub enum Credentials {
 	Table,
-	Id,
+	Internal,
 	Actor,
 	Login,
 	Password,
@@ -26,7 +26,7 @@ pub enum Credentials {
 #[derive(DeriveIden)]
 pub enum Sessions {
 	Table,
-	Id,
+	Internal,
 	Actor,
 	Secret,
 	Expires,
@@ -44,13 +44,13 @@ impl MigrationTrait for Migration {
 					.table(Configs::Table)
 					.comment("configuration for each local user")
 					.col(
-						ColumnDef::new(Configs::Id)
-							.integer()
+						ColumnDef::new(Configs::Internal)
+							.big_integer()
 							.not_null()
 							.primary_key()
 							.auto_increment()
 					)
-					.col(ColumnDef::new(Configs::Actor).integer().not_null())
+					.col(ColumnDef::new(Configs::Actor).string().not_null().unique_key())
 					.foreign_key(
 						ForeignKey::create()
 							.name("fkey-config-actor")
@@ -69,7 +69,7 @@ impl MigrationTrait for Migration {
 			.await?;
 
 		manager
-			.create_index(Index::create().name("index-configs-actor").table(Configs::Table).col(Configs::Actor).to_owned())
+			.create_index(Index::create().unique().name("index-configs-actor").table(Configs::Table).col(Configs::Actor).to_owned())
 			.await?;
 
 		manager
@@ -78,13 +78,13 @@ impl MigrationTrait for Migration {
 					.table(Credentials::Table)
 					.comment("simple login credentials to authenticate local users")
 					.col(
-						ColumnDef::new(Credentials::Id)
-							.integer()
+						ColumnDef::new(Credentials::Internal)
+							.big_integer()
 							.not_null()
 							.primary_key()
 							.auto_increment()
 					)
-					.col(ColumnDef::new(Credentials::Actor).integer().not_null())
+					.col(ColumnDef::new(Credentials::Actor).string().not_null().unique_key())
 					.foreign_key(
 						ForeignKey::create()
 							.name("fkey-credentials-actor")
@@ -100,6 +100,10 @@ impl MigrationTrait for Migration {
 			.await?;
 
 		manager
+			.create_index(Index::create().unique().name("index-credentials-actor").table(Credentials::Table).col(Credentials::Actor).to_owned())
+			.await?;
+
+		manager
 			.create_index(Index::create().name("index-credentials-login").table(Credentials::Table).col(Credentials::Login).to_owned())
 			.await?;
 
@@ -109,13 +113,13 @@ impl MigrationTrait for Migration {
 					.table(Sessions::Table)
 					.comment("authenticated sessions from local users")
 					.col(
-						ColumnDef::new(Sessions::Id)
-							.integer()
+						ColumnDef::new(Sessions::Internal)
+							.big_integer()
 							.not_null()
 							.primary_key()
 							.auto_increment()
 					)
-					.col(ColumnDef::new(Sessions::Actor).integer().not_null())
+					.col(ColumnDef::new(Sessions::Actor).string().not_null())
 					.foreign_key(
 						ForeignKey::create()
 							.name("fkey-sessions-actor")

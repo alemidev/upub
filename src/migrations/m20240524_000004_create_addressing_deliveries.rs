@@ -5,7 +5,7 @@ use super::m20240524_000001_create_actor_activity_object_tables::{Activities, Ac
 #[derive(DeriveIden)]
 pub enum Addressing {
 	Table,
-	Id,
+	Internal,
 	Actor,
 	Instance,
 	Activity,
@@ -16,7 +16,7 @@ pub enum Addressing {
 #[derive(DeriveIden)]
 pub enum Deliveries {
 	Table,
-	Id,
+	Internal,
 	Actor,
 	Target,
 	Activity,
@@ -37,42 +37,42 @@ impl MigrationTrait for Migration {
 					.table(Addressing::Table)
 					.comment("this join table contains all addressing relations, serving effectively as permissions truth table")
 					.col(
-						ColumnDef::new(Addressing::Id)
-							.integer()
+						ColumnDef::new(Addressing::Internal)
+							.big_integer()
 							.not_null()
 							.auto_increment()
 							.primary_key()
 					)
-					.col(ColumnDef::new(Addressing::Actor).integer().not_null())
+					.col(ColumnDef::new(Addressing::Actor).big_integer().not_null())
 					.foreign_key(
 						ForeignKey::create()
 							.name("fkey-addressing-actor")
 							.from(Addressing::Table, Addressing::Actor)
-							.to(Actors::Table, Actors::Id)
+							.to(Actors::Table, Actors::Internal)
 							.on_update(ForeignKeyAction::Cascade)
 					)
-					.col(ColumnDef::new(Addressing::Instance).integer().not_null())
+					.col(ColumnDef::new(Addressing::Instance).big_integer().not_null())
 					.foreign_key(
 						ForeignKey::create()
 							.name("fkey-addressing-instance")
 							.from(Addressing::Table, Addressing::Instance)
-							.to(Instances::Table, Instances::Id)
+							.to(Instances::Table, Instances::Internal)
 							.on_update(ForeignKeyAction::Cascade)
 					)
-					.col(ColumnDef::new(Addressing::Activity).integer().null())
+					.col(ColumnDef::new(Addressing::Activity).big_integer().null())
 					.foreign_key(
 						ForeignKey::create()
 							.name("fkey-addressing-activity")
 							.from(Addressing::Table, Addressing::Activity)
-							.to(Activities::Table, Activities::Id)
+							.to(Activities::Table, Activities::Internal)
 							.on_update(ForeignKeyAction::Cascade)
 					)
-					.col(ColumnDef::new(Addressing::Object).integer().null())
+					.col(ColumnDef::new(Addressing::Object).big_integer().null())
 					.foreign_key(
 						ForeignKey::create()
 							.name("fkey-addressing-object")
 							.from(Addressing::Table, Addressing::Object)
-							.to(Objects::Table, Objects::Id)
+							.to(Objects::Table, Objects::Internal)
 							.on_update(ForeignKeyAction::Cascade)
 					)
 					.col(ColumnDef::new(Addressing::Published).date_time().not_null().default(Expr::current_timestamp()))
@@ -116,13 +116,13 @@ impl MigrationTrait for Migration {
 					.table(Deliveries::Table)
 					.comment("this table contains all enqueued outgoing delivery jobs")
 					.col(
-						ColumnDef::new(Deliveries::Id)
-							.integer()
+						ColumnDef::new(Deliveries::Internal)
+							.big_integer()
 							.not_null()
 							.auto_increment()
 							.primary_key()
 					)
-					.col(ColumnDef::new(Deliveries::Actor).integer().not_null())
+					.col(ColumnDef::new(Deliveries::Actor).string().not_null())
 					.foreign_key(
 						ForeignKey::create()
 							.name("fkey-deliveries-actor")
@@ -132,7 +132,7 @@ impl MigrationTrait for Migration {
 							.on_delete(ForeignKeyAction::Cascade)
 					)
 					.col(ColumnDef::new(Deliveries::Target).string().not_null())
-					.col(ColumnDef::new(Deliveries::Activity).integer().not_null())
+					.col(ColumnDef::new(Deliveries::Activity).string().not_null())
 					.foreign_key(
 						ForeignKey::create()
 							.name("fkey-deliveries-activity")

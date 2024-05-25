@@ -4,8 +4,9 @@ use sea_orm::entity::prelude::*;
 #[sea_orm(table_name = "configs")]
 pub struct Model {
 	#[sea_orm(primary_key)]
-	pub id: i32,
-	pub actor: i32,
+	pub internal: i64,
+	#[sea_orm(unique)]
+	pub actor: String,
 	pub accept_follow_requests: bool,
 	pub show_followers_count: bool,
 	pub show_following_count: bool,
@@ -16,7 +17,7 @@ pub struct Model {
 impl Default for Model {
 	fn default() -> Self {
 		Model {
-			id: 0, actor: 0,
+			internal: 0, actor: "".into(),
 			accept_follow_requests: true,
 			show_following_count: true,
 			show_following: true,

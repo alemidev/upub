@@ -4,11 +4,13 @@ use sea_orm::entity::prelude::*;
 #[sea_orm(table_name = "instances")]
 pub struct Model {
 	#[sea_orm(primary_key)]
-	pub id: i32,
-	pub name: Option<String>,
+	pub internal: i64,
+	#[sea_orm(unique)]
 	pub domain: String,
+	pub name: Option<String>,
 	pub software: Option<String>,
 	pub version: Option<String>,
+	pub icon: Option<String>,
 	pub down_since: Option<ChronoDateTimeUtc>,
 	pub users: Option<i32>,
 	pub posts: Option<i32>,

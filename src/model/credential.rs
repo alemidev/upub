@@ -4,8 +4,9 @@ use sea_orm::entity::prelude::*;
 #[sea_orm(table_name = "credentials")]
 pub struct Model {
 	#[sea_orm(primary_key)]
-	pub id: i32,
-	pub actor: i32,
+	pub internal: i64,
+	#[sea_orm(unique)]
+	pub actor: String,
 	pub login: String,
 	pub password: String,
 }

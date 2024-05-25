@@ -4,8 +4,8 @@ use sea_orm::entity::prelude::*;
 #[sea_orm(table_name = "hashtags")]
 pub struct Model {
 	#[sea_orm(primary_key)]
-	pub id: i32,
-	pub object: i32,
+	pub internal: i64,
+	pub object: i64,
 	pub name: String,
 	pub published: ChronoDateTimeUtc,
 }
@@ -15,7 +15,7 @@ pub enum Relation {
 	#[sea_orm(
 		belongs_to = "super::object::Entity",
 		from = "Column::Object",
-		to = "super::object::Column::Id",
+		to = "super::object::Column::Internal",
 		on_update = "Cascade",
 		on_delete = "Cascade"
 	)]

@@ -7,12 +7,12 @@ use crate::routes::activitypub::jsonld::LD;
 #[sea_orm(table_name = "activities")]
 pub struct Model {
 	#[sea_orm(primary_key)]
-	pub id: i32,
+	pub internal: i64,
 	#[sea_orm(unique)]
-	pub ap_id: String,
+	pub id: String,
 	pub activity_type: ActivityType,
-	pub actor: i32,
-	pub object: Option<i32>,
+	pub actor: String,
+	pub object: Option<String>,
 	pub target: Option<String>,
 	pub to: Option<Json>,
 	pub bto: Option<Json>,

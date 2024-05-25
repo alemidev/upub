@@ -1,11 +1,11 @@
 use sea_orm_migration::prelude::*;
 
-use super::m20240524_000001_create_actor_activity_object_tables::{Actors, Objects};
+use super::m20240524_000001_create_actor_activity_object_tables::Objects;
 
 #[derive(DeriveIden)]
 pub enum Attachments {
 	Table,
-	Id,
+	Internal,
 	DocumentType,
 	Url,
 	Object,
@@ -17,7 +17,7 @@ pub enum Attachments {
 #[derive(DeriveIden)]
 pub enum Mentions {
 	Table,
-	Id,
+	Internal,
 	Object,
 	Actor,
 	Published,
@@ -26,7 +26,7 @@ pub enum Mentions {
 #[derive(DeriveIden)]
 pub enum Hashtags {
 	Table,
-	Id,
+	Internal,
 	Object,
 	Name,
 	Published,
@@ -44,19 +44,19 @@ impl MigrationTrait for Migration {
 					.table(Attachments::Table)
 					.comment("media attachments related to objects")
 					.col(
-						ColumnDef::new(Attachments::Id)
-							.integer()
+						ColumnDef::new(Attachments::Internal)
+							.big_integer()
 							.not_null()
 							.primary_key()
 							.auto_increment()
 					)
 					.col(ColumnDef::new(Attachments::Url).string().not_null().unique_key())
-					.col(ColumnDef::new(Attachments::Object).integer().not_null())
+					.col(ColumnDef::new(Attachments::Object).big_integer().not_null())
 					.foreign_key(
 						ForeignKey::create()
 							.name("fkey-attachments-object")
 							.from(Attachments::Table, Attachments::Object)
-							.to(Objects::Table, Objects::Id)
+							.to(Objects::Table, Objects::Internal)
 							.on_update(ForeignKeyAction::Cascade)
 							.on_delete(ForeignKeyAction::Cascade)
 					)
@@ -78,30 +78,30 @@ impl MigrationTrait for Migration {
 					.table(Mentions::Table)
 					.comment("join table relating posts to mentioned users")
 					.col(
-						ColumnDef::new(Mentions::Id)
-							.integer()
+						ColumnDef::new(Mentions::Internal)
+							.big_integer()
 							.not_null()
 							.primary_key()
 							.auto_increment()
 					)
-					.col(ColumnDef::new(Mentions::Object).integer().not_null())
+					.col(ColumnDef::new(Mentions::Object).big_integer().not_null())
 					.foreign_key(
 						ForeignKey::create()
 							.name("fkey-mentions-object")
 							.from(Mentions::Table, Mentions::Object)
-							.to(Objects::Table, Objects::Id)
+							.to(Objects::Table, Objects::Internal)
 							.on_update(ForeignKeyAction::Cascade)
 							.on_delete(ForeignKeyAction::Cascade)
 					)
-					.col(ColumnDef::new(Mentions::Actor).integer().not_null())
-					.foreign_key(
-						ForeignKey::create()
-							.name("fkey-mentions-actor")
-							.from(Mentions::Table, Mentions::Actor)
-							.to(Actors::Table, Actors::Id)
-							.on_update(ForeignKeyAction::Cascade)
-							.on_delete(ForeignKeyAction::Cascade)
-					)
+					.col(ColumnDef::new(Mentions::Actor).string().not_null())
+					// .foreign_key(
+					// 	ForeignKey::create()
+					// 		.name("fkey-mentions-actor")
+					// 		.from(Mentions::Table, Mentions::Actor)
+					// 		.to(Actors::Table, Actors::Internal)
+					// 		.on_update(ForeignKeyAction::Cascade)
+					// 		.on_delete(ForeignKeyAction::Cascade)
+					// )
 					.col(ColumnDef::new(Mentions::Published).date_time().not_null().default(Expr::current_timestamp()))
 					.to_owned()
 			)
@@ -128,18 +128,18 @@ impl MigrationTrait for Migration {
 					.table(Hashtags::Table)
 					.comment("join table relating posts to hashtags")
 					.col(
-						ColumnDef::new(Hashtags::Id)
-							.integer()
+						ColumnDef::new(Hashtags::Internal)
+							.big_integer()
 							.not_null()
 							.primary_key()
 							.auto_increment()
 					)
-					.col(ColumnDef::new(Hashtags::Object).integer().not_null())
+					.col(ColumnDef::new(Hashtags::Object).big_integer().not_null())
 					.foreign_key(
 						ForeignKey::create()
 							.name("fkey-hashtags-object")
 							.from(Hashtags::Table, Hashtags::Object)
-							.to(Objects::Table, Objects::Id)
+							.to(Objects::Table, Objects::Internal)
 							.on_update(ForeignKeyAction::Cascade)
 							.on_delete(ForeignKeyAction::Cascade)
 					)

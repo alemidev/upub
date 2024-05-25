@@ -9,10 +9,10 @@ use super::addressing::Event;
 #[sea_orm(table_name = "attachments")]
 pub struct Model {
 	#[sea_orm(primary_key)]
-	pub id: i32,
+	pub internal: i64,
 	#[sea_orm(unique)]
 	pub url: String,
-	pub object: i32,
+	pub object: i64,
 	pub document_type: String,
 	pub name: Option<String>,
 	pub media_type: String,
@@ -24,7 +24,7 @@ pub enum Relation {
 	#[sea_orm(
 		belongs_to = "super::object::Entity",
 		from = "Column::Object",
-		to = "super::object::Column::Id",
+		to = "super::object::Column::Internal",
 		on_update = "Cascade",
 		on_delete = "Cascade"
 	)]

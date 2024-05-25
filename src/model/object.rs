@@ -9,11 +9,11 @@ use super::Audience;
 #[sea_orm(table_name = "objects")]
 pub struct Model {
 	#[sea_orm(primary_key)]
-	pub id: i32,
+	pub internal: i64,
 	#[sea_orm(unique)]
-	pub ap_id: String,
+	pub id: String,
 	pub object_type: String,
-	pub attributed_to: Option<i32>,
+	pub attributed_to: Option<String>,
 	pub name: Option<String>,
 	pub summary: Option<String>,
 	pub content: Option<String>,
@@ -56,6 +56,14 @@ pub enum Relation {
 	Likes,
 	#[sea_orm(has_many = "super::mention::Entity")]
 	Mentions,
+	#[sea_orm(
+		belongs_to = "Entity",
+		from = "Column::InReplyTo",
+		to = "Column::Id",
+		on_update = "Cascade",
+		on_delete = "NoAction"
+	)]
+	Objects,
 }
 
 impl Related<super::activity::Entity> for Entity {
@@ -103,6 +111,12 @@ impl Related<super::like::Entity> for Entity {
 impl Related<super::mention::Entity> for Entity {
 	fn to() -> RelationDef {
 		Relation::Mentions.def()
+	}
+}
+
+impl Related<Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Objects.def()
 	}
 }
 

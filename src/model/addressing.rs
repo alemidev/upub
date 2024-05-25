@@ -7,11 +7,11 @@ use crate::routes::activitypub::jsonld::LD;
 #[sea_orm(table_name = "addressing")]
 pub struct Model {
 	#[sea_orm(primary_key)]
-	pub id: i32,
-	pub actor: i32,
-	pub instance: i32,
-	pub activity: Option<i32>,
-	pub object: Option<i32>,
+	pub internal: i64,
+	pub actor: Option<i64>,
+	pub instance: Option<i64>,
+	pub activity: Option<i64>,
+	pub object: Option<i64>,
 	pub published: ChronoDateTimeUtc,
 }
 
@@ -20,7 +20,7 @@ pub enum Relation {
 	#[sea_orm(
 		belongs_to = "super::activity::Entity",
 		from = "Column::Activity",
-		to = "super::activity::Column::Id",
+		to = "super::activity::Column::Internal",
 		on_update = "Cascade",
 		on_delete = "NoAction"
 	)]
@@ -28,7 +28,7 @@ pub enum Relation {
 	#[sea_orm(
 		belongs_to = "super::actor::Entity",
 		from = "Column::Actor",
-		to = "super::actor::Column::Id",
+		to = "super::actor::Column::Internal",
 		on_update = "Cascade",
 		on_delete = "NoAction"
 	)]
@@ -36,7 +36,7 @@ pub enum Relation {
 	#[sea_orm(
 		belongs_to = "super::instance::Entity",
 		from = "Column::Instance",
-		to = "super::instance::Column::Id",
+		to = "super::instance::Column::Internal",
 		on_update = "Cascade",
 		on_delete = "NoAction"
 	)]
@@ -44,7 +44,7 @@ pub enum Relation {
 	#[sea_orm(
 		belongs_to = "super::object::Entity",
 		from = "Column::Object",
-		to = "super::object::Column::Id",
+		to = "super::object::Column::Internal",
 		on_update = "Cascade",
 		on_delete = "NoAction"
 	)]

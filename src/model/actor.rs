@@ -8,11 +8,11 @@ use crate::routes::activitypub::jsonld::LD;
 #[sea_orm(table_name = "actors")]
 pub struct Model {
 	#[sea_orm(primary_key)]
-	pub id: i32,
+	pub internal: i64,
 	#[sea_orm(unique)]
-	pub ap_id: String,
+	pub id: String,
 	pub actor_type: ActorType,
-	pub instance: i32,
+	pub domain: String,
 	pub name: Option<String>,
 	pub summary: Option<String>,
 	pub image: Option<String>,
@@ -49,8 +49,8 @@ pub enum Relation {
 	Deliveries,
 	#[sea_orm(
 		belongs_to = "super::instance::Entity",
-		from = "Column::Instance",
-		to = "super::instance::Column::Id",
+		from = "Column::Domain",
+		to = "super::instance::Column::Domain",
 		on_update = "Cascade",
 		on_delete = "NoAction"
 	)]
