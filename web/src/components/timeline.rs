@@ -151,7 +151,7 @@ pub fn TimelineFeed(tl: Timeline) -> impl IntoView {
 		move || (scroll_debounced.get(), height.get()),
 		move |(s, h)| async move {
 			if !config.get().infinite_scroll { return }
-			if s > 0.0 && h - s < view_height && !tl.loading.get() {
+			if !tl.loading.get() && h - s < view_height {
 				if let Err(e) = tl.more(auth).await {
 					tracing::error!("auto load failed: {e}");
 				}

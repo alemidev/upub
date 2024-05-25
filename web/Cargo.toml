@@ -28,11 +28,11 @@ leptos_router = { version = "0.6", features = ["csr"] }
 leptos-use = { version = "0.10", features = ["serde"] }
 reqwest = { version = "0.12", features = ["json"] }
 apb = { path = "../apb", features = ["unstructured", "activitypub-fe", "activitypub-counters", "litepub"] }
-uriproxy = { path = "../uriproxy/" }
+uriproxy = { path = "../utils/uriproxy/" }
 futures = "0.3.30"
 lazy_static = "1.4"
 chrono = { version = "0.4", features = ["serde"] }
 web-sys = { version = "0.3", features = ["Screen"] }
-mdhtml = { path = "../mdhtml/" }
+mdhtml = { path = "../utils/mdhtml/" }
 jrd = "0.1"
 tld = "2.35"
