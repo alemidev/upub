@@ -61,6 +61,8 @@ pub enum Relation {
 	Mentions,
 	#[sea_orm(has_many = "super::object::Entity")]
 	Objects,
+	#[sea_orm(has_many = "super::relation::Entity")]
+	Relations,
 	#[sea_orm(has_many = "super::session::Entity")]
 	Sessions,
 }
@@ -122,6 +124,12 @@ impl Related<super::mention::Entity> for Entity {
 impl Related<super::object::Entity> for Entity {
 	fn to() -> RelationDef {
 		Relation::Objects.def()
+	}
+}
+
+impl Related<super::relation::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Relations.def()
 	}
 }
 
