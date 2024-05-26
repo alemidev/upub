@@ -1,4 +1,4 @@
-use apb::{target::Addressed, Activity, ActivityMut, ActorMut, BaseMut, Node, Object, ObjectMut, PublicKeyMut};
+use apb::{target::Addressed, Activity, ActivityMut, ActorMut, Base, BaseMut, Node, Object, ObjectMut, PublicKeyMut};
 use reqwest::StatusCode;
 use sea_orm::{sea_query::Expr, ActiveModelTrait, ActiveValue::{Set, NotSet}, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect, SelectColumns};
 
@@ -44,27 +44,26 @@ impl apb::server::Outbox for Context {
 			object
 				.set_id(Some(&oid))
 				.set_attributed_to(Node::link(uid.clone()))
-				.set_published(Some(chrono::Utc::now()))
 				.set_content(content.as_deref())
 				.set_url(Node::maybe_link(self.cfg().instance.frontend.as_ref().map(|x| format!("{x}/objects/{raw_oid}")))),
 			Some(self.domain().to_string()),
 		).await?;
 
-		let activity_model = model::activity::Model {
-			id: aid.clone(),
-			activity_type: apb::ActivityType::Create,
-			actor: uid.clone(),
-			object: Some(oid.clone()),
-			target: None,
-			cc: object_model.cc.clone(),
-			bcc: object_model.bcc.clone(),
-			to: object_model.to.clone(),
-			bto: object_model.bto.clone(),
-			published: object_model.published,
+		let activity_model = model::activity::ActiveModel {
+			internal: NotSet,
+			id: Set(aid.clone()),
+			activity_type: Set(apb::ActivityType::Create),
+			actor: Set(uid.clone()),
+			object: Set(Some(oid.clone())),
+			target: Set(None),
+			cc: Set(object_model.cc.clone()),
+			bcc: Set(object_model.bcc.clone()),
+			to: Set(object_model.to.clone()),
+			bto: Set(object_model.bto.clone()),
+			published: Set(object_model.published),
 		};
 
-		model::activity::Entity::insert(activity_model.into_active_model())
-			.exec(self.db()).await?;
+		model::activity::Entity::insert(activity_model).exec(self.db()).await?;
 
 		self.dispatch(&uid, activity_targets, &aid, Some(&oid)).await?;
 
@@ -85,19 +84,18 @@ impl apb::server::Outbox for Context {
 			object
 				.set_id(Some(&oid))
 				.set_attributed_to(Node::link(uid.clone()))
-				.set_published(Some(chrono::Utc::now()))
 				.set_to(activity.to())
 				.set_bto(activity.bto())
 				.set_cc(activity.cc())
-				.set_bcc(activity.bcc()),
+				.set_bcc(activity.bcc())
+				.set_url(Node::maybe_link(self.cfg().instance.frontend.as_ref().map(|x| format!("{x}/objects/{raw_oid}")))),
 			Some(self.domain().to_string()),
 		).await?;
 
-		let activity_model = model::activity::Model::new(
+		let activity_model = model::activity::ActiveModel::new(
 			&activity
 				.set_id(Some(&aid))
 				.set_actor(Node::link(uid.clone()))
-				.set_published(Some(chrono::Utc::now()))
 				.set_object(Node::link(oid.clone()))
 		)?;
 
@@ -112,26 +110,28 @@ impl apb::server::Outbox for Context {
 		let aid = self.aid(&uuid::Uuid::new_v4().to_string());
 		let activity_targets = activity.addressed();
 		let oid = activity.object().id().ok_or_else(UpubError::bad_request)?;
-		self.fetch_object(&oid).await?;
-		let activity_model = model::activity::Model::new(
+		let obj_model = self.fetch_object(&oid).await?;
+		let activity_model = model::activity::ActiveModel::new(
 			&activity
 				.set_id(Some(&aid))
-				.set_published(Some(chrono::Utc::now()))
 				.set_actor(Node::link(uid.clone()))
 		)?;
 
+		let internal_uid = model::actor::Entity::ap_to_internal(&uid, self.db()).await?;
+
 		let like_model = model::like::ActiveModel {
-			actor: Set(uid.clone()),
-			likes: Set(oid.clone()),
-			date: Set(chrono::Utc::now()),
-			..Default::default()
+			internal: NotSet,
+			actor: Set(internal_uid),
+			object: Set(obj_model.internal),
+			published: Set(chrono::Utc::now()),
 		};
+
 		model::like::Entity::insert(like_model).exec(self.db()).await?;
-		model::activity::Entity::insert(activity_model.into_active_model())
+		model::activity::Entity::insert(activity_model)
 			.exec(self.db()).await?;
 		model::object::Entity::update_many()
 			.col_expr(model::object::Column::Likes, Expr::col(model::object::Column::Likes).add(1))
-			.filter(model::object::Column::Id.eq(oid))
+			.filter(model::object::Column::Internal.eq(obj_model.internal))
 			.exec(self.db())
 			.await?;
 
@@ -143,17 +143,31 @@ impl apb::server::Outbox for Context {
 	async fn follow(&self, uid: String, activity: serde_json::Value) -> crate::Result<String> {
 		let aid = self.aid(&uuid::Uuid::new_v4().to_string());
 		let activity_targets = activity.addressed();
-		if activity.object().id().is_none() {
-			return Err(UpubError::bad_request());
-		}
+		let target = activity.object().id().ok_or_else(UpubError::bad_request)?;
 
-		let activity_model = model::activity::Model::new(
+		let activity_model = model::activity::ActiveModel::new(
 			&activity
 				.set_id(Some(&aid))
 				.set_actor(Node::link(uid.clone()))
-				.set_published(Some(chrono::Utc::now()))
 		)?;
-		model::activity::Entity::insert(activity_model.into_active_model())
+
+		let follower_internal = model::actor::Entity::ap_to_internal(&uid, self.db()).await?;
+		let following_internal = model::actor::Entity::ap_to_internal(&target, self.db()).await?;
+
+		model::activity::Entity::insert(activity_model)
+			.exec(self.db()).await?;
+
+		let internal_aid = model::activity::Entity::ap_to_internal(&aid, self.db()).await?;
+
+		let relation_model = model::relation::ActiveModel {
+			internal: NotSet,
+			follower: Set(follower_internal),
+			following: Set(following_internal),
+			activity: Set(internal_aid),
+			accept: Set(None),
+		};
+
+		model::relation::Entity::insert(relation_model)
 			.exec(self.db()).await?;
 
 		self.dispatch(&uid, activity_targets, &aid, None).await?;
@@ -164,17 +178,27 @@ impl apb::server::Outbox for Context {
 	async fn accept(&self, uid: String, activity: serde_json::Value) -> crate::Result<String> {
 		let aid = self.aid(&uuid::Uuid::new_v4().to_string());
 		let activity_targets = activity.addressed();
-		if activity.object().id().is_none() {
+		let accepted_id = activity.object().id().ok_or_else(UpubError::bad_request)?;
+		let accepted_activity = model::activity::Entity::find_by_ap_id(&accepted_id)
+			.one(self.db()).await?
+			.ok_or_else(UpubError::not_found)?;
+
+		if accepted_activity.activity_type != apb::ActivityType::Follow {
 			return Err(UpubError::bad_request());
 		}
-		let Some(accepted_id) = activity.object().id() else {
-			return Err(UpubError::bad_request());
-		};
-		let Some(accepted_activity) = model::activity::Entity::find_by_id(accepted_id)
-			.one(self.db()).await?
-		else {
-			return Err(UpubError::not_found());
-		};
+		if uid != accepted_activity.object.ok_or_else(UpubError::bad_request)? {
+			return Err(UpubError::forbidden());
+		}
+
+		let activity_model = model::activity::ActiveModel::new(
+			&activity
+				.set_id(Some(&aid))
+				.set_actor(Node::link(uid.clone()))
+		)?;
+		model::activity::Entity::insert(activity_model.into_active_model())
+			.exec(self.db()).await?;
+
+		let internal_aid = model::activity::Entity::ap_to_internal(&aid, self.db()).await?;
 
 		match accepted_activity.activity_type {
 			apb::ActivityType::Follow => {
@@ -186,71 +210,96 @@ impl apb::server::Outbox for Context {
 					.filter(model::actor::Column::Id.eq(&uid))
 					.exec(self.db())
 					.await?;
-				model::relation::Entity::insert(
-					model::relation::ActiveModel {
-						follower: Set(accepted_activity.actor), following: Set(uid.clone()),
-						..Default::default()
-					}
-				).exec(self.db()).await?;
+				model::relation::Entity::update_many()
+					.filter(model::relation::Column::Activity.eq(accepted_activity.internal))
+					.col_expr(model::relation::Column::Accept, Expr::value(Some(internal_aid)))
+					.exec(self.db()).await?;
 			},
-			t => tracing::warn!("no side effects implemented for accepting {t:?}"),
+			t => tracing::error!("no side effects implemented for accepting {t:?}"),
 		}
-
-		let activity_model = model::activity::Model::new(
-			&activity
-				.set_id(Some(&aid))
-				.set_actor(Node::link(uid.clone()))
-				.set_published(Some(chrono::Utc::now()))
-		)?;
-		model::activity::Entity::insert(activity_model.into_active_model())
-			.exec(self.db()).await?;
 
 		self.dispatch(&uid, activity_targets, &aid, None).await?;
 
 		Ok(aid)
 	}
 
-	async fn reject(&self, _uid: String, _activity: serde_json::Value) -> crate::Result<String> {
-		todo!()
+	async fn reject(&self, uid: String, activity: serde_json::Value) -> crate::Result<String> {
+		let aid = self.aid(&uuid::Uuid::new_v4().to_string());
+		let activity_targets = activity.addressed();
+		let rejected_id = activity.object().id().ok_or_else(UpubError::bad_request)?;
+		let rejected_activity = model::activity::Entity::find_by_ap_id(&rejected_id)
+			.one(self.db()).await?
+			.ok_or_else(UpubError::not_found)?;
+
+		if rejected_activity.activity_type != apb::ActivityType::Follow {
+			return Err(UpubError::bad_request());
+		}
+		if uid != rejected_activity.object.ok_or_else(UpubError::bad_request)? {
+			return Err(UpubError::forbidden());
+		}
+
+		let activity_model = model::activity::ActiveModel::new(
+			&activity
+				.set_id(Some(&aid))
+				.set_actor(Node::link(uid.clone()))
+		)?;
+		model::activity::Entity::insert(activity_model)
+			.exec(self.db()).await?;
+
+		let internal_aid = model::activity::Entity::ap_to_internal(&aid, self.db()).await?;
+
+		model::relation::Entity::delete_many()
+			.filter(model::relation::Column::Activity.eq(internal_aid))
+			.exec(self.db())
+			.await?;
+
+		self.dispatch(&uid, activity_targets, &aid, None).await?;
+
+		Ok(aid)
 	}
 
 	async fn undo(&self, uid: String, activity: serde_json::Value) -> crate::Result<String> {
 		let aid = self.aid(&uuid::Uuid::new_v4().to_string());
 		let activity_targets = activity.addressed();
 		let old_aid = activity.object().id().ok_or_else(UpubError::bad_request)?;
-		let old_activity = model::activity::Entity::find_by_id(old_aid)
+		let old_activity = model::activity::Entity::find_by_ap_id(&old_aid)
 			.one(self.db())
 			.await?
 			.ok_or_else(UpubError::not_found)?;
 		if old_activity.actor != uid {
 			return Err(UpubError::forbidden());
 		}
-		match old_activity.activity_type {
-			apb::ActivityType::Like => {
-				model::like::Entity::delete_many()
-					.filter(model::like::Column::Actor.eq(old_activity.actor))
-					.filter(model::like::Column::Likes.eq(old_activity.object.unwrap_or("".into())))
-					.exec(self.db())
-					.await?;
-			},
-			apb::ActivityType::Follow => {
-				model::relation::Entity::delete_many()
-					.filter(model::relation::Column::Follower.eq(old_activity.actor))
-					.filter(model::relation::Column::Following.eq(old_activity.object.unwrap_or("".into())))
-					.exec(self.db())
-					.await?;
-			},
-			t => tracing::warn!("extra side effects for activity {t:?} not implemented"),
-		}
-		let activity_model = model::activity::Model::new(
+		let activity_object = old_activity.object.ok_or_else(UpubError::bad_request)?;
+		let actor_internal = model::actor::Entity::ap_to_internal(&old_activity.actor, self.db()).await?;
+
+		let activity_model = model::activity::ActiveModel::new(
 			&activity
 				.set_id(Some(&aid))
 				.set_actor(Node::link(uid.clone()))
-				.set_published(Some(chrono::Utc::now()))
 		)?;
 		model::activity::Entity::insert(activity_model.into_active_model())
 			.exec(self.db())
 			.await?;
+
+		match old_activity.activity_type {
+			apb::ActivityType::Like => {
+				let object_internal = model::object::Entity::ap_to_internal(&activity_object, self.db()).await?;
+				model::like::Entity::delete_many()
+					.filter(model::like::Column::Actor.eq(actor_internal))
+					.filter(model::like::Column::Object.eq(object_internal))
+					.exec(self.db())
+					.await?;
+			},
+			apb::ActivityType::Follow => {
+				let target_internal = model::actor::Entity::ap_to_internal(&activity_object, self.db()).await?;
+				model::relation::Entity::delete_many()
+					.filter(model::relation::Column::Follower.eq(actor_internal))
+					.filter(model::relation::Column::Following.eq(target_internal))
+					.exec(self.db())
+					.await?;
+			},
+			t => tracing::error!("extra side effects for activity {t:?} not implemented"),
+		}
 
 		self.dispatch(&uid, activity_targets, &aid, None).await?;
 
@@ -261,34 +310,28 @@ impl apb::server::Outbox for Context {
 		let aid = self.aid(&uuid::Uuid::new_v4().to_string());
 		let oid = activity.object().id().ok_or_else(UpubError::bad_request)?;
 
-		let object = model::object::Entity::find_by_id(&oid)
+		let object = model::object::Entity::find_by_ap_id(&oid)
 			.one(self.db())
 			.await?
 			.ok_or_else(UpubError::not_found)?;
 
-		let Some(author_id) = object.attributed_to else {
-			// can't change local objects attributed to nobody
-			return Err(UpubError::forbidden())
-		};
-
-		if author_id != uid {
-			// can't change objects of others
+		if uid != object.attributed_to.ok_or_else(UpubError::forbidden)? {
+			// can't change objects of others, and objects from noone count as others
 			return Err(UpubError::forbidden());
 		}
 
 		let addressed = activity.addressed();
-		let activity_model = model::activity::Model::new(
+		let activity_model = model::activity::ActiveModel::new(
 			&activity
 				.set_id(Some(&aid))
 				.set_actor(Node::link(uid.clone()))
-				.set_published(Some(chrono::Utc::now()))
 		)?;
 
-		model::object::Entity::delete_by_id(&oid)
+		model::activity::Entity::insert(activity_model)
 			.exec(self.db())
 			.await?;
 
-		model::activity::Entity::insert(activity_model.into_active_model())
+		model::object::Entity::delete_by_ap_id(&oid)
 			.exec(self.db())
 			.await?;
 
@@ -300,18 +343,12 @@ impl apb::server::Outbox for Context {
 	async fn update(&self, uid: String, activity: serde_json::Value) -> crate::Result<String> {
 		let aid = self.aid(&uuid::Uuid::new_v4().to_string());
 		let object_node = activity.object().extract().ok_or_else(UpubError::bad_request)?;
+		
+		let target = object_node.id().ok_or_else(UpubError::bad_request)?.to_string();
 
 		match object_node.object_type() {
 			Some(apb::ObjectType::Actor(_)) => {
-				let mut actor_model = model::actor::Model::new(
-					&object_node
-						// TODO must set these, but we will ignore them
-						.set_actor_type(Some(apb::ActorType::Person))
-						.set_public_key(apb::Node::object(
-							serde_json::Value::new_object().set_public_key_pem("")
-						))
-				)?;
-				let old_actor_model = model::actor::Entity::find_by_id(&actor_model.id)
+				let old_actor_model = model::actor::Entity::find_by_ap_id(&target)
 					.one(self.db())
 					.await?
 					.ok_or_else(UpubError::not_found)?;
@@ -320,6 +357,9 @@ impl apb::server::Outbox for Context {
 					// can't change user fields of others
 					return Err(UpubError::forbidden());
 				}
+
+				let mut new_actor_model = model::actor::ActiveModel::default();
+				new_actor_model.internal = Set(old_actor_model.internal);
 
 				if actor_model.name.is_none() { actor_model.name = old_actor_model.name }
 				if actor_model.summary.is_none() { actor_model.summary = old_actor_model.summary }
