@@ -62,18 +62,19 @@ don't hesitate to get in touch, i'd be thrilled to showcase the project to you!
  - [x] like, share, reply via frontend
  - [x] backend config
  - [x] frontend config
+ - [x] optimize `addressing` database schema
  - [ ] mentions, notifications
+ - [ ] hashtags
+ - [ ] public vs unlisted for discovery
  - [ ] mastodon-like search bar
  - [ ] polls
  - [ ] better editing via web frontend
  - [ ] remote media proxy
  - [ ] upload media
- - [ ] hashtags
- - [ ] public vs unlisted for discovery
  - [ ] user fields
  - [ ] lists
  - [ ] full mastodon api
- - [ ] optimize `addressing` database schema
+ - [ ] get rid of internal ids from code
 
 ## what about the name?
 μpub (or simply `upub`) means "[micro](https://en.wikipedia.org/wiki/International_System_of_Units#Prefixes)-pub", but could also be read "upub", "you-pub" or "mu-pub"
