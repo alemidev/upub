@@ -97,6 +97,10 @@ impl MigrationTrait for Migration {
 			.await?;
 
 		manager
+			.create_index(Index::create().name("index-relations-activity").table(Relations::Table).col(Relations::Activity).to_owned())
+			.await?;
+
+		manager
 			.create_table(
 				Table::create()
 					.table(Likes::Table)
@@ -207,6 +211,10 @@ impl MigrationTrait for Migration {
 
 		manager
 			.drop_index(Index::drop().name("index-relations-following").table(Relations::Table).to_owned())
+			.await?;
+
+		manager
+			.drop_index(Index::drop().name("index-relations-activity").table(Relations::Table).to_owned())
 			.await?;
 
 		manager
