@@ -1,8 +1,8 @@
-use apb::{target::Addressed, Activity, ActivityMut, ActorMut, Base, BaseMut, Node, Object, ObjectMut, PublicKeyMut};
+use apb::{target::Addressed, Activity, ActivityMut, Base, BaseMut, Node, Object, ObjectMut};
 use reqwest::StatusCode;
-use sea_orm::{sea_query::Expr, ActiveModelTrait, ActiveValue::{Set, NotSet}, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect, SelectColumns};
+use sea_orm::{sea_query::Expr, ActiveValue::{Set, NotSet, Unchanged}, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect, SelectColumns};
 
-use crate::{errors::UpubError, model, routes::activitypub::jsonld::LD};
+use crate::{errors::UpubError, model};
 
 use super::{fetcher::Fetcher, normalizer::Normalizer, Context};
 
@@ -343,8 +343,17 @@ impl apb::server::Outbox for Context {
 	async fn update(&self, uid: String, activity: serde_json::Value) -> crate::Result<String> {
 		let aid = self.aid(&uuid::Uuid::new_v4().to_string());
 		let object_node = activity.object().extract().ok_or_else(UpubError::bad_request)?;
-		
+		let addressed = activity.addressed();
 		let target = object_node.id().ok_or_else(UpubError::bad_request)?.to_string();
+
+		let activity_model = model::activity::ActiveModel::new(
+			&activity
+				.set_id(Some(&aid))
+				.set_actor(Node::link(uid.clone()))
+		)?;
+
+		model::activity::Entity::insert(activity_model)
+			.exec(self.db()).await?;
 
 		match object_node.object_type() {
 			Some(apb::ObjectType::Actor(_)) => {
@@ -359,67 +368,55 @@ impl apb::server::Outbox for Context {
 				}
 
 				let mut new_actor_model = model::actor::ActiveModel::default();
-				new_actor_model.internal = Set(old_actor_model.internal);
+				new_actor_model.internal = Unchanged(old_actor_model.internal);
 
-				if actor_model.name.is_none() { actor_model.name = old_actor_model.name }
-				if actor_model.summary.is_none() { actor_model.summary = old_actor_model.summary }
-				if actor_model.image.is_none() { actor_model.image = old_actor_model.image }
-				if actor_model.icon.is_none() { actor_model.icon = old_actor_model.icon }
+				if let Some(name) = object_node.name() {
+					new_actor_model.name = Set(Some(name.to_string()));
+				}
+				if let Some(summary) = object_node.summary() {
+					new_actor_model.summary = Set(Some(summary.to_string()));
+				}
+				if let Some(image) = object_node.image().id() {
+					new_actor_model.image = Set(Some(image));
+				}
+				if let Some(icon) = object_node.icon().id() {
+					new_actor_model.icon = Set(Some(icon));
+				}
+				new_actor_model.updated = Set(chrono::Utc::now());
 
-				let mut update_model = actor_model.into_active_model();
-				update_model.updated = sea_orm::Set(chrono::Utc::now());
-				update_model.reset(model::actor::Column::Name);
-				update_model.reset(model::actor::Column::Summary);
-				update_model.reset(model::actor::Column::Image);
-				update_model.reset(model::actor::Column::Icon);
-
-				model::actor::Entity::update(update_model)
+				model::actor::Entity::update(new_actor_model)
 					.exec(self.db()).await?;
 			},
 			Some(apb::ObjectType::Note) => {
-				let mut object_model = model::object::Model::new(
-					&object_node.set_published(Some(chrono::Utc::now()))
-				)?;
-
-				let old_object_model = model::object::Entity::find_by_id(&object_model.id)
+				let old_object_model = model::object::Entity::find_by_ap_id(&target)
 					.one(self.db())
 					.await?
 					.ok_or_else(UpubError::not_found)?;
 
-				// can't change local objects attributed to nobody
-				let author_id = old_object_model.attributed_to.ok_or_else(UpubError::forbidden)?;
-				if author_id != uid {
+				if uid != old_object_model.attributed_to.ok_or_else(UpubError::forbidden)? {
 					// can't change objects of others
 					return Err(UpubError::forbidden());
 				}
 
-				if object_model.name.is_none() { object_model.name = old_object_model.name }
-				if object_model.summary.is_none() { object_model.summary = old_object_model.summary }
-				if object_model.content.is_none() { object_model.content = old_object_model.content }
+				let mut new_object_model = model::object::ActiveModel::default();
+				new_object_model.internal = Unchanged(old_object_model.internal);
 
-				let mut update_model = object_model.into_active_model();
-				update_model.updated = sea_orm::Set(Some(chrono::Utc::now()));
-				update_model.reset(model::object::Column::Name);
-				update_model.reset(model::object::Column::Summary);
-				update_model.reset(model::object::Column::Content);
-				update_model.reset(model::object::Column::Sensitive);
+				if let Some(name) = object_node.name() {
+					new_object_model.name = Set(Some(name.to_string()));
+				}
+				if let Some(summary) = object_node.summary() {
+					new_object_model.summary = Set(Some(summary.to_string()));
+				}
+				if let Some(content) = object_node.content() {
+					new_object_model.content = Set(Some(content.to_string()));
+				}
+				new_object_model.updated = Set(chrono::Utc::now());
 
-				model::object::Entity::update(update_model)
+				model::object::Entity::update(new_object_model)
 					.exec(self.db()).await?;
 			},
 			_ => return Err(UpubError::Status(StatusCode::NOT_IMPLEMENTED)),
 		}
-
-		let addressed = activity.addressed();
-		let activity_model = model::activity::Model::new(
-			&activity
-				.set_id(Some(&aid))
-				.set_actor(Node::link(uid.clone()))
-				.set_published(Some(chrono::Utc::now()))
-		)?;
-
-		model::activity::Entity::insert(activity_model.into_active_model())
-			.exec(self.db()).await?;
 
 		self.dispatch(&uid, addressed, &aid, None).await?;
 
@@ -430,26 +427,27 @@ impl apb::server::Outbox for Context {
 		let aid = self.aid(&uuid::Uuid::new_v4().to_string());
 		let activity_targets = activity.addressed();
 		let oid = activity.object().id().ok_or_else(UpubError::bad_request)?;
-		self.fetch_object(&oid).await?;
-		let activity_model = model::activity::Model::new(
+		let obj = self.fetch_object(&oid).await?;
+		let internal_uid = model::actor::Entity::ap_to_internal(&uid, self.db()).await?;
+
+		let activity_model = model::activity::ActiveModel::new(
 			&activity
 				.set_id(Some(&aid))
-				.set_published(Some(chrono::Utc::now()))
 				.set_actor(Node::link(uid.clone()))
 		)?;
 
 		let share_model = model::announce::ActiveModel {
 			internal: NotSet,
-			actor: Set(uid.clone()),
-			object: Set(oid.clone()),
+			actor: Set(internal_uid),
+			object: Set(obj.internal),
 			published: Set(chrono::Utc::now()),
 		};
-		model::announce::Entity::insert(share_model).exec(self.db()).await?;
-		model::activity::Entity::insert(activity_model.into_active_model())
+		model::activity::Entity::insert(activity_model)
 			.exec(self.db()).await?;
+		model::announce::Entity::insert(share_model).exec(self.db()).await?;
 		model::object::Entity::update_many()
 			.col_expr(model::object::Column::Announces, Expr::col(model::object::Column::Announces).add(1))
-			.filter(model::object::Column::Id.eq(oid))
+			.filter(model::object::Column::Internal.eq(obj.internal))
 			.exec(self.db())
 			.await?;
 
