@@ -13,7 +13,7 @@ all interactions happen with ActivityPub's client-server methods (basically POST
 
 development is still active, so expect more stuff to come! since most fediverse software uses Mastodon's API, μpub plans to implement it as an optional feature, becoming eventually compatible with most existing frontends and mobile applications, but focus right now is on producing something specific to μpub needs
 
-a test instance is _usually_ available at [feditest.alemi.dev](https://feditest.alemi.dev)
+a test instance is _usually_ available at [upub.alemi.dev](https://upub.alemi.dev)
 
 ## about the database schema
 im going to be very real i tried to do migrations but its getting super messy so until further notice assume db to be volatile. next change may be a migration (easy!) or a whole db rebuild (aaaaaaaaaa...), so if you're not comfortable with either manually exporting/importing or dropping and starting from scratch, **you really shouldn't put upub in prod yet**!
