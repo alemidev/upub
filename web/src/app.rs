@@ -1,19 +1,37 @@
 use leptos::*;
 use leptos_router::*;
+use reqwest::Method;
 use crate::prelude::*;
 
-use leptos_use::{storage::use_local_storage, use_cookie, use_cookie_with_options, utils::{FromToStringCodec, JsonCodec}, UseCookieOptions};
+use leptos_use::{storage::use_local_storage, use_cookie, utils::{FromToStringCodec, JsonCodec}};
 
 
 #[component]
 pub fn App() -> impl IntoView {
-	let (token, set_token) = use_cookie_with_options::<String, FromToStringCodec>(
-		"token",
-		UseCookieOptions::default()
-			.max_age(1000 * 60 * 60 * 6)
-	);
-	let (config, set_config, _) = use_local_storage::<crate::Config, JsonCodec>("config");
+	let (token, set_token) = use_cookie::<String, FromToStringCodec>("token");
 	let (userid, set_userid) = use_cookie::<String, FromToStringCodec>("user_id");
+	let (config, set_config, _) = use_local_storage::<crate::Config, JsonCodec>("config");
+
+	spawn_local(async move {
+		match reqwest::Client::new()
+			.request(Method::PATCH, format!("{URL_BASE}/auth"))
+			.json(&serde_json::json!({"token": token.get().unwrap_or_default()}))
+			.send()
+			.await
+		{
+			Err(e) => tracing::error!("could not refresh token: {e}"),
+			Ok(res) => match res.error_for_status() {
+				Err(e) => tracing::error!("server rejected refresh: {e}"),
+				Ok(doc) => match doc.json::<AuthResponse>().await {
+					Err(e) => tracing::error!("failed parsing auth response: {e}"),
+					Ok(auth) => {
+						set_token.set(Some(auth.token));
+						set_userid.set(Some(auth.user));
+					},
+				}
+			}
+		}
+	});
 
 	let auth = Auth { token, userid };
 	provide_context(auth);

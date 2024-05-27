@@ -91,8 +91,8 @@ struct LoginForm {
 
 
 #[derive(Debug, Clone, serde::Deserialize)]
-struct AuthResponse {
-	token: String,
-	user: String,
-	expires: chrono::DateTime<chrono::Utc>,
+pub struct AuthResponse {
+	pub token: String,
+	pub user: String,
+	pub expires: chrono::DateTime<chrono::Utc>,
 }
