@@ -181,16 +181,37 @@ impl Context {
 	}
 
 	pub async fn is_local_internal_object(&self, internal: i64) -> crate::Result<bool> {
-		Ok(model::object::Entity::find_by_id(internal).select_only().one(self.db()).await?.is_some())
+		Ok(
+			model::object::Entity::find_by_id(internal)
+				.select_only()
+				.select_column(model::object::Column::Internal)
+				.one(self.db())
+				.await?
+				.is_some()
+		)
 	}
 
 	pub async fn is_local_internal_activity(&self, internal: i64) -> crate::Result<bool> {
-		Ok(model::activity::Entity::find_by_id(internal).select_only().one(self.db()).await?.is_some())
+		Ok(
+			model::activity::Entity::find_by_id(internal)
+				.select_only()
+				.select_column(model::activity::Column::Internal)
+				.one(self.db())
+				.await?
+				.is_some()
+		)
 	}
 
 	#[allow(unused)]
 	pub async fn is_local_internal_actor(&self, internal: i64) -> crate::Result<bool> {
-		Ok(model::actor::Entity::find_by_id(internal).select_only().one(self.db()).await?.is_some())
+		Ok(
+			model::actor::Entity::find_by_id(internal)
+				.select_only()
+				.select_column(model::actor::Column::Internal)
+				.one(self.db())
+				.await?
+				.is_some()
+		)
 	}
 
 	pub async fn expand_addressing(&self, targets: Vec<String>) -> crate::Result<Vec<String>> {
