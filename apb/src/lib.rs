@@ -120,7 +120,7 @@ pub use types::{
 		},
 		document::{Document, DocumentMut, DocumentType},
 		place::{Place, PlaceMut},
-		// profile::Profile,
+		profile::Profile,
 		relationship::{Relationship, RelationshipMut},
 		tombstone::{Tombstone, TombstoneMut},
 	},
