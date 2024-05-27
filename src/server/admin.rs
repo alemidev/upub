@@ -74,7 +74,7 @@ impl Administrable for super::Context {
 			internal: NotSet,
 			actor: Set(ap_id),
 			login: Set(username),
-			password: Set(password),
+			password: Set(sha256::digest(password)),
 		};
 
 		crate::model::credential::Entity::insert(credentials_model)
