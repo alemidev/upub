@@ -48,23 +48,19 @@ impl Identity {
 		}
 	}
 
+	#[allow(unused)]
 	pub fn is_anon(&self) -> bool {
 		matches!(self, Self::Anonymous)
 	}
 
+	#[allow(unused)]
 	pub fn is_local(&self) -> bool {
 		matches!(self, Self::Local { .. })
 	}
 
+	#[allow(unused)]
 	pub fn is_remote(&self) -> bool {
 		matches!(self, Self::Remote { .. })
-	}
-
-	pub fn is_local_user(&self, uid: &str) -> bool {
-		match self {
-			Self::Local { id, .. } => id == uid,
-			_ => false,
-		}
 	}
 }
 

@@ -188,6 +188,7 @@ impl Context {
 		Ok(model::activity::Entity::find_by_id(internal).select_only().one(self.db()).await?.is_some())
 	}
 
+	#[allow(unused)]
 	pub async fn is_local_internal_actor(&self, internal: i64) -> crate::Result<bool> {
 		Ok(model::actor::Entity::find_by_id(internal).select_only().one(self.db()).await?.is_some())
 	}
