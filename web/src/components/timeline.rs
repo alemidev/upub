@@ -36,14 +36,20 @@ impl Timeline {
 		self.over.set(false);
 	}
 
-	pub async fn more(&self, auth: Auth) -> reqwest::Result<()> {
-		self.loading.set(true);
-		let res = self.more_inner(auth).await;
-		self.loading.set(false);
-		res
+	pub fn more(&self, auth: Auth) {
+		if self.loading.get() { return }
+		let _self = *self;
+		spawn_local(async move {
+			_self.loading.set(true);
+			let res = _self.load_more(auth).await;
+			_self.loading.set(false);
+			if let Err(e) = res {
+				tracing::error!("failed loading posts for timeline: {e}");
+			}
+		});
 	}
 
-	async fn more_inner(&self, auth: Auth) -> reqwest::Result<()> {
+	pub async fn load_more(&self, auth: Auth) -> reqwest::Result<()> {
 		use apb::{Collection, CollectionPage};
 
 		let feed_url = self.next.get_untracked();
@@ -119,13 +125,7 @@ pub fn TimelineReplies(tl: Timeline, root: String) -> impl IntoView {
 		<div class="center mt-1 mb-1" class:hidden=tl.over >
 			<button type="button"
 				prop:disabled=tl.loading 
-				on:click=move |_| {
-					spawn_local(async move {
-						if let Err(e) = tl.more(auth).await {
-							tracing::error!("error fetching more items for timeline: {e}");
-						}
-					})
-				}
+				on:click=move |_| tl.more(auth)
 			>
 				{move || if tl.loading.get() {
 					view! { "loading"<span class="dots"></span> }.into_view()
@@ -152,9 +152,7 @@ pub fn TimelineFeed(tl: Timeline) -> impl IntoView {
 		move |(s, h)| async move {
 			if !config.get().infinite_scroll { return }
 			if s > 0.0 && h - s < view_height && !tl.loading.get() {
-				if let Err(e) = tl.more(auth).await {
-					tracing::error!("auto load failed: {e}");
-				}
+				tl.more(auth);
 			}
 		},
 	);
@@ -179,23 +177,13 @@ pub fn TimelineFeed(tl: Timeline) -> impl IntoView {
 		<div class="center mt-1 mb-1" class:hidden=tl.over >
 			<button type="button"
 				prop:disabled=tl.loading 
-				on:click=move |_| load_more(tl, auth)
+				on:click=move |_| tl.more(auth)
 			>
 				{move || if tl.loading.get() {
 					view! { "loading"<span class="dots"></span> }.into_view()
 				} else { "more".into_view() }}
 			</button>
 		</div>
-	}
-}
-
-fn load_more(tl: Timeline, auth: Auth) {
-	if !tl.loading.get() {
-		spawn_local(async move {
-			if let Err(e) = tl.more(auth).await {
-				tracing::error!("error fetching more items for timeline: {e}");
-			}
-		})
 	}
 }
 

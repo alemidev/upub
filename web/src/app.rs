@@ -12,29 +12,6 @@ pub fn App() -> impl IntoView {
 	let (userid, set_userid) = use_cookie::<String, FromToStringCodec>("user_id");
 	let (config, set_config, _) = use_local_storage::<crate::Config, JsonCodec>("config");
 
-	if let Some(tok) = token.get_untracked() {
-		spawn_local(async move {
-			match reqwest::Client::new()
-				.request(Method::PATCH, format!("{URL_BASE}/auth"))
-				.json(&serde_json::json!({"token": tok}))
-				.send()
-				.await
-			{
-				Err(e) => tracing::error!("could not refresh token: {e}"),
-				Ok(res) => match res.error_for_status() {
-					Err(e) => tracing::error!("server rejected refresh: {e}"),
-					Ok(doc) => match doc.json::<AuthResponse>().await {
-						Err(e) => tracing::error!("failed parsing auth response: {e}"),
-						Ok(auth) => {
-							set_token.set(Some(auth.token));
-							set_userid.set(Some(auth.user));
-						},
-					}
-				}
-			}
-		})
-	};
-
 	let auth = Auth { token, userid };
 	provide_context(auth);
 	provide_context(config);
@@ -55,26 +32,39 @@ pub fn App() -> impl IntoView {
 	let (menu, set_menu) = create_signal(screen_width <= 786);
 	let (advanced, set_advanced) = create_signal(false);
 
-	spawn_local(async move {
-		if let Err(e) = server_tl.more(auth).await {
-			tracing::error!("error populating timeline: {e}");
-		}
-	});
-
 	let auth_present = auth.token.get_untracked().is_some(); // skip helper to use get_untracked
-	if auth_present { 
-		spawn_local(async move {
-			if let Err(e) = home_tl.more(auth).await {
-				tracing::error!("error populating timeline: {e}");
-			}
-		});
-	}
+	let title_target = move || if auth_present { "/web/home" } else { "/web/server" };
 
-	let title_target = if auth_present { "/web/home" } else { "/web/server" };
+	if let Some(tok) = token.get_untracked() {
+		spawn_local(async move {
+			// refresh token first, or verify that we're still authed
+			match reqwest::Client::new()
+				.request(Method::PATCH, format!("{URL_BASE}/auth"))
+				.json(&serde_json::json!({"token": tok}))
+				.send()
+				.await
+			{
+				Err(e) => tracing::error!("could not refresh token: {e}"),
+				Ok(res) => match res.error_for_status() {
+					Err(e) => tracing::error!("server rejected refresh: {e}"),
+					Ok(doc) => match doc.json::<AuthResponse>().await {
+						Err(e) => tracing::error!("failed parsing auth response: {e}"),
+						Ok(auth) => {
+							set_token.set(Some(auth.token));
+							set_userid.set(Some(auth.user));
+						},
+					}
+				}
+			}
+
+			server_tl.more(auth);
+			if auth_present { home_tl.more(auth) };
+		})
+	};
 
 	view! {
 		<nav class="w-100 mt-1 mb-1 pb-s">
-			<code class="color ml-3" ><a class="upub-title" href={title_target} >μpub</a></code>
+			<code class="color ml-3" ><a class="upub-title" href=title_target >μpub</a></code>
 			<small class="ml-1 mr-1 hidden-on-tiny" ><a class="clean" href="/web/server" >micro social network, federated</a></small>
 			/* TODO kinda jank with the float but whatever, will do for now */
 			<input type="submit" class="mr-2 rev" on:click=move |_| set_menu.set(!menu.get()) value="menu" style="float: right" />

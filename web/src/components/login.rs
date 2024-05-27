@@ -19,11 +19,7 @@ pub fn LoginBox(
 					token_tx.set(None);
 					home_tl.reset(format!("{URL_BASE}/outbox/page"));
 					server_tl.reset(format!("{URL_BASE}/inbox/page"));
-					spawn_local(async move {
-						if let Err(e) = server_tl.more(auth).await {
-							logging::error!("failed refreshing server timeline: {e}");
-						}
-					});
+					server_tl.more(auth);
 				} />
 			</div>
 			<div class:hidden=move || auth.present() >
@@ -50,18 +46,10 @@ pub fn LoginBox(
 						token_tx.set(Some(auth_response.token));
 						// reset home feed and point it to our user's inbox
 						home_tl.reset(format!("{URL_BASE}/users/{}/inbox/page", username));
-						spawn_local(async move {
-							if let Err(e) = home_tl.more(auth).await {
-								tracing::error!("failed refreshing home timeline: {e}");
-							}
-						});
+						home_tl.more(auth);
 						// reset server feed: there may be more content now that we're authed
 						server_tl.reset(format!("{URL_BASE}/inbox/page"));
-						spawn_local(async move {
-							if let Err(e) = server_tl.more(auth).await {
-								tracing::error!("failed refreshing server timeline: {e}");
-							}
-						});
+						server_tl.more(auth);
 					});
 				} >
 					<table class="w-100 align">
