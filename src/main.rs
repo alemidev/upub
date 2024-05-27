@@ -2,7 +2,7 @@ mod server;
 mod model;
 mod routes;
 
-mod errors;
+pub mod errors;
 mod config;
 
 #[cfg(feature = "cli")]
