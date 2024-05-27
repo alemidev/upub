@@ -20,7 +20,7 @@ pub async fn page(
 ) -> crate::Result<JsonLD<serde_json::Value>> {
 	crate::server::builders::paginate(
 		url!(ctx, "/inbox/page"),
-		crate::model::addressing::Column::Actor.eq(apb::target::PUBLIC)
+		crate::model::addressing::Column::Actor.is_null()
 			.into_condition(),
 		ctx.db(),
 		page,
