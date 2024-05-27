@@ -70,6 +70,9 @@ pub struct SecurityConfig {
 
 	#[serde_inline_default(true)]
 	pub show_reply_ids: bool,
+
+	#[serde(default)]
+	pub allow_login_refresh: bool,
 }
 
 
