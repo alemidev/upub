@@ -182,7 +182,8 @@ impl Context {
 
 	pub async fn is_local_internal_object(&self, internal: i64) -> crate::Result<bool> {
 		Ok(
-			model::object::Entity::find_by_id(internal)
+			model::object::Entity::find()
+				.filter(model::object::Column::Internal.eq(internal))
 				.select_only()
 				.select_column(model::object::Column::Internal)
 				.one(self.db())
@@ -193,7 +194,8 @@ impl Context {
 
 	pub async fn is_local_internal_activity(&self, internal: i64) -> crate::Result<bool> {
 		Ok(
-			model::activity::Entity::find_by_id(internal)
+			model::activity::Entity::find()
+				.filter(model::activity::Column::Internal.eq(internal))
 				.select_only()
 				.select_column(model::activity::Column::Internal)
 				.one(self.db())
@@ -205,7 +207,8 @@ impl Context {
 	#[allow(unused)]
 	pub async fn is_local_internal_actor(&self, internal: i64) -> crate::Result<bool> {
 		Ok(
-			model::actor::Entity::find_by_id(internal)
+			model::actor::Entity::find()
+				.filter(model::activity::Column::Internal.eq(internal))
 				.select_only()
 				.select_column(model::actor::Column::Internal)
 				.one(self.db())
