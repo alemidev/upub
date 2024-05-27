@@ -4,7 +4,7 @@ use sea_orm::{sea_query::Expr, ActiveValue::{Set, NotSet, Unchanged}, ColumnTrai
 
 use crate::{errors::UpubError, model};
 
-use super::{fetcher::Fetcher, normalizer::Normalizer, Context};
+use super::{builders::AnyQuery, fetcher::Fetcher, normalizer::Normalizer, Context};
 
 
 #[axum::async_trait]
@@ -114,25 +114,33 @@ impl apb::server::Outbox for Context {
 		let activity_targets = activity.addressed();
 		let oid = activity.object().id().ok_or_else(UpubError::bad_request)?;
 		let obj_model = self.fetch_object(&oid).await?;
-		let activity_model = model::activity::ActiveModel::new(
-			&activity
-				.set_id(Some(&aid))
-				.set_actor(Node::link(uid.clone()))
-				.set_published(Some(chrono::Utc::now()))
-		)?;
 
 		let internal_uid = model::actor::Entity::ap_to_internal(&uid, self.db()).await?;
+
+		if model::like::Entity::find_by_uid_oid(internal_uid, obj_model.internal)
+			.any(self.db())
+			.await?
+		{
+			return Err(UpubError::not_modified());
+		}
+
+		let activity_model = self.insert_activity(
+			activity
+				.set_id(Some(&aid))
+				.set_actor(Node::link(uid.clone()))
+				.set_published(Some(chrono::Utc::now())),
+			Some(self.domain().to_string()),
+		).await?;
 
 		let like_model = model::like::ActiveModel {
 			internal: NotSet,
 			actor: Set(internal_uid),
 			object: Set(obj_model.internal),
+			activity: Set(activity_model.internal),
 			published: Set(chrono::Utc::now()),
 		};
 
 		model::like::Entity::insert(like_model).exec(self.db()).await?;
-		model::activity::Entity::insert(activity_model)
-			.exec(self.db()).await?;
 		model::object::Entity::update_many()
 			.col_expr(model::object::Column::Likes, Expr::col(model::object::Column::Likes).add(1))
 			.filter(model::object::Column::Internal.eq(obj_model.internal))

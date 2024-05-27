@@ -58,3 +58,9 @@ impl Related<super::object::Entity> for Entity {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+impl Entity {
+	pub fn find_by_uid_oid(uid: i64, oid: i64) -> Select<Entity> {
+		Entity::find().filter(Column::Actor.eq(uid)).filter(Column::Object.eq(oid))
+	}
+}

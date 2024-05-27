@@ -6,7 +6,7 @@ use sea_orm::{ActiveValue::NotSet, ColumnTrait, DatabaseConnection, EntityTrait,
 use crate::{config::Config, errors::UpubError, model, server::fetcher::Fetcher};
 use uriproxy::UriClass;
 
-use super::dispatcher::Dispatcher;
+use super::{builders::AnyQuery, dispatcher::Dispatcher};
 
 
 #[derive(Clone)]
@@ -181,43 +181,34 @@ impl Context {
 	}
 
 	pub async fn is_local_internal_object(&self, internal: i64) -> crate::Result<bool> {
-		Ok(
-			model::object::Entity::find()
-				.filter(model::object::Column::Internal.eq(internal))
-				.select_only()
-				.select_column(model::object::Column::Internal)
-				.into_tuple::<i64>()
-				.one(self.db())
-				.await?
-				.is_some()
-		)
+		model::object::Entity::find()
+			.filter(model::object::Column::Internal.eq(internal))
+			.select_only()
+			.select_column(model::object::Column::Internal)
+			.into_tuple::<i64>()
+			.any(self.db())
+			.await
 	}
 
 	pub async fn is_local_internal_activity(&self, internal: i64) -> crate::Result<bool> {
-		Ok(
-			model::activity::Entity::find()
-				.filter(model::activity::Column::Internal.eq(internal))
-				.select_only()
-				.select_column(model::activity::Column::Internal)
-				.into_tuple::<i64>()
-				.one(self.db())
-				.await?
-				.is_some()
-		)
+		model::activity::Entity::find()
+			.filter(model::activity::Column::Internal.eq(internal))
+			.select_only()
+			.select_column(model::activity::Column::Internal)
+			.into_tuple::<i64>()
+			.any(self.db())
+			.await
 	}
 
 	#[allow(unused)]
 	pub async fn is_local_internal_actor(&self, internal: i64) -> crate::Result<bool> {
-		Ok(
-			model::actor::Entity::find()
-				.filter(model::actor::Column::Internal.eq(internal))
-				.select_only()
-				.select_column(model::actor::Column::Internal)
-				.into_tuple::<i64>()
-				.one(self.db())
-				.await?
-				.is_some()
-		)
+		model::actor::Entity::find()
+			.filter(model::actor::Column::Internal.eq(internal))
+			.select_only()
+			.select_column(model::actor::Column::Internal)
+			.into_tuple::<i64>()
+			.any(self.db())
+			.await
 	}
 
 	pub async fn expand_addressing(&self, targets: Vec<String>) -> crate::Result<Vec<String>> {

@@ -2,7 +2,7 @@ use apb::{target::Addressed, Activity, Base, Object};
 use reqwest::StatusCode;
 use sea_orm::{sea_query::Expr, ActiveValue::{Set, NotSet}, ColumnTrait, Condition, EntityTrait, QueryFilter, QuerySelect, SelectColumns};
 
-use crate::{errors::{LoggableError, UpubError}, model, server::normalizer::Normalizer};
+use crate::{errors::{LoggableError, UpubError}, model, server::{builders::AnyQuery, normalizer::Normalizer}};
 
 use super::{fetcher::Fetcher, Context};
 
@@ -31,43 +31,42 @@ impl apb::server::Inbox for Context {
 		let internal_uid = model::actor::Entity::ap_to_internal(&uid, self.db()).await?;
 		let object_uri = activity.object().id().ok_or(UpubError::bad_request())?;
 		let obj = self.fetch_object(&object_uri).await?;
+		if model::like::Entity::find_by_uid_oid(internal_uid, obj.internal)
+			.any(self.db())
+			.await?
+		{
+			return Err(UpubError::not_modified());
+		}
+
+		let activity_model = self.insert_activity(activity, Some(server)).await?;
 		let like = model::like::ActiveModel {
 			internal: NotSet,
 			actor: Set(internal_uid),
 			object: Set(obj.internal),
-			published: Set(activity.published().unwrap_or(chrono::Utc::now())),
+			activity: Set(activity_model.internal),
+			published: Set(activity_model.published),
 		};
-		match model::like::Entity::insert(like).exec(self.db()).await {
-			Err(sea_orm::DbErr::RecordNotInserted) => Err(UpubError::not_modified()),
-			Err(sea_orm::DbErr::Exec(_)) => Err(UpubError::not_modified()), // bad fix for sqlite
-			Err(e) => {
-				tracing::error!("unexpected error procesing like from {uid} to {}: {e}", obj.id);
-				Err(UpubError::internal_server_error())
-			}
-			Ok(_) => {
-				let activity_model = self.insert_activity(activity, Some(server)).await?;
-				let mut expanded_addressing = self.expand_addressing(activity_model.addressed()).await?;
-				if expanded_addressing.is_empty() { // WHY MASTODON!!!!!!!
-					expanded_addressing.push(
-						model::object::Entity::find_by_id(obj.internal)
-							.select_only()
-							.select_column(model::object::Column::AttributedTo)
-							.into_tuple::<String>()
-							.one(self.db())
-							.await?
-							.ok_or_else(UpubError::not_found)?
-						);
-				}
-				self.address_to(Some(activity_model.internal), None, &expanded_addressing).await?;
-				model::object::Entity::update_many()
-					.col_expr(model::object::Column::Likes, Expr::col(model::object::Column::Likes).add(1))
-					.filter(model::object::Column::Internal.eq(obj.internal))
-					.exec(self.db())
-					.await?;
-				tracing::info!("{} liked {}", uid, obj.id);
-				Ok(())
-			},
+		model::like::Entity::insert(like).exec(self.db()).await?;
+		model::object::Entity::update_many()
+			.col_expr(model::object::Column::Likes, Expr::col(model::object::Column::Likes).add(1))
+			.filter(model::object::Column::Internal.eq(obj.internal))
+			.exec(self.db())
+			.await?;
+		let mut expanded_addressing = self.expand_addressing(activity_model.addressed()).await?;
+		if expanded_addressing.is_empty() { // WHY MASTODON!!!!!!!
+			expanded_addressing.push(
+				model::object::Entity::find_by_id(obj.internal)
+					.select_only()
+					.select_column(model::object::Column::AttributedTo)
+					.into_tuple::<String>()
+					.one(self.db())
+					.await?
+					.ok_or_else(UpubError::not_found)?
+				);
 		}
+		self.address_to(Some(activity_model.internal), None, &expanded_addressing).await?;
+		tracing::info!("{} liked {}", uid, obj.id);
+		Ok(())
 	}
 
 	async fn follow(&self, _: String, activity: serde_json::Value) -> crate::Result<()> {
