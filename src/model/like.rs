@@ -7,11 +7,20 @@ pub struct Model {
 	pub internal: i64,
 	pub actor: i64,
 	pub object: i64,
+	pub activity: i64,
 	pub published: ChronoDateTimeUtc,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
 pub enum Relation {
+	#[sea_orm(
+		belongs_to = "super::activity::Entity",
+		from = "Column::Activity",
+		to = "super::activity::Column::Internal",
+		on_update = "Cascade",
+		on_delete = "Cascade"
+	)]
+	Activities,
 	#[sea_orm(
 		belongs_to = "super::actor::Entity",
 		from = "Column::Actor",
@@ -28,6 +37,12 @@ pub enum Relation {
 		on_delete = "Cascade"
 	)]
 	Objects,
+}
+
+impl Related<super::activity::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Activities.def()
+	}
 }
 
 impl Related<super::actor::Entity> for Entity {

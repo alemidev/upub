@@ -19,6 +19,7 @@ pub enum Likes {
 	Internal,
 	Actor,
 	Object,
+	Activity,
 	Published,
 }
 
@@ -127,6 +128,15 @@ impl MigrationTrait for Migration {
 							.name("fkey-likes-object")
 							.from(Likes::Table, Likes::Object)
 							.to(Objects::Table, Objects::Internal)
+							.on_update(ForeignKeyAction::Cascade)
+							.on_delete(ForeignKeyAction::Cascade)
+					)
+					.col(ColumnDef::new(Likes::Activity).big_integer().not_null())
+					.foreign_key(
+						ForeignKey::create()
+							.name("fkey-likes-activity")
+							.from(Likes::Table, Likes::Activity)
+							.to(Activities::Table, Activities::Internal)
 							.on_update(ForeignKeyAction::Cascade)
 							.on_delete(ForeignKeyAction::Cascade)
 					)
