@@ -25,7 +25,7 @@ pub async fn page(
 	AuthIdentity(auth): AuthIdentity,
 	Query(page): Query<Pagination>,
 ) -> crate::Result<JsonLD<serde_json::Value>> {
-	let Identity::Local { id: uid, .. } = &auth else {
+	let Identity::Local { id: uid, internal } = &auth else {
 		// local inbox is only for local users
 		return Err(UpubError::forbidden());
 	};
@@ -36,7 +36,7 @@ pub async fn page(
 	crate::server::builders::paginate(
 		url!(ctx, "/users/{id}/inbox/page"),
 		Condition::any()
-			.add(model::addressing::Column::Actor.eq(uid))
+			.add(model::addressing::Column::Actor.eq(*internal))
 			.add(model::object::Column::AttributedTo.eq(uid))
 			.add(model::activity::Column::Actor.eq(uid)),
 		ctx.db(),
