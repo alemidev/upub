@@ -43,7 +43,7 @@ impl MigrationTrait for Migration {
 							.auto_increment()
 							.primary_key()
 					)
-					.col(ColumnDef::new(Addressing::Actor).big_integer().not_null())
+					.col(ColumnDef::new(Addressing::Actor).big_integer().null())
 					.foreign_key(
 						ForeignKey::create()
 							.name("fkey-addressing-actor")
@@ -51,7 +51,7 @@ impl MigrationTrait for Migration {
 							.to(Actors::Table, Actors::Internal)
 							.on_update(ForeignKeyAction::Cascade)
 					)
-					.col(ColumnDef::new(Addressing::Instance).big_integer().not_null())
+					.col(ColumnDef::new(Addressing::Instance).big_integer().null())
 					.foreign_key(
 						ForeignKey::create()
 							.name("fkey-addressing-instance")
