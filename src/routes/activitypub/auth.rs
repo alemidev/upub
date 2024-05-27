@@ -81,6 +81,10 @@ pub async fn refresh(
 		.await?
 		.ok_or_else(UpubError::unauthorized)?;
 
+	if prev.expires > chrono::Utc::now() {
+		return Ok(Json(AuthSuccess { token: prev.secret, user: prev.actor, expires: prev.expires }));
+	}
+
 	let token = token();
 	let expires = chrono::Utc::now() + std::time::Duration::from_secs(3600 * 6);
 	let user = prev.actor;
