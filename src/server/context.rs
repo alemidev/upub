@@ -301,6 +301,6 @@ impl Context {
 	}
 
 	pub fn is_relay(&self, id: &str) -> bool {
-		self.0.relays.contains(id)
+		self.0.relay.sources.contains(id) || self.0.relay.sinks.contains(id)
 	}
 }
