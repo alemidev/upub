@@ -51,7 +51,11 @@ struct Args {
 #[derive(Clone, Subcommand)]
 enum Mode {
 	/// run fediverse server
-	Serve,
+	Serve {
+		#[arg(short, long, default_value="127.0.0.1:3000")]
+		/// addr to bind and serve onto
+		bind: String,
+	},
 
 	/// print current or default configuration
 	Config,
@@ -114,7 +118,7 @@ async fn main() {
 
 		Mode::Config => println!("{}", toml::to_string_pretty(&config).expect("failed serializing config")),
 
-		Mode::Serve => {
+		Mode::Serve { bind } => {
 			let ctx = server::Context::new(db, domain, config)
 				.await.expect("failed creating server context");
 
@@ -129,7 +133,7 @@ async fn main() {
 				.with_state(ctx);
 
 			// run our app with hyper, listening locally on port 3000
-			let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
+			let listener = tokio::net::TcpListener::bind(bind)
 				.await.expect("could not bind tcp socket");
 
 			axum::serve(listener, router)
