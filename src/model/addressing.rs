@@ -97,15 +97,6 @@ pub enum Event {
 
 
 impl Event {
-	pub fn id(&self) -> &str {
-		match self {
-			Event::Tombstone => "",
-			Event::Activity(x) => x.id.as_str(),
-			Event::StrayObject { object, liked: _ } => object.id.as_str(),
-			Event::DeepActivity { activity: _, liked: _, object } => object.id.as_str(),
-		}
-	}
-
 	pub fn internal(&self) -> i64 {
 		match self {
 			Event::Tombstone => 0,

@@ -99,7 +99,7 @@ impl WebfingerCache {
 			Ok(res) => match res.error_for_status() {
 				Ok(res) => match res.json::<jrd::JsonResourceDescriptor>().await {
 					Ok(doc) => {
-						if let Some(uid) = doc.links.into_iter().find(|x| x.rel == "self").map(|x| x.href).flatten() {
+						if let Some(uid) = doc.links.into_iter().find(|x| x.rel == "self").and_then(|x| x.href) {
 							self.0.insert(query, LookupStatus::Found(uid));
 						} else {
 							self.0.insert(query, LookupStatus::NotFound);

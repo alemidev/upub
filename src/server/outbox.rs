@@ -367,8 +367,10 @@ impl apb::server::Outbox for Context {
 					return Err(UpubError::forbidden());
 				}
 
-				let mut new_actor_model = model::actor::ActiveModel::default();
-				new_actor_model.internal = Unchanged(old_actor_model.internal);
+				let mut new_actor_model = model::actor::ActiveModel {
+					internal: Unchanged(old_actor_model.internal),
+					..Default::default()
+				};
 
 				if let Some(name) = object_node.name() {
 					new_actor_model.name = Set(Some(name.to_string()));
@@ -398,8 +400,10 @@ impl apb::server::Outbox for Context {
 					return Err(UpubError::forbidden());
 				}
 
-				let mut new_object_model = model::object::ActiveModel::default();
-				new_object_model.internal = Unchanged(old_object_model.internal);
+				let mut new_object_model = model::object::ActiveModel {
+					internal: Unchanged(old_object_model.internal),
+					..Default::default()
+				};
 
 				if let Some(name) = object_node.name() {
 					new_object_model.name = Set(Some(name.to_string()));

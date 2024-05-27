@@ -40,11 +40,11 @@ impl Identity {
 		}
 	}
 
-	pub fn is(&self, id: &str) -> bool {
+	pub fn is(&self, uid: &str) -> bool {
 		match self {
 			Identity::Anonymous => false,
 			Identity::Remote { .. } => false, // TODO per-actor server auth should check this
-			Identity::Local { id, .. } => id.as_str() == id
+			Identity::Local { id, .. } => id.as_str() == uid
 		}
 	}
 

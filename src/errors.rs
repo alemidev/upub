@@ -62,6 +62,10 @@ impl UpubError {
 	pub fn internal_server_error() -> Self {
 		Self::Status(axum::http::StatusCode::INTERNAL_SERVER_ERROR)
 	}
+
+	pub fn field(field: &'static str) -> Self {
+		Self::Field(crate::model::FieldError(field))
+	}
 }
 
 pub type UpubResult<T> = Result<T, UpubError>;

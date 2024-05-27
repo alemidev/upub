@@ -63,7 +63,7 @@ pub async fn post(
 		return Err(UpubError::bad_request());
 	};
 
-	if !(server == Context::server(&actor)) {
+	if server != Context::server(&actor) {
 		return Err(UpubError::unauthorized());
 	}
 

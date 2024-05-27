@@ -36,7 +36,7 @@ pub async fn fix(ctx: crate::server::Context, likes: bool, shares: bool, replies
 		{
 			let mut stream = crate::model::announce::Entity::find().stream(db).await?;
 			while let Some(share) = stream.try_next().await? {
-				store.insert(share.object.clone(), store.get(&share.object).unwrap_or(&0) + 1);
+				store.insert(share.object, store.get(&share.object).unwrap_or(&0) + 1);
 			}
 		}
 

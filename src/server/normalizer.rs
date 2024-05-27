@@ -1,5 +1,5 @@
 use apb::{Node, Base, Object, Document};
-use sea_orm::{sea_query::Expr, ActiveValue::Set, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
+use sea_orm::{sea_query::Expr, ActiveValue::{NotSet, Set}, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
 use crate::{errors::UpubError, model, server::Context};
 
 use super::fetcher::Fetcher;
@@ -7,6 +7,7 @@ use super::fetcher::Fetcher;
 #[axum::async_trait]
 pub trait Normalizer {
 	async fn insert_object(&self, obj: impl apb::Object, server: Option<String>) -> crate::Result<model::object::Model>;
+	async fn insert_activity(&self, act: impl apb::Activity, server: Option<String>) -> crate::Result<model::activity::Model>;
 }
 
 #[axum::async_trait]
@@ -128,5 +129,36 @@ impl Normalizer for super::Context {
 		}
 
 		Ok(object)
+	}
+
+	async fn insert_activity(&self, activity: impl apb::Activity, server: Option<String>) -> crate::Result<model::activity::Model> {
+		let mut activity_model = model::activity::Model {
+			internal: 0,
+			id: activity.id().ok_or_else(|| UpubError::field("id"))?.to_string(),
+			activity_type: activity.activity_type().ok_or_else(|| UpubError::field("type"))?,
+			actor: activity.actor().id().ok_or_else(|| UpubError::field("actor"))?,
+			object: activity.object().id(),
+			target: activity.target().id(),
+			published: activity.published().unwrap_or(chrono::Utc::now()),
+			to: activity.to().into(),
+			bto: activity.bto().into(),
+			cc: activity.cc().into(),
+			bcc: activity.bcc().into(),
+		};
+		if let Some(server) = server {
+			if Context::server(&activity_model.actor) != server
+				|| Context::server(&activity_model.id) != server {
+				return Err(UpubError::forbidden());
+			}
+		}
+		let mut active_model = activity_model.clone().into_active_model();
+		active_model.internal = NotSet;
+		model::activity::Entity::insert(active_model)
+			.exec(self.db())
+			.await?;
+
+		let internal = model::activity::Entity::ap_to_internal(&activity_model.id, self.db()).await?;
+		activity_model.internal = internal;
+		Ok(activity_model)
 	}
 }

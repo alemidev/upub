@@ -180,20 +180,13 @@ impl Fetcher for Context {
 		}
 
 		let activity_document = self.pull_activity(id).await?;
-		let activity_model = model::activity::ActiveModel::new(&activity_document)?;
+		let activity_model = self.insert_activity(activity_document, Some(Context::server(id))).await?;
 
-		model::activity::Entity::insert(activity_model)
-			.exec(self.db()).await?;
-
-		// TODO fetch it back to get the internal id
-		let activity = model::activity::Entity::find_by_ap_id(id)
-			.one(self.db()).await?.ok_or_else(UpubError::internal_server_error)?;
-
-		let addressed = activity.addressed();
+		let addressed = activity_model.addressed();
 		let expanded_addresses = self.expand_addressing(addressed).await?;
-		self.address_to(Some(activity.internal), None, &expanded_addresses).await?;
+		self.address_to(Some(activity_model.internal), None, &expanded_addresses).await?;
 
-		Ok(activity)
+		Ok(activity_model)
 	}
 
 	async fn pull_activity(&self, id: &str) -> crate::Result<serde_json::Value> {
@@ -216,7 +209,7 @@ impl Fetcher for Context {
 		Ok(activity)
 	}
 
-	async fn fetch_thread(&self, id: &str) -> crate::Result<()> {
+	async fn fetch_thread(&self, _id: &str) -> crate::Result<()> {
 		// crawl_replies(self, id, 0).await
 		todo!()
 	}

@@ -1,7 +1,7 @@
 use std::{collections::BTreeSet, sync::Arc};
 
 use openssl::rsa::Rsa;
-use sea_orm::{ActiveValue::NotSet, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect, RelationTrait, SelectColumns, Set};
+use sea_orm::{ActiveValue::NotSet, ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect, SelectColumns, Set};
 
 use crate::{config::Config, errors::UpubError, model, server::fetcher::Fetcher};
 use uriproxy::UriClass;
@@ -150,6 +150,7 @@ impl Context {
 	}
 
 	// TODO remove this!!
+	//#[deprecated = "context is id of first post in thread"]
 	pub fn context_id(&self, id: &str) -> String {
 		if id.starts_with("tag:") {
 			return id.to_string();
@@ -227,8 +228,8 @@ impl Context {
 		{
 			let (server, actor) = if target == apb::target::PUBLIC { (None, None) } else {
 				(
-					Some(model::instance::Entity::domain_to_internal(&Context::server(&target), self.db()).await?),
-					Some(model::actor::Entity::ap_to_internal(&target, self.db()).await?),
+					Some(model::instance::Entity::domain_to_internal(&Context::server(target), self.db()).await?),
+					Some(model::actor::Entity::ap_to_internal(target, self.db()).await?),
 				)
 			};
 			addressing.push(
@@ -290,6 +291,7 @@ impl Context {
 		Ok(())
 	}
 
+	//#[deprecated = "should probably directly invoke address_to() since we most likely have internal ids at this point"]
 	pub async fn dispatch(&self, uid: &str, activity_targets: Vec<String>, aid: &str, oid: Option<&str>) -> crate::Result<()> {
 		let addressed = self.expand_addressing(activity_targets).await?;
 		let internal_aid = model::activity::Entity::ap_to_internal(aid, self.db()).await?;

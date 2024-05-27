@@ -72,10 +72,9 @@ impl BatchFillable for &[Event] {
 
 		let mut out : std::collections::BTreeMap<i64, Vec<Model>> = std::collections::BTreeMap::new();
 		for attach in attachments.into_iter().flatten() {
-			if out.contains_key(&attach.object) {
-				out.get_mut(&attach.object).expect("contains but get failed?").push(attach);
-			} else {
-				out.insert(attach.object, vec![attach]);
+			match out.entry(attach.object) {
+				std::collections::btree_map::Entry::Vacant(a) => { a.insert(vec![attach]); },
+				std::collections::btree_map::Entry::Occupied(mut e) => { e.get_mut().push(attach); },
 			}
 		}
 

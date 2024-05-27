@@ -2,7 +2,7 @@ use std::{collections::BTreeSet, pin::Pin, sync::Arc};
 
 use apb::{Activity, ActivityMut, Base, Object};
 use leptos::*;
-use leptos_use::{signal_debounced, signal_throttled, use_display_media, use_document_visibility, use_element_size, use_infinite_scroll_with_options, use_scroll, use_scroll_with_options, use_window, use_window_scroll, UseDisplayMediaReturn, UseElementSizeReturn, UseInfiniteScrollOptions, UseScrollOptions, UseScrollReturn};
+use leptos_use::{signal_throttled, use_element_size, use_window_scroll, UseElementSizeReturn};
 use crate::prelude::*;
 
 #[derive(Debug, Clone, Copy)]

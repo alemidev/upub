@@ -89,6 +89,7 @@ impl Entity {
 }
 
 impl ActiveModel {
+	//#[deprecated = "should remove this, get models thru normalizer"]
 	pub fn new(activity: &impl apb::Activity) -> Result<Self, super::FieldError> {
 		Ok(ActiveModel {
 			internal: sea_orm::ActiveValue::NotSet,
