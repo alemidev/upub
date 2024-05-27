@@ -45,6 +45,7 @@ impl apb::server::Outbox for Context {
 				.set_id(Some(&oid))
 				.set_attributed_to(Node::link(uid.clone()))
 				.set_content(content.as_deref())
+				.set_published(Some(chrono::Utc::now()))
 				.set_url(Node::maybe_link(self.cfg().instance.frontend.as_ref().map(|x| format!("{x}/objects/{raw_oid}")))),
 			Some(self.domain().to_string()),
 		).await?;
@@ -84,6 +85,7 @@ impl apb::server::Outbox for Context {
 			object
 				.set_id(Some(&oid))
 				.set_attributed_to(Node::link(uid.clone()))
+				.set_published(Some(chrono::Utc::now()))
 				.set_to(activity.to())
 				.set_bto(activity.bto())
 				.set_cc(activity.cc())
@@ -97,6 +99,7 @@ impl apb::server::Outbox for Context {
 				.set_id(Some(&aid))
 				.set_actor(Node::link(uid.clone()))
 				.set_object(Node::link(oid.clone()))
+				.set_published(Some(chrono::Utc::now()))
 		)?;
 
 		model::activity::Entity::insert(activity_model.into_active_model())
@@ -115,6 +118,7 @@ impl apb::server::Outbox for Context {
 			&activity
 				.set_id(Some(&aid))
 				.set_actor(Node::link(uid.clone()))
+				.set_published(Some(chrono::Utc::now()))
 		)?;
 
 		let internal_uid = model::actor::Entity::ap_to_internal(&uid, self.db()).await?;
@@ -149,6 +153,7 @@ impl apb::server::Outbox for Context {
 			&activity
 				.set_id(Some(&aid))
 				.set_actor(Node::link(uid.clone()))
+				.set_published(Some(chrono::Utc::now()))
 		)?;
 
 		let follower_internal = model::actor::Entity::ap_to_internal(&uid, self.db()).await?;
@@ -194,6 +199,7 @@ impl apb::server::Outbox for Context {
 			&activity
 				.set_id(Some(&aid))
 				.set_actor(Node::link(uid.clone()))
+				.set_published(Some(chrono::Utc::now()))
 		)?;
 		model::activity::Entity::insert(activity_model.into_active_model())
 			.exec(self.db()).await?;
@@ -242,6 +248,7 @@ impl apb::server::Outbox for Context {
 			&activity
 				.set_id(Some(&aid))
 				.set_actor(Node::link(uid.clone()))
+				.set_published(Some(chrono::Utc::now()))
 		)?;
 		model::activity::Entity::insert(activity_model)
 			.exec(self.db()).await?;
@@ -276,6 +283,7 @@ impl apb::server::Outbox for Context {
 			&activity
 				.set_id(Some(&aid))
 				.set_actor(Node::link(uid.clone()))
+				.set_published(Some(chrono::Utc::now()))
 		)?;
 		model::activity::Entity::insert(activity_model.into_active_model())
 			.exec(self.db())
@@ -325,6 +333,7 @@ impl apb::server::Outbox for Context {
 			&activity
 				.set_id(Some(&aid))
 				.set_actor(Node::link(uid.clone()))
+				.set_published(Some(chrono::Utc::now()))
 		)?;
 
 		model::activity::Entity::insert(activity_model)
@@ -350,6 +359,7 @@ impl apb::server::Outbox for Context {
 			&activity
 				.set_id(Some(&aid))
 				.set_actor(Node::link(uid.clone()))
+				.set_published(Some(chrono::Utc::now()))
 		)?;
 
 		model::activity::Entity::insert(activity_model)
@@ -438,6 +448,7 @@ impl apb::server::Outbox for Context {
 			&activity
 				.set_id(Some(&aid))
 				.set_actor(Node::link(uid.clone()))
+				.set_published(Some(chrono::Utc::now()))
 		)?;
 
 		let share_model = model::announce::ActiveModel {
