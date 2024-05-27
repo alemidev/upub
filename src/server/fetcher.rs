@@ -236,9 +236,7 @@ async fn fetch_object_inner(ctx: &Context, id: &str, depth: usize) -> crate::Res
 		return Ok(x); // already in db, easy
 	}
 
-	let object = Context::request(
-		Method::GET, id, None, &format!("https://{}", ctx.domain()), ctx.pkey(), ctx.domain(),
-	).await?.json::<serde_json::Value>().await?;
+	let object = ctx.pull_object(id).await?;
 
 	if let Some(oid) = object.id() {
 		if oid != id {
