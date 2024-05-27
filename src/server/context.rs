@@ -21,7 +21,12 @@ struct ContextInner {
 	// TODO keep these pre-parsed
 	app: model::actor::Model,
 	pkey: String,
-	relays: BTreeSet<String>,
+	relay: Relays,
+}
+
+pub struct Relays {
+	sources: BTreeSet<String>,
+	sinks: BTreeSet<String>,
 }
 
 #[macro_export]
@@ -57,7 +62,7 @@ impl Context {
 				let pubk = std::str::from_utf8(&rsa.public_key_to_pem()?)?.to_string();
 				let system = model::actor::ActiveModel {
 					internal: NotSet,
-					id: NotSet,
+					id: Set(base_url.clone()),
 					domain: Set(domain.clone()),
 					preferred_username: Set(domain.clone()),
 					actor_type: Set(apb::ActorType::Application),
@@ -87,22 +92,16 @@ impl Context {
 		// TODO maybe we could provide a more descriptive error...
 		let pkey = app.private_key.as_deref().ok_or_else(UpubError::internal_server_error)?.to_string();
 
-		// TODO how to handle relations when there's two to the same model???
-		// let relays = model::relation::Entity::find()
-		// 	.filter(model::relation::Column::Following.eq(app.internal))
-		// 	.filter(model::relation::Column::Accept.is_not_null())
-		// 	.left_join(model::relation::Relation::ActorsFollower.def())
-		// 	.select_only()
-		// 	.select_column(model::actor::Column::Id)
-		// 	.into_tuple::<String>()
-		// 	.all(&db)
-		// 	.await?;
+		let relay_sinks = model::relation::Entity::followers(&app.id, &db).await?;
+		let relay_sources = model::relation::Entity::following(&app.id, &db).await?;
 
-		let relays = Vec::new();
+		let relay = Relays {
+			sources: BTreeSet::from_iter(relay_sources),
+			sinks: BTreeSet::from_iter(relay_sinks),
+		};
 
 		Ok(Context(Arc::new(ContextInner {
-			base_url, db, domain, protocol, app, dispatcher, config, pkey,
-			relays: BTreeSet::from_iter(relays.into_iter()),
+			base_url, db, domain, protocol, app, dispatcher, config, pkey, relay,
 		})))
 	}
 
