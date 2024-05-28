@@ -216,15 +216,13 @@ impl Context {
 		for target in targets {
 			if target.ends_with("/followers") {
 				let target_id = target.replace("/followers", "");
-				model::relation::Entity::find()
-					.filter(model::relation::Column::Following.eq(target_id))
-					.select_only()
-					.select_column(model::relation::Column::Follower)
-					.into_tuple::<String>()
-					.all(self.db())
-					.await?
-					.into_iter()
-					.for_each(|x| out.push(x));
+				let mut followers = model::relation::Entity::followers(&target_id, self.db()).await?;
+				if followers.is_empty() { // stuff with zero addressing will never be seen again!!! TODO
+					followers.push(target_id);
+				}
+				for follower in followers {
+					out.push(follower);
+				}
 			} else {
 				out.push(target);
 			}
