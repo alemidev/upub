@@ -170,7 +170,15 @@ impl MigrationTrait for Migration {
 			.await?;
 
 		manager
-			.create_index(Index::create().unique().name("index-actors-preferred-username").table(Actors::Table).col(Actors::PreferredUsername).to_owned())
+			.create_index(
+				Index::create()
+					.unique()
+					.name("index-actors-preferred-username-domain")
+					.table(Actors::Table)
+					.col(Actors::PreferredUsername)
+					.col(Actors::Domain)
+					.to_owned()
+				)
 			.await?;
 
 		manager
