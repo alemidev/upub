@@ -17,7 +17,6 @@ pub struct Model {
 	pub summary: Option<String>,
 	pub image: Option<String>,
 	pub icon: Option<String>,
-	#[sea_orm(unique)]
 	pub preferred_username: String,
 	pub inbox: Option<String>,
 	pub shared_inbox: Option<String>,

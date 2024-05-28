@@ -148,7 +148,7 @@ impl MigrationTrait for Migration {
 					.col(ColumnDef::new(Actors::Summary).string().null())
 					.col(ColumnDef::new(Actors::Image).string().null())
 					.col(ColumnDef::new(Actors::Icon).string().null())
-					.col(ColumnDef::new(Actors::PreferredUsername).string().not_null().unique_key())
+					.col(ColumnDef::new(Actors::PreferredUsername).string().not_null())
 					.col(ColumnDef::new(Actors::Inbox).string().null())
 					.col(ColumnDef::new(Actors::SharedInbox).string().null())
 					.col(ColumnDef::new(Actors::Outbox).string().null())
