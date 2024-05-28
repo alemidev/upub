@@ -1,3 +1,4 @@
+use nodeinfo::NodeInfoOwned;
 use sea_orm::{entity::prelude::*, QuerySelect, SelectColumns};
 
 use crate::errors::UpubError;
@@ -14,8 +15,8 @@ pub struct Model {
 	pub version: Option<String>,
 	pub icon: Option<String>,
 	pub down_since: Option<ChronoDateTimeUtc>,
-	pub users: Option<i32>,
-	pub posts: Option<i32>,
+	pub users: Option<i64>,
+	pub posts: Option<i64>,
 	pub published: ChronoDateTimeUtc,
 	pub updated: ChronoDateTimeUtc,
 }
@@ -56,5 +57,14 @@ impl Entity {
 			.one(db)
 			.await?
 			.ok_or_else(UpubError::not_found)
+	}
+
+	pub async fn nodeinfo(domain: &str) -> crate::Result<NodeInfoOwned> {
+		Ok(
+			reqwest::get(format!("https://{domain}/nodeinfo/2.0.json"))
+				.await?
+				.json()
+				.await?
+		)
 	}
 }
