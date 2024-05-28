@@ -4,7 +4,7 @@ use sea_orm::{sea_query::Expr, ActiveValue::{Set, NotSet, Unchanged}, ColumnTrai
 
 use crate::{errors::UpubError, model};
 
-use super::{builders::AnyQuery, fetcher::Fetcher, normalizer::Normalizer, Context};
+use super::{addresser::Addresser, builders::AnyQuery, fetcher::Fetcher, normalizer::Normalizer, Context};
 
 
 #[axum::async_trait]

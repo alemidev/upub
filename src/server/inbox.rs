@@ -2,7 +2,7 @@ use apb::{target::Addressed, Activity, Base, Object};
 use reqwest::StatusCode;
 use sea_orm::{sea_query::Expr, ActiveValue::{Set, NotSet}, ColumnTrait, Condition, EntityTrait, QueryFilter, QuerySelect, SelectColumns};
 
-use crate::{errors::{LoggableError, UpubError}, model, server::{builders::AnyQuery, normalizer::Normalizer}};
+use crate::{errors::{LoggableError, UpubError}, model, server::{addresser::Addresser, builders::AnyQuery, normalizer::Normalizer}};
 
 use super::{fetcher::Fetcher, Context};
 

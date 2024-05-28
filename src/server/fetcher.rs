@@ -7,7 +7,7 @@ use sea_orm::{EntityTrait, IntoActiveModel, NotSet};
 
 use crate::{errors::UpubError, model, VERSION};
 
-use super::{httpsign::HttpSignature, normalizer::Normalizer, Context};
+use super::{addresser::Addresser, httpsign::HttpSignature, normalizer::Normalizer, Context};
 
 #[axum::async_trait]
 pub trait Fetcher {

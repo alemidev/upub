@@ -1,5 +1,7 @@
 use sea_orm::{ActiveValue::{Set, NotSet}, ColumnTrait, EntityTrait, QueryFilter, QueryOrder};
 
+use crate::server::addresser::Addresser;
+
 pub async fn relay(ctx: crate::server::Context, actor: String, accept: bool) -> crate::Result<()> {
 	let aid = ctx.aid(&uuid::Uuid::new_v4().to_string());
 
