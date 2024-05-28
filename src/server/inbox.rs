@@ -107,7 +107,7 @@ impl apb::server::Inbox for Context {
 			.await?
 			.ok_or_else(UpubError::not_found)?;
 
-		if follow_activity.object.unwrap_or("".into()) != follow_activity.actor {
+		if follow_activity.object.unwrap_or("".into()) != target_actor {
 			return Err(UpubError::forbidden());
 		}
 
