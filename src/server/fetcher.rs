@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use apb::{target::Addressed, Activity, Actor, ActorMut, Base, Collection, Object};
 use base64::Engine;
 use reqwest::{header::{ACCEPT, CONTENT_TYPE, USER_AGENT}, Method, Response};
-use sea_orm::EntityTrait;
+use sea_orm::{EntityTrait, IntoActiveModel, NotSet};
 
 use crate::{errors::UpubError, model, VERSION};
 
@@ -12,6 +12,8 @@ use super::{httpsign::HttpSignature, normalizer::Normalizer, Context};
 #[axum::async_trait]
 pub trait Fetcher {
 	async fn webfinger(&self, user: &str, host: &str) -> crate::Result<String>;
+
+	async fn fetch_domain(&self, domain: &str) -> crate::Result<model::instance::Model>;
 
 	async fn fetch_user(&self, id: &str) -> crate::Result<model::actor::Model>;
 	async fn pull_user(&self, id: &str) -> crate::Result<serde_json::Value>;
@@ -114,11 +116,61 @@ impl Fetcher for Context {
 		Err(UpubError::not_found())
 	}
 
+	async fn fetch_domain(&self, domain: &str) -> crate::Result<model::instance::Model> {
+		if let Some(x) = model::instance::Entity::find_by_domain(domain).one(self.db()).await? {
+			return Ok(x); // already in db, easy
+		}
+
+		let mut instance_model = model::instance::Model {
+			internal: 0,
+			domain: domain.to_string(),
+			name: None,
+			software: None,
+			down_since: None,
+			icon: None,
+			version: None,
+			users: None,
+			posts: None,
+			published: chrono::Utc::now(),
+			updated: chrono::Utc::now(),
+		};
+
+		if let Ok(res) = Self::request(
+			Method::GET, &format!("https://{domain}"), None, &format!("https://{}", self.domain()), self.pkey(), self.domain(),
+		).await {
+			if let Ok(actor) = res.json::<serde_json::Value>().await {
+				if let Some(name) = actor.name() {
+					instance_model.name = Some(name.to_string());
+				}
+				if let Some(icon) = actor.icon().id() {
+					instance_model.icon = Some(icon);
+				}
+			}
+		}
+
+		if let Ok(nodeinfo) = model::instance::Entity::nodeinfo(domain).await {
+			instance_model.software = Some(nodeinfo.software.name);
+			instance_model.version = nodeinfo.software.version;
+			instance_model.users = nodeinfo.usage.users.and_then(|x| x.total);
+			instance_model.posts = nodeinfo.usage.local_posts;
+		}
+
+		let mut active_model = instance_model.clone().into_active_model();
+		active_model.internal = NotSet;
+		model::instance::Entity::insert(active_model).exec(self.db()).await?;
+
+		let internal = model::instance::Entity::domain_to_internal(domain, self.db()).await?;
+		instance_model.internal = internal;
+
+		Ok(instance_model)
+	}
 
 	async fn fetch_user(&self, id: &str) -> crate::Result<model::actor::Model> {
 		if let Some(x) = model::actor::Entity::find_by_ap_id(id).one(self.db()).await? {
 			return Ok(x); // already in db, easy
 		}
+
+		let _domain = self.fetch_domain(&Context::server(id)).await?;
 
 		let user_document = self.pull_user(id).await?;
 		let user_model = model::actor::ActiveModel::new(&user_document)?;
@@ -179,6 +231,8 @@ impl Fetcher for Context {
 			return Ok(x); // already in db, easy
 		}
 
+		let _domain = self.fetch_domain(&Context::server(id)).await?;
+
 		let activity_document = self.pull_activity(id).await?;
 		let activity_model = self.insert_activity(activity_document, Some(Context::server(id))).await?;
 
@@ -235,6 +289,8 @@ async fn fetch_object_inner(ctx: &Context, id: &str, depth: usize) -> crate::Res
 	if let Some(x) = model::object::Entity::find_by_ap_id(id).one(ctx.db()).await? {
 		return Ok(x); // already in db, easy
 	}
+
+	let _domain = ctx.fetch_domain(&Context::server(id)).await?;
 
 	let object = ctx.pull_object(id).await?;
 
