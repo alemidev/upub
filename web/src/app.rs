@@ -34,8 +34,7 @@ pub fn App() -> impl IntoView {
 	let (menu, set_menu) = create_signal(screen_width <= 786);
 	let (advanced, set_advanced) = create_signal(false);
 
-	let auth_present = auth.token.get_untracked().is_some(); // skip helper to use get_untracked
-	let title_target = move || if auth_present { "/web/home" } else { "/web/server" };
+	let title_target = move || if auth.present() { "/web/home" } else { "/web/server" };
 
 	if let Some(tok) = token.get_untracked() {
 		spawn_local(async move {
@@ -61,7 +60,7 @@ pub fn App() -> impl IntoView {
 
 			server_tl.more(auth);
 			local_tl.more(auth);
-			if auth_present { home_tl.more(auth) };
+			if auth.token.get_untracked().is_some() { home_tl.more(auth) };
 		})
 	} else {
 		server_tl.more(auth);

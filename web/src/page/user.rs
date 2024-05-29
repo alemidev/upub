@@ -28,20 +28,22 @@ pub fn UserPage(tl: Timeline) -> impl IntoView {
 		.cloned()
 		.unwrap_or_default();
 	let uid = uriproxy::uri(URL_BASE, uriproxy::UriClass::Actor, &id);
-	let _uid = uid.clone();
-	let actor = create_local_resource(move || _uid.clone(), move |id| {
-		async move {
-			match CACHE.get(&Uri::full(U::Actor, &id)) {
-				Some(x) => Some(x.clone()),
-				None => {
-					let user : serde_json::Value = Http::fetch(&Uri::api(U::Actor, &id, true), auth).await.ok()?;
-					let user = Arc::new(user);
-					CACHE.put(Uri::full(U::Actor, &id), user.clone());
-					Some(user)
-				},
+	let actor = create_local_resource(
+		move || params.get().get("id").cloned().unwrap_or_default(),
+		move |id| {
+			async move {
+				match CACHE.get(&Uri::full(U::Actor, &id)) {
+					Some(x) => Some(x.clone()),
+					None => {
+						let user : serde_json::Value = Http::fetch(&Uri::api(U::Actor, &id, true), auth).await.ok()?;
+						let user = Arc::new(user);
+						CACHE.put(Uri::full(U::Actor, &id), user.clone());
+						Some(user)
+					},
+				}
 			}
 		}
-	});
+	);
 	view! {
 		<div>
 			<Breadcrumb back=true >
