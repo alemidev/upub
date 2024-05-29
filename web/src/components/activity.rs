@@ -7,6 +7,9 @@ use apb::{target::Addressed, Base, Activity, Object};
 #[component]
 pub fn ActivityLine(activity: crate::Object) -> impl IntoView {
 	let object_id = activity.object().id().unwrap_or_default();
+	let activity_url = activity.id().map(|x| view! {
+		<sup><small><a class="clean ml-s" href={x.to_string()} target="_blank">"↗"</a></small></sup>
+	});
 	let actor_id = activity.actor().id().unwrap_or_default();
 	let actor = CACHE.get_or(&actor_id, serde_json::Value::String(actor_id.clone()).into());
 	let kind = activity.activity_type().unwrap_or(apb::ActivityType::Activity);
@@ -25,6 +28,7 @@ pub fn ActivityLine(activity: crate::Object) -> impl IntoView {
 					<a class="upub-title clean" title={object_id} href={href} >
 						{kind.as_ref().to_string()}
 					</a>
+					{activity_url}
 					<PrivacyMarker addressed=activity.addressed() />
 				</code>
 			</span>
