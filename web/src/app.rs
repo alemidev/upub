@@ -59,9 +59,13 @@ pub fn App() -> impl IntoView {
 			}
 
 			server_tl.more(auth);
+			local_tl.more(auth);
 			if auth_present { home_tl.more(auth) };
 		})
-	};
+	} else {
+		server_tl.more(auth);
+		local_tl.more(auth);
+	}
 
 	view! {
 		<nav class="w-100 mt-1 mb-1 pb-s">
