@@ -70,6 +70,10 @@ pub async fn view(
 				user = user.set_following_count(None);
 			}
 
+			if let Some(ref fe) = ctx.cfg().instance.frontend {
+				user = user.set_url(Node::link(format!("{fe}/actors/{id}")));
+			}
+
 			Ok(JsonLD(user.ld_context()))
 		},
 		// remote user
