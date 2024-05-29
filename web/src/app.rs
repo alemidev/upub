@@ -111,37 +111,33 @@ pub fn App() -> impl IntoView {
 						// in a sense it's what we want: refreshing the home tl is main purpose, but also
 						// server tl may contain stuff we can no longer see, or otherwise we may now be
 						// entitled to see new posts. so while being ugly it's techically correct ig?
-						{move || {
-							view! {
-								<main>
-										<Routes>
-											<Route path="/web" view=move ||
-												if auth.present() {
-													view! { <Redirect path="/web/home" /> }
-												} else {
-													view! { <Redirect path="/web/server" /> }
-												}
-											/>
+						<main>
+								<Routes>
+									<Route path="/web" view=move ||
+										if auth.present() {
+											view! { <Redirect path="/web/home" /> }
+										} else {
+											view! { <Redirect path="/web/server" /> }
+										}
+									/>
 
-											<Route path="/web/home" view=move || view! { <TimelinePage name="home" tl=home_tl /> } />
-											<Route path="/web/server" view=move || view! { <TimelinePage name="server" tl=server_tl /> } />
-											<Route path="/web/local" view=move || view! { <TimelinePage name="server" tl=local_tl /> } />
+									<Route path="/web/home" view=move || view! { <TimelinePage name="home" tl=home_tl /> } />
+									<Route path="/web/server" view=move || view! { <TimelinePage name="server" tl=server_tl /> } />
+									<Route path="/web/local" view=move || view! { <TimelinePage name="local" tl=local_tl /> } />
 
-											<Route path="/web/about" view=AboutPage />
-											<Route path="/web/config" view=move || view! { <ConfigPage setter=set_config /> } />
-											<Route path="/web/config/dev" view=DebugPage />
+									<Route path="/web/about" view=AboutPage />
+									<Route path="/web/config" view=move || view! { <ConfigPage setter=set_config /> } />
+									<Route path="/web/config/dev" view=DebugPage />
 
-											<Route path="/web/users/:id" view=move || view! { <UserPage tl=user_tl /> } />
-											<Route path="/web/objects/:id" view=move || view! { <ObjectPage tl=context_tl /> } />
+									<Route path="/web/users/:id" view=move || view! { <UserPage tl=user_tl /> } />
+									<Route path="/web/objects/:id" view=move || view! { <ObjectPage tl=context_tl /> } />
 
-											<Route path="/web/search" view=SearchPage />
-											<Route path="/web/register" view=RegisterPage />
+									<Route path="/web/search" view=SearchPage />
+									<Route path="/web/register" view=RegisterPage />
 
-											<Route path="/" view=move || view! { <Redirect path="/web" /> } />
-										</Routes>
-								</main>
-							}
-						}}
+									<Route path="/" view=move || view! { <Redirect path="/web" /> } />
+								</Routes>
+						</main>
 					</Router>
 				</div>
 			</div>
