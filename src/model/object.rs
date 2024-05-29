@@ -12,7 +12,6 @@ pub struct Model {
 	pub internal: i64,
 	#[sea_orm(unique)]
 	pub id: String,
-	pub domain: String,
 	pub object_type: ObjectType,
 	pub attributed_to: Option<String>,
 	pub name: Option<String>,
@@ -53,14 +52,6 @@ pub enum Relation {
 	Attachments,
 	#[sea_orm(has_many = "super::hashtag::Entity")]
 	Hashtags,
-	#[sea_orm(
-		belongs_to = "super::instance::Entity",
-		from = "Column::Domain",
-		to = "super::instance::Column::Domain",
-		on_update = "Cascade",
-		on_delete = "NoAction"
-	)]
-	Instances,
 	#[sea_orm(has_many = "super::like::Entity")]
 	Likes,
 	#[sea_orm(has_many = "super::mention::Entity")]
@@ -111,12 +102,6 @@ impl Related<super::hashtag::Entity> for Entity {
 	}
 }
 
-impl Related<super::instance::Entity> for Entity {
-	fn to() -> RelationDef {
-		Relation::Instances.def()
-	}
-}
-
 impl Related<super::like::Entity> for Entity {
 	fn to() -> RelationDef {
 		Relation::Likes.def()
@@ -160,12 +145,9 @@ impl Entity {
 
 impl ActiveModel {
 	pub fn new(object: &impl apb::Object) -> Result<Self, super::FieldError> {
-		let ap_id = object.id().ok_or(super::FieldError("id"))?.to_string();
-		let domain = crate::server::Context::server(&ap_id);
 		Ok(ActiveModel {
 			internal: sea_orm::ActiveValue::NotSet,
-			domain: sea_orm::ActiveValue::Set(domain),
-			id: sea_orm::ActiveValue::Set(ap_id),
+			id: sea_orm::ActiveValue::Set(object.id().ok_or(super::FieldError("id"))?.to_string()),
 			object_type: sea_orm::ActiveValue::Set(object.object_type().ok_or(super::FieldError("type"))?),
 			attributed_to: sea_orm::ActiveValue::Set(object.attributed_to().id()),
 			name: sea_orm::ActiveValue::Set(object.name().map(|x| x.to_string())),
