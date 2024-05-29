@@ -37,7 +37,8 @@ impl Timeline {
 	}
 
 	pub fn more(&self, auth: Auth) {
-		if self.loading.get() { return }
+		if self.loading.get_untracked() { return }
+		if self.over.get_untracked() { return }
 		let _self = *self;
 		spawn_local(async move {
 			_self.loading.set(true);
@@ -150,8 +151,8 @@ pub fn TimelineFeed(tl: Timeline) -> impl IntoView {
 	let _auto_loader = create_local_resource(
 		move || (scroll_debounced.get(), height.get()),
 		move |(s, h)| async move {
-			if !config.get().infinite_scroll { return }
-			if s > 0.0 && h - s < view_height && !tl.loading.get() {
+			if !config.get_untracked().infinite_scroll { return }
+			if h - s < view_height {
 				tl.more(auth);
 			}
 		},
