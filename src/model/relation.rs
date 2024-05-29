@@ -62,6 +62,7 @@ impl Related<super::activity::Entity> for Entity {
 impl ActiveModelBehavior for ActiveModel {}
 
 impl Entity {
+	// TODO this is 2 queries!!! can it be optimized down to 1?
 	pub async fn followers(uid: &str, db: &DatabaseConnection) -> crate::Result<Vec<String>> {
 		let internal_id = super::actor::Entity::ap_to_internal(uid, db).await?;
 		let out = Entity::find()
@@ -82,6 +83,7 @@ impl Entity {
 		Ok(out)
 	}
 
+	// TODO this is 2 queries!!! can it be optimized down to 1?
 	pub async fn following(uid: &str, db: &DatabaseConnection) -> crate::Result<Vec<String>> {
 		let internal_id = super::actor::Entity::ap_to_internal(uid, db).await?;
 		let out = Entity::find()
@@ -100,5 +102,15 @@ impl Entity {
 			.await?;
 
 		Ok(out)
+	}
+
+	// TODO this is 3 queries!!! can it be optimized down to 1?
+	pub fn is_following(follower: i64, following: i64) -> sea_orm::Selector<sea_orm::SelectGetableTuple<i64>> {
+		Entity::find()
+			.filter(Column::Follower.eq(follower))
+			.filter(Column::Following.eq(following))
+			.select_only()
+			.select_column(Column::Internal)
+			.into_tuple::<i64>()
 	}
 }
