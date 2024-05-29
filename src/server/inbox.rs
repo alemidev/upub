@@ -22,7 +22,7 @@ impl apb::server::Inbox for Context {
 		let object_model = self.insert_object(object_node, Some(server)).await?;
 		let expanded_addressing = self.expand_addressing(activity_model.addressed()).await?;
 		self.address_to(Some(activity_model.internal), Some(object_model.internal), &expanded_addressing).await?;
-		tracing::info!("{} posted {}", activity_model.id, object_model.id);
+		tracing::info!("{} posted {}", activity_model.actor, object_model.id);
 		Ok(())
 	}
 
