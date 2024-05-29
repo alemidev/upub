@@ -111,7 +111,7 @@ impl Context {
 
 	/// get full user id uri
 	pub fn uid(&self, id: &str) -> String {
-		uriproxy::uri(self.base(), UriClass::User, id)
+		uriproxy::uri(self.base(), UriClass::Actor, id)
 	}
 
 	/// get full object id uri

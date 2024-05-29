@@ -11,7 +11,7 @@ pub fn SearchPage() -> impl IntoView {
 	let user = create_local_resource(
 		move || use_query_map().get().get("q").cloned().unwrap_or_default(),
 		move |q| {
-			let user_fetch = Uri::api(U::User, &q, true);
+			let user_fetch = Uri::api(U::Actor, &q, true);
 			async move { Some(Arc::new(Http::fetch::<serde_json::Value>(&user_fetch, auth).await.ok()?)) }
 		}
 	);

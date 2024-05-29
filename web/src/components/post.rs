@@ -86,7 +86,7 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 				mentions.get()
 					.map(|x| x.into_iter().map(|u| match CACHE.get(&u) {
 						Some(u) => view! { <span class="nowrap"><span class="emoji mr-s ml-s">"📨"</span><ActorStrip object=u /></span> }.into_view(),
-						None => view! { <span class="nowrap"><span class="emoji mr-s ml-s">"📨"</span><a href={Uri::web(U::User, &u)}>{u}</a></span> }.into_view(),
+						None => view! { <span class="nowrap"><span class="emoji mr-s ml-s">"📨"</span><a href={Uri::web(U::Actor, &u)}>{u}</a></span> }.into_view(),
 					})
 					.collect_view())
 			}

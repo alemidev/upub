@@ -14,7 +14,7 @@ pub fn ActivityLine(activity: crate::Object) -> impl IntoView {
 	let actor = CACHE.get_or(&actor_id, serde_json::Value::String(actor_id.clone()).into());
 	let kind = activity.activity_type().unwrap_or(apb::ActivityType::Activity);
 	let href = match kind {
-		apb::ActivityType::Follow => Uri::web(U::User, &object_id),
+		apb::ActivityType::Follow => Uri::web(U::Actor, &object_id),
 		// TODO for update check what's being updated
 		_ => Uri::web(U::Object, &object_id),
 	};
