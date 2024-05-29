@@ -46,7 +46,7 @@ pub enum Objects {
 	Table,
 	Internal,
 	Id,
-	Instance,
+	Domain,
 	ObjectType,
 	AttributedTo,
 	Name,
@@ -201,12 +201,12 @@ impl MigrationTrait for Migration {
 							.auto_increment()
 					)
 					.col(ColumnDef::new(Objects::Id).string().not_null().unique_key())
-					.col(ColumnDef::new(Objects::Instance).big_integer().not_null())
+					.col(ColumnDef::new(Objects::Domain).string().not_null())
 					.foreign_key(
 						ForeignKey::create()
 							.name("fkey-objects-instances")
-							.from(Objects::Table, Objects::Instance)
-							.to(Instances::Table, Instances::Internal)
+							.from(Objects::Table, Objects::Domain)
+							.to(Instances::Table, Instances::Domain)
 							.on_update(ForeignKeyAction::Cascade)
 					)
 					.col(ColumnDef::new(Objects::ObjectType).string().not_null())
