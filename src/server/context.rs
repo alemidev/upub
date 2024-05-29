@@ -76,6 +76,7 @@ impl Context {
 		&self.0.actor
 	}
 
+	#[allow(unused)]
 	pub fn instance(&self) -> &model::instance::Model {
 		&self.0.instance
 	}
@@ -121,15 +122,6 @@ impl Context {
 	/// get full activity id uri
 	pub fn aid(&self, id: &str) -> String {
 		uriproxy::uri(self.base(), UriClass::Activity, id)
-	}
-
-	// TODO remove this!!
-	//#[deprecated = "context is id of first post in thread"]
-	pub fn context_id(&self, id: &str) -> String {
-		if id.starts_with("tag:") {
-			return id.to_string();
-		}
-		uriproxy::uri(self.base(), UriClass::Context, id)
 	}
 
 	/// get bare id, which is uuid for local stuff and +{uri|base64} for remote stuff
