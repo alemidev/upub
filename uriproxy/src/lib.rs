@@ -38,7 +38,7 @@ pub fn uri(base: &str, entity: UriClass, id: &str) -> String {
 
 /// decompose local id constructed by uri() fn
 pub fn decompose_id(full_id: &str) -> String {
-		full_id       //  https://example.org/users/test/followers/page?offset=42
+		full_id       //  https://example.org/actors/test/followers/page?offset=42
 			.replace("https://", "")
 			.replace("http://", "")
 			.split('/') //  ['example.org', 'users', 'test', 'followers', 'page?offset=42' ]

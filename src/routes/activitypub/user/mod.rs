@@ -6,7 +6,7 @@ pub mod following;
 
 use axum::extract::{Path, Query, State};
 
-use apb::{ActorMut, EndpointsMut, Node};
+use apb::{ActorMut, EndpointsMut, Node, ObjectMut};
 use crate::{errors::UpubError, model, server::{auth::AuthIdentity, builders::AnyQuery, fetcher::Fetcher, Context}, url};
 
 use super::{jsonld::LD, JsonLD, TryFetch};
@@ -50,10 +50,10 @@ pub async fn view(
 		// local user
 		Some((user_model, Some(cfg))) => {
 			let mut user = user_model.ap()
-				.set_inbox(Node::link(url!(ctx, "/users/{id}/inbox")))
-				.set_outbox(Node::link(url!(ctx, "/users/{id}/outbox")))
-				.set_following(Node::link(url!(ctx, "/users/{id}/following")))
-				.set_followers(Node::link(url!(ctx, "/users/{id}/followers")))
+				.set_inbox(Node::link(url!(ctx, "/actors/{id}/inbox")))
+				.set_outbox(Node::link(url!(ctx, "/actors/{id}/outbox")))
+				.set_following(Node::link(url!(ctx, "/actors/{id}/following")))
+				.set_followers(Node::link(url!(ctx, "/actors/{id}/followers")))
 				.set_following_me(following_me)
 				.set_followed_by_me(followed_by_me)
 				.set_endpoints(Node::object(

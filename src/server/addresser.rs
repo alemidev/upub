@@ -93,7 +93,7 @@ impl Addresser for super::Context {
 						internal: sea_orm::ActiveValue::NotSet,
 						actor: Set(from.to_string()),
 						// TODO we should resolve each user by id and check its inbox because we can't assume
-						// it's /users/{id}/inbox for every software, but oh well it's waaaaay easier now
+						// it's /actors/{id}/inbox for every software, but oh well it's waaaaay easier now
 						target: Set(inbox),
 						activity: Set(aid.to_string()),
 						published: Set(chrono::Utc::now()),

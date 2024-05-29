@@ -39,6 +39,6 @@ impl AuthToken for Auth {
 	}
 
 	fn outbox(&self) -> String {
-		format!("{URL_BASE}/users/{}/outbox", self.username())
+		format!("{URL_BASE}/actors/{}/outbox", self.username())
 	}
 }

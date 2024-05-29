@@ -115,7 +115,7 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 								let mut cc_vec = Vec::new();
 								let mut to_vec = Vec::new();
 								if get_checked(followers_ref) {
-									cc_vec.push(format!("{URL_BASE}/users/{}/followers", auth.username()));
+									cc_vec.push(format!("{URL_BASE}/actors/{}/followers", auth.username()));
 								}
 								if get_checked(public_ref) {
 									cc_vec.push(apb::target::PUBLIC.to_string());
@@ -240,7 +240,7 @@ pub fn AdvancedPostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 						<td class="w-66"><input class="w-100" type="text" node_ref=bto_ref title="bto" placeholder="bto" /></td>
 					</tr>
 					<tr>
-						<td class="w-33"><input class="w-100" type="text" node_ref=cc_ref title="cc" placeholder="cc" value=format!("{URL_BASE}/users/{}/followers", auth.username()) /></td>
+						<td class="w-33"><input class="w-100" type="text" node_ref=cc_ref title="cc" placeholder="cc" value=format!("{URL_BASE}/actors/{}/followers", auth.username()) /></td>
 						<td class="w-33"><input class="w-100" type="text" node_ref=bcc_ref title="bcc" placeholder="bcc" /></td>
 					</tr>
 				</table>
@@ -284,7 +284,7 @@ pub fn AdvancedPostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 									apb::Node::maybe_link(object_id)
 								}
 							);
-						let target_url = format!("{URL_BASE}/users/{}/outbox", auth.username());
+						let target_url = format!("{URL_BASE}/actors/{}/outbox", auth.username());
 						match Http::post(&target_url, &payload, auth).await {
 							Err(e) => set_error.set(Some(e.to_string())),
 							Ok(()) => set_error.set(None),

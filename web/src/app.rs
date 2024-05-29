@@ -19,11 +19,12 @@ pub fn App() -> impl IntoView {
 	let username = auth.userid.get_untracked()
 		.map(|x| x.split('/').last().unwrap_or_default().to_string())
 		.unwrap_or_default();
-	let home_tl = Timeline::new(format!("{URL_BASE}/users/{username}/inbox/page"));
+	let home_tl = Timeline::new(format!("{URL_BASE}/actors/{username}/inbox/page"));
+	let user_tl = Timeline::new(format!("{URL_BASE}/actors/{username}/outbox/page"));
 	let server_tl = Timeline::new(format!("{URL_BASE}/inbox/page"));
 	let local_tl = Timeline::new(format!("{URL_BASE}/outbox/page"));
-	let user_tl = Timeline::new(format!("{URL_BASE}/users/{username}/outbox/page"));
-	let context_tl = Timeline::new(format!("{URL_BASE}/outbox/page"));
+
+	let context_tl = Timeline::new(format!("{URL_BASE}/outbox/page")); // TODO ehhh
 
 	let reply_controls = ReplyControls::default();
 	provide_context(reply_controls);
@@ -129,8 +130,9 @@ pub fn App() -> impl IntoView {
 									<Route path="/web/config" view=move || view! { <ConfigPage setter=set_config /> } />
 									<Route path="/web/config/dev" view=DebugPage />
 
-									<Route path="/web/users/:id" view=move || view! { <UserPage tl=user_tl /> } />
+									<Route path="/web/actors/:id" view=move || view! { <UserPage tl=user_tl /> } />
 									<Route path="/web/objects/:id" view=move || view! { <ObjectPage tl=context_tl /> } />
+									// <Route path="/web/activities/:id" view=move || view! { <ActivityPage tl=context_tl /> } />
 
 									<Route path="/web/search" view=SearchPage />
 									<Route path="/web/register" view=RegisterPage />

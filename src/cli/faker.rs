@@ -11,7 +11,7 @@ pub async fn faker(ctx: crate::server::Context, count: i64) -> Result<(), sea_or
 	let key = Rsa::generate(2048).unwrap();
 	let test_user = actor::Model {
 		internal: 42,
-		id: format!("{domain}/users/test"),
+		id: format!("{domain}/actors/test"),
 		name: Some("μpub".into()),
 		domain: clean_domain(domain),
 		preferred_username: "test".to_string(),
@@ -73,7 +73,7 @@ pub async fn faker(ctx: crate::server::Context, count: i64) -> Result<(), sea_or
 			id: Set(format!("{domain}/objects/{oid}")),
 			name: Set(None),
 			object_type: Set(apb::ObjectType::Note),
-			attributed_to: Set(Some(format!("{domain}/users/test"))),
+			attributed_to: Set(Some(format!("{domain}/actors/test"))),
 			summary: Set(None),
 			context: Set(Some(context.clone())),
 			in_reply_to: Set(None),
@@ -95,7 +95,7 @@ pub async fn faker(ctx: crate::server::Context, count: i64) -> Result<(), sea_or
 			internal: Set(42 + i),
 			id: Set(format!("{domain}/activities/{aid}")),
 			activity_type: Set(apb::ActivityType::Create),
-			actor: Set(format!("{domain}/users/test")),
+			actor: Set(format!("{domain}/actors/test")),
 			object: Set(Some(format!("{domain}/objects/{oid}"))),
 			target: Set(None),
 			published: Set(chrono::Utc::now() - std::time::Duration::from_secs(60*i as u64)),

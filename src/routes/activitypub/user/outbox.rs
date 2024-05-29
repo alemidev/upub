@@ -8,7 +8,7 @@ pub async fn get(
 	State(ctx): State<Context>,
 	Path(id): Path<String>,
 ) -> crate::Result<JsonLD<serde_json::Value>> {
-	crate::server::builders::collection(&url!(ctx, "/users/{id}/outbox"), None)
+	crate::server::builders::collection(&url!(ctx, "/actors/{id}/outbox"), None)
 }
 
 pub async fn page(
@@ -19,7 +19,7 @@ pub async fn page(
 ) -> crate::Result<JsonLD<serde_json::Value>> {
 	let uid = ctx.uid(&id);
 	crate::server::builders::paginate(
-		url!(ctx, "/users/{id}/outbox/page"),
+		url!(ctx, "/actors/{id}/outbox/page"),
 		Condition::all()
 			.add(auth.filter_condition())
 			.add(

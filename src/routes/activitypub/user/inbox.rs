@@ -12,7 +12,7 @@ pub async fn get(
 		Identity::Anonymous => Err(StatusCode::FORBIDDEN.into()),
 		Identity::Remote { .. } => Err(StatusCode::FORBIDDEN.into()),
 		Identity::Local { id: user, .. } => if ctx.uid(&id) == user {
-			crate::server::builders::collection(&url!(ctx, "/users/{id}/inbox"), None)
+			crate::server::builders::collection(&url!(ctx, "/actors/{id}/inbox"), None)
 		} else {
 			Err(StatusCode::FORBIDDEN.into())
 		},
@@ -34,7 +34,7 @@ pub async fn page(
 	}
 
 	crate::server::builders::paginate(
-		url!(ctx, "/users/{id}/inbox/page"),
+		url!(ctx, "/actors/{id}/inbox/page"),
 		Condition::any()
 			.add(model::addressing::Column::Actor.eq(*internal))
 			.add(model::object::Column::AttributedTo.eq(uid))

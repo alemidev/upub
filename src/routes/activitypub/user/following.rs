@@ -17,7 +17,7 @@ pub async fn get<const OUTGOING: bool>(
 			0
 		});
 
-	crate::server::builders::collection(&url!(ctx, "/users/{id}/{follow___}"), Some(count))
+	crate::server::builders::collection(&url!(ctx, "/actors/{id}/{follow___}"), Some(count))
 }
 
 pub async fn page<const OUTGOING: bool>(
@@ -40,7 +40,7 @@ pub async fn page<const OUTGOING: bool>(
 		.await?;
 
 	crate::server::builders::collection_page(
-		&url!(ctx, "/users/{id}/{follow___}/page"),
+		&url!(ctx, "/actors/{id}/{follow___}/page"),
 		offset, limit,
 		following.into_iter().map(serde_json::Value::String).collect()
 	)
