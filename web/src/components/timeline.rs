@@ -103,7 +103,7 @@ pub fn TimelineRepliesRecursive(tl: Timeline, root: String) -> impl IntoView {
 				let oid = obj.id().unwrap_or_default().to_string();
 				view! {
 					<div class="context depth-r">
-						<Item item=obj />
+						<Item item=obj replies=true />
 						<div class="depth-r">
 							<TimelineRepliesRecursive tl=tl root=oid />
 						</div>

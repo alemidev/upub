@@ -36,6 +36,7 @@ pub fn ActivityLine(activity: crate::Object) -> impl IntoView {
 pub fn Item(
 	item: crate::Object,
 	#[prop(optional)] sep: bool,
+	#[prop(optional)] replies: bool,
 ) -> impl IntoView {
 	let config = use_context::<Signal<crate::Config>>().expect("missing config context");
 	let id = item.id().unwrap_or_default().to_string();
@@ -55,7 +56,7 @@ pub fn Item(
 		Some(apb::ObjectType::Activity(t)) => (move || {
 			if config.get().filters.visible(apb::ObjectType::Activity(t)) {
 				let object_id = item.object().id().unwrap_or_default();
-				if !config.get().filters.replies && CACHE.get(&object_id).map(|x| x.in_reply_to().id().is_some()).unwrap_or(false) {
+				if !replies && !config.get().filters.replies && CACHE.get(&object_id).map(|x| x.in_reply_to().id().is_some()).unwrap_or(false) {
 					None
 				} else {
 					let object = match t {
