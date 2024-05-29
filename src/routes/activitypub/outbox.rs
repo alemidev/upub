@@ -1,4 +1,5 @@
 use axum::{extract::{Query, State}, http::StatusCode, Json};
+use sea_orm::{ColumnTrait, Condition};
 
 use crate::{errors::UpubError, routes::activitypub::{CreationResult, JsonLD, Pagination}, server::{auth::AuthIdentity, Context}, url};
 
@@ -13,10 +14,13 @@ pub async fn page(
 ) -> crate::Result<JsonLD<serde_json::Value>> {
 	crate::server::builders::paginate(
 		url!(ctx, "/outbox/page"),
-		auth.filter_condition(), // TODO filter local only stuff
+		Condition::all()
+			.add(auth.filter_condition())
+			.add(crate::model::actor::Column::Domain.eq(ctx.domain().to_string())),
 		ctx.db(),
 		page,
 		auth.my_id(),
+		true,
 	)
 		.await
 }
