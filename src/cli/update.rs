@@ -1,5 +1,5 @@
 use futures::TryStreamExt;
-use sea_orm::{ActiveValue::{Set, NotSet}, ColumnTrait, EntityTrait, QueryFilter};
+use sea_orm::{ActiveValue::Set, ColumnTrait, EntityTrait, QueryFilter};
 
 use crate::server::fetcher::Fetcher;
 
@@ -20,10 +20,9 @@ pub async fn update_users(ctx: crate::server::Context, days: i64) -> crate::Resu
 				Err(e) => tracing::warn!("could not update user {}: {e}", user.id),
 				Ok(doc) => match crate::model::actor::ActiveModel::new(&doc) {
 					Ok(mut u) => {
-						u.internal = NotSet;
+						u.internal = Set(user.internal);
 						u.updated = Set(chrono::Utc::now());
-						let uid = u.id.take().unwrap_or(user.id.clone());
-						insertions.push((uid, u));
+						insertions.push((user.id, u));
 						count += 1;
 					},
 					Err(e) => tracing::warn!("failed deserializing user '{}': {e}", user.id),
@@ -35,7 +34,6 @@ pub async fn update_users(ctx: crate::server::Context, days: i64) -> crate::Resu
 	for (uid, user_model) in insertions {
 		tracing::info!("updating user {}", uid);
 		crate::model::actor::Entity::update(user_model)
-			.filter(crate::model::actor::Column::Id.eq(uid))
 			.exec(ctx.db())
 			.await?;
 	}
