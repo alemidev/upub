@@ -21,6 +21,7 @@ pub fn App() -> impl IntoView {
 		.unwrap_or_default();
 	let home_tl = Timeline::new(format!("{URL_BASE}/users/{username}/inbox/page"));
 	let server_tl = Timeline::new(format!("{URL_BASE}/inbox/page"));
+	let local_tl = Timeline::new(format!("{URL_BASE}/outbox/page"));
 	let user_tl = Timeline::new(format!("{URL_BASE}/users/{username}/outbox/page"));
 	let context_tl = Timeline::new(format!("{URL_BASE}/outbox/page"));
 
@@ -120,6 +121,7 @@ pub fn App() -> impl IntoView {
 
 											<Route path="/web/home" view=move || view! { <TimelinePage name="home" tl=home_tl /> } />
 											<Route path="/web/server" view=move || view! { <TimelinePage name="server" tl=server_tl /> } />
+											<Route path="/web/local" view=move || view! { <TimelinePage name="server" tl=local_tl /> } />
 
 											<Route path="/web/about" view=AboutPage />
 											<Route path="/web/config" view=move || view! { <ConfigPage setter=set_config /> } />
