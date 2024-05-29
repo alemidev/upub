@@ -78,6 +78,9 @@ impl From<axum::http::StatusCode> for UpubError {
 
 impl axum::response::IntoResponse for UpubError {
 	fn into_response(self) -> axum::response::Response {
+		// TODO it's kind of jank to hide this print down here, i should probably learn how spans work
+		//      in tracing and use the library's features but ehhhh
+		tracing::error!("{self:?}");
 		match self {
 			UpubError::Redirect(to) => Redirect::to(&to).into_response(),
 			UpubError::Status(status) => status.into_response(),
