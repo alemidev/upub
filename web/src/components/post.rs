@@ -119,6 +119,7 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 								}
 								if get_checked(public_ref) {
 									cc_vec.push(apb::target::PUBLIC.to_string());
+									cc_vec.push(format!("{URL_BASE}/actors/{}/followers", auth.username()));
 								}
 								if let Some(r) = reply.reply_to.get() {
 									if let Some(au) = post_author(&r) {
