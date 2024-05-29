@@ -102,56 +102,37 @@ pub async fn webfinger(State(ctx): State<Context>, Query(query): Query<Webfinger
 		.replace("acct:", "")
 		.split_once('@')
 	{
-		if domain == ctx.domain() {
-			// local user
-			let uid = ctx.uid(user);
-			let usr = model::actor::Entity::find_by_ap_id(&uid)
-				.one(ctx.db())
-				.await?
-				.ok_or_else(UpubError::not_found)?;
+		let usr = model::actor::Entity::find()
+			.filter(model::actor::Column::PreferredUsername.eq(user))
+			.filter(model::actor::Column::Domain.eq(domain))
+			.one(ctx.db())
+			.await?
+			.ok_or_else(UpubError::not_found)?;
 
-			Ok(JsonRD(JsonResourceDescriptor {
-				subject: format!("acct:{user}@{domain}"),
-				aliases: vec![usr.id.clone()],
-				links: vec![
-					JsonResourceDescriptorLink {
-						rel: "self".to_string(),
-						link_type: Some("application/ld+json".to_string()),
-						href: Some(usr.id),
-						properties: jrd::Map::default(),
-						titles: jrd::Map::default(),
-					},
-				],
-				expires: None,
-				properties: jrd::Map::default(),
-			}))
+		let expires = if domain == ctx.domain() {
+			// TODO configurable webfinger TTL, also 30 days may be too much???
+			Some(chrono::Utc::now() + chrono::Duration::days(30))
 		} else {
-			// remote user
-			let usr = model::actor::Entity::find()
-				.filter(model::actor::Column::PreferredUsername.eq(user))
-				.filter(model::actor::Column::Domain.eq(domain))
-				.one(ctx.db())
-				.await?
-				.ok_or_else(UpubError::not_found)?;
-			
-			Ok(JsonRD(JsonResourceDescriptor {
-				subject: format!("acct:{user}@{domain}"),
-				aliases: vec![usr.id.clone()],
-				links: vec![
-					JsonResourceDescriptorLink {
-						rel: "self".to_string(),
-						link_type: Some("application/ld+json".to_string()),
-						href: Some(usr.id),
-						properties: jrd::Map::default(),
-						titles: jrd::Map::default(),
-					},
-				],
-				properties: jrd::Map::default(),
-				// we are no authority on local users, this info should be considered already outdated,
-				// but can still be relevant, for example for our frontend
-				expires: Some(chrono::Utc::now()),
-			}))
-		}
+			// we are no authority on local users, this info should be considered already outdated,
+			// but can still be relevant, for example for our frontend
+			Some(chrono::Utc::now())
+		};
+		
+		Ok(JsonRD(JsonResourceDescriptor {
+			subject: format!("acct:{user}@{domain}"),
+			aliases: vec![usr.id.clone()],
+			links: vec![
+				JsonResourceDescriptorLink {
+					rel: "self".to_string(),
+					link_type: Some("application/ld+json".to_string()),
+					href: Some(usr.id),
+					properties: jrd::Map::default(),
+					titles: jrd::Map::default(),
+				},
+			],
+			properties: jrd::Map::default(),
+			expires,
+		}))
 	} else {
 		Err(StatusCode::UNPROCESSABLE_ENTITY.into())
 	}
