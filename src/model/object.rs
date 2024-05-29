@@ -12,6 +12,7 @@ pub struct Model {
 	pub internal: i64,
 	#[sea_orm(unique)]
 	pub id: String,
+	pub instance: i64,
 	pub object_type: ObjectType,
 	pub attributed_to: Option<String>,
 	pub name: Option<String>,
@@ -52,6 +53,14 @@ pub enum Relation {
 	Attachments,
 	#[sea_orm(has_many = "super::hashtag::Entity")]
 	Hashtags,
+	#[sea_orm(
+		belongs_to = "super::instance::Entity",
+		from = "Column::Instance",
+		to = "super::instance::Column::Internal",
+		on_update = "Cascade",
+		on_delete = "NoAction"
+	)]
+	Instances,
 	#[sea_orm(has_many = "super::like::Entity")]
 	Likes,
 	#[sea_orm(has_many = "super::mention::Entity")]
@@ -99,6 +108,12 @@ impl Related<super::attachment::Entity> for Entity {
 impl Related<super::hashtag::Entity> for Entity {
 	fn to() -> RelationDef {
 		Relation::Hashtags.def()
+	}
+}
+
+impl Related<super::instance::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Instances.def()
 	}
 }
 
