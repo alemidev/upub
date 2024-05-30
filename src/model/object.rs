@@ -145,10 +145,19 @@ impl Entity {
 
 impl ActiveModel {
 	pub fn new(object: &impl apb::Object) -> Result<Self, super::FieldError> {
+		let t = object.object_type().ok_or(super::FieldError("type"))?;
+		if matches!(t,
+			apb::ObjectType::Activity(_)
+			| apb::ObjectType::Actor(_)
+			| apb::ObjectType::Collection(_)
+			| apb::ObjectType::Document(_)
+		) {
+			return Err(super::FieldError("type"));
+		}
 		Ok(ActiveModel {
 			internal: sea_orm::ActiveValue::NotSet,
 			id: sea_orm::ActiveValue::Set(object.id().ok_or(super::FieldError("id"))?.to_string()),
-			object_type: sea_orm::ActiveValue::Set(object.object_type().ok_or(super::FieldError("type"))?),
+			object_type: sea_orm::ActiveValue::Set(t),
 			attributed_to: sea_orm::ActiveValue::Set(object.attributed_to().id()),
 			name: sea_orm::ActiveValue::Set(object.name().map(|x| x.to_string())),
 			summary: sea_orm::ActiveValue::Set(object.summary().map(|x| x.to_string())),
