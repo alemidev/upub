@@ -98,7 +98,7 @@ async fn main() {
 		.acquire_timeout(std::time::Duration::from_secs(config.datasource.acquire_timeout_seconds))
 		.connect_timeout(std::time::Duration::from_secs(config.datasource.connect_timeout_seconds))
 		.sqlx_slow_statements_logging_settings(
-			if config.datasource.slow_query_warn_enable { tracing::log::LevelFilter::Warn } else { tracing::log::LevelFilter::Off },
+			if config.datasource.slow_query_warn_enable { tracing::log::LevelFilter::Warn } else { tracing::log::LevelFilter::Debug },
 			std::time::Duration::from_secs(config.datasource.slow_query_warn_seconds)
 		);
 
