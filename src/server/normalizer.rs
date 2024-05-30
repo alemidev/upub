@@ -53,13 +53,11 @@ impl Normalizer for super::Context {
 
 		// update replies counter
 		if let Set(Some(ref in_reply_to)) = object_model.in_reply_to {
-			if self.fetch_object(in_reply_to).await.is_ok() {
-				model::object::Entity::update_many()
-					.filter(model::object::Column::Id.eq(in_reply_to))
-					.col_expr(model::object::Column::Replies, Expr::col(model::object::Column::Replies).add(1))
-					.exec(self.db())
-					.await?;
-			}
+			model::object::Entity::update_many()
+				.filter(model::object::Column::Id.eq(in_reply_to))
+				.col_expr(model::object::Column::Replies, Expr::col(model::object::Column::Replies).add(1))
+				.exec(self.db())
+				.await?;
 		}
 		// update statuses counter
 		if let Some(object_author) = uid {

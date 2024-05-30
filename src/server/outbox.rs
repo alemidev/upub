@@ -36,6 +36,9 @@ impl apb::server::Outbox for Context {
 		let aid = self.aid(&uuid::Uuid::new_v4().to_string());
 		let activity_targets = activity.addressed();
 
+		if let Some(reply) = object.in_reply_to().id() {
+			self.fetch_object(&reply).await?;
+		}
 
 		// TODO regex hell here i come...
 		let re = regex::Regex::new(r"@(.+)@([^ ]+)").expect("failed compiling regex pattern");

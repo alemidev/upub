@@ -18,6 +18,11 @@ impl apb::server::Inbox for Context {
 			tracing::error!("refusing to process activity without embedded object: {}", serde_json::to_string_pretty(&activity).unwrap());
 			return Err(UpubError::unprocessable());
 		};
+		if let Some(reply) = object_node.in_reply_to().id() {
+			if let Err(e) = self.fetch_object(&reply).await {
+				tracing::warn!("failed fetching replies for received object: {e}");
+			}
+		}
 		let activity_model = self.insert_activity(activity, Some(server.clone())).await?;
 		let object_model = self.insert_object(object_node, Some(server)).await?;
 		let expanded_addressing = self.expand_addressing(activity_model.addressed()).await?;
