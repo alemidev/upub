@@ -92,6 +92,7 @@ async fn main() {
 	let mut opts = ConnectOptions::new(&database);
 
 	opts
+		.sqlx_logging(true)
 		.sqlx_logging_level(tracing::log::LevelFilter::Debug)
 		.max_connections(config.datasource.max_connections)
 		.min_connections(config.datasource.min_connections)
