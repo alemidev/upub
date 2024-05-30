@@ -73,6 +73,12 @@ pub struct SecurityConfig {
 
 	#[serde(default)]
 	pub allow_login_refresh: bool,
+
+	#[serde_inline_default(2)]
+	pub max_id_redirects: u32,
+
+	#[serde_inline_default(20)]
+	pub thread_crawl_depth: u32,
 }
 
 

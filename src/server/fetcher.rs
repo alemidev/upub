@@ -9,10 +9,19 @@ use crate::{errors::UpubError, model, VERSION};
 
 use super::{addresser::Addresser, httpsign::HttpSignature, normalizer::Normalizer, Context};
 
+#[derive(Debug, Clone)]
 pub enum PullResult<T> {
 	Actor(T),
 	Activity(T),
 	Object(T),
+}
+
+impl<T> PullResult<T> {
+	pub fn inner(self) -> T {
+		match self {
+			Self::Actor(x) | Self::Activity(x) | Self::Object(x) => x
+		}
+	}
 }
 
 impl PullResult<serde_json::Value> {
@@ -39,11 +48,23 @@ impl PullResult<serde_json::Value> {
 			Self::Object(x) => Ok(x),
 		}
 	}
+
+	pub async fn resolve(self, ctx: &(impl Fetcher + Sync)) -> crate::Result<()> {
+		match self {
+			Self::Actor(x) => { ctx.resolve_user(x).await?; },
+			Self::Object(x) => { ctx.resolve_object(x).await?; },
+			Self::Activity(x) => { ctx.resolve_activity(x).await?; },
+		}
+		Ok(())
+	}
 }
 
 #[axum::async_trait]
 pub trait Fetcher {
-	async fn pull(&self, id: &str) -> crate::Result<PullResult<serde_json::Value>>;
+	async fn pull(&self, id: &str) -> crate::Result<PullResult<serde_json::Value>> { self.pull_r(id, 0).await }
+	async fn pull_r(&self, id: &str, depth: i32) -> crate::Result<PullResult<serde_json::Value>>;
+
+
 	async fn webfinger(&self, user: &str, host: &str) -> crate::Result<String>;
 
 	async fn fetch_domain(&self, domain: &str) -> crate::Result<model::instance::Model>;
@@ -57,8 +78,8 @@ pub trait Fetcher {
 	async fn fetch_object(&self, id: &str) -> crate::Result<model::object::Model> { self.fetch_object_r(id, 0).await }
 	#[allow(unused)] async fn resolve_object(&self, object: serde_json::Value) -> crate::Result<model::object::Model> { self.resolve_object_r(object, 0).await }
 
-	async fn fetch_object_r(&self, id: &str, depth: i32) -> crate::Result<model::object::Model>;
-	async fn resolve_object_r(&self, object: serde_json::Value, depth: i32) -> crate::Result<model::object::Model>;
+	async fn fetch_object_r(&self, id: &str, depth: u32) -> crate::Result<model::object::Model>;
+	async fn resolve_object_r(&self, object: serde_json::Value, depth: u32) -> crate::Result<model::object::Model>;
 
 
 	async fn fetch_thread(&self, id: &str) -> crate::Result<()>;
@@ -122,7 +143,7 @@ pub trait Fetcher {
 
 #[axum::async_trait]
 impl Fetcher for Context {
-	async fn pull(&self, id: &str) -> crate::Result<PullResult<serde_json::Value>> {
+	async fn pull_r(&self, id: &str, depth: u32) -> crate::Result<PullResult<serde_json::Value>> {
 		let _domain = self.fetch_domain(&Context::server(id)).await?;
 
 		let document = Self::request(
@@ -132,6 +153,14 @@ impl Fetcher for Context {
 			.await?
 			.json::<serde_json::Value>()
 			.await?;
+
+		let doc_id = document.id().ok_or_else(|| UpubError::field("id"))?;
+		if id != doc_id {
+			if depth >= self.cfg().security.max_id_redirects {
+				return Err(UpubError::unprocessable());
+			}
+			return self.pull(doc_id).await;
+		}
 
 		match document.object_type() {
 			None => Err(UpubError::bad_request()),
@@ -321,7 +350,7 @@ impl Fetcher for Context {
 		todo!()
 	}
 
-	async fn fetch_object_r(&self, id: &str, depth: i32) -> crate::Result<model::object::Model> {
+	async fn fetch_object_r(&self, id: &str, depth: u32) -> crate::Result<model::object::Model> {
 		if let Some(x) = model::object::Entity::find_by_ap_id(id).one(self.db()).await? {
 			return Ok(x); // already in db, easy
 		}
@@ -331,7 +360,7 @@ impl Fetcher for Context {
 		self.resolve_object_r(object, depth).await
 	}
 
-	async fn resolve_object_r(&self, object: serde_json::Value, depth: i32) -> crate::Result<model::object::Model> {
+	async fn resolve_object_r(&self, object: serde_json::Value, depth: u32) -> crate::Result<model::object::Model> {
 		let id = object.id().ok_or_else(|| UpubError::field("id"))?.to_string();
 
 		if let Some(oid) = object.id() {
@@ -351,10 +380,10 @@ impl Fetcher for Context {
 		let addressed = object.addressed();
 
 		if let Some(reply) = object.in_reply_to().id() {
-			if depth <= 16 {
+			if depth <= self.cfg().security.thread_crawl_depth {
 				self.fetch_object_r(&reply, depth + 1).await?;
 			} else {
-				tracing::warn!("thread deeper than 16, giving up fetching more replies");
+				tracing::warn!("thread deeper than {}, giving up fetching more replies", self.cfg().security.thread_crawl_depth);
 			}
 		}
 
