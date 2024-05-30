@@ -14,13 +14,31 @@ impl apb::server::Outbox for Context {
 	type Activity = serde_json::Value;
 
 	async fn create_note(&self, uid: String, object: serde_json::Value) -> crate::Result<String> {
-		// TODO regex hell, here i come...
-		let re = regex::Regex::new(r"@(.+)@([^ ]+)").expect("failed compiling regex pattern");
+		self.create(
+			uid,
+			serde_json::Value::new_object()
+				.set_activity_type(Some(apb::ActivityType::Create))
+				.set_to(object.to())
+				.set_bto(object.bto())
+				.set_cc(object.cc())
+				.set_bcc(object.bcc())
+				.set_object(Node::object(object))
+		).await
+	}
+
+	async fn create(&self, uid: String, activity: serde_json::Value) -> crate::Result<String> {
+		let Some(object) = activity.object().extract() else {
+			return Err(UpubError::bad_request());
+		};
+
 		let raw_oid = uuid::Uuid::new_v4().to_string();
 		let oid = self.oid(&raw_oid);
 		let aid = self.aid(&uuid::Uuid::new_v4().to_string());
-		let activity_targets = object.addressed();
+		let activity_targets = activity.addressed();
 
+
+		// TODO regex hell here i come...
+		let re = regex::Regex::new(r"@(.+)@([^ ]+)").expect("failed compiling regex pattern");
 		let mut content = object.content().map(|x| x.to_string());
 		if let Some(c) = content {
 			let mut tmp = mdhtml::safe_markdown(&c);
@@ -40,70 +58,24 @@ impl apb::server::Outbox for Context {
 			content = Some(tmp);
 		}
 
-		let object_model = self.insert_object(
-			object
-				.set_id(Some(&oid))
-				.set_attributed_to(Node::link(uid.clone()))
-				.set_content(content.as_deref())
-				.set_published(Some(chrono::Utc::now()))
-				.set_url(Node::maybe_link(self.cfg().instance.frontend.as_ref().map(|x| format!("{x}/objects/{raw_oid}")))),
-			Some(self.domain().to_string()),
-		).await?;
-
-		let activity_model = model::activity::ActiveModel {
-			internal: NotSet,
-			id: Set(aid.clone()),
-			activity_type: Set(apb::ActivityType::Create),
-			actor: Set(uid.clone()),
-			object: Set(Some(oid.clone())),
-			target: Set(None),
-			cc: Set(object_model.cc.clone()),
-			bcc: Set(object_model.bcc.clone()),
-			to: Set(object_model.to.clone()),
-			bto: Set(object_model.bto.clone()),
-			published: Set(object_model.published),
-		};
-
-		model::activity::Entity::insert(activity_model).exec(self.db()).await?;
-
-		self.dispatch(&uid, activity_targets, &aid, Some(&oid)).await?;
-
-		Ok(aid)
-	}
-
-	async fn create(&self, uid: String, activity: serde_json::Value) -> crate::Result<String> {
-		let Some(object) = activity.object().extract() else {
-			return Err(UpubError::bad_request());
-		};
-
-		let raw_oid = uuid::Uuid::new_v4().to_string();
-		let oid = self.oid(&raw_oid);
-		let aid = self.aid(&uuid::Uuid::new_v4().to_string());
-		let activity_targets = activity.addressed();
-
 		self.insert_object(
 			object
 				.set_id(Some(&oid))
 				.set_attributed_to(Node::link(uid.clone()))
 				.set_published(Some(chrono::Utc::now()))
-				.set_to(activity.to())
-				.set_bto(activity.bto())
-				.set_cc(activity.cc())
-				.set_bcc(activity.bcc())
+				.set_content(content.as_deref())
 				.set_url(Node::maybe_link(self.cfg().instance.frontend.as_ref().map(|x| format!("{x}/objects/{raw_oid}")))),
 			Some(self.domain().to_string()),
 		).await?;
 
-		let activity_model = model::activity::ActiveModel::new(
-			&activity
+		self.insert_activity(
+			activity
 				.set_id(Some(&aid))
 				.set_actor(Node::link(uid.clone()))
 				.set_object(Node::link(oid.clone()))
-				.set_published(Some(chrono::Utc::now()))
-		)?;
-
-		model::activity::Entity::insert(activity_model.into_active_model())
-			.exec(self.db()).await?;
+				.set_published(Some(chrono::Utc::now())),
+			Some(self.domain().to_string()),
+		).await?;
 
 		self.dispatch(&uid, activity_targets, &aid, Some(&oid)).await?;
 		Ok(aid)
