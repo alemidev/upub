@@ -10,9 +10,9 @@ pub async fn get(
 ) -> crate::Result<JsonLD<serde_json::Value>> {
 	match auth {
 		Identity::Anonymous => Err(StatusCode::FORBIDDEN.into()),
-		Identity::Remote(_) => Err(StatusCode::FORBIDDEN.into()),
-		Identity::Local(user) => if ctx.uid(&id) == user {
-			crate::server::builders::collection(&url!(ctx, "/users/{id}/inbox"), None)
+		Identity::Remote { .. } => Err(StatusCode::FORBIDDEN.into()),
+		Identity::Local { id: user, .. } => if ctx.uid(&id) == user {
+			crate::server::builders::collection(&url!(ctx, "/actors/{id}/inbox"), None)
 		} else {
 			Err(StatusCode::FORBIDDEN.into())
 		},
@@ -25,7 +25,7 @@ pub async fn page(
 	AuthIdentity(auth): AuthIdentity,
 	Query(page): Query<Pagination>,
 ) -> crate::Result<JsonLD<serde_json::Value>> {
-	let Identity::Local(uid) = &auth else {
+	let Identity::Local { id: uid, internal } = &auth else {
 		// local inbox is only for local users
 		return Err(UpubError::forbidden());
 	};
@@ -34,14 +34,15 @@ pub async fn page(
 	}
 
 	crate::server::builders::paginate(
-		url!(ctx, "/users/{id}/inbox/page"),
+		url!(ctx, "/actors/{id}/inbox/page"),
 		Condition::any()
-			.add(model::addressing::Column::Actor.eq(uid))
+			.add(model::addressing::Column::Actor.eq(*internal))
 			.add(model::object::Column::AttributedTo.eq(uid))
 			.add(model::activity::Column::Actor.eq(uid)),
 		ctx.db(),
 		page,
 		auth.my_id(),
+		false,
 	)
 		.await
 }

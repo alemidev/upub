@@ -19,13 +19,13 @@ pub fn RegisterPage() -> impl IntoView {
 				<form on:submit=move|ev| {
 					ev.prevent_default();
 					logging::log!("registering new user...");
-					let email = username_ref.get().map(|x| x.value()).unwrap_or("".into());
-					let password = password_ref.get().map(|x| x.value()).unwrap_or("".into());
+					let _email = username_ref.get().map(|x| x.value()).unwrap_or("".into());
+					let _password = password_ref.get().map(|x| x.value()).unwrap_or("".into());
 					spawn_local(async move {
 						match Http::request::<()>(
 							Method::PUT, &format!("{URL_BASE}/auth"), None, auth
 						).await {
-							Ok(x) => {},
+							Ok(_x) => {},
 							Err(e) => set_error.set(Some(
 								view! { <blockquote>{e.to_string()}</blockquote> }
 							)),

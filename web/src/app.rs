@@ -1,19 +1,16 @@
 use leptos::*;
 use leptos_router::*;
+use reqwest::Method;
 use crate::prelude::*;
 
-use leptos_use::{storage::use_local_storage, use_cookie, use_cookie_with_options, utils::{FromToStringCodec, JsonCodec}, UseCookieOptions};
+use leptos_use::{storage::use_local_storage, use_cookie, utils::{FromToStringCodec, JsonCodec}};
 
 
 #[component]
 pub fn App() -> impl IntoView {
-	let (token, set_token) = use_cookie_with_options::<String, FromToStringCodec>(
-		"token",
-		UseCookieOptions::default()
-			.max_age(1000 * 60 * 60 * 6)
-	);
-	let (config, set_config, _) = use_local_storage::<crate::Config, JsonCodec>("config");
+	let (token, set_token) = use_cookie::<String, FromToStringCodec>("token");
 	let (userid, set_userid) = use_cookie::<String, FromToStringCodec>("user_id");
+	let (config, set_config, _) = use_local_storage::<crate::Config, JsonCodec>("config");
 
 	let auth = Auth { token, userid };
 	provide_context(auth);
@@ -22,10 +19,12 @@ pub fn App() -> impl IntoView {
 	let username = auth.userid.get_untracked()
 		.map(|x| x.split('/').last().unwrap_or_default().to_string())
 		.unwrap_or_default();
-	let home_tl = Timeline::new(format!("{URL_BASE}/users/{username}/inbox/page"));
+	let home_tl = Timeline::new(format!("{URL_BASE}/actors/{username}/inbox/page"));
+	let user_tl = Timeline::new(format!("{URL_BASE}/actors/{username}/outbox/page"));
 	let server_tl = Timeline::new(format!("{URL_BASE}/inbox/page"));
-	let user_tl = Timeline::new(format!("{URL_BASE}/users/{username}/outbox/page"));
-	let context_tl = Timeline::new(format!("{URL_BASE}/outbox/page"));
+	let local_tl = Timeline::new(format!("{URL_BASE}/outbox/page"));
+
+	let context_tl = Timeline::new(format!("{URL_BASE}/outbox/page")); // TODO ehhh
 
 	let reply_controls = ReplyControls::default();
 	provide_context(reply_controls);
@@ -35,26 +34,42 @@ pub fn App() -> impl IntoView {
 	let (menu, set_menu) = create_signal(screen_width <= 786);
 	let (advanced, set_advanced) = create_signal(false);
 
-	spawn_local(async move {
-		if let Err(e) = server_tl.more(auth).await {
-			tracing::error!("error populating timeline: {e}");
-		}
-	});
+	let title_target = move || if auth.present() { "/web/home" } else { "/web/server" };
 
-	let auth_present = auth.token.get_untracked().is_some(); // skip helper to use get_untracked
-	if auth_present { 
+	if let Some(tok) = token.get_untracked() {
 		spawn_local(async move {
-			if let Err(e) = home_tl.more(auth).await {
-				tracing::error!("error populating timeline: {e}");
+			// refresh token first, or verify that we're still authed
+			match reqwest::Client::new()
+				.request(Method::PATCH, format!("{URL_BASE}/auth"))
+				.json(&serde_json::json!({"token": tok}))
+				.send()
+				.await
+			{
+				Err(e) => tracing::error!("could not refresh token: {e}"),
+				Ok(res) => match res.error_for_status() {
+					Err(e) => tracing::error!("server rejected refresh: {e}"),
+					Ok(doc) => match doc.json::<AuthResponse>().await {
+						Err(e) => tracing::error!("failed parsing auth response: {e}"),
+						Ok(auth) => {
+							set_token.set(Some(auth.token));
+							set_userid.set(Some(auth.user));
+						},
+					}
+				}
 			}
-		});
-	}
 
-	let title_target = if auth_present { "/web/home" } else { "/web/server" };
+			server_tl.more(auth);
+			local_tl.more(auth);
+			if auth.token.get_untracked().is_some() { home_tl.more(auth) };
+		})
+	} else {
+		server_tl.more(auth);
+		local_tl.more(auth);
+	}
 
 	view! {
 		<nav class="w-100 mt-1 mb-1 pb-s">
-			<code class="color ml-3" ><a class="upub-title" href={title_target} >μpub</a></code>
+			<code class="color ml-3" ><a class="upub-title" href=title_target >μpub</a></code>
 			<small class="ml-1 mr-1 hidden-on-tiny" ><a class="clean" href="/web/server" >micro social network, federated</a></small>
 			/* TODO kinda jank with the float but whatever, will do for now */
 			<input type="submit" class="mr-2 rev" on:click=move |_| set_menu.set(!menu.get()) value="menu" style="float: right" />
@@ -96,36 +111,34 @@ pub fn App() -> impl IntoView {
 						// in a sense it's what we want: refreshing the home tl is main purpose, but also
 						// server tl may contain stuff we can no longer see, or otherwise we may now be
 						// entitled to see new posts. so while being ugly it's techically correct ig?
-						{move || {
-							view! {
-								<main>
-										<Routes>
-											<Route path="/web" view=move ||
-												if auth.present() {
-													view! { <Redirect path="/web/home" /> }
-												} else {
-													view! { <Redirect path="/web/server" /> }
-												}
-											/>
+						<main>
+								<Routes>
+									<Route path="/web" view=move ||
+										if auth.present() {
+											view! { <Redirect path="/web/home" /> }
+										} else {
+											view! { <Redirect path="/web/server" /> }
+										}
+									/>
 
-											<Route path="/web/home" view=move || view! { <TimelinePage name="home" tl=home_tl /> } />
-											<Route path="/web/server" view=move || view! { <TimelinePage name="server" tl=server_tl /> } />
+									<Route path="/web/home" view=move || view! { <TimelinePage name="home" tl=home_tl /> } />
+									<Route path="/web/server" view=move || view! { <TimelinePage name="server" tl=server_tl /> } />
+									<Route path="/web/local" view=move || view! { <TimelinePage name="local" tl=local_tl /> } />
 
-											<Route path="/web/about" view=AboutPage />
-											<Route path="/web/config" view=move || view! { <ConfigPage setter=set_config /> } />
-											<Route path="/web/config/dev" view=DebugPage />
+									<Route path="/web/about" view=AboutPage />
+									<Route path="/web/config" view=move || view! { <ConfigPage setter=set_config /> } />
+									<Route path="/web/config/dev" view=DebugPage />
 
-											<Route path="/web/users/:id" view=move || view! { <UserPage tl=user_tl /> } />
-											<Route path="/web/objects/:id" view=move || view! { <ObjectPage tl=context_tl /> } />
+									<Route path="/web/actors/:id" view=move || view! { <UserPage tl=user_tl /> } />
+									<Route path="/web/objects/:id" view=move || view! { <ObjectPage tl=context_tl /> } />
+									// <Route path="/web/activities/:id" view=move || view! { <ActivityPage tl=context_tl /> } />
 
-											<Route path="/web/search" view=SearchPage />
-											<Route path="/web/register" view=RegisterPage />
+									<Route path="/web/search" view=SearchPage />
+									<Route path="/web/register" view=RegisterPage />
 
-											<Route path="/" view=move || view! { <Redirect path="/web" /> } />
-										</Routes>
-								</main>
-							}
-						}}
+									<Route path="/" view=move || view! { <Redirect path="/web" /> } />
+								</Routes>
+						</main>
 					</Router>
 				</div>
 			</div>

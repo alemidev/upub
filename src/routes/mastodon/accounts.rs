@@ -1,6 +1,5 @@
 use axum::{extract::{Path, State}, http::StatusCode, Json};
 use mastodon_async_entities::account::{Account, AccountId};
-use sea_orm::EntityTrait;
 
 use crate::{model, server::{auth::AuthIdentity, Context}};
 
@@ -9,7 +8,7 @@ pub async fn view(
 	AuthIdentity(_auth): AuthIdentity,
 	Path(id): Path<String>
 ) -> Result<Json<Account>, StatusCode> {
-	match model::user::Entity::find_by_id(ctx.uid(&id))
+	match model::actor::Entity::find_by_ap_id(&ctx.uid(&id))
 		.find_also_related(model::config::Entity)
 		.one(ctx.db())
 		.await
@@ -21,7 +20,7 @@ pub async fn view(
 			acct: x.preferred_username.clone(),
 			avatar: x.icon.as_deref().unwrap_or("").to_string(),
 			avatar_static: x.icon.unwrap_or_default(),
-			created_at: time::OffsetDateTime::from_unix_timestamp(x.created.timestamp()).unwrap(),
+			created_at: time::OffsetDateTime::from_unix_timestamp(x.published.timestamp()).unwrap(),
 			display_name: x.name.unwrap_or_default(),
 			// TODO hide these maybe
 			followers_count: x.followers_count as u64,

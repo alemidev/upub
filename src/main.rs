@@ -1,8 +1,8 @@
-pub mod server; // TODO there are some methods that i dont use yet, make it public so that ra shuts up
+mod server;
 mod model;
 mod routes;
 
-mod errors;
+pub mod errors;
 mod config;
 
 #[cfg(feature = "cli")]
@@ -51,7 +51,11 @@ struct Args {
 #[derive(Clone, Subcommand)]
 enum Mode {
 	/// run fediverse server
-	Serve,
+	Serve {
+		#[arg(short, long, default_value="127.0.0.1:3000")]
+		/// addr to bind and serve onto
+		bind: String,
+	},
 
 	/// print current or default configuration
 	Config,
@@ -88,13 +92,14 @@ async fn main() {
 	let mut opts = ConnectOptions::new(&database);
 
 	opts
+		.sqlx_logging(true)
 		.sqlx_logging_level(tracing::log::LevelFilter::Debug)
 		.max_connections(config.datasource.max_connections)
 		.min_connections(config.datasource.min_connections)
 		.acquire_timeout(std::time::Duration::from_secs(config.datasource.acquire_timeout_seconds))
 		.connect_timeout(std::time::Duration::from_secs(config.datasource.connect_timeout_seconds))
 		.sqlx_slow_statements_logging_settings(
-			if config.datasource.slow_query_warn_enable { tracing::log::LevelFilter::Warn } else { tracing::log::LevelFilter::Off },
+			if config.datasource.slow_query_warn_enable { tracing::log::LevelFilter::Warn } else { tracing::log::LevelFilter::Debug },
 			std::time::Duration::from_secs(config.datasource.slow_query_warn_seconds)
 		);
 
@@ -114,7 +119,7 @@ async fn main() {
 
 		Mode::Config => println!("{}", toml::to_string_pretty(&config).expect("failed serializing config")),
 
-		Mode::Serve => {
+		Mode::Serve { bind } => {
 			let ctx = server::Context::new(db, domain, config)
 				.await.expect("failed creating server context");
 
@@ -129,7 +134,7 @@ async fn main() {
 				.with_state(ctx);
 
 			// run our app with hyper, listening locally on port 3000
-			let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
+			let listener = tokio::net::TcpListener::bind(bind)
 				.await.expect("could not bind tcp socket");
 
 			axum::serve(listener, router)

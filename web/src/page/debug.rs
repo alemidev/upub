@@ -84,7 +84,7 @@ pub fn DebugPage() -> impl IntoView {
 					" raw :: "
 					<a href={move|| Uri::web(U::Object, &text.get())} >obj</a>
 					" :: "
-					<a href={move|| Uri::web(U::User, &text.get())} >usr</a>
+					<a href={move|| Uri::web(U::Actor, &text.get())} >usr</a>
 					" :: "
 					<a href=move || cached_query().0 target="_blank" rel="nofollow noreferrer">ext</a>
 					" :: "

@@ -2,7 +2,7 @@ use base64::Engine;
 
 #[derive(Clone, Copy)]
 pub enum UriClass {
-	User,
+	Actor,
 	Object,
 	Activity,
 	Context,
@@ -11,7 +11,7 @@ pub enum UriClass {
 impl AsRef<str> for UriClass {
 	fn as_ref(&self) -> &str {
 		match self {
-			Self::User => "users",
+			Self::Actor => "actors",
 			Self::Object => "objects",
 			Self::Activity => "activities",
 			Self::Context => "context",
@@ -38,10 +38,10 @@ pub fn uri(base: &str, entity: UriClass, id: &str) -> String {
 
 /// decompose local id constructed by uri() fn
 pub fn decompose_id(full_id: &str) -> String {
-		full_id       //  https://example.org/users/test/followers/page?offset=42
+		full_id       //  https://example.org/actors/test/followers/page?offset=42
 			.replace("https://", "")
 			.replace("http://", "")
-			.split('/') //  ['example.org', 'users', 'test', 'followers', 'page?offset=42' ]
+			.split('/') //  ['example.org', 'actors', 'test', 'followers', 'page?offset=42' ]
 			.nth(2)     //  'test'
 			.unwrap_or("")
 			.to_string()

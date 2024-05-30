@@ -20,11 +20,12 @@ pub async fn page(
 ) -> crate::Result<JsonLD<serde_json::Value>> {
 	crate::server::builders::paginate(
 		url!(ctx, "/inbox/page"),
-		crate::model::addressing::Column::Actor.eq(apb::target::PUBLIC)
+		crate::model::addressing::Column::Actor.is_null()
 			.into_condition(),
 		ctx.db(),
 		page,
 		auth.my_id(),
+		false,
 	)
 		.await
 }
@@ -41,7 +42,7 @@ pub async fn post(
 	AuthIdentity(auth): AuthIdentity,
 	Json(activity): Json<serde_json::Value>
 ) -> crate::Result<()> {
-	let Identity::Remote(server) = auth else {
+	let Identity::Remote { domain: server, .. } = auth else {
 		if activity.activity_type() == Some(ActivityType::Delete) {
 			// this is spammy af, ignore them!
 			// we basically received a delete for a user we can't fetch and verify, meaning remote
@@ -63,8 +64,7 @@ pub async fn post(
 		return Err(UpubError::bad_request());
 	};
 
-	// TODO add whitelist of relays
-	if !server.ends_with(&Context::server(&actor)) {
+	if server != Context::server(&actor) {
 		return Err(UpubError::unauthorized());
 	}
 

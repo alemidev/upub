@@ -236,7 +236,7 @@ pub fn LikeButton(
 				let cc = if private { apb::Node::Empty } else {
 					apb::Node::links(vec![
 						apb::target::PUBLIC.to_string(),
-						format!("{URL_BASE}/users/{}/followers", auth.username())
+						format!("{URL_BASE}/actors/{}/followers", auth.username())
 					])
 				};
 				let payload = serde_json::Value::Object(serde_json::Map::default())
@@ -312,7 +312,7 @@ pub fn RepostButton(n: u64, target: String) -> impl IntoView {
 				if !clicked.get() { return; }
 				set_clicked.set(false);
 				let to = apb::Node::links(vec![apb::target::PUBLIC.to_string()]);
-				let cc = apb::Node::links(vec![format!("{URL_BASE}/users/{}/followers", auth.username())]);
+				let cc = apb::Node::links(vec![format!("{URL_BASE}/actors/{}/followers", auth.username())]);
 				let payload = serde_json::Value::Object(serde_json::Map::default())
 					.set_activity_type(Some(apb::ActivityType::Announce))
 					.set_object(apb::Node::link(target.clone()))

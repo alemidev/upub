@@ -1,19 +1,22 @@
-use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, QueryOrder};
+use sea_orm::{ActiveValue::{Set, NotSet}, ColumnTrait, EntityTrait, QueryFilter, QueryOrder};
+
+use crate::server::addresser::Addresser;
 
 pub async fn relay(ctx: crate::server::Context, actor: String, accept: bool) -> crate::Result<()> {
 	let aid = ctx.aid(&uuid::Uuid::new_v4().to_string());
 
-	let mut activity_model = crate::model::activity::Model {
-		id: aid.clone(),
-		activity_type: apb::ActivityType::Follow,
-		actor: ctx.base().to_string(),
-		object: Some(actor.clone()),
-		target: None,
-		published: chrono::Utc::now(),
-		to: crate::model::Audience(vec![actor.clone()]),
-		bto: crate::model::Audience::default(),
-		cc: crate::model::Audience(vec![apb::target::PUBLIC.to_string()]),
-		bcc: crate::model::Audience::default(),
+	let mut activity_model = crate::model::activity::ActiveModel {
+		internal: NotSet,
+		id: Set(aid.clone()),
+		activity_type: Set(apb::ActivityType::Follow),
+		actor: Set(ctx.base().to_string()),
+		object: Set(Some(actor.clone())),
+		target: Set(None),
+		published: Set(chrono::Utc::now()),
+		to: Set(crate::model::Audience(vec![actor.clone()])),
+		bto: Set(crate::model::Audience::default()),
+		cc: Set(crate::model::Audience(vec![apb::target::PUBLIC.to_string()])),
+		bcc: Set(crate::model::Audience::default()),
 	};
 
 	if accept {
@@ -25,11 +28,11 @@ pub async fn relay(ctx: crate::server::Context, actor: String, accept: bool) -> 
 			.one(ctx.db())
 			.await?
 			.expect("no follow request to accept");
-		activity_model.activity_type = apb::ActivityType::Accept(apb::AcceptType::Accept);
-		activity_model.object = Some(follow_req.id);
+		activity_model.activity_type = Set(apb::ActivityType::Accept(apb::AcceptType::Accept));
+		activity_model.object = Set(Some(follow_req.id));
 	};
 
-	crate::model::activity::Entity::insert(activity_model.into_active_model())
+	crate::model::activity::Entity::insert(activity_model)
 		.exec(ctx.db()).await?;
 
 	ctx.dispatch(ctx.base(), vec![actor, apb::target::PUBLIC.to_string()], &aid, None).await?;

@@ -8,7 +8,7 @@ pub async fn get(
 	State(ctx): State<Context>,
 	Path(id): Path<String>,
 ) -> crate::Result<JsonLD<serde_json::Value>> {
-	crate::server::builders::collection(&url!(ctx, "/users/{id}/outbox"), None)
+	crate::server::builders::collection(&url!(ctx, "/actors/{id}/outbox"), None)
 }
 
 pub async fn page(
@@ -19,7 +19,7 @@ pub async fn page(
 ) -> crate::Result<JsonLD<serde_json::Value>> {
 	let uid = ctx.uid(&id);
 	crate::server::builders::paginate(
-		url!(ctx, "/users/{id}/outbox/page"),
+		url!(ctx, "/actors/{id}/outbox/page"),
 		Condition::all()
 			.add(auth.filter_condition())
 			.add(
@@ -30,6 +30,7 @@ pub async fn page(
 		ctx.db(),
 		page,
 		auth.my_id(),
+		false,
 	)
 		.await
 }
@@ -42,8 +43,8 @@ pub async fn post(
 ) -> Result<CreationResult, UpubError> {
 	match auth {
 		Identity::Anonymous => Err(StatusCode::UNAUTHORIZED.into()),
-		Identity::Remote(_) => Err(StatusCode::NOT_IMPLEMENTED.into()),
-		Identity::Local(uid) => if ctx.uid(&id) == uid {
+		Identity::Remote { .. } => Err(StatusCode::NOT_IMPLEMENTED.into()),
+		Identity::Local { id: uid, .. } => if ctx.uid(&id) == uid {
 			tracing::debug!("processing new local activity: {}", serde_json::to_string(&activity).unwrap_or_default());
 			match activity.base_type() {
 				None => Err(StatusCode::BAD_REQUEST.into()),

@@ -1,18 +1,23 @@
+pub mod actor;
 pub mod object;
 pub mod activity;
-pub mod user;
-pub mod config;
 
-pub mod relay;
-pub mod relation;
-pub mod addressing;
-pub mod share;
-pub mod like;
+pub mod config;
 pub mod credential;
 pub mod session;
+
+pub mod instance;
 pub mod delivery;
+
+pub mod relation;
+pub mod announce;
+pub mod like;
+
+pub mod hashtag;
+pub mod mention;
 pub mod attachment;
-pub mod application;
+
+pub mod addressing;
 
 #[derive(Debug, Clone, thiserror::Error)]
 #[error("missing required field: '{0}'")]

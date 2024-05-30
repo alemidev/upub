@@ -1,5 +1,5 @@
 use apb::{BaseMut, CollectionMut, CollectionPageMut};
-use sea_orm::{Condition, DatabaseConnection, QueryFilter, QuerySelect};
+use sea_orm::{Condition, DatabaseConnection, QueryFilter, QuerySelect, RelationTrait};
 
 use crate::{model::{addressing::Event, attachment::BatchFillable}, routes::activitypub::{jsonld::LD, JsonLD, Pagination}};
 
@@ -8,12 +8,20 @@ pub async fn paginate(
 	filter: Condition,
 	db: &DatabaseConnection,
 	page: Pagination,
-	my_id: Option<&str>,
+	my_id: Option<i64>,
+	with_users: bool, // TODO ewww too many arguments for this weird function...
 ) -> crate::Result<JsonLD<serde_json::Value>> {
 	let limit = page.batch.unwrap_or(20).min(50);
 	let offset = page.offset.unwrap_or(0);
 
-	let items = crate::model::addressing::Entity::find_addressed(my_id)
+	let mut select = crate::model::addressing::Entity::find_addressed(my_id);
+
+	if with_users {
+		select = select
+			.join(sea_orm::JoinType::InnerJoin, crate::model::activity::Relation::Actors.def());
+	}
+
+	let items = select
 		.filter(filter)
 		// TODO also limit to only local activities
 		.limit(limit)
@@ -27,7 +35,7 @@ pub async fn paginate(
 	let items : Vec<serde_json::Value> = items
 		.into_iter()
 		.map(|item| {
-			let attach = attachments.remove(item.id());
+			let attach = attachments.remove(&item.internal());
 			item.ap(attach)
 		})
 		.collect();
@@ -62,4 +70,23 @@ pub fn collection(id: &str, total_items: Option<u64>) -> crate::Result<JsonLD<se
 			.set_total_items(total_items)
 			.ld_context()
 	))
+}
+
+#[axum::async_trait]
+pub trait AnyQuery {
+	async fn any(self, db: &sea_orm::DatabaseConnection) -> crate::Result<bool>;
+}
+
+#[axum::async_trait]
+impl<T : sea_orm::EntityTrait> AnyQuery for sea_orm::Select<T> {
+	async fn any(self, db: &sea_orm::DatabaseConnection) ->	crate::Result<bool> {
+		Ok(self.one(db).await?.is_some())
+	}
+}
+
+#[axum::async_trait]
+impl<T : sea_orm::SelectorTrait + Send> AnyQuery for sea_orm::Selector<T> {
+	async fn any(self, db: &sea_orm::DatabaseConnection) ->	crate::Result<bool> {
+		Ok(self.one(db).await?.is_some())
+	}
 }

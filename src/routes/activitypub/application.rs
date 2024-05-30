@@ -2,7 +2,7 @@ use apb::{ActorMut, BaseMut, ObjectMut, PublicKeyMut};
 use axum::{extract::{Query, State}, http::HeaderMap, response::{IntoResponse, Redirect, Response}, Form, Json};
 use reqwest::Method;
 
-use crate::{errors::UpubError, server::{auth::{AuthIdentity, Identity}, fetcher::Fetcher, Context}, url};
+use crate::{errors::UpubError, server::{auth::AuthIdentity, fetcher::Fetcher, Context}, url};
 
 use super::{jsonld::LD, JsonLD};
 
@@ -26,14 +26,14 @@ pub async fn view(
 			.set_summary(Some(&ctx.cfg().instance.description))
 			.set_inbox(apb::Node::link(url!(ctx, "/inbox")))
 			.set_outbox(apb::Node::link(url!(ctx, "/outbox")))
-			.set_published(Some(ctx.app().created))
+			.set_published(Some(ctx.actor().published))
 			.set_endpoints(apb::Node::Empty)
 			.set_preferred_username(Some(ctx.domain()))
 			.set_public_key(apb::Node::object(
 				serde_json::Value::new_object()
 					.set_id(Some(&url!(ctx, "#main-key")))
 					.set_owner(Some(&url!(ctx, "")))
-					.set_public_key_pem(&ctx.app().public_key)
+					.set_public_key_pem(&ctx.actor().public_key)
 			))
 			.ld_context()
 	).into_response())
@@ -50,7 +50,7 @@ pub async fn proxy_get(
 	AuthIdentity(auth): AuthIdentity,
 ) -> crate::Result<Json<serde_json::Value>> {
 	// only local users can request fetches
-	if !ctx.cfg().security.allow_public_debugger && !matches!(auth, Identity::Local(_)) {
+	if !ctx.cfg().security.allow_public_debugger && !auth.is_local() {
 		return Err(UpubError::unauthorized());
 	}
 	Ok(Json(
@@ -59,7 +59,7 @@ pub async fn proxy_get(
 			&query.id,
 			None,
 			ctx.base(),
-			&ctx.app().private_key,
+			ctx.pkey(),
 			&format!("{}+proxy", ctx.domain()),
 		)
 			.await?
@@ -74,7 +74,7 @@ pub async fn proxy_form(
 	Form(query): Form<FetchPath>,
 ) -> crate::Result<Json<serde_json::Value>> {
 	// only local users can request fetches
-	if !ctx.cfg().security.allow_public_debugger && !matches!(auth, Identity::Local(_)) {
+	if !ctx.cfg().security.allow_public_debugger && auth.is_local() {
 		return Err(UpubError::unauthorized());
 	}
 	Ok(Json(
@@ -83,7 +83,7 @@ pub async fn proxy_form(
 			&query.id,
 			None,
 			ctx.base(),
-			&ctx.app().private_key,
+			ctx.pkey(),
 			&format!("{}+proxy", ctx.domain()),
 		)
 			.await?

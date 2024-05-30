@@ -23,37 +23,44 @@ impl TokenSink for Sink {
 				) { return TokenSinkResult::Continue } // skip this tag
 
 				self.0.push('<');
+
 				if !tag.self_closing && matches!(tag.kind, TagKind::EndTag) {
 					self.0.push('/');
 				}
 
 				self.0.push_str(tag.name.as_ref());
 
-				match tag.name.as_ref() {
-					"img" => for attr in tag.attrs {
-						match attr.name.local.as_ref() {
-							"src" => self.0.push_str(&format!(" src=\"{}\"", attr.value.as_ref())),
-							"title" => self.0.push_str(&format!(" title=\"{}\"", attr.value.as_ref())),
-							"alt" => self.0.push_str(&format!(" alt=\"{}\"", attr.value.as_ref())),
-							_ => {},
-						}
-					},
-					"a" => {
-						for attr in tag.attrs {
+				if !matches!(tag.kind, TagKind::EndTag) {
+					match tag.name.as_ref() {
+						"img" => for attr in tag.attrs {
 							match attr.name.local.as_ref() {
-								"href" => self.0.push_str(&format!(" href=\"{}\"", attr.value.as_ref())),
+								"src" => self.0.push_str(&format!(" src=\"{}\"", attr.value.as_ref())),
 								"title" => self.0.push_str(&format!(" title=\"{}\"", attr.value.as_ref())),
+								"alt" => self.0.push_str(&format!(" alt=\"{}\"", attr.value.as_ref())),
 								_ => {},
 							}
-						}
-						self.0.push_str(" rel=\"nofollow noreferrer\" target=\"_blank\"");
-					},
-					_ => {},
+						},
+						"a" => {
+							let any_attr = !tag.attrs.is_empty();
+							for attr in tag.attrs {
+								match attr.name.local.as_ref() {
+									"href" => self.0.push_str(&format!(" href=\"{}\"", attr.value.as_ref())),
+									"title" => self.0.push_str(&format!(" title=\"{}\"", attr.value.as_ref())),
+									_ => {},
+								}
+							}
+							if any_attr {
+								self.0.push_str(" rel=\"nofollow noreferrer\" target=\"_blank\"");
+							}
+						},
+						_ => {},
+					}
 				}
 
 				if tag.self_closing {
 					self.0.push('/');
 				}
+
 				self.0.push('>');
 			},
 			Token::CharacterTokens(txt) => self.0.push_str(txt.as_ref()),

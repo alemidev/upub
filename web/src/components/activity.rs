@@ -7,11 +7,14 @@ use apb::{target::Addressed, Base, Activity, Object};
 #[component]
 pub fn ActivityLine(activity: crate::Object) -> impl IntoView {
 	let object_id = activity.object().id().unwrap_or_default();
+	let activity_url = activity.id().map(|x| view! {
+		<sup><small><a class="clean ml-s" href={x.to_string()} target="_blank">"↗"</a></small></sup>
+	});
 	let actor_id = activity.actor().id().unwrap_or_default();
 	let actor = CACHE.get_or(&actor_id, serde_json::Value::String(actor_id.clone()).into());
 	let kind = activity.activity_type().unwrap_or(apb::ActivityType::Activity);
 	let href = match kind {
-		apb::ActivityType::Follow => Uri::web(U::User, &object_id),
+		apb::ActivityType::Follow => Uri::web(U::Actor, &object_id),
 		// TODO for update check what's being updated
 		_ => Uri::web(U::Object, &object_id),
 	};
@@ -25,6 +28,7 @@ pub fn ActivityLine(activity: crate::Object) -> impl IntoView {
 					<a class="upub-title clean" title={object_id} href={href} >
 						{kind.as_ref().to_string()}
 					</a>
+					{activity_url}
 					<PrivacyMarker addressed=activity.addressed() />
 				</code>
 			</span>
@@ -36,6 +40,7 @@ pub fn ActivityLine(activity: crate::Object) -> impl IntoView {
 pub fn Item(
 	item: crate::Object,
 	#[prop(optional)] sep: bool,
+	#[prop(optional)] replies: bool,
 ) -> impl IntoView {
 	let config = use_context::<Signal<crate::Config>>().expect("missing config context");
 	let id = item.id().unwrap_or_default().to_string();
@@ -55,7 +60,7 @@ pub fn Item(
 		Some(apb::ObjectType::Activity(t)) => (move || {
 			if config.get().filters.visible(apb::ObjectType::Activity(t)) {
 				let object_id = item.object().id().unwrap_or_default();
-				if !config.get().filters.replies && CACHE.get(&object_id).map(|x| x.in_reply_to().id().is_some()).unwrap_or(false) {
+				if !replies && !config.get().filters.replies && CACHE.get(&object_id).map(|x| x.in_reply_to().id().is_some()).unwrap_or(false) {
 					None
 				} else {
 					let object = match t {

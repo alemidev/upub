@@ -9,7 +9,7 @@ pub async fn get(
 	AuthIdentity(auth): AuthIdentity,
 ) -> crate::Result<JsonLD<serde_json::Value>> {
 	let local_context_id = url!(ctx, "/context/{id}");
-	let context = ctx.context_id(&id);
+	let context = ctx.oid(&id);
 
 	let count = model::addressing::Entity::find_addressed(auth.my_id())
 		.filter(auth.filter_condition())
@@ -26,7 +26,7 @@ pub async fn page(
 	Query(page): Query<Pagination>,
 	AuthIdentity(auth): AuthIdentity,
 ) -> crate::Result<JsonLD<serde_json::Value>> {
-	let context = ctx.context_id(&id);
+	let context = ctx.oid(&id);
 
 	crate::server::builders::paginate(
 		url!(ctx, "/context/{id}/page"),
@@ -36,6 +36,7 @@ pub async fn page(
 		ctx.db(),
 		page,
 		auth.my_id(),
+		false,
 	)
 		.await
 }

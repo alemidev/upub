@@ -54,7 +54,7 @@ async fn worker(db: &DatabaseConnection, domain: &str, poll_interval: u64, waker
 		};
 
 		let del_row = model::delivery::ActiveModel {
-			id: sea_orm::ActiveValue::Set(delivery.id),
+			internal: sea_orm::ActiveValue::Set(delivery.internal),
 			..Default::default()
 		};
 		let del = model::delivery::Entity::delete(del_row)
@@ -72,7 +72,7 @@ async fn worker(db: &DatabaseConnection, domain: &str, poll_interval: u64, waker
 
 		tracing::info!("delivering {} to {}", delivery.activity, delivery.target);
 
-		let payload = match model::activity::Entity::find_by_id(&delivery.activity)
+		let payload = match model::activity::Entity::find_by_ap_id(&delivery.activity)
 			.find_also_related(model::object::Entity)
 			.one(db)
 			.await? // TODO probably should not fail here and at least re-insert the delivery
@@ -99,24 +99,19 @@ async fn worker(db: &DatabaseConnection, domain: &str, poll_interval: u64, waker
 			},
 		};
 
-		let key = if delivery.actor == format!("https://{domain}") {
-			let Some(model::application::Model { private_key: key, .. }) = model::application::Entity::find()
-				.one(db).await?
-			else {
-				tracing::error!("no private key configured for application");
-				continue;
-			};
-			key
-		} else {
-			let Some(model::user::Model{ private_key: Some(key), .. }) = model::user::Entity::find_by_id(&delivery.actor)
-				.one(db).await?
-			else { 
-				tracing::error!("can not dispatch activity for user without private key: {}", delivery.actor);
-				continue;
-			};
-			key
+		let Some(actor) = model::actor::Entity::find_by_ap_id(&delivery.actor)
+			.one(db)
+			.await?
+		else {
+			tracing::error!("abandoning delivery of {} from non existant actor: {}", delivery.activity, delivery.actor);
+			continue;
 		};
 
+		let Some(key) = actor.private_key
+		else {
+			tracing::error!("abandoning delivery of {} from actor without private key: {}", delivery.activity, delivery.actor);
+			continue;
+		};
 
 		if let Err(e) = Context::request(
 			Method::POST, &delivery.target,
@@ -125,12 +120,12 @@ async fn worker(db: &DatabaseConnection, domain: &str, poll_interval: u64, waker
 		).await {
 			tracing::warn!("failed delivery of {} to {} : {e}", delivery.activity, delivery.target);
 			let new_delivery = model::delivery::ActiveModel {
-				id: sea_orm::ActiveValue::NotSet,
+				internal: sea_orm::ActiveValue::NotSet,
 				not_before: sea_orm::ActiveValue::Set(delivery.next_delivery()),
 				actor: sea_orm::ActiveValue::Set(delivery.actor),
 				target: sea_orm::ActiveValue::Set(delivery.target),
 				activity: sea_orm::ActiveValue::Set(delivery.activity),
-				created: sea_orm::ActiveValue::Set(delivery.created),
+				published: sea_orm::ActiveValue::Set(delivery.published),
 				attempt: sea_orm::ActiveValue::Set(delivery.attempt + 1),
 			};
 			model::delivery::Entity::insert(new_delivery).exec(db).await?;

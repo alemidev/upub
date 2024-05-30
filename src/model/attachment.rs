@@ -1,4 +1,4 @@
-use apb::{DocumentMut, ObjectMut};
+use apb::{DocumentMut, DocumentType, ObjectMut};
 use sea_orm::entity::prelude::*;
 
 use crate::routes::activitypub::jsonld::LD;
@@ -9,15 +9,35 @@ use super::addressing::Event;
 #[sea_orm(table_name = "attachments")]
 pub struct Model {
 	#[sea_orm(primary_key)]
-	pub id: i64,
-
+	pub internal: i64,
+	#[sea_orm(unique)]
 	pub url: String,
-	pub object: String,
-	pub document_type: apb::DocumentType,
+	pub object: i64,
+	pub document_type: DocumentType,
 	pub name: Option<String>,
 	pub media_type: String,
-	pub created: ChronoDateTimeUtc,
+	pub published: ChronoDateTimeUtc,
 }
+
+#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
+pub enum Relation {
+	#[sea_orm(
+		belongs_to = "super::object::Entity",
+		from = "Column::Object",
+		to = "super::object::Column::Internal",
+		on_update = "Cascade",
+		on_delete = "Cascade"
+	)]
+	Objects,
+}
+
+impl Related<super::object::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Objects.def()
+	}
+}
+
+impl ActiveModelBehavior for ActiveModel {}
 
 impl Model {
 	pub fn ap(self) -> serde_json::Value {
@@ -26,37 +46,18 @@ impl Model {
 			.set_document_type(Some(self.document_type))
 			.set_media_type(Some(&self.media_type))
 			.set_name(self.name.as_deref())
-			.set_published(Some(self.created))
+			.set_published(Some(self.published))
 	}
 }
-
-#[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
-	#[sea_orm(
-		belongs_to = "super::object::Entity",
-		from = "Column::Object",
-		to = "super::object::Column::Id"
-	)]
-	Object,
-}
-
-impl Related<super::object::Entity> for Entity {
-	fn to() -> RelationDef {
-		Relation::Object.def()
-	}
-}
-
-impl ActiveModelBehavior for ActiveModel {}
-
 
 #[axum::async_trait]
 pub trait BatchFillable {
-	async fn load_attachments_batch(&self, db: &DatabaseConnection) -> Result<std::collections::BTreeMap<String, Vec<Model>>, DbErr>;
+	async fn load_attachments_batch(&self, db: &DatabaseConnection) -> Result<std::collections::BTreeMap<i64, Vec<Model>>, DbErr>;
 }
 
 #[axum::async_trait]
 impl BatchFillable for &[Event] {
-	async fn load_attachments_batch(&self, db: &DatabaseConnection) -> Result<std::collections::BTreeMap<String, Vec<Model>>, DbErr> {
+	async fn load_attachments_batch(&self, db: &DatabaseConnection) -> Result<std::collections::BTreeMap<i64, Vec<Model>>, DbErr> {
 		let objects : Vec<crate::model::object::Model> = self
 			.iter()
 			.filter_map(|x| match x {
@@ -69,12 +70,11 @@ impl BatchFillable for &[Event] {
 
 		let attachments = objects.load_many(Entity, db).await?;
 
-		let mut out : std::collections::BTreeMap<String, Vec<Model>> = std::collections::BTreeMap::new();
+		let mut out : std::collections::BTreeMap<i64, Vec<Model>> = std::collections::BTreeMap::new();
 		for attach in attachments.into_iter().flatten() {
-			if out.contains_key(&attach.object) {
-				out.get_mut(&attach.object).expect("contains but get failed?").push(attach);
-			} else {
-				out.insert(attach.object.clone(), vec![attach]);
+			match out.entry(attach.object) {
+				std::collections::btree_map::Entry::Vacant(a) => { a.insert(vec![attach]); },
+				std::collections::btree_map::Entry::Occupied(mut e) => { e.get_mut().push(attach); },
 			}
 		}
 
@@ -84,14 +84,14 @@ impl BatchFillable for &[Event] {
 
 #[axum::async_trait]
 impl BatchFillable for Vec<Event> {
-	async fn load_attachments_batch(&self, db: &DatabaseConnection) -> Result<std::collections::BTreeMap<String, Vec<Model>>, DbErr> {
+	async fn load_attachments_batch(&self, db: &DatabaseConnection) -> Result<std::collections::BTreeMap<i64, Vec<Model>>, DbErr> {
 		self.as_slice().load_attachments_batch(db).await
 	}
 }
 
 #[axum::async_trait]
 impl BatchFillable for Event {
-	async fn load_attachments_batch(&self, db: &DatabaseConnection) -> Result<std::collections::BTreeMap<String, Vec<Model>>, DbErr> {
+	async fn load_attachments_batch(&self, db: &DatabaseConnection) -> Result<std::collections::BTreeMap<i64, Vec<Model>>, DbErr> {
 		let x = vec![self.clone()]; // TODO wasteful clone and vec![] but ehhh convenient
 		x.load_attachments_batch(db).await
 	}

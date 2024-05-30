@@ -11,7 +11,7 @@ pub mod well_known;
 pub mod jsonld;
 pub use jsonld::JsonLD;
 
-use axum::{http::StatusCode, response::IntoResponse, routing::{get, post, put}, Router};
+use axum::{http::StatusCode, response::IntoResponse, routing::{get, patch, post, put}, Router};
 
 pub trait ActivityPubRouter {
 	fn ap_routes(self) -> Self;
@@ -35,8 +35,9 @@ impl ActivityPubRouter for Router<crate::server::Context> {
 			.route("/outbox", get(ap::outbox::get))
 			.route("/outbox/page", get(ap::outbox::page))
 			// AUTH routes
-			.route("/auth", post(ap::auth::login))
 			.route("/auth", put(ap::auth::register))
+			.route("/auth", post(ap::auth::login))
+			.route("/auth", patch(ap::auth::refresh))
 			// .well-known and discovery
 			.route("/.well-known/webfinger", get(ap::well_known::webfinger))
 			.route("/.well-known/host-meta", get(ap::well_known::host_meta))
@@ -44,17 +45,17 @@ impl ActivityPubRouter for Router<crate::server::Context> {
 			.route("/.well-known/oauth-authorization-server", get(ap::well_known::oauth_authorization_server))
 			.route("/nodeinfo/:version", get(ap::well_known::nodeinfo))
 			// actor routes
-			.route("/users/:id", get(ap::user::view))
-			.route("/users/:id/inbox", post(ap::user::inbox::post))
-			.route("/users/:id/inbox", get(ap::user::inbox::get))
-			.route("/users/:id/inbox/page", get(ap::user::inbox::page))
-			.route("/users/:id/outbox", post(ap::user::outbox::post))
-			.route("/users/:id/outbox", get(ap::user::outbox::get))
-			.route("/users/:id/outbox/page", get(ap::user::outbox::page))
-			.route("/users/:id/followers", get(ap::user::following::get::<false>))
-			.route("/users/:id/followers/page", get(ap::user::following::page::<false>))
-			.route("/users/:id/following", get(ap::user::following::get::<true>))
-			.route("/users/:id/following/page", get(ap::user::following::page::<true>))
+			.route("/actors/:id", get(ap::user::view))
+			.route("/actors/:id/inbox", post(ap::user::inbox::post))
+			.route("/actors/:id/inbox", get(ap::user::inbox::get))
+			.route("/actors/:id/inbox/page", get(ap::user::inbox::page))
+			.route("/actors/:id/outbox", post(ap::user::outbox::post))
+			.route("/actors/:id/outbox", get(ap::user::outbox::get))
+			.route("/actors/:id/outbox/page", get(ap::user::outbox::page))
+			.route("/actors/:id/followers", get(ap::user::following::get::<false>))
+			.route("/actors/:id/followers/page", get(ap::user::following::page::<false>))
+			.route("/actors/:id/following", get(ap::user::following::get::<true>))
+			.route("/actors/:id/following/page", get(ap::user::following::page::<true>))
 			// activities
 			.route("/activities/:id", get(ap::activity::view))
 			// context

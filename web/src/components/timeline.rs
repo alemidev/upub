@@ -2,7 +2,7 @@ use std::{collections::BTreeSet, pin::Pin, sync::Arc};
 
 use apb::{Activity, ActivityMut, Base, Object};
 use leptos::*;
-use leptos_use::{signal_debounced, signal_throttled, use_display_media, use_document_visibility, use_element_size, use_infinite_scroll_with_options, use_scroll, use_scroll_with_options, use_window, use_window_scroll, UseDisplayMediaReturn, UseElementSizeReturn, UseInfiniteScrollOptions, UseScrollOptions, UseScrollReturn};
+use leptos_use::{signal_throttled, use_element_size, use_window_scroll, UseElementSizeReturn};
 use crate::prelude::*;
 
 #[derive(Debug, Clone, Copy)]
@@ -36,14 +36,21 @@ impl Timeline {
 		self.over.set(false);
 	}
 
-	pub async fn more(&self, auth: Auth) -> reqwest::Result<()> {
-		self.loading.set(true);
-		let res = self.more_inner(auth).await;
-		self.loading.set(false);
-		res
+	pub fn more(&self, auth: Auth) {
+		if self.loading.get_untracked() { return }
+		if self.over.get_untracked() { return }
+		let _self = *self;
+		spawn_local(async move {
+			_self.loading.set(true);
+			let res = _self.load_more(auth).await;
+			_self.loading.set(false);
+			if let Err(e) = res {
+				tracing::error!("failed loading posts for timeline: {e}");
+			}
+		});
 	}
 
-	async fn more_inner(&self, auth: Auth) -> reqwest::Result<()> {
+	pub async fn load_more(&self, auth: Auth) -> reqwest::Result<()> {
 		use apb::{Collection, CollectionPage};
 
 		let feed_url = self.next.get_untracked();
@@ -97,7 +104,7 @@ pub fn TimelineRepliesRecursive(tl: Timeline, root: String) -> impl IntoView {
 				let oid = obj.id().unwrap_or_default().to_string();
 				view! {
 					<div class="context depth-r">
-						<Item item=obj />
+						<Item item=obj replies=true />
 						<div class="depth-r">
 							<TimelineRepliesRecursive tl=tl root=oid />
 						</div>
@@ -119,13 +126,7 @@ pub fn TimelineReplies(tl: Timeline, root: String) -> impl IntoView {
 		<div class="center mt-1 mb-1" class:hidden=tl.over >
 			<button type="button"
 				prop:disabled=tl.loading 
-				on:click=move |_| {
-					spawn_local(async move {
-						if let Err(e) = tl.more(auth).await {
-							tracing::error!("error fetching more items for timeline: {e}");
-						}
-					})
-				}
+				on:click=move |_| tl.more(auth)
 			>
 				{move || if tl.loading.get() {
 					view! { "loading"<span class="dots"></span> }.into_view()
@@ -150,11 +151,9 @@ pub fn TimelineFeed(tl: Timeline) -> impl IntoView {
 	let _auto_loader = create_local_resource(
 		move || (scroll_debounced.get(), height.get()),
 		move |(s, h)| async move {
-			if !config.get().infinite_scroll { return }
-			if !tl.loading.get() && h - s < view_height {
-				if let Err(e) = tl.more(auth).await {
-					tracing::error!("auto load failed: {e}");
-				}
+			if !config.get_untracked().infinite_scroll { return }
+			if h - s < view_height {
+				tl.more(auth);
 			}
 		},
 	);
@@ -179,23 +178,13 @@ pub fn TimelineFeed(tl: Timeline) -> impl IntoView {
 		<div class="center mt-1 mb-1" class:hidden=tl.over >
 			<button type="button"
 				prop:disabled=tl.loading 
-				on:click=move |_| load_more(tl, auth)
+				on:click=move |_| tl.more(auth)
 			>
 				{move || if tl.loading.get() {
 					view! { "loading"<span class="dots"></span> }.into_view()
 				} else { "more".into_view() }}
 			</button>
 		</div>
-	}
-}
-
-fn load_more(tl: Timeline, auth: Auth) {
-	if !tl.loading.get() {
-		spawn_local(async move {
-			if let Err(e) = tl.more(auth).await {
-				tracing::error!("error fetching more items for timeline: {e}");
-			}
-		})
 	}
 }
 
@@ -222,7 +211,7 @@ async fn process_activities(activities: Vec<serde_json::Value>, auth: Auth) -> V
 			if let Some(object_id) = activity.object().id() {
 				if !gonna_fetch.contains(&object_id) {
 					let fetch_kind = match activity_type {
-						apb::ActivityType::Follow => U::User,
+						apb::ActivityType::Follow => U::Actor,
 						_ => U::Object,
 					};
 					gonna_fetch.insert(object_id.clone());
@@ -246,20 +235,20 @@ async fn process_activities(activities: Vec<serde_json::Value>, auth: Auth) -> V
 		if let Some(uid) = activity.attributed_to().id() {
 			if CACHE.get(&uid).is_none() && !gonna_fetch.contains(&uid) {
 				gonna_fetch.insert(uid.clone());
-				sub_tasks.push(Box::pin(fetch_and_update(U::User, uid, auth)));
+				sub_tasks.push(Box::pin(fetch_and_update(U::Actor, uid, auth)));
 			}
 		}
 	
 		if let Some(uid) = activity.actor().id() {
 			if CACHE.get(&uid).is_none() && !gonna_fetch.contains(&uid) {
 				gonna_fetch.insert(uid.clone());
-				sub_tasks.push(Box::pin(fetch_and_update(U::User, uid, auth)));
+				sub_tasks.push(Box::pin(fetch_and_update(U::Actor, uid, auth)));
 			}
 		}
 	}
 
 	for user in actors_seen {
-		sub_tasks.push(Box::pin(fetch_and_update(U::User, user, auth)));
+		sub_tasks.push(Box::pin(fetch_and_update(U::Actor, user, auth)));
 	}
 
 	futures::future::join_all(sub_tasks).await;
@@ -280,9 +269,9 @@ async fn fetch_and_update_with_user(kind: U, id: String, auth: Auth) {
 		if let Some(actor_id) = match kind {
 			U::Object => obj.attributed_to().id(),
 			U::Activity => obj.actor().id(),
-			U::User | U::Context => None,
+			U::Actor | U::Context => None,
 		} {
-			fetch_and_update(U::User, actor_id, auth).await;
+			fetch_and_update(U::Actor, actor_id, auth).await;
 		}
 	}
 }

@@ -9,63 +9,58 @@ use super::{fetcher::Fetcher, httpsign::HttpSignature};
 #[derive(Debug, Clone)]
 pub enum Identity {
 	Anonymous,
-	Local(String),
-	Remote(String),
+	Remote {
+		domain: String,
+		internal: i64,
+	},
+	Local {
+		id: String,
+		internal: i64,
+	},
 }
 
 impl Identity {
 	pub fn filter_condition(&self) -> Condition {
-		let base_cond = Condition::any().add(model::addressing::Column::Actor.eq(apb::target::PUBLIC));
+		let base_cond = Condition::any().add(model::addressing::Column::Actor.is_null());
 		match self {
 			Identity::Anonymous => base_cond,
-			Identity::Remote(server) => base_cond.add(model::addressing::Column::Server.eq(server)),
+			Identity::Remote { internal, .. } => base_cond.add(model::addressing::Column::Instance.eq(*internal)),
 			// TODO should we allow all users on same server to see? or just specific user??
-			Identity::Local(uid) => base_cond
-				.add(model::addressing::Column::Actor.eq(uid))
-				.add(model::activity::Column::Actor.eq(uid))
-				.add(model::object::Column::AttributedTo.eq(uid)),
+			Identity::Local { id, internal } => base_cond
+				.add(model::addressing::Column::Actor.eq(*internal))
+				.add(model::activity::Column::Actor.eq(id))
+				.add(model::object::Column::AttributedTo.eq(id)),
 		}
 	}
 
-	pub fn my_id(&self) -> Option<&str> {
+	pub fn my_id(&self) -> Option<i64> {
 		match self {
-			Identity::Local(x) => Some(x.as_str()),
+			Identity::Local { internal, .. } => Some(*internal),
 			_ => None,
 		}
 	}
 
-	pub fn is(&self, id: &str) -> bool {
+	pub fn is(&self, uid: &str) -> bool {
 		match self {
 			Identity::Anonymous => false,
-			Identity::Remote(_) => false, // TODO per-actor server auth should check this
-			Identity::Local(uid) => uid.as_str() == id
+			Identity::Remote { .. } => false, // TODO per-actor server auth should check this
+			Identity::Local { id, .. } => id.as_str() == uid
 		}
 	}
 
+	#[allow(unused)]
 	pub fn is_anon(&self) -> bool {
 		matches!(self, Self::Anonymous)
 	}
 
+	#[allow(unused)]
 	pub fn is_local(&self) -> bool {
-		matches!(self, Self::Local(_))
+		matches!(self, Self::Local { .. })
 	}
 
+	#[allow(unused)]
 	pub fn is_remote(&self) -> bool {
-		matches!(self, Self::Remote(_))
-	}
-
-	pub fn is_local_user(&self, uid: &str) -> bool {
-		match self {
-			Self::Local(x) => x == uid,
-			_ => false,
-		}
-	}
-
-	pub fn is_remote_server(&self, uid: &str) -> bool {
-		match self {
-			Self::Remote(x) => x == uid,
-			_ => false,
-		}
+		matches!(self, Self::Remote { .. })
 	}
 }
 
@@ -90,13 +85,19 @@ where
 			.unwrap_or("");
 
 		if auth_header.starts_with("Bearer ") {
-			match model::session::Entity::find_by_id(auth_header.replace("Bearer ", ""))
+			match model::session::Entity::find()
+				.filter(model::session::Column::Secret.eq(auth_header.replace("Bearer ", "")))
 				.filter(model::session::Column::Expires.gt(chrono::Utc::now()))
 				.one(ctx.db())
 				.await
 			{
-				Ok(Some(x)) => identity = Identity::Local(x.actor),
 				Ok(None) => return Err(UpubError::unauthorized()),
+				Ok(Some(x)) => {
+					// TODO could we store both actor ap id and internal id in session? to avoid this extra
+					// lookup on *every* local authed request we receive...
+					let internal = model::actor::Entity::ap_to_internal(&x.actor, ctx.db()).await?;
+					identity = Identity::Local { id: x.actor, internal };
+				},
 				Err(e) => {
 					tracing::error!("failed querying user session: {e}");
 					return Err(UpubError::internal_server_error())
@@ -122,7 +123,13 @@ where
 						.build_from_parts(parts)
 						.verify(&user.public_key)
 					{
-						Ok(true) => identity = Identity::Remote(Context::server(&user_id)),
+						Ok(true) => {
+							// TODO can we avoid this extra db rountrip made on each server fetch?
+							let domain = Context::server(&user_id); 
+							// TODO this will fail because we never fetch and insert into instance oops
+							let internal = model::instance::Entity::domain_to_internal(&domain, ctx.db()).await?;
+							identity = Identity::Remote { domain, internal };
+						},
 						Ok(false) => tracing::warn!("invalid signature: {http_signature:?}"),
 						Err(e) => tracing::error!("error verifying signature: {e}"),
 					},

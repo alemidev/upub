@@ -11,13 +11,13 @@ pub async fn fix(ctx: crate::server::Context, likes: bool, shares: bool, replies
 		{
 			let mut stream = crate::model::like::Entity::find().stream(db).await?;
 			while let Some(like) = stream.try_next().await? {
-				store.insert(like.likes.clone(), store.get(&like.likes).unwrap_or(&0) + 1);
+				store.insert(like.object, store.get(&like.object).unwrap_or(&0) + 1);
 			}
 		}
 
 		for (k, v) in store {
 			let m = crate::model::object::ActiveModel {
-				id: sea_orm::Set(k.clone()),
+				internal: sea_orm::Set(k),
 				likes: sea_orm::Set(v),
 				..Default::default()
 			};
@@ -34,16 +34,16 @@ pub async fn fix(ctx: crate::server::Context, likes: bool, shares: bool, replies
 		tracing::info!("fixing shares...");
 		let mut store = std::collections::HashMap::new();
 		{
-			let mut stream = crate::model::share::Entity::find().stream(db).await?;
+			let mut stream = crate::model::announce::Entity::find().stream(db).await?;
 			while let Some(share) = stream.try_next().await? {
-				store.insert(share.shares.clone(), store.get(&share.shares).unwrap_or(&0) + 1);
+				store.insert(share.object, store.get(&share.object).unwrap_or(&0) + 1);
 			}
 		}
 
 		for (k, v) in store {
 			let m = crate::model::object::ActiveModel {
-				id: sea_orm::Set(k.clone()),
-				shares: sea_orm::Set(v),
+				internal: sea_orm::Set(k),
+				announces: sea_orm::Set(v),
 				..Default::default()
 			};
 			if let Err(e) = crate::model::object::Entity::update(m)
@@ -71,7 +71,7 @@ pub async fn fix(ctx: crate::server::Context, likes: bool, shares: bool, replies
 		for (k, v) in store {
 			let m = crate::model::object::ActiveModel {
 				id: sea_orm::Set(k.clone()),
-				comments: sea_orm::Set(v),
+				replies: sea_orm::Set(v),
 				..Default::default()
 			};
 			if let Err(e) = crate::model::object::Entity::update(m)
