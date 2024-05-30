@@ -16,14 +16,6 @@ pub enum PullResult<T> {
 	Object(T),
 }
 
-impl<T> PullResult<T> {
-	pub fn inner(self) -> T {
-		match self {
-			Self::Actor(x) | Self::Activity(x) | Self::Object(x) => x
-		}
-	}
-}
-
 impl PullResult<serde_json::Value> {
 	pub fn actor(self) -> crate::Result<serde_json::Value> {
 		match self {
@@ -48,21 +40,12 @@ impl PullResult<serde_json::Value> {
 			Self::Object(x) => Ok(x),
 		}
 	}
-
-	pub async fn resolve(self, ctx: &(impl Fetcher + Sync)) -> crate::Result<()> {
-		match self {
-			Self::Actor(x) => { ctx.resolve_user(x).await?; },
-			Self::Object(x) => { ctx.resolve_object(x).await?; },
-			Self::Activity(x) => { ctx.resolve_activity(x).await?; },
-		}
-		Ok(())
-	}
 }
 
 #[axum::async_trait]
 pub trait Fetcher {
 	async fn pull(&self, id: &str) -> crate::Result<PullResult<serde_json::Value>> { self.pull_r(id, 0).await }
-	async fn pull_r(&self, id: &str, depth: i32) -> crate::Result<PullResult<serde_json::Value>>;
+	async fn pull_r(&self, id: &str, depth: u32) -> crate::Result<PullResult<serde_json::Value>>;
 
 
 	async fn webfinger(&self, user: &str, host: &str) -> crate::Result<String>;
