@@ -23,15 +23,14 @@ impl TokenSink for Sink {
 				) { return TokenSinkResult::Continue } // skip this tag
 
 				self.0.push('<');
+
 				if !tag.self_closing && matches!(tag.kind, TagKind::EndTag) {
 					self.0.push('/');
 				}
 
 				self.0.push_str(tag.name.as_ref());
 
-				if tag.self_closing {
-					self.0.push('/');
-				} else {
+				if !matches!(tag.kind, TagKind::EndTag) {
 					match tag.name.as_ref() {
 						"img" => for attr in tag.attrs {
 							match attr.name.local.as_ref() {
@@ -42,6 +41,7 @@ impl TokenSink for Sink {
 							}
 						},
 						"a" => {
+							let any_attr = !tag.attrs.is_empty();
 							for attr in tag.attrs {
 								match attr.name.local.as_ref() {
 									"href" => self.0.push_str(&format!(" href=\"{}\"", attr.value.as_ref())),
@@ -49,10 +49,16 @@ impl TokenSink for Sink {
 									_ => {},
 								}
 							}
-							self.0.push_str(" rel=\"nofollow noreferrer\" target=\"_blank\"");
+							if any_attr {
+								self.0.push_str(" rel=\"nofollow noreferrer\" target=\"_blank\"");
+							}
 						},
 						_ => {},
 					}
+				}
+
+				if tag.self_closing {
+					self.0.push('/');
 				}
 
 				self.0.push('>');
