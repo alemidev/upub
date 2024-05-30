@@ -155,7 +155,7 @@ impl ActiveModel {
 			content: sea_orm::ActiveValue::Set(object.content().map(|x| x.to_string())),
 			context: sea_orm::ActiveValue::Set(object.context().id()),
 			in_reply_to: sea_orm::ActiveValue::Set(object.in_reply_to().id()),
-			published: sea_orm::ActiveValue::Set(object.published().ok_or(super::FieldError("published"))?),
+			published: sea_orm::ActiveValue::Set(object.published().ok_or_else(chrono::Utc::now)?),
 			updated: sea_orm::ActiveValue::Set(object.updated().unwrap_or_else(chrono::Utc::now)),
 			url: sea_orm::ActiveValue::Set(object.url().id()),
 			replies: sea_orm::ActiveValue::Set(object.replies().get()
