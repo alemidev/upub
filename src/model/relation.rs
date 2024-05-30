@@ -73,6 +73,7 @@ impl Entity {
 					.to(super::actor::Column::Internal)
 					.into()
 			)
+			.filter(Column::Accept.is_not_null())
 			.filter(Column::Following.eq(internal_id))
 			.select_only()
 			.select_column(super::actor::Column::Id)
@@ -94,6 +95,7 @@ impl Entity {
 					.to(super::actor::Column::Internal)
 					.into()
 			)
+			.filter(Column::Accept.is_not_null())
 			.filter(Column::Follower.eq(internal_id))
 			.select_only()
 			.select_column(super::actor::Column::Id)
@@ -107,6 +109,7 @@ impl Entity {
 	// TODO this is 3 queries!!! can it be optimized down to 1?
 	pub fn is_following(follower: i64, following: i64) -> sea_orm::Selector<sea_orm::SelectGetableTuple<i64>> {
 		Entity::find()
+			.filter(Column::Accept.is_not_null())
 			.filter(Column::Follower.eq(follower))
 			.filter(Column::Following.eq(following))
 			.select_only()
