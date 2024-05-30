@@ -32,6 +32,10 @@ pub fn UserPage(tl: Timeline) -> impl IntoView {
 		move || params.get().get("id").cloned().unwrap_or_default(),
 		move |id| {
 			async move {
+				let tl_url = format!("{}/outbox/page", Uri::api(U::Actor, &id, false));
+				if !tl.next.get().starts_with(&tl_url) {
+					tl.reset(tl_url);
+				}
 				match CACHE.get(&Uri::full(U::Actor, &id)) {
 					Some(x) => Some(x.clone()),
 					None => {
@@ -82,10 +86,6 @@ pub fn UserPage(tl: Timeline) -> impl IntoView {
 							let following = object.following_count().unwrap_or(0);
 							let followers = object.followers_count().unwrap_or(0);
 							let statuses = object.statuses_count().unwrap_or(0);
-							let tl_url = format!("{}/outbox/page", Uri::api(U::Actor, &id.clone(), false));
-							if !tl.next.get().starts_with(&tl_url) {
-								tl.reset(tl_url);
-							}
 							let following_me = object.following_me().unwrap_or(false);
 							let followed_by_me = object.followed_by_me().unwrap_or(false);
 							let _uid = uid.clone();

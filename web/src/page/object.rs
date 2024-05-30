@@ -12,8 +12,13 @@ pub fn ObjectPage(tl: Timeline) -> impl IntoView {
 	let auth = use_context::<Auth>().expect("missing auth context");
 	let id = params.get().get("id").cloned().unwrap_or_default();
 	let uid =  uriproxy::uri(URL_BASE, uriproxy::UriClass::Object, &id);
-	let object = create_local_resource(move || params.get().get("id").cloned().unwrap_or_default(), move |oid| {
-		async move {
+	let object = create_local_resource(
+		move || params.get().get("id").cloned().unwrap_or_default(),
+		move |oid| async move {
+			let tl_url = format!("{}/page", Uri::api(U::Context, &oid, false));
+			if !tl.next.get().starts_with(&tl_url) {
+				tl.reset(tl_url);
+			}
 			match CACHE.get(&Uri::full(U::Object, &oid)) {
 				Some(x) => Some(x.clone()),
 				None => {
@@ -31,7 +36,7 @@ pub fn ObjectPage(tl: Timeline) -> impl IntoView {
 				}
 			}
 		}
-	});
+	);
 	view! {
 		<div>
 			<Breadcrumb back=true >
@@ -55,10 +60,6 @@ pub fn ObjectPage(tl: Timeline) -> impl IntoView {
 					},
 					Some(Some(o)) => {
 						let object = o.clone();
-						let tl_url = format!("{}/page", Uri::api(U::Context, &o.context().id().unwrap_or_default(), false));
-						if !tl.next.get().starts_with(&tl_url) {
-							tl.reset(tl_url);
-						}
 						view!{
 							<Object object=object />
 							<div class="ml-1 mr-1 mt-2">
