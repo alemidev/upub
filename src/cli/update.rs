@@ -16,9 +16,10 @@ pub async fn update_users(ctx: crate::server::Context, days: i64) -> crate::Resu
 
 		while let Some(user) = stream.try_next().await? {
 			if ctx.is_local(&user.id) { continue }
-			match ctx.pull_user(&user.id).await {
+			match ctx.pull(&user.id).await.map(|x| x.actor()) {
 				Err(e) => tracing::warn!("could not update user {}: {e}", user.id),
-				Ok(doc) => match crate::model::actor::ActiveModel::new(&doc) {
+				Ok(Err(e)) => tracing::warn!("could not update user {}: {e}", user.id),
+				Ok(Ok(doc)) => match crate::model::actor::ActiveModel::new(&doc) {
 					Ok(mut u) => {
 						u.internal = Set(user.internal);
 						u.updated = Set(chrono::Utc::now());

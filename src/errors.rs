@@ -28,6 +28,9 @@ pub enum UpubError {
 	#[error("invalid base64 string: {0:?}")]
 	Base64(#[from] base64::DecodeError),
 
+	#[error("type mismatch on object: expected {0:?}, found {1:?}")]
+	Mismatch(apb::ObjectType, apb::ObjectType),
+
 	// TODO this isn't really an error but i need to redirect from some routes so this allows me to
 	// keep the type hints on the return type, still what the hell!!!!
 	#[error("redirecting to {0}")]
@@ -106,6 +109,15 @@ impl axum::response::IntoResponse for UpubError {
 					"error": "field",
 					"field": x.0.to_string(),
 					"description": format!("missing required field from request: '{}'", x.0),
+				}))
+			).into_response(),
+			UpubError::Mismatch(expected, found) => (
+				axum::http::StatusCode::UNPROCESSABLE_ENTITY,
+				axum::Json(serde_json::json!({
+					"error": "type",
+					"expected": expected.as_ref().to_string(),
+					"found": found.as_ref().to_string(),
+					"description": self.to_string(),
 				}))
 			).into_response(),
 			_ => (
