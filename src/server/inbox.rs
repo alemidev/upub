@@ -1,6 +1,5 @@
 use apb::{target::Addressed, Activity, Base, Object};
-use reqwest::StatusCode;
-use sea_orm::{sea_query::Expr, ActiveValue::{Set, NotSet}, ColumnTrait, Condition, EntityTrait, QueryFilter, QuerySelect, SelectColumns};
+use sea_orm::{sea_query::Expr, ActiveValue::{Set, NotSet}, ColumnTrait, EntityTrait, QueryFilter, QuerySelect, SelectColumns};
 
 use crate::{errors::{LoggableError, UpubError}, model, server::{addresser::Addresser, builders::AnyQuery, normalizer::Normalizer}};
 
@@ -267,7 +266,7 @@ impl apb::server::Inbox for Context {
 		let announced = self.fetch_object(&announced_id).await?;
 		// relays send us activities as Announce, but we don't really want to count those towards the
 		// total shares count of an object, so just fetch the object and be done with it
-		if self.is_relay(&activity_model.actor) {
+		if matches!(actor.actor_type, apb::ActorType::Person) {
 			tracing::info!("relay {} broadcasted {}", activity_model.actor, announced_id);
 			return Ok(())
 		}

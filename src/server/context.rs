@@ -21,9 +21,10 @@ struct ContextInner {
 	actor: model::actor::Model,
 	instance: model::instance::Model,
 	pkey: String,
-	relay: Relays,
+	#[allow(unused)] relay: Relays,
 }
 
+#[allow(unused)]
 pub struct Relays {
 	sources: BTreeSet<String>,
 	sinks: BTreeSet<String>,
@@ -178,6 +179,7 @@ impl Context {
 			.await
 	}
 
+	#[allow(unused)]
 	pub fn is_relay(&self, id: &str) -> bool {
 		self.0.relay.sources.contains(id) || self.0.relay.sinks.contains(id)
 	}

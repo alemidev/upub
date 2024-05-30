@@ -2,8 +2,6 @@ use apb::{Node, Base, Object, Document};
 use sea_orm::{sea_query::Expr, ActiveValue::{NotSet, Set}, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
 use crate::{errors::UpubError, model, server::Context};
 
-use super::fetcher::Fetcher;
-
 #[axum::async_trait]
 pub trait Normalizer {
 	async fn insert_object(&self, obj: impl apb::Object, server: Option<String>) -> crate::Result<model::object::Model>;
