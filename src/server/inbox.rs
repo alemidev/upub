@@ -4,7 +4,7 @@ use sea_orm::{sea_query::Expr, ActiveValue::{Set, NotSet}, ColumnTrait, Conditio
 
 use crate::{errors::{LoggableError, UpubError}, model, server::{addresser::Addresser, builders::AnyQuery, normalizer::Normalizer}};
 
-use super::{fetcher::Fetcher, Context};
+use super::{fetcher::Fetcher, Context, side_effects::SideEffects};
 
 
 #[axum::async_trait]
@@ -44,19 +44,7 @@ impl apb::server::Inbox for Context {
 		}
 
 		let activity_model = self.insert_activity(activity, Some(server)).await?;
-		let like = model::like::ActiveModel {
-			internal: NotSet,
-			actor: Set(internal_uid),
-			object: Set(obj.internal),
-			activity: Set(activity_model.internal),
-			published: Set(activity_model.published),
-		};
-		model::like::Entity::insert(like).exec(self.db()).await?;
-		model::object::Entity::update_many()
-			.col_expr(model::object::Column::Likes, Expr::col(model::object::Column::Likes).add(1))
-			.filter(model::object::Column::Internal.eq(obj.internal))
-			.exec(self.db())
-			.await?;
+		self.process_like(internal_uid, obj.internal, activity_model.internal, activity_model.published).await?;
 		let mut expanded_addressing = self.expand_addressing(activity_model.addressed()).await?;
 		if expanded_addressing.is_empty() { // WHY MASTODON!!!!!!!
 			expanded_addressing.push(
@@ -249,10 +237,9 @@ impl apb::server::Inbox for Context {
 
 	async fn undo(&self, server: String, activity: serde_json::Value) -> crate::Result<()> {
 		let uid = activity.actor().id().ok_or_else(UpubError::bad_request)?;
+		let internal_uid = model::actor::Entity::ap_to_internal(&uid, self.db()).await?;
 		// TODO in theory we could work with just object_id but right now only accept embedded
 		let undone_activity = activity.object().extract().ok_or_else(UpubError::bad_request)?;
-		let activity_type = undone_activity.activity_type().ok_or_else(UpubError::bad_request)?;
-		let undone_object_id = undone_activity.object().id().ok_or_else(UpubError::bad_request)?;
 		let undone_activity_author = undone_activity.actor().id().ok_or_else(UpubError::bad_request)?;
 
 		// can't undo activities from remote actors!
@@ -260,50 +247,19 @@ impl apb::server::Inbox for Context {
 			return Err(UpubError::forbidden());
 		};
 
-		self.insert_activity(activity.clone(), Some(server)).await?;
+		let activity_model = self.insert_activity(activity.clone(), Some(server)).await?;
 
-		match activity_type {
-			apb::ActivityType::Like => {
-				let internal_uid = model::actor::Entity::ap_to_internal(&uid, self.db()).await?;
-				let internal_oid = model::object::Entity::ap_to_internal(&undone_object_id, self.db()).await?;
-				model::like::Entity::delete_many()
-					.filter(
-						Condition::all()
-							.add(model::like::Column::Actor.eq(internal_uid))
-							.add(model::like::Column::Object.eq(internal_oid))
-					)
-					.exec(self.db())
-					.await?;
-				model::object::Entity::update_many()
-					.filter(model::object::Column::Internal.eq(internal_oid))
-					.col_expr(model::object::Column::Likes, Expr::col(model::object::Column::Likes).sub(1))
-					.exec(self.db())
-					.await?;
-			},
-			apb::ActivityType::Follow => {
-				let undone_aid = undone_activity.id().ok_or_else(UpubError::bad_request)?;
-				let internal_aid = model::activity::Entity::ap_to_internal(undone_aid, self.db()).await?;
-				model::relation::Entity::delete_many()
-					.filter(model::relation::Column::Activity.eq(internal_aid))
-					.exec(self.db())
-					.await?;
-				model::actor::Entity::update_many()
-					.filter(model::actor::Column::Id.eq(&undone_object_id))
-					.col_expr(model::actor::Column::FollowersCount, Expr::col(model::actor::Column::FollowersCount).sub(1))
-					.exec(self.db())
-					.await?;
-			},
-			_ => {
-				tracing::error!("received 'Undo' for unimplemented activity: {}", serde_json::to_string_pretty(&activity).unwrap());
-				return Err(StatusCode::NOT_IMPLEMENTED.into());
-			},
-		}
+		let targets = self.expand_addressing(activity.addressed()).await?;
+		self.process_undo(internal_uid, activity).await?;
+
+		self.address_to(Some(activity_model.internal), None, &targets).await?;
 
 		Ok(())
 	}
 	
 	async fn announce(&self, server: String, activity: serde_json::Value) -> crate::Result<()> {
 		let uid = activity.actor().id().ok_or_else(|| UpubError::field("actor"))?;
+		let actor = self.fetch_user(&uid).await?;
 		let internal_uid = model::actor::Entity::ap_to_internal(&uid, self.db()).await?;
 		let announced_id = activity.object().id().ok_or_else(|| UpubError::field("object"))?;
 		let activity_model = self.insert_activity(activity.clone(), Some(server)).await?;

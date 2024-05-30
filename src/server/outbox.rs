@@ -2,9 +2,9 @@ use apb::{target::Addressed, Activity, ActivityMut, Base, BaseMut, Node, Object,
 use reqwest::StatusCode;
 use sea_orm::{sea_query::Expr, ActiveValue::{Set, NotSet, Unchanged}, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect, SelectColumns};
 
-use crate::{errors::UpubError, model};
+use crate::{errors::UpubError, model, routes::activitypub::jsonld::LD};
 
-use super::{addresser::Addresser, builders::AnyQuery, fetcher::Fetcher, normalizer::Normalizer, Context};
+use super::{addresser::Addresser, builders::AnyQuery, fetcher::Fetcher, normalizer::Normalizer, side_effects::SideEffects, Context};
 
 
 #[axum::async_trait]
@@ -107,20 +107,7 @@ impl apb::server::Outbox for Context {
 			Some(self.domain().to_string()),
 		).await?;
 
-		let like_model = model::like::ActiveModel {
-			internal: NotSet,
-			actor: Set(internal_uid),
-			object: Set(obj_model.internal),
-			activity: Set(activity_model.internal),
-			published: Set(chrono::Utc::now()),
-		};
-
-		model::like::Entity::insert(like_model).exec(self.db()).await?;
-		model::object::Entity::update_many()
-			.col_expr(model::object::Column::Likes, Expr::col(model::object::Column::Likes).add(1))
-			.filter(model::object::Column::Internal.eq(obj_model.internal))
-			.exec(self.db())
-			.await?;
+		self.process_like(internal_uid, obj_model.internal, activity_model.internal, chrono::Utc::now()).await?;
 
 		self.dispatch(&uid, activity_targets, &aid, None).await?;
 
@@ -250,7 +237,7 @@ impl apb::server::Outbox for Context {
 
 	async fn undo(&self, uid: String, activity: serde_json::Value) -> crate::Result<String> {
 		let aid = self.aid(&uuid::Uuid::new_v4().to_string());
-		let activity_targets = activity.addressed();
+		let internal_uid = model::actor::Entity::ap_to_internal(&uid, self.db()).await?;
 		let old_aid = activity.object().id().ok_or_else(UpubError::bad_request)?;
 		let old_activity = model::activity::Entity::find_by_ap_id(&old_aid)
 			.one(self.db())
@@ -259,40 +246,20 @@ impl apb::server::Outbox for Context {
 		if old_activity.actor != uid {
 			return Err(UpubError::forbidden());
 		}
-		let activity_object = old_activity.object.ok_or_else(UpubError::bad_request)?;
-		let actor_internal = model::actor::Entity::ap_to_internal(&old_activity.actor, self.db()).await?;
 
-		let activity_model = model::activity::ActiveModel::new(
-			&activity
+		let activity_model = self.insert_activity(
+			activity.clone()
 				.set_id(Some(&aid))
 				.set_actor(Node::link(uid.clone()))
-				.set_published(Some(chrono::Utc::now()))
-		)?;
-		model::activity::Entity::insert(activity_model.into_active_model())
-			.exec(self.db())
-			.await?;
+				.set_published(Some(chrono::Utc::now())),
+			Some(self.domain().to_string())
+		).await?;
 
-		match old_activity.activity_type {
-			apb::ActivityType::Like => {
-				let object_internal = model::object::Entity::ap_to_internal(&activity_object, self.db()).await?;
-				model::like::Entity::delete_many()
-					.filter(model::like::Column::Actor.eq(actor_internal))
-					.filter(model::like::Column::Object.eq(object_internal))
-					.exec(self.db())
-					.await?;
-			},
-			apb::ActivityType::Follow => {
-				let target_internal = model::actor::Entity::ap_to_internal(&activity_object, self.db()).await?;
-				model::relation::Entity::delete_many()
-					.filter(model::relation::Column::Follower.eq(actor_internal))
-					.filter(model::relation::Column::Following.eq(target_internal))
-					.exec(self.db())
-					.await?;
-			},
-			t => tracing::error!("extra side effects for activity {t:?} not implemented"),
-		}
+		let targets = self.expand_addressing(activity.addressed()).await?;
+		self.process_undo(internal_uid, activity).await?;
 
-		self.dispatch(&uid, activity_targets, &aid, None).await?;
+		self.address_to(Some(activity_model.internal), None, &targets).await?;
+		self.deliver_to(&activity_model.id, &uid, &targets).await?;
 
 		Ok(aid)
 	}

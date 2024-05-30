@@ -10,5 +10,6 @@ pub mod auth;
 pub mod builders;
 pub mod httpsign;
 pub mod normalizer;
+pub mod side_effects;
 
 pub use context::Context;
