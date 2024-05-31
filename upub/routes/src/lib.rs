@@ -25,7 +25,6 @@ pub async fn serve(ctx: upub::Context, bind: String) -> upub::Result<()> {
 	use tower_http::{cors::CorsLayer, trace::TraceLayer};
 
 	let router = axum::Router::new()
-		.layer(CorsLayer::permissive())
 		.layer(
 			// TODO 4xx errors aren't really failures but since upub is in development it's useful to log
 			//      these too, in case something's broken
@@ -39,6 +38,7 @@ pub async fn serve(ctx: upub::Context, bind: String) -> upub::Result<()> {
 					)
 				})
 		)
+		.layer(CorsLayer::permissive())
 		.ap_routes()
 		.mastodon_routes() // no-op if mastodon feature is disabled
 		.with_state(ctx);
