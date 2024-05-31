@@ -1,3 +1,5 @@
+use tower_http::classify::{SharedClassifier, StatusInRangeAsFailures};
+
 pub mod activitypub;
 
 #[cfg(feature = "mastodon")]
@@ -23,11 +25,11 @@ pub async fn serve(ctx: upub::Context, bind: String) -> upub::Result<()> {
 	use tower_http::{cors::CorsLayer, trace::TraceLayer};
 
 	let router = axum::Router::new()
-		.ap_routes()
-		.mastodon_routes() // no-op if mastodon feature is disabled
 		.layer(CorsLayer::permissive())
 		.layer(
-			TraceLayer::new_for_http()
+			// TODO 4xx errors aren't really failures but since upub is in development it's useful to log
+			//      these too, in case something's broken
+			TraceLayer::new(SharedClassifier::new(StatusInRangeAsFailures::new(300..=u16::MAX)))
 				.make_span_with(|req: &axum::http::Request<_>| {
 					tracing::span!(
 						tracing::Level::INFO,
@@ -37,6 +39,8 @@ pub async fn serve(ctx: upub::Context, bind: String) -> upub::Result<()> {
 					)
 				})
 		)
+		.ap_routes()
+		.mastodon_routes() // no-op if mastodon feature is disabled
 		.with_state(ctx);
 
 	// run our app with hyper, listening locally on port 3000
