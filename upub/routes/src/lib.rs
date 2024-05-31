@@ -1,10 +1,10 @@
 pub mod activitypub;
 
-#[cfg(feature = "web")]
-pub mod web;
-
 #[cfg(feature = "mastodon")]
 pub mod mastodon;
+
+#[cfg(feature = "web")]
+pub mod web;
 
 pub mod builders;
 
@@ -26,7 +26,17 @@ pub async fn serve(ctx: upub::Context, bind: String) -> upub::Result<()> {
 		.ap_routes()
 		.mastodon_routes() // no-op if mastodon feature is disabled
 		.layer(CorsLayer::permissive())
-		.layer(TraceLayer::new_for_http())
+		.layer(
+			TraceLayer::new_for_http()
+				.make_span_with(|req: &axum::http::Request<_>| {
+					tracing::span!(
+						tracing::Level::INFO,
+						"request",
+						uri = %req.uri(),
+						status_code = tracing::field::Empty,
+					)
+				})
+		)
 		.with_state(ctx);
 
 	// run our app with hyper, listening locally on port 3000
