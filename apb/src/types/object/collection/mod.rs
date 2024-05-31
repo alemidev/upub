@@ -1,7 +1,7 @@
 pub mod page;
 pub use page::CollectionPage;
 
-use crate::{Node, Object, ObjectMut};
+use crate::{Field, FieldErr, Node, Object, ObjectMut};
 
 crate::strenum! {
 	pub enum CollectionType {
@@ -15,9 +15,9 @@ crate::strenum! {
 pub trait Collection : Object {
 	type CollectionPage : CollectionPage;
 
-	fn collection_type(&self) -> Option<CollectionType> { None }
+	fn collection_type(&self) -> Field<CollectionType> { Err(FieldErr("type")) }
 
-	fn total_items(&self) -> Option<u64> { None }
+	fn total_items(&self) -> Field<u64> { Err(FieldErr("totalItems")) }
 	fn current(&self) -> Node<Self::CollectionPage> { Node::Empty }
 	fn first(&self) -> Node<Self::CollectionPage> { Node::Empty }
 	fn last(&self) -> Node<Self::CollectionPage> { Node::Empty }
@@ -42,12 +42,12 @@ impl Collection for serde_json::Value {
 	type CollectionPage = serde_json::Value;
 
 	crate::getter! { collection_type -> type CollectionType }
-	crate::getter! { total_items::totalItems -> u64 }
+	crate::getter! { totalItems -> u64 }
 	crate::getter! { current -> node Self::CollectionPage }
 	crate::getter! { first -> node Self::CollectionPage }
 	crate::getter! { last -> node Self::CollectionPage }
 	crate::getter! { items -> node <Self as Object>::Object }
-	crate::getter! { ordered_items::orderedItems -> node <Self as Object>::Object }
+	crate::getter! { orderedItems -> node <Self as Object>::Object }
 }
 
 #[cfg(feature = "unstructured")]
@@ -55,10 +55,10 @@ impl CollectionMut for serde_json::Value {
 	type CollectionPage = serde_json::Value;
 
 	crate::setter! { collection_type -> type CollectionType }
-	crate::setter! { total_items::totalItems -> u64 }
+	crate::setter! { totalItems -> u64 }
 	crate::setter! { current -> node Self::CollectionPage }
 	crate::setter! { first -> node Self::CollectionPage }
 	crate::setter! { last -> node Self::CollectionPage }
 	crate::setter! { items -> node <Self as Object>::Object }
-	crate::setter! { ordered_items::orderedItems -> node <Self as Object>::Object }
+	crate::setter! { orderedItems -> node <Self as Object>::Object }
 }

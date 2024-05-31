@@ -4,7 +4,7 @@ pub mod intransitive;
 pub mod offer;
 pub mod reject;
 
-use crate::{Node, Object, ObjectMut};
+use crate::{Field, FieldErr, Node, Object, ObjectMut};
 use accept::AcceptType;
 use reject::RejectType;
 use offer::OfferType;
@@ -73,7 +73,7 @@ crate::strenum! {
 }
 
 pub trait Activity : Object {
-	fn activity_type(&self) -> Option<ActivityType> { None }
+	fn activity_type(&self) -> Field<ActivityType> { Err(FieldErr("type")) }
 	fn actor(&self) -> Node<Self::Actor> { Node::Empty }
 	fn object(&self) -> Node<Self::Object> { Node::Empty }
 	fn target(&self) -> Node<Self::Object> { Node::Empty }

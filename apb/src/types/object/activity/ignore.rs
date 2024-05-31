@@ -8,7 +8,7 @@ strenum! {
 }
 
 pub trait Ignore : super::Activity {
-	fn ignore_type(&self) -> Option<IgnoreType> { None }
+	fn ignore_type(&self) -> crate::Field<IgnoreType> { Err(crate::FieldErr("type")) }
 }
 
 pub trait IgnoreMut : super::ActivityMut {

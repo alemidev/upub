@@ -10,7 +10,7 @@ strenum! {
 }
 
 pub trait IntransitiveActivity : super::Activity {
-	fn intransitive_activity_type(&self) -> Option<IntransitiveActivityType> { None }
+	fn intransitive_activity_type(&self) -> crate::Field<IntransitiveActivityType> { Err(crate::FieldErr("type")) }
 }
 
 pub trait IntransitiveActivityMut : super::ActivityMut {

@@ -93,7 +93,6 @@ pub(crate) use macros::{strenum, getter, setter};
 mod node;
 pub use node::Node;
 
-pub mod server;
 pub mod target;
 
 mod key;
@@ -131,6 +130,12 @@ pub use types::{
 		tombstone::{Tombstone, TombstoneMut},
 	},
 };
+
+#[derive(Debug, thiserror::Error)]
+#[error("missing field '{0}'")]
+pub struct FieldErr(pub &'static str);
+
+pub type Field<T> = Result<T, FieldErr>;
 
 #[cfg(feature = "unstructured")]
 pub fn new() -> serde_json::Value {

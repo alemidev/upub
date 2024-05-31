@@ -1,4 +1,4 @@
-use crate::{Node, Object, ObjectMut};
+use crate::{Field, FieldErr, Node, Object, ObjectMut};
 
 crate::strenum! {
 	pub enum ActorType {
@@ -14,8 +14,8 @@ pub trait Actor : Object {
 	type PublicKey : crate::PublicKey;
 	type Endpoints : Endpoints;
 
-	fn actor_type(&self) -> Option<ActorType> { None }
-	fn preferred_username(&self) -> Option<&str> { None }
+	fn actor_type(&self) -> Field<ActorType> { Err(FieldErr("type")) }
+	fn preferred_username(&self) -> Field<&str> { Err(FieldErr("preferredUsername")) }
 	fn inbox(&self) -> Node<Self::Collection>;
 	fn outbox(&self) -> Node<Self::Collection>;
 	fn following(&self) -> Node<Self::Collection> { Node::Empty }
@@ -28,37 +28,37 @@ pub trait Actor : Object {
 	#[cfg(feature = "activitypub-miscellaneous-terms")]
 	fn moved_to(&self) -> Node<Self::Actor> { Node::Empty }
 	#[cfg(feature = "activitypub-miscellaneous-terms")]
-	fn manually_approves_followers(&self) -> Option<bool> { None }
+	fn manually_approves_followers(&self) -> Field<bool> { Err(FieldErr("manuallyApprovesFollowers")) }
 
 	#[cfg(feature = "activitypub-fe")]
-	fn following_me(&self) -> Option<bool> { None }
+	fn following_me(&self) -> Field<bool> { Err(FieldErr("followingMe")) }
 	#[cfg(feature = "activitypub-fe")]
-	fn followed_by_me(&self) -> Option<bool> { None }
+	fn followed_by_me(&self) -> Field<bool> { Err(FieldErr("followedByMe")) }
 
 	#[cfg(feature = "activitypub-counters")]
-	fn followers_count(&self) -> Option<u64> { None }
+	fn followers_count(&self) -> Field<u64> { Err(FieldErr("followersCount")) }
 	#[cfg(feature = "activitypub-counters")]
-	fn following_count(&self) -> Option<u64> { None }
+	fn following_count(&self) -> Field<u64> { Err(FieldErr("followingCount")) }
 	#[cfg(feature = "activitypub-counters")]
-	fn statuses_count(&self) -> Option<u64> { None }
+	fn statuses_count(&self) -> Field<u64> { Err(FieldErr("statusesCount")) }
 
 	#[cfg(feature = "toot")]
-	fn discoverable(&self) -> Option<bool> { None }
+	fn discoverable(&self) -> Field<bool> { Err(FieldErr("discoverable")) }
 }
 
 pub trait Endpoints : Object {
 	/// Endpoint URI so this actor's clients may access remote ActivityStreams objects which require authentication to access. To use this endpoint, the client posts an x-www-form-urlencoded id parameter with the value being the id of the requested ActivityStreams object. 
-	fn proxy_url(&self) -> Option<&str> { None }
+	fn proxy_url(&self) -> Field<&str> { Err(FieldErr("proxyUrl")) }
 	/// If OAuth 2.0 bearer tokens [RFC6749] [RFC6750] are being used for authenticating client to server interactions, this endpoint specifies a URI at which a browser-authenticated user may obtain a new authorization grant. 
-	fn oauth_authorization_endpoint(&self) -> Option<&str> { None }
+	fn oauth_authorization_endpoint(&self) -> Field<&str> { Err(FieldErr("oauthAuthorizationEndpoint")) }
 	/// If OAuth 2.0 bearer tokens [RFC6749] [RFC6750] are being used for authenticating client to server interactions, this endpoint specifies a URI at which a client may acquire an access token. 
-	fn oauth_token_endpoint(&self) -> Option<&str> { None }
+	fn oauth_token_endpoint(&self) -> Field<&str> { Err(FieldErr("oauthTokenEndpoint")) }
 	/// If Linked Data Signatures and HTTP Signatures are being used for authentication and authorization, this endpoint specifies a URI at which browser-authenticated users may authorize a client's public key for client to server interactions. 
-	fn provide_client_key(&self) -> Option<&str> { None }
+	fn provide_client_key(&self) -> Field<&str> { Err(FieldErr("provideClientKey")) }
 	/// If Linked Data Signatures and HTTP Signatures are being used for authentication and authorization, this endpoint specifies a URI at which a client key may be signed by the actor's key for a time window to act on behalf of the actor in interacting with foreign servers. 
-	fn sign_client_key(&self) -> Option<&str> { None }
+	fn sign_client_key(&self) -> Field<&str> { Err(FieldErr("signClientKey")) }
 	/// An optional endpoint used for wide delivery of publicly addressed activities and activities sent to followers. sharedInbox endpoints SHOULD also be publicly readable OrderedCollection objects containing objects addressed to the Public special collection. Reading from the sharedInbox endpoint MUST NOT present objects which are not addressed to the Public endpoint.
-	fn shared_inbox(&self) -> Option<&str> { None }
+	fn shared_inbox(&self) -> Field<&str> { Err(FieldErr("sharedInbox")) }
 }
 
 pub trait ActorMut : ObjectMut {
@@ -117,33 +117,33 @@ impl Actor for serde_json::Value {
 	type PublicKey = serde_json::Value;
 	type Endpoints = serde_json::Value;
 
-	crate::getter! { actor_type -> type ActorType }
-	crate::getter! { preferred_username::preferredUsername -> &str }
+	crate::getter! { actorType -> type ActorType }
+	crate::getter! { preferredUsername -> &str }
 	crate::getter! { inbox -> node Self::Collection }
 	crate::getter! { outbox -> node Self::Collection }
 	crate::getter! { following -> node Self::Collection }
 	crate::getter! { followers -> node Self::Collection }
 	crate::getter! { liked -> node Self::Collection }
 	crate::getter! { streams -> node Self::Collection }
-	crate::getter! { public_key::publicKey -> node Self::PublicKey }
+	crate::getter! { publicKey -> node Self::PublicKey }
 	crate::getter! { endpoints -> node Self::Endpoints }
 
 	#[cfg(feature = "activitypub-miscellaneous-terms")]
-	crate::getter! { moved_to::movedTo -> node Self::Actor }
+	crate::getter! { movedTo -> node Self::Actor }
 	#[cfg(feature = "activitypub-miscellaneous-terms")]
-	crate::getter! { manually_approves_followers::manuallyApprovedFollowers -> bool }
+	crate::getter! { manuallyApprovesFollowers -> bool }
 
 	#[cfg(feature = "activitypub-fe")]
-	crate::getter! { following_me::followingMe -> bool }
+	crate::getter! { followingMe -> bool }
 	#[cfg(feature = "activitypub-fe")]
-	crate::getter! { followed_by_me::followedByMe -> bool }
+	crate::getter! { followedByMe -> bool }
 
 	#[cfg(feature = "activitypub-counters")]
-	crate::getter! { following_count::followingCount -> u64 }
+	crate::getter! { followingCount -> u64 }
 	#[cfg(feature = "activitypub-counters")]
-	crate::getter! { followers_count::followersCount -> u64 }
+	crate::getter! { followersCount -> u64 }
 	#[cfg(feature = "activitypub-counters")]
-	crate::getter! { statuses_count::statusesCount -> u64 }
+	crate::getter! { statusesCount -> u64 }
 
 	#[cfg(feature = "toot")]
 	crate::getter! { discoverable -> bool }
@@ -151,12 +151,12 @@ impl Actor for serde_json::Value {
 
 #[cfg(feature = "unstructured")]
 impl Endpoints for serde_json::Value {
-	crate::getter! { proxy_url::proxyUrl -> &str }
-	crate::getter! { oauth_authorization_endpoint::oauthAuthorizationEndpoint -> &str }
-	crate::getter! { oauth_token_endpoint::oauthTokenEndpoint -> &str }
-	crate::getter! { provide_client_key::provideClientKey -> &str }
-	crate::getter! { sign_client_key::signClientKey -> &str }
-	crate::getter! { shared_inbox::sharedInbox -> &str }
+	crate::getter! { proxyUrl -> &str }
+	crate::getter! { oauthAuthorizationEndpoint -> &str }
+	crate::getter! { oauthTokenEndpoint -> &str }
+	crate::getter! { provideClientKey -> &str }
+	crate::getter! { signClientKey -> &str }
+	crate::getter! { sharedInbox -> &str }
 }
 
 #[cfg(feature = "unstructured")]
@@ -165,32 +165,32 @@ impl ActorMut for serde_json::Value {
 	type Endpoints = serde_json::Value;
 
 	crate::setter! { actor_type -> type ActorType }
-	crate::setter! { preferred_username::preferredUsername -> &str }
+	crate::setter! { preferredUsername -> &str }
 	crate::setter! { inbox -> node Self::Collection }
 	crate::setter! { outbox -> node Self::Collection }
 	crate::setter! { following -> node Self::Collection }
 	crate::setter! { followers -> node Self::Collection }
 	crate::setter! { liked -> node Self::Collection }
 	crate::setter! { streams -> node Self::Collection }
-	crate::setter! { public_key::publicKey -> node Self::PublicKey }
+	crate::setter! { publicKey -> node Self::PublicKey }
 	crate::setter! { endpoints -> node Self::Endpoints }
 
 	#[cfg(feature = "activitypub-miscellaneous-terms")]
-	crate::setter! { moved_to::movedTo -> node Self::Actor }
+	crate::setter! { movedTo -> node Self::Actor }
 	#[cfg(feature = "activitypub-miscellaneous-terms")]
-	crate::setter! { manually_approves_followers::manuallyApprovedFollowers -> bool }
+	crate::setter! { manuallyApprovesFollowers -> bool }
 
 	#[cfg(feature = "activitypub-fe")]
-	crate::setter! { following_me::followingMe -> bool }
+	crate::setter! { followingMe -> bool }
 	#[cfg(feature = "activitypub-fe")]
-	crate::setter! { followed_by_me::followedByMe -> bool }
+	crate::setter! { followedByMe -> bool }
 
 	#[cfg(feature = "activitypub-counters")]
-	crate::setter! { following_count::followingCount -> u64 }
+	crate::setter! { followingCount -> u64 }
 	#[cfg(feature = "activitypub-counters")]
-	crate::setter! { followers_count::followersCount -> u64 }
+	crate::setter! { followersCount -> u64 }
 	#[cfg(feature = "activitypub-counters")]
-	crate::setter! { statuses_count::statusesCount -> u64 }
+	crate::setter! { statusesCount -> u64 }
 
 	#[cfg(feature = "toot")]
 	crate::setter! { discoverable -> bool }
@@ -198,10 +198,10 @@ impl ActorMut for serde_json::Value {
 
 #[cfg(feature = "unstructured")]
 impl EndpointsMut for serde_json::Value {
-	crate::setter! { proxy_url::proxyUrl -> &str }
-	crate::setter! { oauth_authorization_endpoint::oauthAuthorizationEndpoint -> &str }
-	crate::setter! { oauth_token_endpoint::oauthTokenEndpoint -> &str }
-	crate::setter! { provide_client_key::provideClientKey -> &str }
-	crate::setter! { sign_client_key::signClientKey -> &str }
-	crate::setter! { shared_inbox::sharedInbox -> &str }
+	crate::setter! { proxyUrl -> &str }
+	crate::setter! { oauthAuthorizationEndpoint -> &str }
+	crate::setter! { oauthTokenEndpoint -> &str }
+	crate::setter! { provideClientKey -> &str }
+	crate::setter! { signClientKey -> &str }
+	crate::setter! { sharedInbox -> &str }
 }

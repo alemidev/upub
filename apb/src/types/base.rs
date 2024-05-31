@@ -9,8 +9,8 @@ crate::strenum! {
 }
 
 pub trait Base : crate::macros::MaybeSend {
-	fn id(&self) -> Option<&str> { None }
-	fn base_type(&self) -> Option<BaseType> { None }
+	fn id(&self) -> crate::Field<&str> { Err(crate::FieldErr("id")) }
+	fn base_type(&self) -> crate::Field<BaseType> { Err(crate::FieldErr("type")) }
 }
 
 
@@ -21,30 +21,35 @@ pub trait BaseMut : crate::macros::MaybeSend {
 
 
 impl Base for String {
-	fn id(&self) -> Option<&str> {
-		Some(self)
+	fn id(&self) -> crate::Field<&str> {
+		Ok(self)
 	}
 
-	fn base_type(&self) -> Option<BaseType> {
-		Some(BaseType::Link(LinkType::Link))
+	fn base_type(&self) -> crate::Field<BaseType> {
+		Ok(BaseType::Link(LinkType::Link))
 	}
 }
 
 #[cfg(feature = "unstructured")]
 impl Base for serde_json::Value {
-	fn base_type(&self) -> Option<BaseType> {
+	fn base_type(&self) -> crate::Field<BaseType> {
 		if self.is_string() {
-			Some(BaseType::Link(LinkType::Link))
+			Ok(BaseType::Link(LinkType::Link))
 		} else {
-			self.get("type")?.as_str()?.try_into().ok()
+			self.get("type")
+				.and_then(|x| x.as_str())
+				.and_then(|x| x.try_into().ok())
+				.ok_or(crate::FieldErr("type"))
 		}
 	}
 
-	fn id(&self) -> Option<&str> {
+	fn id(&self) -> crate::Field<&str> {
 		if self.is_string() {
-			self.as_str()
+			Ok(self.as_str().ok_or(crate::FieldErr("id"))?)
 		} else {
-			self.get("id").map(|x| x.as_str())?
+			self.get("id")
+				.and_then(|x| x.as_str())
+				.ok_or(crate::FieldErr("id"))
 		}
 	}
 }

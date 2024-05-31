@@ -14,14 +14,14 @@ pub trait CollectionPageMut : super::CollectionMut {
 
 #[cfg(feature = "unstructured")]
 impl CollectionPage for serde_json::Value {
-	crate::getter! { part_of::partOf -> node Self::Collection }
+	crate::getter! { partOf -> node Self::Collection }
 	crate::getter! { next -> node Self::CollectionPage }
 	crate::getter! { prev -> node Self::CollectionPage }
 }
 
 #[cfg(feature = "unstructured")]
 impl CollectionPageMut for serde_json::Value {
-	crate::setter! { part_of::partOf -> node Self::Collection }
+	crate::setter! { partOf -> node Self::Collection }
 	crate::setter! { next -> node Self::CollectionPage }
 	crate::setter! { prev -> node Self::CollectionPage }
 }

@@ -1,6 +1,6 @@
 pub trait Tombstone : super::Object {
-	fn former_type(&self) -> Option<crate::BaseType> { None }
-	fn deleted(&self) -> Option<chrono::DateTime<chrono::Utc>> { None }
+	fn former_type(&self) -> crate::Field<crate::BaseType> { Err(crate::FieldErr("formerType")) }
+	fn deleted(&self) -> crate::Field<chrono::DateTime<chrono::Utc>> { Err(crate::FieldErr("deleted")) }
 }
 
 pub trait TombstoneMut : super::ObjectMut {

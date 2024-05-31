@@ -8,7 +8,7 @@ strenum! {
 }
 
 pub trait Reject : super::Activity {
-	fn reject_type(&self) -> Option<RejectType> { None }
+	fn reject_type(&self) -> crate::Field<RejectType> { Err(crate::FieldErr("type")) }
 }
 
 pub trait RejectMut : super::ActivityMut {

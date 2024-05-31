@@ -104,7 +104,7 @@ impl<T : super::Base> Node<T> {
 		match self {
 			Node::Empty => None,
 			Node::Link(uri) => Some(uri.href().to_string()),
-			Node::Object(obj) => Some(obj.id()?.to_string()),
+			Node::Object(obj) => Some(obj.id().ok()?.to_string()),
 			Node::Array(arr) => Some(arr.front()?.id()?.to_string()),
 		}
 	}

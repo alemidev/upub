@@ -110,101 +110,93 @@ pub(crate) use strenum;
 
 macro_rules! getter {
 	($name:ident -> type $t:ty) => {
-		fn $name(&self) -> Option<$t> {
-			self.get("type")?.as_str()?.try_into().ok()
-		}
-	};
-
-	($name:ident -> bool) => {
-		fn $name(&self) -> Option<bool> {
-			self.get(stringify!($name))?.as_bool()
-		}
-	};
-
-	($name:ident -> &str) => {
-		fn $name(&self) -> Option<&str> {
-			self.get(stringify!($name))?.as_str()
-		}
-	};
-
-	($name:ident::$rename:ident -> bool) => {
-		fn $name(&self) -> Option<bool> {
-			self.get(stringify!($rename))?.as_bool()
-		}
-	};
-
-	($name:ident::$rename:ident -> &str) => {
-		fn $name(&self) -> Option<&str> {
-			self.get(stringify!($rename))?.as_str()
-		}
-	};
-
-	($name:ident -> f64) => {
-		fn $name(&self) -> Option<f64> {
-			self.get(stringify!($name))?.as_f64()
-		}
-	};
-
-	($name:ident::$rename:ident -> f64) => {
-		fn $name(&self) -> Option<f64> {
-			self.get(stringify!($rename))?.as_f64()
-		}
-	};
-
-	($name:ident -> u64) => {
-		fn $name(&self) -> Option<u64> {
-			self.get(stringify!($name))?.as_u64()
-		}
-	};
-
-	($name:ident::$rename:ident -> u64) => {
-		fn $name(&self) -> Option<u64> {
-			self.get(stringify!($rename))?.as_u64()
-		}
-	};
-
-	($name:ident -> chrono::DateTime<chrono::Utc>) => {
-		fn $name(&self) -> Option<chrono::DateTime<chrono::Utc>> {
-			Some(
-				chrono::DateTime::parse_from_rfc3339(
-						self
-							.get(stringify!($name))?
-							.as_str()?
-					)
-					.ok()?
-					.with_timezone(&chrono::Utc)
-			)
-		}
-	};
-
-	($name:ident::$rename:ident -> chrono::DateTime<chrono::Utc>) => {
-		fn $name(&self) -> Option<chrono::DateTime<chrono::Utc>> {
-			Some(
-				chrono::DateTime::parse_from_rfc3339(
-						self
-							.get(stringify!($rename))?
-							.as_str()?
-					)
-					.ok()?
-					.with_timezone(&chrono::Utc)
-			)
-		}
-	};
-
-	($name:ident -> node $t:ty) => {
-		fn $name(&self) -> $crate::Node<$t> {
-			match self.get(stringify!($name)) {
-				Some(x) => $crate::Node::from(x.clone()),
-				None => $crate::Node::Empty,
+		paste::paste! {
+			fn [< $name:snake >] (&self) -> $crate::Field<$t> {
+				self.get("type")
+					.and_then(|x| x.as_str())
+					.and_then(|x| x.try_into().ok())
+					.ok_or($crate::FieldErr("type"))
 			}
 		}
 	};
 
-	($name:ident::$rename:ident -> node $t:ty) => {
-		fn $name(&self) -> $crate::Node<$t> {
-			match self.get(stringify!($rename)) {
-				Some(x) => $crate::Node::from(x.clone()),
-				None => $crate::Node::Empty,
+	($name:ident -> bool) => {
+		paste::paste! {
+			fn [< $name:snake >](&self) -> $crate::Field<bool> {
+				self.get(stringify!($name))
+					.and_then(|x| x.as_bool())
+					.ok_or($crate::FieldErr(stringify!($name)))
+			}
+		}
+	};
+
+	($name:ident -> &str) => {
+		paste::paste! {
+			fn [< $name:snake >](&self) -> $crate::Field<&str> {
+				self.get(stringify!($name))
+					.and_then(|x| x.as_str())
+					.ok_or($crate::FieldErr(stringify!($name)))
+			}
+		}
+	};
+
+	($name:ident -> f64) => {
+		paste::paste! {
+			fn [< $name:snake >](&self) -> $crate::Field<f64> {
+				self.get(stringify!($name))
+					.and_then(|x| x.as_f64())
+					.ok_or($crate::FieldErr(stringify!($name)))
+			}
+		}
+	};
+
+	($name:ident -> u64) => {
+		paste::paste! {
+			fn [< $name:snake >](&self) -> $crate::Field<u64> {
+				self.get(stringify!($name))
+					.and_then(|x| x.as_u64())
+					.ok_or($crate::FieldErr(stringify!($name)))
+			}
+		}
+	};
+
+	($name:ident -> i64) => {
+		paste::paste! {
+			fn [< $name:snake >](&self) -> $crate::Field<i64> {
+				self.get(stringify!($name))
+					.and_then(|x| x.as_i64())
+					.ok_or($crate::FieldErr(stringify!($name)))
+			}
+		}
+	};
+
+	($name:ident -> chrono::DateTime<chrono::Utc>) => {
+		paste::paste! {
+			fn [< $name:snake >](&self) -> $crate::Field<chrono::DateTime<chrono::Utc>> {
+				Ok(
+					chrono::DateTime::parse_from_rfc3339(
+							self
+								.get(stringify!($name))
+								.and_then(|x| x.as_str())
+								.ok_or($crate::FieldErr(stringify!($name)))?
+						)
+						.map_err(|e| {
+							tracing::warn!("invalid time string ({e}), ignoring");
+							$crate::FieldErr(stringify!($name))
+						})?
+						.with_timezone(&chrono::Utc)
+				)
+			}
+		}
+	};
+
+	($name:ident -> node $t:ty) => {
+		paste::paste! {
+			fn [< $name:snake >](&self) -> $crate::Node<$t> {
+				match self.get(stringify!($name)) {
+					Some(x) => $crate::Node::from(x.clone()),
+					None => $crate::Node::Empty,
+				}
 			}
 		}
 	};
@@ -215,7 +207,7 @@ pub(crate) use getter;
 macro_rules! setter {
 	($name:ident -> bool) => {
 		paste::item! {
-			fn [< set_$name >](mut self, val: Option<bool>) -> Self {
+			fn [< set_$name:snake >](mut self, val: Option<bool>) -> Self {
 				$crate::macros::set_maybe_value(
 					&mut self, stringify!($name), val.map(|x| serde_json::Value::Bool(x))
 				);
@@ -224,20 +216,9 @@ macro_rules! setter {
 		}
 	};
 
-	($name:ident::$rename:ident -> bool) => {
-		paste::item! {
-			fn [< set_$name >](mut self, val: Option<bool>) -> Self {
-				$crate::macros::set_maybe_value(
-					&mut self, stringify!($rename), val.map(|x| serde_json::Value::Bool(x))
-				);
-				self
-			}
-		}
-	};
-
 	($name:ident -> &str) => {
 		paste::item! {
-			fn [< set_$name >](mut self, val: Option<&str>) -> Self {
+			fn [< set_$name:snake >](mut self, val: Option<&str>) -> Self {
 				$crate::macros::set_maybe_value(
 					&mut self, stringify!($name), val.map(|x| serde_json::Value::String(x.to_string()))
 				);
@@ -246,20 +227,9 @@ macro_rules! setter {
 		}
 	};
 
-	($name:ident::$rename:ident -> &str) => {
-		paste::item! {
-			fn [< set_$name >](mut self, val: Option<&str>) -> Self {
-				$crate::macros::set_maybe_value(
-					&mut self, stringify!($rename), val.map(|x| serde_json::Value::String(x.to_string()))
-				);
-				self
-			}
-		}
-	};
-
 	($name:ident -> u64) => {
 		paste::item! {
-			fn [< set_$name >](mut self, val: Option<u64>) -> Self {
+			fn [< set_$name:snake >](mut self, val: Option<u64>) -> Self {
 				$crate::macros::set_maybe_value(
 					&mut self, stringify!($name), val.map(|x| serde_json::Value::Number(serde_json::Number::from(x)))
 				);
@@ -268,11 +238,11 @@ macro_rules! setter {
 		}
 	};
 
-	($name:ident::$rename:ident -> u64) => {
+	($name:ident -> i64) => {
 		paste::item! {
-			fn [< set_$name >](mut self, val: Option<u64>) -> Self {
+			fn [< set_$name:snake >](mut self, val: Option<i64>) -> Self {
 				$crate::macros::set_maybe_value(
-					&mut self, stringify!($rename), val.map(|x| serde_json::Value::Number(serde_json::Number::from(x)))
+					&mut self, stringify!($name), val.map(|x| serde_json::Value::Number(serde_json::Number::from(x)))
 				);
 				self
 			}
@@ -281,7 +251,7 @@ macro_rules! setter {
 
 	($name:ident -> chrono::DateTime<chrono::Utc>) => {
 		paste::item! {
-			fn [< set_$name >](mut self, val: Option<chrono::DateTime<chrono::Utc>>) -> Self {
+			fn [< set_$name:snake >](mut self, val: Option<chrono::DateTime<chrono::Utc>>) -> Self {
 				$crate::macros::set_maybe_value(
 					&mut self, stringify!($name), val.map(|x| serde_json::Value::String(x.to_rfc3339()))
 				);
@@ -290,20 +260,9 @@ macro_rules! setter {
 		}
 	};
 
-	($name:ident::$rename:ident -> chrono::DateTime<chrono::Utc>) => {
-		paste::item! {
-			fn [< set_$name >](mut self, val: Option<chrono::DateTime<chrono::Utc>>) -> Self {
-				$crate::macros::set_maybe_value(
-					&mut self, stringify!($rename), val.map(|x| serde_json::Value::String(x.to_rfc3339()))
-				);
-				self
-			}
-		}
-	};
-
 	($name:ident -> node $t:ty ) => {
 		paste::item! {
-			fn [< set_$name >](mut self, val: $crate::Node<$t>) -> Self {
+			fn [< set_$name:snake >](mut self, val: $crate::Node<$t>) -> Self {
 				$crate::macros::set_maybe_node(
 					&mut self, stringify!($name), val
 				);
@@ -314,7 +273,7 @@ macro_rules! setter {
 
 	($name:ident::$rename:ident -> node $t:ty ) => {
 		paste::item! {
-			fn [< set_$name >](mut self, val: $crate::Node<$t>) -> Self {
+			fn [< set_$name:snake >](mut self, val: $crate::Node<$t>) -> Self {
 				$crate::macros::set_maybe_node(
 					&mut self, stringify!($rename), val
 				);
@@ -325,7 +284,7 @@ macro_rules! setter {
 
 	($name:ident -> type $t:ty ) => {
 		paste::item! {
-			fn [< set_$name >](mut self, val: Option<$t>) -> Self {
+			fn [< set_$name:snake >](mut self, val: Option<$t>) -> Self {
 				$crate::macros::set_maybe_value(
 					&mut self, "type", val.map(|x| serde_json::Value::String(x.as_ref().to_string()))
 				);

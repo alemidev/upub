@@ -9,7 +9,7 @@ crate::strenum! {
 }
 
 pub trait Document : super::Object {
-	fn document_type(&self) -> Option<DocumentType> { None }
+	fn document_type(&self) -> crate::Field<DocumentType> { Err(crate::FieldErr("type")) }
 }
 
 pub trait DocumentMut : super::ObjectMut {
@@ -19,10 +19,10 @@ pub trait DocumentMut : super::ObjectMut {
 
 #[cfg(feature = "unstructured")]
 impl Document for serde_json::Value {
-	crate::getter! { document_type -> type DocumentType }
+	crate::getter! { documentType -> type DocumentType }
 }
 
 #[cfg(feature = "unstructured")]
 impl DocumentMut for serde_json::Value {
-	crate::setter! { document_type -> type DocumentType }
+	crate::setter! { documentType -> type DocumentType }
 }
