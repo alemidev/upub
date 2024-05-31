@@ -1,8 +1,24 @@
 use std::collections::BTreeMap;
 
-use axum::http::request::Parts;
 use base64::Engine;
 use openssl::{hash::MessageDigest, pkey::PKey, sign::Verifier};
+
+#[derive(Debug, thiserror::Error)]
+pub enum HttpSignatureError {
+	#[error("openssl error: {0:?}")]
+	OpenSSL(#[from] openssl::error::ErrorStack),
+
+	#[error("invalid UTF8 in key: {0:?}")]
+	UTF8(#[from] std::str::Utf8Error),
+
+	#[error("os I/O error: {0}")]
+	IO(#[from] std::io::Error),
+
+	#[error("invalid base64: {0}")]
+	Base64(#[from] base64::DecodeError),
+}
+
+type Result<T> = std::result::Result<T, HttpSignatureError>;
 
 #[derive(Debug, Clone, Default)]
 pub struct HttpSignature {
@@ -60,7 +76,8 @@ impl HttpSignature {
 		self
 	}
 
-	pub fn build_from_parts(&mut self, parts: &Parts) -> &mut Self {
+	#[cfg(feature = "axum")]
+	pub fn build_from_parts(&mut self, parts: &axum::http::request::Parts) -> &mut Self {
 		let mut out = Vec::new();
 		for header in self.headers.iter() {
 			match header.as_str() {
@@ -82,14 +99,14 @@ impl HttpSignature {
 		self
 	}
 
-	pub fn verify(&self, key: &str) -> crate::Result<bool> {
+	pub fn verify(&self, key: &str) -> Result<bool> {
 		let pubkey = PKey::public_key_from_pem(key.as_bytes())?;
 		let mut verifier = Verifier::new(MessageDigest::sha256(), &pubkey)?;
 		let signature = base64::prelude::BASE64_STANDARD.decode(&self.signature)?;
 		Ok(verifier.verify_oneshot(&signature, self.control.as_bytes())?)
 	}
 
-	pub fn sign(&mut self, key: &str) -> crate::Result<&str> {
+	pub fn sign(&mut self, key: &str) -> Result<&str> {
 		let privkey = PKey::private_key_from_pem(key.as_bytes())?;
 		let mut signer = openssl::sign::Signer::new(MessageDigest::sha256(), &privkey)?;
 		signer.update(self.control.as_bytes())?;
@@ -100,6 +117,9 @@ impl HttpSignature {
 
 #[cfg(test)]
 mod test {
+	
+	// TODO more tests!!!
+
 	#[test]
 	fn http_signature_signs_and_verifies() {
 		let key = openssl::rsa::Rsa::generate(2048).unwrap();

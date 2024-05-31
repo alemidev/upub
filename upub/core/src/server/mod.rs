@@ -7,7 +7,6 @@ pub mod inbox;
 pub mod init;
 pub mod outbox;
 pub mod auth;
-pub mod httpsign;
 pub mod normalizer;
 pub mod side_effects;
 
