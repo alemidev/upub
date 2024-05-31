@@ -24,7 +24,7 @@ pub fn ActivityLine(activity: crate::Object) -> impl IntoView {
 				<ActorStrip object=actor />
 			</span>
 			<span style="float:right">
-				<code class="color moreinfo" title={activity.published().map(|x| x.to_rfc2822())} >
+				<code class="color moreinfo" title={activity.published().ok().map(|x| x.to_rfc2822())} >
 					<a class="upub-title clean" title={object_id} href={href} >
 						{kind.as_ref().to_string()}
 					</a>

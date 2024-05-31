@@ -82,7 +82,7 @@ pub fn UserPage(tl: Timeline) -> impl IntoView {
 							let actor_type_tag = if actor_type == apb::ActorType::Person { None } else {
 								Some(view! { <sup class="ml-s"><small>"["{actor_type.as_ref().to_lowercase()}"]"</small></sup> } )
 							};
-							let created = object.published();
+							let created = object.published().ok();
 							let following = object.following_count().unwrap_or(0);
 							let followers = object.followers_count().unwrap_or(0);
 							let statuses = object.statuses_count().unwrap_or(0);

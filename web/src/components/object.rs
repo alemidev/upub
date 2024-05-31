@@ -29,7 +29,7 @@ pub fn Attachment(
 	//
 	// those who correctly send Image type objects without a media type get shown as links here, this
 	// is a dirty fix to properly display as images
-	if kind == "link" && matches!(object.document_type(), Some(apb::DocumentType::Image)) {
+	if kind == "link" && matches!(object.document_type(), Ok(apb::DocumentType::Image)) {
 		kind = "image".to_string();
 	}
 
@@ -132,7 +132,7 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 		Some(view! { <div class="pb-1"></div> })
 	};
 	let post_inner = view! {
-		<Summary summary=object.summary().map(|x| x.to_string()) >
+		<Summary summary=object.summary().ok().map(|x| x.to_string()) >
 			<p inner_html={content}></p>
 			{attachments_padding}
 			{attachments}
@@ -140,11 +140,11 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 	};
 	let post = match object.object_type() {
 		// mastodon, pleroma, misskey
-		Some(apb::ObjectType::Note) => view! {
+		Ok(apb::ObjectType::Note) => view! {
 			<blockquote class="tl">{post_inner}</blockquote>
 		}.into_view(),
 		// lemmy with Page, peertube with Video
-		Some(apb::ObjectType::Document(t)) => view! {
+		Ok(apb::ObjectType::Document(t)) => view! {
 			<div class="border ml-1 mr-1 mt-1">
 				<b>{object.name().unwrap_or_default().to_string()}</b>
 				<hr />
@@ -155,7 +155,7 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 			</div>
 		}.into_view(),
 		// wordpress, ... ?
-		Some(apb::ObjectType::Article) => view! {
+		Ok(apb::ObjectType::Article) => view! {
 			<div>
 				<h3>{object.name().unwrap_or_default().to_string()}</h3>
 				<hr />
@@ -163,12 +163,12 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 			</div>
 		}.into_view(),
 		// everything else
-		Some(t) => view! {
+		Ok(t) => view! {
 			<h3>{t.as_ref().to_string()}</h3>
 			{post_inner}
 		}.into_view(),
 		// object without type?
-		None => view! { <code>missing object type</code> }.into_view(),
+		Err(_) => view! { <code>missing object type</code> }.into_view(),
 	};
 	view! {
 		<table class="align w-100 ml-s mr-s">
@@ -180,7 +180,7 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 					})}
 					<PrivacyMarker addressed=addressed />
 					<a class="clean hover ml-s" href={Uri::web(U::Object, object.id().unwrap_or_default())}>
-						<DateTime t=object.published() />
+						<DateTime t=object.published().ok() />
 					</a>
 					<sup><small><a class="clean ml-s" href={external_url} target="_blank">"↗"</a></small></sup>
 				</td>
@@ -253,7 +253,7 @@ pub fn LikeButton(
 							if let Some(cached) = CACHE.get(&target) {
 								let mut new = (*cached).clone().set_liked_by_me(Some(true));
 								if let Some(likes) = new.likes().get() {
-									if let Some(count) = likes.total_items() {
+									if let Ok(count) = likes.total_items() {
 										new = new.set_likes(apb::Node::object(likes.clone().set_total_items(Some(count + 1))));
 									}
 								}

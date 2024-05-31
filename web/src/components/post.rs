@@ -13,7 +13,7 @@ impl ReplyControls {
 	pub fn reply(&self, oid: &str) {
 		if let Some(obj) = CACHE.get(oid) {
 			self.context.set(obj.context().id());
-			self.reply_to.set(obj.id().map(|x| x.to_string()));
+			self.reply_to.set(obj.id().ok().map(|x| x.to_string()));
 		}
 	}
 
@@ -123,7 +123,7 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 								}
 								if let Some(r) = reply.reply_to.get() {
 									if let Some(au) = post_author(&r) {
-										if let Some(uid) = au.id() {
+										if let Ok(uid) = au.id() {
 											to_vec.push(uid.to_string());
 										}
 									}

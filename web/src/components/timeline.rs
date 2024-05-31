@@ -85,13 +85,13 @@ pub fn TimelineRepliesRecursive(tl: Timeline, root: String) -> impl IntoView {
 		.into_iter()
 		.filter_map(|x| CACHE.get(&x))
 		.filter(|x| match x.object_type() {
-			Some(apb::ObjectType::Activity(apb::ActivityType::Create)) => {
+			Ok(apb::ObjectType::Activity(apb::ActivityType::Create)) => {
 				let Some(oid) = x.object().id() else { return false; };
 				let Some(object) = CACHE.get(&oid) else { return false; };
 				let Some(reply) = object.in_reply_to().id() else { return false; };
 				reply == root
 			},
-			Some(apb::ObjectType::Activity(_)) => x.object().id().map(|o| o == root).unwrap_or(false),
+			Ok(apb::ObjectType::Activity(_)) => x.object().id().map(|o| o == root).unwrap_or(false),
 			_ => x.in_reply_to().id().map(|r| r == root).unwrap_or(false),
 		})
 		.collect::<Vec<crate::Object>>();
@@ -202,7 +202,7 @@ async fn process_activities(activities: Vec<serde_json::Value>, auth: Auth) -> V
 			if let Some(attributed_to) = object.attributed_to().id() {
 				actors_seen.insert(attributed_to);
 			}
-			if let Some(object_uri) = object.id() {
+			if let Ok(object_uri) = object.id() {
 				CACHE.put(object_uri.to_string(), Arc::new(object.clone()));
 			} else {
 				tracing::warn!("embedded object without id: {object:?}");
@@ -222,7 +222,7 @@ async fn process_activities(activities: Vec<serde_json::Value>, auth: Auth) -> V
 	
 		// save activity, removing embedded object
 		let object_id = activity.object().id();
-		if let Some(activity_id) = activity.id() {
+		if let Ok(activity_id) = activity.id() {
 			out.push(activity_id.to_string());
 			CACHE.put(
 				activity_id.to_string(),
