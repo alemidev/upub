@@ -99,22 +99,21 @@ impl<T : super::Base> Node<T> {
 	}
 
 	/// returns id of object: url for link, id for object, None if empty or array
-	// TODO return Option<&str> and avoid inner clone
-	pub fn id(&self) -> Option<String> {
+	pub fn id(&self) -> crate::Field<&str> {
 		match self {
-			Node::Empty => None,
-			Node::Link(uri) => Some(uri.href().to_string()),
-			Node::Object(obj) => Some(obj.id().ok()?.to_string()),
-			Node::Array(arr) => Some(arr.front()?.id()?.to_string()),
+			Node::Empty => Err(crate::FieldErr("id")),
+			Node::Link(uri) => Ok(uri.href()),
+			Node::Object(obj) => obj.id(),
+			Node::Array(arr) => arr.front().map(|x| x.id()).ok_or(crate::FieldErr("id"))?,
 		}
 	}
 
-	pub fn ids(&self) -> Vec<String> {
+	pub fn all_ids(&self) -> Vec<String> {
 		match self {
 			Node::Empty => vec![],
 			Node::Link(uri) => vec![uri.href().to_string()],
 			Node::Object(x) => x.id().map_or(vec![], |x| vec![x.to_string()]),
-			Node::Array(x) => x.iter().filter_map(Self::id).collect()
+			Node::Array(x) => x.iter().filter_map(|x| x.id().ok()).map(|x| x.to_string()).collect()
 		}
 	}
 
