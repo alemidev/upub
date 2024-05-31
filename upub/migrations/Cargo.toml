@@ -1,0 +1,14 @@
+[package]
+name = "upub-migrations"
+version = "0.2.0"
+edition = "2021"
+authors = [ "alemi <me@alemi.dev>" ]
+description = "database migrations for upub"
+license = "AGPL-3.0"
+repository = "https://git.alemi.dev/upub.git"
+readme = "README.md"
+
+[lib]
+
+[dependencies]
+sea-orm-migration = "0.12"

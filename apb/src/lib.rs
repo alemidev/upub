@@ -125,3 +125,8 @@ pub use types::{
 		tombstone::{Tombstone, TombstoneMut},
 	},
 };
+
+#[cfg(feature = "unstructured")]
+pub fn new() -> serde_json::Value {
+	serde_json::Value::Object(serde_json::Map::default())
+}

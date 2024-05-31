@@ -1,0 +1,32 @@
+[package]
+name = "upub-routes"
+version = "0.2.0"
+edition = "2021"
+authors = [ "alemi <me@alemi.dev>" ]
+description = "api route definitions for upub"
+license = "AGPL-3.0"
+repository = "https://git.alemi.dev/upub.git"
+readme = "README.md"
+
+[lib]
+
+[dependencies]
+rand = "0.8"
+sha256 = "1.5"
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+upub = { path = "../core/" }
+jrd = "0.1"
+tracing = "0.1"
+tokio = { version = "1.35", features = ["full"] } # TODO slim this down
+reqwest = { version = "0.12", features = ["json"] }
+axum = "0.7"
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+apb = { path = "../../apb", features = ["unstructured", "orm", "activitypub-fe", "activitypub-counters", "litepub", "ostatus", "toot"] }
+sea-orm = { version = "0.12", features = ["macros", "sqlx-sqlite", "runtime-tokio-rustls"] }
+# nodeinfo = "0.0.2" # the version on crates.io doesn't re-export necessary types to build the struct!!!
+nodeinfo = { git = "https://codeberg.org/thefederationinfo/nodeinfo-rs", rev = "e865094804" }
+# mastodon
+mastodon-async-entities = { version = "1.1.0", optional = true }
+time = { version = "0.3", features = ["serde"], optional = true }
