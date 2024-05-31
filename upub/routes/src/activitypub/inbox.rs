@@ -1,4 +1,4 @@
-use apb::{server::Inbox, Activity, ActivityType};
+use apb::{server::Inbox, Activity, ActivityType, Base};
 use axum::{extract::{Query, State}, http::StatusCode, Json};
 use sea_orm::{sea_query::IntoCondition, ColumnTrait};
 use upub::{server::auth::{AuthIdentity, Identity}, Context};
@@ -43,7 +43,7 @@ pub async fn post(
 	AuthIdentity(auth): AuthIdentity,
 	Json(activity): Json<serde_json::Value>
 ) -> upub::Result<()> {
-	let Identity::Remote { domain: server, .. } = auth else {
+	let Identity::Remote { domain: server, user: uid, .. } = auth else {
 		if activity.activity_type() == Some(ActivityType::Delete) {
 			// this is spammy af, ignore them!
 			// we basically received a delete for a user we can't fetch and verify, meaning remote
@@ -61,15 +61,14 @@ pub async fn post(
 		}
 	};
 
-	let Some(actor) = activity.actor().id() else {
-		return Err(upub::Error::bad_request());
-	};
+	let aid = activity.id().ok_or_else(|| upub::Error::field("id"))?.to_string();
+	let actor = activity.actor().id().ok_or_else(|| upub::Error::field("actor"))?;
 
-	if server != Context::server(&actor) {
+	if uid != actor {
 		return Err(upub::Error::unauthorized());
 	}
 
-	tracing::debug!("processing federated activity: '{}'", serde_json::to_string(&activity).unwrap_or_default());
+	tracing::debug!("processing federated activity: '{:#}'", activity);
 
 	// TODO we could process Links and bare Objects maybe, but probably out of AP spec?
 	match activity.activity_type().ok_or_else(upub::Error::bad_request)? {

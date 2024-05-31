@@ -10,6 +10,7 @@ use super::{fetcher::Fetcher, httpsign::HttpSignature};
 pub enum Identity {
 	Anonymous,
 	Remote {
+		user: String,
 		domain: String,
 		internal: i64,
 	},
@@ -114,6 +115,7 @@ where
 
 			// TODO assert payload's digest is equal to signature's
 			let user_id = http_signature.key_id
+				.replace("/main-key", "") // gotosocial whyyyyy
 				.split('#')
 				.next().ok_or(UpubError::bad_request())?
 				.to_string();
@@ -124,11 +126,11 @@ where
 						.verify(&user.public_key)
 					{
 						Ok(true) => {
-							// TODO can we avoid this extra db rountrip made on each server fetch?
+							let user = user.id;
 							let domain = Context::server(&user_id); 
 							// TODO this will fail because we never fetch and insert into instance oops
 							let internal = model::instance::Entity::domain_to_internal(&domain, ctx.db()).await?;
-							identity = Identity::Remote { domain, internal };
+							identity = Identity::Remote { user, domain, internal };
 						},
 						Ok(false) => tracing::warn!("invalid signature: {http_signature:?}"),
 						Err(e) => tracing::error!("error verifying signature: {e}"),

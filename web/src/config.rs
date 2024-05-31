@@ -36,21 +36,39 @@ pub struct FiltersConfig {
 	#[serde_inline_default(true)]
 	pub follows: bool,
 
+	#[serde_inline_default(false)]
+	pub updates: bool,
+
 	#[serde_inline_default(true)]
 	pub orphans: bool,
 }
 
 impl FiltersConfig {
-	pub fn visible(&self, object_type: apb::ObjectType) -> bool {
-		match object_type {
+	pub fn visible(&self, item: &crate::Object) -> bool {
+		use apb::{Object, Activity};
+
+		let type_filter = match item.object_type().unwrap_or(apb::ObjectType::Object) {
 			apb::ObjectType::Note | apb::ObjectType::Document(_) => self.orphans,
 			apb::ObjectType::Activity(apb::ActivityType::Like | apb::ActivityType::EmojiReact) => self.likes,
 			apb::ObjectType::Activity(apb::ActivityType::Create) => self.creates,
 			apb::ObjectType::Activity(apb::ActivityType::Announce) => self.announces,
+			apb::ObjectType::Activity(apb::ActivityType::Update) => self.updates,
 			apb::ObjectType::Activity(
 				apb::ActivityType::Follow | apb::ActivityType::Accept(_) | apb::ActivityType::Reject(_)
 			) => self.follows,
 			_ => true,
-		}
+		};
+		let mut reply_filter = true;
+
+		if
+			item.in_reply_to().id().is_some() ||
+			item.object().get().map(|x|
+				x.in_reply_to().id().is_some()
+			).unwrap_or(false)
+		{
+			reply_filter = self.replies;
+		};
+		
+		type_filter && reply_filter
 	}
 }

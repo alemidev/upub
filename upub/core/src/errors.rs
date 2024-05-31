@@ -87,6 +87,7 @@ impl axum::response::IntoResponse for UpubError {
 		// TODO it's kind of jank to hide this print down here, i should probably learn how spans work
 		//      in tracing and use the library's features but ehhhh
 		tracing::debug!("emitting error response: {self:?}");
+		let descr = self.to_string();
 		match self {
 			UpubError::Redirect(to) => Redirect::to(&to).into_response(),
 			UpubError::Status(status) => status.into_response(),
@@ -94,7 +95,7 @@ impl axum::response::IntoResponse for UpubError {
 				StatusCode::SERVICE_UNAVAILABLE,
 				axum::Json(serde_json::json!({
 					"error": "database",
-					"description": format!("{e:#?}"),
+					"inner": format!("{e:#?}"),
 				}))
 			).into_response(),
 			UpubError::Reqwest(x) | UpubError::FetchError(x, _) => (
@@ -103,7 +104,8 @@ impl axum::response::IntoResponse for UpubError {
 					"error": "request",
 					"status": x.status().map(|s| s.to_string()).unwrap_or_default(),
 					"url": x.url().map(|x| x.to_string()).unwrap_or_default(),
-					"description": format!("{x:#?}"),
+					"description": descr,
+					"inner": format!("{x:#?}"),
 				}))
 			).into_response(),
 			UpubError::Field(x) => (
@@ -111,7 +113,7 @@ impl axum::response::IntoResponse for UpubError {
 				axum::Json(serde_json::json!({
 					"error": "field",
 					"field": x.0.to_string(),
-					"description": format!("missing required field from request: '{}'", x.0),
+					"description": descr,
 				}))
 			).into_response(),
 			UpubError::Mismatch(expected, found) => (
@@ -120,14 +122,15 @@ impl axum::response::IntoResponse for UpubError {
 					"error": "type",
 					"expected": expected.as_ref().to_string(),
 					"found": found.as_ref().to_string(),
-					"description": self.to_string(),
+					"description": descr,
 				}))
 			).into_response(),
-			_ => (
+			x => (
 				StatusCode::INTERNAL_SERVER_ERROR,
 				axum::Json(serde_json::json!({
 					"error": "unknown",
-					"description": self.to_string(),
+					"description": descr,
+					"inner": format!("{x:#?}"),
 				}))
 			).into_response(),
 		}
