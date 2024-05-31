@@ -98,6 +98,9 @@ pub mod target;
 mod key;
 pub use key::{PublicKey, PublicKeyMut};
 
+pub mod field;
+pub use field::{Field, FieldErr};
+
 #[cfg(feature = "jsonld")]
 mod jsonld;
 
@@ -130,12 +133,6 @@ pub use types::{
 		tombstone::{Tombstone, TombstoneMut},
 	},
 };
-
-#[derive(Debug, thiserror::Error)]
-#[error("missing field '{0}'")]
-pub struct FieldErr(pub &'static str);
-
-pub type Field<T> = Result<T, FieldErr>;
 
 #[cfg(feature = "unstructured")]
 pub fn new() -> serde_json::Value {
