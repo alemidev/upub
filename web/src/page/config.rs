@@ -76,10 +76,10 @@ pub fn ConfigPage(setter: WriteSignal<crate::Config>) -> impl IntoView {
 						let mut val = event_target_value(&ev);
 						if val.is_empty() { val = DEFAULT_COLOR.to_string() };
 						let mut mock = config.get();
-						mock.accent_color = val.clone();
-						setter.set(mock);
 						set_color_rgb.set(parse_hex(&val));
-						set_color.set(val);
+						set_color.set(val.clone());
+						mock.accent_color = val;
+						setter.set(mock);
 				} />
 			</p>
 			<hr />
