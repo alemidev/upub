@@ -99,6 +99,7 @@ impl<T : super::Base> Node<T> {
 	}
 
 	/// returns id of object: url for link, id for object, None if empty or array
+	// TODO return Option<&str> and avoid inner clone
 	pub fn id(&self) -> Option<String> {
 		match self {
 			Node::Empty => None,
