@@ -115,6 +115,7 @@ where
 
 			// TODO assert payload's digest is equal to signature's
 			let user_id = http_signature.key_id
+				.replace("/main-key", "") // gotosocial whyyyyy
 				.split('#')
 				.next().ok_or(UpubError::bad_request())?
 				.to_string();
