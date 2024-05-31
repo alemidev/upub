@@ -9,6 +9,7 @@ keywords = ["upub", "uri", "base64"]
 repository = "https://moonlit.technology/alemi/upub"
 
 [lib]
+path = "lib.rs"
 
 [dependencies]
 base64 = "0.22"

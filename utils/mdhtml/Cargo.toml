@@ -10,6 +10,7 @@ repository = "https://git.alemi.dev/upub.git"
 readme = "README.md"
 
 [lib]
+path = "lib.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
