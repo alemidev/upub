@@ -131,7 +131,7 @@ impl Fetcher for Context {
 
 		let document = Self::request(
 			Method::GET, id, None,
-			&format!("https://{}", self.domain()), self.pkey(), self.domain(),
+			&format!("https://{}/", self.domain()), self.pkey(), self.domain(),
 		)
 			.await?
 			.json::<serde_json::Value>()
@@ -207,7 +207,8 @@ impl Fetcher for Context {
 		};
 
 		if let Ok(res) = Self::request(
-			Method::GET, &format!("https://{domain}"), None, &format!("https://{}", self.domain()), self.pkey(), self.domain(),
+			Method::GET, &format!("https://{domain}"), None,
+			&format!("https://{}/", self.domain()), self.pkey(), self.domain(),
 		).await {
 			if let Ok(actor) = res.json::<serde_json::Value>().await {
 				if let Some(name) = actor.name() {
@@ -243,7 +244,7 @@ impl Fetcher for Context {
 		if let Some(followers_url) = &document.followers().id() {
 			let req = Self::request(
 				Method::GET, followers_url, None,
-				&format!("https://{}", self.domain()), self.pkey(), self.domain(),
+				&format!("https://{}/", self.domain()), self.pkey(), self.domain(),
 			).await;
 			if let Ok(res) = req {
 				if let Ok(user_followers) = res.json::<serde_json::Value>().await {
@@ -255,9 +256,9 @@ impl Fetcher for Context {
 		}
 
 		if let Some(following_url) = &document.following().id() {
-			let req =  Self::request(
+			let req = Self::request(
 				Method::GET, following_url, None,
-				&format!("https://{}", self.domain()), self.pkey(), self.domain(),
+				&format!("https://{}/", self.domain()), self.pkey(), self.domain(),
 			).await;
 			if let Ok(res) = req {
 				if let Ok(user_following) = res.json::<serde_json::Value>().await {
