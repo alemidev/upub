@@ -61,9 +61,9 @@ impl FiltersConfig {
 		let mut reply_filter = true;
 
 		if
-			item.in_reply_to().id().is_some() ||
+			item.in_reply_to().id().is_ok() ||
 			item.object().get().map(|x|
-				x.in_reply_to().id().is_some()
+				x.in_reply_to().id().is_ok()
 			).unwrap_or(false)
 		{
 			reply_filter = self.replies;

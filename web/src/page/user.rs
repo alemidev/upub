@@ -4,7 +4,7 @@ use leptos::*;
 use leptos_router::*;
 use crate::{prelude::*, DEFAULT_AVATAR_URL};
 
-use apb::{Base, Actor, ActivityMut, Object, ObjectMut};
+use apb::{field::OptionalString, ActivityMut, Actor, Base, Object, ObjectMut};
 
 fn send_follow_request(target: String) {
 	let auth = use_context::<Auth>().expect("missing auth context");
@@ -72,8 +72,8 @@ pub fn UserPage(tl: Timeline) -> impl IntoView {
 						},
 						Some(Some(object)) => {
 							let uid = object.id().unwrap_or_default().to_string();
-							let avatar_url = object.icon().get().map(|x| x.url().id().unwrap_or(DEFAULT_AVATAR_URL.into())).unwrap_or(DEFAULT_AVATAR_URL.into());
-							let background_url = object.image().get().map(|x| x.url().id().unwrap_or(DEFAULT_AVATAR_URL.into())).unwrap_or(DEFAULT_AVATAR_URL.into());
+							let avatar_url = object.icon().get().map(|x| x.url().id().str().unwrap_or(DEFAULT_AVATAR_URL.into())).unwrap_or(DEFAULT_AVATAR_URL.into());
+							let background_url = object.image().get().map(|x| x.url().id().str().unwrap_or(DEFAULT_AVATAR_URL.into())).unwrap_or(DEFAULT_AVATAR_URL.into());
 							let display_name = object.name().unwrap_or_default().to_string();
 							let username = object.preferred_username().unwrap_or_default().to_string();
 							let summary = object.summary().unwrap_or_default().to_string();

@@ -1,4 +1,4 @@
-use apb::{ActivityMut, Base, BaseMut, Object, ObjectMut};
+use apb::{field::OptionalString, ActivityMut, Base, BaseMut, Object, ObjectMut};
 
 use leptos::*;
 use crate::{prelude::*, WEBFINGER};
@@ -12,7 +12,7 @@ pub struct ReplyControls {
 impl ReplyControls {
 	pub fn reply(&self, oid: &str) {
 		if let Some(obj) = CACHE.get(oid) {
-			self.context.set(obj.context().id());
+			self.context.set(obj.context().id().str());
 			self.reply_to.set(obj.id().ok().map(|x| x.to_string()));
 		}
 	}
@@ -24,7 +24,7 @@ impl ReplyControls {
 }
 
 fn post_author(post_id: &str) -> Option<crate::Object> {
-	let usr = CACHE.get(post_id)?.attributed_to().id()?;
+	let usr = CACHE.get(post_id)?.attributed_to().id().str()?;
 	CACHE.get(&usr)
 }
 

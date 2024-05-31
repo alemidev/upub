@@ -1,6 +1,6 @@
 use std::{collections::BTreeSet, pin::Pin, sync::Arc};
 
-use apb::{Activity, ActivityMut, Base, Object};
+use apb::{field::OptionalString, Activity, ActivityMut, Base, Object};
 use leptos::*;
 use leptos_use::{signal_throttled, use_element_size, use_window_scroll, UseElementSizeReturn};
 use crate::prelude::*;
@@ -68,8 +68,8 @@ impl Timeline {
 		feed.append(&mut older);
 		self.feed.set(feed);
 
-		if let Some(next) = collection.next().id() {
-			self.next.set(next);
+		if let Ok(next) = collection.next().id() {
+			self.next.set(next.to_string());
 		} else {
 			self.over.set(true);
 		}
@@ -86,9 +86,9 @@ pub fn TimelineRepliesRecursive(tl: Timeline, root: String) -> impl IntoView {
 		.filter_map(|x| CACHE.get(&x))
 		.filter(|x| match x.object_type() {
 			Ok(apb::ObjectType::Activity(apb::ActivityType::Create)) => {
-				let Some(oid) = x.object().id() else { return false; };
+				let Some(oid) = x.object().id().str() else { return false; };
 				let Some(object) = CACHE.get(&oid) else { return false; };
-				let Some(reply) = object.in_reply_to().id() else { return false; };
+				let Some(reply) = object.in_reply_to().id().str() else { return false; };
 				reply == root
 			},
 			Ok(apb::ObjectType::Activity(_)) => x.object().id().map(|o| o == root).unwrap_or(false),
@@ -199,7 +199,7 @@ async fn process_activities(activities: Vec<serde_json::Value>, auth: Auth) -> V
 		// save embedded object if present
 		if let Some(object) = activity.object().get() {
 			// also fetch actor attributed to
-			if let Some(attributed_to) = object.attributed_to().id() {
+			if let Some(attributed_to) = object.attributed_to().id().str() {
 				actors_seen.insert(attributed_to);
 			}
 			if let Ok(object_uri) = object.id() {
@@ -208,7 +208,7 @@ async fn process_activities(activities: Vec<serde_json::Value>, auth: Auth) -> V
 				tracing::warn!("embedded object without id: {object:?}");
 			}
 		} else { // try fetching it
-			if let Some(object_id) = activity.object().id() {
+			if let Some(object_id) = activity.object().id().str() {
 				if !gonna_fetch.contains(&object_id) {
 					let fetch_kind = match activity_type {
 						apb::ActivityType::Follow => U::Actor,
@@ -221,25 +221,25 @@ async fn process_activities(activities: Vec<serde_json::Value>, auth: Auth) -> V
 		}
 	
 		// save activity, removing embedded object
-		let object_id = activity.object().id();
-		if let Ok(activity_id) = activity.id() {
+		let object_id = activity.object().id().str();
+		if let Some(activity_id) = activity.id().str() {
 			out.push(activity_id.to_string());
 			CACHE.put(
 				activity_id.to_string(),
 				Arc::new(activity.clone().set_object(apb::Node::maybe_link(object_id)))
 			);
-		} else if let Some(object_id) = activity.object().id() {
+		} else if let Some(object_id) = activity.object().id().str() {
 			out.push(object_id);
 		}
 
-		if let Some(uid) = activity.attributed_to().id() {
+		if let Some(uid) = activity.attributed_to().id().str() {
 			if CACHE.get(&uid).is_none() && !gonna_fetch.contains(&uid) {
 				gonna_fetch.insert(uid.clone());
 				sub_tasks.push(Box::pin(fetch_and_update(U::Actor, uid, auth)));
 			}
 		}
 	
-		if let Some(uid) = activity.actor().id() {
+		if let Some(uid) = activity.actor().id().str() {
 			if CACHE.get(&uid).is_none() && !gonna_fetch.contains(&uid) {
 				gonna_fetch.insert(uid.clone());
 				sub_tasks.push(Box::pin(fetch_and_update(U::Actor, uid, auth)));
@@ -267,8 +267,8 @@ async fn fetch_and_update_with_user(kind: U, id: String, auth: Auth) {
 	fetch_and_update(kind, id.clone(), auth).await;
 	if let Some(obj) = CACHE.get(&id) {
 		if let Some(actor_id) = match kind {
-			U::Object => obj.attributed_to().id(),
-			U::Activity => obj.actor().id(),
+			U::Object => obj.attributed_to().id().str(),
+			U::Activity => obj.actor().id().str(),
 			U::Actor | U::Context => None,
 		} {
 			fetch_and_update(U::Actor, actor_id, auth).await;

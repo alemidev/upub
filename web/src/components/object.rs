@@ -3,7 +3,7 @@ use std::sync::Arc;
 use leptos::*;
 use crate::{prelude::*, URL_SENSITIVE};
 
-use apb::{target::Addressed, ActivityMut, Base, Collection, CollectionMut, Document, Object, ObjectMut};
+use apb::{field::OptionalString, target::Addressed, ActivityMut, Base, Collection, CollectionMut, Document, Object, ObjectMut};
 
 #[component]
 pub fn Attachment(
@@ -13,7 +13,7 @@ pub fn Attachment(
 ) -> impl IntoView {
 	let config = use_context::<Signal<crate::Config>>().expect("missing config context");
 	let (expand, set_expand) = create_signal(false);
-	let href = object.url().id().unwrap_or_default();
+	let href = object.url().id().str().unwrap_or_default();
 	let media_type = object.media_type()
 		.unwrap_or("link") // TODO make it an Option rather than defaulting to link everywhere
 		.to_string();
@@ -109,12 +109,12 @@ pub fn Attachment(
 pub fn Object(object: crate::Object) -> impl IntoView {
 	let oid = object.id().unwrap_or_default().to_string();
 	let content = mdhtml::safe_html(object.content().unwrap_or_default());
-	let author_id = object.attributed_to().id().unwrap_or_default();
+	let author_id = object.attributed_to().id().str().unwrap_or_default();
 	let author = CACHE.get_or(&author_id, serde_json::Value::String(author_id.clone()).into());
 	let sensitive = object.sensitive().unwrap_or_default();
 	let addressed = object.addressed();
 	let public = addressed.iter().any(|x| x.as_str() == apb::target::PUBLIC);
-	let external_url = object.url().id().unwrap_or_else(|| oid.clone());
+	let external_url = object.url().id().str().unwrap_or_else(|| oid.clone());
 	let attachments = object.attachment()
 		.map(|x| view! { <Attachment object=x sensitive=sensitive /> })
 		.collect_view();
@@ -175,7 +175,7 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 			<tr>
 				<td><ActorBanner object=author /></td>
 				<td class="rev" >
-					{object.in_reply_to().id().map(|reply| view! {
+					{object.in_reply_to().id().str().map(|reply| view! {
 							<small><i><a class="clean" href={Uri::web(U::Object, &reply)} title={reply}>reply</a></i></small> 
 					})}
 					<PrivacyMarker addressed=addressed />

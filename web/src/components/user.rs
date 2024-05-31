@@ -1,14 +1,14 @@
 use leptos::*;
 use crate::{prelude::*, DEFAULT_AVATAR_URL};
 
-use apb::{Activity, ActivityMut, Actor, Base, Object, ObjectMut};
+use apb::{field::OptionalString, Activity, ActivityMut, Actor, Base, Object, ObjectMut};
 
 #[component]
 pub fn ActorStrip(object: crate::Object) -> impl IntoView {
 	let actor_id = object.id().unwrap_or_default().to_string();
 	let username = object.preferred_username().unwrap_or_default().to_string();
 	let domain = object.id().unwrap_or_default().replace("https://", "").split('/').next().unwrap_or_default().to_string();
-	let avatar = object.icon().get().map(|x| x.url().id().unwrap_or(DEFAULT_AVATAR_URL.into())).unwrap_or(DEFAULT_AVATAR_URL.into());
+	let avatar = object.icon().get().map(|x| x.url().id().str().unwrap_or(DEFAULT_AVATAR_URL.into())).unwrap_or(DEFAULT_AVATAR_URL.into());
 	view! {
 		<a href={Uri::web(U::Actor, &actor_id)} class="clean hover">
 			<img src={avatar} class="avatar inline mr-s" /><b>{username}</b><small>@{domain}</small>
@@ -25,7 +25,7 @@ pub fn ActorBanner(object: crate::Object) -> impl IntoView {
 		serde_json::Value::Object(_) => {
 			let uid = object.id().unwrap_or_default().to_string();
 			let uri = Uri::web(U::Actor, &uid);
-			let avatar_url = object.icon().get().map(|x| x.url().id().unwrap_or(DEFAULT_AVATAR_URL.into())).unwrap_or(DEFAULT_AVATAR_URL.into());
+			let avatar_url = object.icon().get().map(|x| x.url().id().str().unwrap_or(DEFAULT_AVATAR_URL.into())).unwrap_or(DEFAULT_AVATAR_URL.into());
 			let display_name = object.name().unwrap_or_default().to_string();
 			let username = object.preferred_username().unwrap_or_default().to_string();
 			let domain = object.id().unwrap_or_default().replace("https://", "").split('/').next().unwrap_or_default().to_string();
@@ -55,7 +55,7 @@ pub fn FollowRequestButtons(activity_id: String, actor_id: String) -> impl IntoV
 	// TODO lmao what is going on with this double move / triple clone ???????????
 	let _activity_id = activity_id.clone();
 	let _actor_id = actor_id.clone();
-	let from_actor = CACHE.get(&activity_id).map(|x| x.actor().id().unwrap_or_default()).unwrap_or_default();
+	let from_actor = CACHE.get(&activity_id).map(|x| x.actor().id().str().unwrap_or_default()).unwrap_or_default();
 	let _from_actor = from_actor.clone();
 	if actor_id == auth.user_id() {
 		Some(view! {

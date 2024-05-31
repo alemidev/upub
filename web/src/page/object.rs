@@ -24,11 +24,11 @@ pub fn ObjectPage(tl: Timeline) -> impl IntoView {
 				None => {
 					let obj = Http::fetch::<serde_json::Value>(&Uri::api(U::Object, &oid, true), auth).await.ok()?;
 					let obj = Arc::new(obj);
-					if let Some(author) = obj.attributed_to().id() {
+					if let Ok(author) = obj.attributed_to().id() {
 						if let Ok(user) = Http::fetch::<serde_json::Value>(
-							&Uri::api(U::Actor, &author, true), auth
+							&Uri::api(U::Actor, author, true), auth
 						).await {
-							CACHE.put(Uri::full(U::Actor, &author), Arc::new(user));
+							CACHE.put(Uri::full(U::Actor, author), Arc::new(user));
 						}
 					}
 					CACHE.put(Uri::full(U::Object, &oid), obj.clone());
