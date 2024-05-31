@@ -99,6 +99,12 @@ pub mod target;
 mod key;
 pub use key::{PublicKey, PublicKeyMut};
 
+#[cfg(feature = "jsonld")]
+mod jsonld;
+
+#[cfg(feature = "jsonld")]
+pub use jsonld::LD;
+
 mod types;
 pub use types::{
 	base::{Base, BaseMut, BaseType},

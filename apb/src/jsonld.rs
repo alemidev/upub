@@ -1,5 +1,4 @@
-use apb::Object;
-
+use crate::Object;
 
 pub trait LD {
 	fn ld_context(self) -> Self;
@@ -13,7 +12,7 @@ impl LD for serde_json::Value {
 			ctx.insert("sensitive".to_string(), serde_json::Value::String("as:sensitive".into()));
 			ctx.insert("quoteUrl".to_string(), serde_json::Value::String("as:quoteUrl".into()));
 			match o_type {
-				Some(apb::ObjectType::Actor(_)) => {
+				Some(crate::ObjectType::Actor(_)) => {
 					ctx.insert("counters".to_string(), serde_json::Value::String("https://ns.alemi.dev/as/counters/#".into()));
 					ctx.insert("followingCount".to_string(), serde_json::Value::String("counters:followingCount".into()));
 					ctx.insert("followersCount".to_string(), serde_json::Value::String("counters:followersCount".into()));

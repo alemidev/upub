@@ -10,6 +10,5 @@ pub mod auth;
 pub mod httpsign;
 pub mod normalizer;
 pub mod side_effects;
-pub mod jsonld;
 
 pub use context::Context;
