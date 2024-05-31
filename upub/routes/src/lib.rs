@@ -29,7 +29,7 @@ pub async fn serve(ctx: upub::Context, bind: String) -> upub::Result<()> {
 		.layer(
 			// TODO 4xx errors aren't really failures but since upub is in development it's useful to log
 			//      these too, in case something's broken
-			TraceLayer::new(SharedClassifier::new(StatusInRangeAsFailures::new(300..=u16::MAX)))
+			TraceLayer::new(SharedClassifier::new(StatusInRangeAsFailures::new(300..=999)))
 				.make_span_with(|req: &axum::http::Request<_>| {
 					tracing::span!(
 						tracing::Level::INFO,
