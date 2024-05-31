@@ -37,6 +37,7 @@ pub async fn page(
 		.await
 }
 
+#[tracing::instrument(level = "info", skip(ctx), fields(activity = %activity))]
 pub async fn post(
 	State(ctx): State<Context>,
 	Path(id): Path<String>,

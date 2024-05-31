@@ -38,6 +38,7 @@ macro_rules! pretty_json {
 }
 
 
+#[tracing::instrument(level = "info", skip(ctx), fields(activity = %activity))]
 pub async fn post(
 	State(ctx): State<Context>,
 	AuthIdentity(auth): AuthIdentity,
