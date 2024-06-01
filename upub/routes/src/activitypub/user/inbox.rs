@@ -1,22 +1,22 @@
 use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
 
 use sea_orm::{ColumnTrait, Condition};
-use upub::{model, server::auth::{AuthIdentity, Identity}, Context};
+use upub::{model, Context};
 
-use crate::{activitypub::Pagination, builders::JsonLD};
+use crate::{activitypub::Pagination, builders::JsonLD, AuthIdentity, Identity};
 
 pub async fn get(
 	State(ctx): State<Context>,
 	Path(id): Path<String>,
 	AuthIdentity(auth): AuthIdentity,
-) -> upub::Result<JsonLD<serde_json::Value>> {
+) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	match auth {
-		Identity::Anonymous => Err(StatusCode::FORBIDDEN.into()),
-		Identity::Remote { .. } => Err(StatusCode::FORBIDDEN.into()),
+		Identity::Anonymous => Err(crate::ApiError::forbidden()),
+		Identity::Remote { .. } => Err(crate::ApiError::forbidden()),
 		Identity::Local { id: user, .. } => if ctx.uid(&id) == user {
 			crate::builders::collection(&upub::url!(ctx, "/actors/{id}/inbox"), None)
 		} else {
-			Err(StatusCode::FORBIDDEN.into())
+			Err(crate::ApiError::forbidden())
 		},
 	}
 }
@@ -26,13 +26,13 @@ pub async fn page(
 	Path(id): Path<String>,
 	AuthIdentity(auth): AuthIdentity,
 	Query(page): Query<Pagination>,
-) -> upub::Result<JsonLD<serde_json::Value>> {
+) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let Identity::Local { id: uid, internal } = &auth else {
 		// local inbox is only for local users
-		return Err(upub::Error::forbidden());
+		return Err(crate::ApiError::forbidden());
 	};
 	if uid != &ctx.uid(&id) {
-		return Err(upub::Error::forbidden());
+		return Err(crate::ApiError::forbidden());
 	}
 
 	crate::builders::paginate(
@@ -54,7 +54,7 @@ pub async fn post(
 	Path(_id): Path<String>,
 	AuthIdentity(_auth): AuthIdentity,
 	Json(activity): Json<serde_json::Value>,
-) -> Result<(), upub::Error> {
+) -> crate::ApiResult<()> {
 	// POSTing to user inboxes is effectively the same as POSTing to the main inbox
 	super::super::inbox::post(State(ctx), AuthIdentity(_auth), Json(activity)).await
 }

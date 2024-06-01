@@ -1,15 +1,15 @@
-use apb::{ActorMut, BaseMut, ObjectMut, PublicKeyMut};
+use apb::{LD, ActorMut, BaseMut, ObjectMut, PublicKeyMut};
 use axum::{extract::{Query, State}, http::HeaderMap, response::{IntoResponse, Redirect, Response}, Form, Json};
 use reqwest::Method;
-use upub::{server::{auth::AuthIdentity, fetcher::Fetcher, jsonld::LD}, Context};
+use upub::Context;
 
-use crate::builders::JsonLD;
+use crate::{builders::JsonLD, AuthIdentity};
 
 
 pub async fn view(
 	headers: HeaderMap,
 	State(ctx): State<Context>,
-) -> upub::Result<Response> {
+) -> crate::ApiResult<Response> {
 	if let Some(accept) = headers.get("Accept") {
 		if let Ok(accept) = accept.to_str() {
 			if accept.contains("text/html") && !accept.contains("application/ld+json") {
@@ -47,46 +47,48 @@ pub async fn proxy_get(
 	State(ctx): State<Context>,
 	Query(query): Query<FetchPath>,
 	AuthIdentity(auth): AuthIdentity,
-) -> upub::Result<Json<serde_json::Value>> {
+) -> crate::ApiResult<Json<serde_json::Value>> {
 	// only local users can request fetches
 	if !ctx.cfg().security.allow_public_debugger && !auth.is_local() {
-		return Err(upub::Error::unauthorized());
+		return Err(crate::ApiError::unauthorized());
 	}
-	Ok(Json(
-		Context::request(
-			Method::GET,
-			&query.id,
-			None,
-			ctx.base(),
-			ctx.pkey(),
-			&format!("{}+proxy", ctx.domain()),
-		)
-			.await?
-			.json::<serde_json::Value>()
-			.await?
-	))
+	todo!()
+	// Ok(Json(
+	// 	Context::request(
+	// 		Method::GET,
+	// 		&query.id,
+	// 		None,
+	// 		ctx.base(),
+	// 		ctx.pkey(),
+	// 		&format!("{}+proxy", ctx.domain()),
+	// 	)
+	// 		.await?
+	// 		.json::<serde_json::Value>()
+	// 		.await?
+	// ))
 }
 
 pub async fn proxy_form(
 	State(ctx): State<Context>,
 	AuthIdentity(auth): AuthIdentity,
 	Form(query): Form<FetchPath>,
-) -> upub::Result<Json<serde_json::Value>> {
+) -> crate::ApiResult<Json<serde_json::Value>> {
 	// only local users can request fetches
 	if !ctx.cfg().security.allow_public_debugger && auth.is_local() {
-		return Err(upub::Error::unauthorized());
+		return Err(crate::ApiError::unauthorized());
 	}
-	Ok(Json(
-		Context::request(
-			Method::GET,
-			&query.id,
-			None,
-			ctx.base(),
-			ctx.pkey(),
-			&format!("{}+proxy", ctx.domain()),
-		)
-			.await?
-			.json::<serde_json::Value>()
-			.await?
-	))
+	todo!()
+	// Ok(Json(
+	// 	Context::request(
+	// 		Method::GET,
+	// 		&query.id,
+	// 		None,
+	// 		ctx.base(),
+	// 		ctx.pkey(),
+	// 		&format!("{}+proxy", ctx.domain()),
+	// 	)
+	// 		.await?
+	// 		.json::<serde_json::Value>()
+	// 		.await?
+	// ))
 }

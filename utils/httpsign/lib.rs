@@ -18,7 +18,13 @@ pub enum HttpSignatureError {
 	Base64(#[from] base64::DecodeError),
 }
 
-type Result<T> = std::result::Result<T, HttpSignatureError>;
+pub fn digest(data: &str) -> String {
+	format!("sha-256={}",
+		base64::prelude::BASE64_STANDARD.encode(
+			openssl::sha::sha256(data.as_bytes())
+		)
+	)
+}
 
 #[derive(Debug, Clone, Default)]
 pub struct HttpSignature {
@@ -99,14 +105,14 @@ impl HttpSignature {
 		self
 	}
 
-	pub fn verify(&self, key: &str) -> Result<bool> {
+	pub fn verify(&self, key: &str) -> Result<bool, HttpSignatureError> {
 		let pubkey = PKey::public_key_from_pem(key.as_bytes())?;
 		let mut verifier = Verifier::new(MessageDigest::sha256(), &pubkey)?;
 		let signature = base64::prelude::BASE64_STANDARD.decode(&self.signature)?;
 		Ok(verifier.verify_oneshot(&signature, self.control.as_bytes())?)
 	}
 
-	pub fn sign(&mut self, key: &str) -> Result<&str> {
+	pub fn sign(&mut self, key: &str) -> Result<&str, HttpSignatureError> {
 		let privkey = PKey::private_key_from_pem(key.as_bytes())?;
 		let mut signer = openssl::sign::Signer::new(MessageDigest::sha256(), &privkey)?;
 		signer.update(self.control.as_bytes())?;

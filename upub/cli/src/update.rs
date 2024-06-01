@@ -1,7 +1,7 @@
 use futures::TryStreamExt;
 use sea_orm::{ActiveValue::Set, ColumnTrait, EntityTrait, QueryFilter};
 
-use upub::server::fetcher::Fetcher;
+use upub_processor::{fetch::Fetcher, normalize::AP};
 
 pub async fn update_users(ctx: upub::Context, days: i64) -> upub::Result<()> {
 	let mut count = 0;
@@ -19,7 +19,7 @@ pub async fn update_users(ctx: upub::Context, days: i64) -> upub::Result<()> {
 			match ctx.pull(&user.id).await.map(|x| x.actor()) {
 				Err(e) => tracing::warn!("could not update user {}: {e}", user.id),
 				Ok(Err(e)) => tracing::warn!("could not update user {}: {e}", user.id),
-				Ok(Ok(doc)) => match upub::model::actor::ActiveModel::new(&doc) {
+				Ok(Ok(doc)) => match AP::actor_q(&doc) {
 					Ok(mut u) => {
 						u.internal = Set(user.internal);
 						u.updated = Set(chrono::Utc::now());

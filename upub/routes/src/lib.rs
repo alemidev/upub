@@ -1,5 +1,11 @@
 use tower_http::classify::{SharedClassifier, StatusInRangeAsFailures};
 
+pub mod auth;
+pub use auth::{AuthIdentity, Identity};
+
+pub mod error;
+pub use error::{ApiError, ApiResult};
+
 pub mod activitypub;
 
 #[cfg(feature = "mastodon")]

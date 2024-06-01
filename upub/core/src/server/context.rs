@@ -1,12 +1,9 @@
 use std::{collections::BTreeSet, sync::Arc};
 
-use sea_orm::{ColumnTrait, DatabaseConnection, EntityTrait, QueryFilter, QuerySelect, SelectColumns};
+use sea_orm::{ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, QuerySelect, SelectColumns};
 
 use crate::{config::Config, errors::UpubError, model, ext::AnyQuery};
 use uriproxy::UriClass;
-
-use super::dispatcher::Dispatcher;
-
 
 #[derive(Clone)]
 pub struct Context(Arc<ContextInner>);
@@ -16,7 +13,6 @@ struct ContextInner {
 	domain: String,
 	protocol: String,
 	base_url: String,
-	dispatcher: Dispatcher,
 	// TODO keep these pre-parsed
 	actor: model::actor::Model,
 	instance: model::instance::Model,
@@ -49,10 +45,6 @@ impl Context {
 		if domain.starts_with("http") {
 			domain = domain.replace("https://", "").replace("http://", "");
 		}
-		let dispatcher = Dispatcher::default();
-		for _ in 0..1 { // TODO customize delivery workers amount
-			dispatcher.spawn(db.clone(), domain.clone(), 30); // TODO ew don't do it this deep and secretly!!
-		}
 		let base_url = format!("{}{}", protocol, domain);
 
 		let (actor, instance) = super::init::application(domain.clone(), base_url.clone(), &db).await?;
@@ -60,8 +52,8 @@ impl Context {
 		// TODO maybe we could provide a more descriptive error...
 		let pkey = actor.private_key.as_deref().ok_or_else(UpubError::internal_server_error)?.to_string();
 
-		let relay_sinks = model::relation::Entity::followers(&actor.id, &db).await?;
-		let relay_sources = model::relation::Entity::following(&actor.id, &db).await?;
+		let relay_sinks = model::relation::Entity::followers(&actor.id, &db).await?.ok_or_else(UpubError::internal_server_error)?;
+		let relay_sources = model::relation::Entity::following(&actor.id, &db).await?.ok_or_else(UpubError::internal_server_error)?;
 
 		let relay = Relays {
 			sources: BTreeSet::from_iter(relay_sources),
@@ -69,7 +61,7 @@ impl Context {
 		};
 
 		Ok(Context(Arc::new(ContextInner {
-			base_url, db, domain, protocol, actor, instance, dispatcher, config, pkey, relay,
+			base_url, db, domain, protocol, actor, instance, config, pkey, relay,
 		})))
 	}
 
@@ -104,10 +96,6 @@ impl Context {
 
 	pub fn base(&self) -> &str {
 		&self.0.base_url
-	}
-
-	pub fn dispatcher(&self) -> &Dispatcher {
-		&self.0.dispatcher
 	}
 
 	/// get full user id uri
@@ -148,7 +136,7 @@ impl Context {
 		id.starts_with(self.base())
 	}
 
-	pub async fn is_local_internal_object(&self, internal: i64) -> crate::Result<bool> {
+	pub async fn is_local_internal_object(&self, internal: i64) -> Result<bool, DbErr> {
 		model::object::Entity::find()
 			.filter(model::object::Column::Internal.eq(internal))
 			.select_only()
@@ -158,7 +146,7 @@ impl Context {
 			.await
 	}
 
-	pub async fn is_local_internal_activity(&self, internal: i64) -> crate::Result<bool> {
+	pub async fn is_local_internal_activity(&self, internal: i64) -> Result<bool, DbErr> {
 		model::activity::Entity::find()
 			.filter(model::activity::Column::Internal.eq(internal))
 			.select_only()
@@ -169,7 +157,7 @@ impl Context {
 	}
 
 	#[allow(unused)]
-	pub async fn is_local_internal_actor(&self, internal: i64) -> crate::Result<bool> {
+	pub async fn is_local_internal_actor(&self, internal: i64) -> Result<bool, DbErr> {
 		model::actor::Entity::find()
 			.filter(model::actor::Column::Internal.eq(internal))
 			.select_only()

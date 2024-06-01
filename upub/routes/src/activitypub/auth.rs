@@ -29,7 +29,7 @@ fn token() -> String {
 pub async fn login(
 	State(ctx): State<Context>,
 	Json(login): Json<LoginForm>
-) -> upub::Result<Json<AuthSuccess>> {
+) -> crate::ApiResult<Json<AuthSuccess>> {
 	// TODO salt the pwd
 	match upub::model::credential::Entity::find()
 		.filter(Condition::all()
@@ -57,7 +57,7 @@ pub async fn login(
 				user: x.actor
 			}))
 		},
-		None => Err(upub::Error::unauthorized()),
+		None => Err(crate::ApiError::unauthorized()),
 	}
 }
 
@@ -69,16 +69,16 @@ pub struct RefreshForm {
 pub async fn refresh(
 	State(ctx): State<Context>,
 	Json(login): Json<RefreshForm>
-) -> upub::Result<Json<AuthSuccess>> {
+) -> crate::ApiResult<Json<AuthSuccess>> {
 	if !ctx.cfg().security.allow_login_refresh {
-		return Err(upub::Error::forbidden());
+		return Err(crate::ApiError::forbidden());
 	}
 
 	let prev = upub::model::session::Entity::find()
 		.filter(upub::model::session::Column::Secret.eq(login.token))
 		.one(ctx.db())
 		.await?
-		.ok_or_else(upub::Error::unauthorized)?;
+		.ok_or_else(crate::ApiError::unauthorized)?;
 
 	if prev.expires > chrono::Utc::now() {
 		return Ok(Json(AuthSuccess { token: prev.secret, user: prev.actor, expires: prev.expires }));
@@ -113,9 +113,9 @@ pub struct RegisterForm {
 pub async fn register(
 	State(ctx): State<Context>,
 	Json(registration): Json<RegisterForm>
-) -> upub::Result<Json<String>> {
+) -> crate::ApiResult<Json<String>> {
 	if !ctx.cfg().security.allow_registration {
-		return Err(upub::Error::forbidden());
+		return Err(crate::ApiError::forbidden());
 	}
 
 	ctx.register_user(

@@ -1,16 +1,16 @@
-use apb::{server::Inbox, Activity, ActivityType, Base};
+use apb::{Activity, ActivityType, Base};
 use axum::{extract::{Query, State}, http::StatusCode, Json};
 use sea_orm::{sea_query::IntoCondition, ColumnTrait};
-use upub::{server::auth::{AuthIdentity, Identity}, Context};
+use upub::Context;
 
-use crate::builders::JsonLD;
+use crate::{AuthIdentity, Identity, builders::JsonLD};
 
 use super::Pagination;
 
 
 pub async fn get(
 	State(ctx): State<Context>,
-) -> upub::Result<JsonLD<serde_json::Value>> {
+) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	crate::builders::collection(&upub::url!(ctx, "/inbox"), None)
 }
 
@@ -18,7 +18,7 @@ pub async fn page(
 	State(ctx): State<Context>,
 	AuthIdentity(auth): AuthIdentity,
 	Query(page): Query<Pagination>,
-) -> upub::Result<JsonLD<serde_json::Value>> {
+) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	crate::builders::paginate(
 		upub::url!(ctx, "/inbox/page"),
 		upub::model::addressing::Column::Actor.is_null()
@@ -42,9 +42,9 @@ pub async fn post(
 	State(ctx): State<Context>,
 	AuthIdentity(auth): AuthIdentity,
 	Json(activity): Json<serde_json::Value>
-) -> upub::Result<()> {
+) -> crate::ApiResult<()> {
 	let Identity::Remote { domain: server, user: uid, .. } = auth else {
-		if activity.activity_type() == Some(ActivityType::Delete) {
+		if matches!(activity.activity_type(), Ok(ActivityType::Delete)) {
 			// this is spammy af, ignore them!
 			// we basically received a delete for a user we can't fetch and verify, meaning remote
 			// deleted someone we never saw. technically we deleted nothing so we should return error,
@@ -55,42 +55,44 @@ pub async fn post(
 		}
 		tracing::warn!("refusing unauthorized activity: {}", pretty_json!(activity));
 		if matches!(auth, Identity::Anonymous) {
-			return Err(upub::Error::unauthorized());
+			return Err(crate::ApiError::unauthorized());
 		} else {
-			return Err(upub::Error::forbidden());
+			return Err(crate::ApiError::forbidden());
 		}
 	};
 
-	let aid = activity.id().ok_or_else(|| upub::Error::field("id"))?.to_string();
-	let actor = activity.actor().id().ok_or_else(|| upub::Error::field("actor"))?;
+	todo!()
 
-	if uid != actor {
-		return Err(upub::Error::unauthorized());
-	}
+	// let aid = activity.id().ok_or_else(|| crate::ApiError::field("id"))?.to_string();
+	// let actor = activity.actor().id().ok_or_else(|| crate::ApiError::field("actor"))?;
 
-	tracing::debug!("processing federated activity: '{:#}'", activity);
+	// if uid != actor {
+	// 	return Err(crate::ApiError::unauthorized());
+	// }
 
-	// TODO we could process Links and bare Objects maybe, but probably out of AP spec?
-	match activity.activity_type().ok_or_else(upub::Error::bad_request)? {
-		ActivityType::Activity => {
-			tracing::warn!("skipping unprocessable base activity: {}", pretty_json!(activity));
-			Err(StatusCode::UNPROCESSABLE_ENTITY.into()) // won't ingest useless stuff
-		},
+	// tracing::debug!("processing federated activity: '{:#}'", activity);
 
-		// TODO emojireacts are NOT likes, but let's process them like ones for now maybe?
-		ActivityType::Like | ActivityType::EmojiReact => Ok(ctx.like(server, activity).await?),
-		ActivityType::Create => Ok(ctx.create(server, activity).await?),
-		ActivityType::Follow => Ok(ctx.follow(server, activity).await?),
-		ActivityType::Announce => Ok(ctx.announce(server, activity).await?),
-		ActivityType::Accept(_) => Ok(ctx.accept(server, activity).await?),
-		ActivityType::Reject(_) => Ok(ctx.reject(server, activity).await?),
-		ActivityType::Undo => Ok(ctx.undo(server, activity).await?),
-		ActivityType::Delete => Ok(ctx.delete(server, activity).await?),
-		ActivityType::Update => Ok(ctx.update(server, activity).await?),
+	// // TODO we could process Links and bare Objects maybe, but probably out of AP spec?
+	// match activity.activity_type().ok_or_else(crate::ApiError::bad_request)? {
+	// 	ActivityType::Activity => {
+	// 		tracing::warn!("skipping unprocessable base activity: {}", pretty_json!(activity));
+	// 		Err(StatusCode::UNPROCESSABLE_ENTITY.into()) // won't ingest useless stuff
+	// 	},
 
-		_x => {
-			tracing::info!("received unimplemented activity on inbox: {}", pretty_json!(activity));
-			Err(StatusCode::NOT_IMPLEMENTED.into())
-		},
-	}
+	// 	// TODO emojireacts are NOT likes, but let's process them like ones for now maybe?
+	// 	ActivityType::Like | ActivityType::EmojiReact => Ok(ctx.like(server, activity).await?),
+	// 	ActivityType::Create => Ok(ctx.create(server, activity).await?),
+	// 	ActivityType::Follow => Ok(ctx.follow(server, activity).await?),
+	// 	ActivityType::Announce => Ok(ctx.announce(server, activity).await?),
+	// 	ActivityType::Accept(_) => Ok(ctx.accept(server, activity).await?),
+	// 	ActivityType::Reject(_) => Ok(ctx.reject(server, activity).await?),
+	// 	ActivityType::Undo => Ok(ctx.undo(server, activity).await?),
+	// 	ActivityType::Delete => Ok(ctx.delete(server, activity).await?),
+	// 	ActivityType::Update => Ok(ctx.update(server, activity).await?),
+
+	// 	_x => {
+	// 		tracing::info!("received unimplemented activity on inbox: {}", pretty_json!(activity));
+	// 		Err(StatusCode::NOT_IMPLEMENTED.into())
+	// 	},
+	// }
 }

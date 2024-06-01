@@ -8,7 +8,7 @@ use crate::{activitypub::Pagination, builders::JsonLD};
 pub async fn get<const OUTGOING: bool>(
 	State(ctx): State<Context>,
 	Path(id): Path<String>,
-) -> upub::Result<JsonLD<serde_json::Value>> {
+) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let follow___ = if OUTGOING { "following" } else { "followers" };
 	use upub::model::relation::Column::{Follower, Following};
 	let count = model::relation::Entity::find()
@@ -25,7 +25,7 @@ pub async fn page<const OUTGOING: bool>(
 	State(ctx): State<Context>,
 	Path(id): Path<String>,
 	Query(page): Query<Pagination>,
-) -> upub::Result<JsonLD<serde_json::Value>> {
+) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let follow___ = if OUTGOING { "following" } else { "followers" };
 	let limit = page.batch.unwrap_or(20).min(50);
 	let offset = page.offset.unwrap_or(0);

@@ -1,8 +1,8 @@
-use apb::{BaseMut, CollectionMut, CollectionPageMut};
+use apb::{BaseMut, CollectionMut, CollectionPageMut, LD};
 use sea_orm::{Condition, DatabaseConnection, QueryFilter, QuerySelect, RelationTrait};
 use axum::response::{IntoResponse, Response};
 
-use upub::{model::{addressing::Event, attachment::BatchFillable}, server::jsonld::LD};
+use upub::model::{addressing::Event, attachment::BatchFillable};
 use crate::activitypub::Pagination;
 
 pub async fn paginate(
@@ -12,7 +12,7 @@ pub async fn paginate(
 	page: Pagination,
 	my_id: Option<i64>,
 	with_users: bool, // TODO ewww too many arguments for this weird function...
-) -> upub::Result<JsonLD<serde_json::Value>> {
+) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let limit = page.batch.unwrap_or(20).min(50);
 	let offset = page.offset.unwrap_or(0);
 
@@ -45,7 +45,7 @@ pub async fn paginate(
 	collection_page(&id, offset, limit, items)
 }
 
-pub fn collection_page(id: &str, offset: u64, limit: u64, items: Vec<serde_json::Value>) -> upub::Result<JsonLD<serde_json::Value>> {
+pub fn collection_page(id: &str, offset: u64, limit: u64, items: Vec<serde_json::Value>) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let next = if items.len() < limit as usize {
 		apb::Node::Empty
 	} else {
@@ -63,7 +63,7 @@ pub fn collection_page(id: &str, offset: u64, limit: u64, items: Vec<serde_json:
 }
 
 
-pub fn collection(id: &str, total_items: Option<u64>) -> upub::Result<JsonLD<serde_json::Value>> {
+pub fn collection(id: &str, total_items: Option<u64>) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	Ok(JsonLD(
 		apb::new()
 			.set_id(Some(id))

@@ -1,21 +1,21 @@
 use axum::extract::{Path, Query, State};
 use sea_orm::{ColumnTrait, Condition, PaginatorTrait, QueryFilter};
-use upub::{model, server::{auth::AuthIdentity, fetcher::Fetcher}, Context};
+use upub::{model, Context};
 
-use crate::{activitypub::{Pagination, TryFetch}, builders::JsonLD};
+use crate::{activitypub::{Pagination, TryFetch}, builders::JsonLD, AuthIdentity};
 
 pub async fn get(
 	State(ctx): State<Context>,
 	Path(id): Path<String>,
 	AuthIdentity(auth): AuthIdentity,
 	Query(q): Query<TryFetch>,
-) -> upub::Result<JsonLD<serde_json::Value>> {
+) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let replies_id = upub::url!(ctx, "/objects/{id}/replies");
 	let oid = ctx.oid(&id);
 
-	if auth.is_local() && q.fetch {
-		ctx.fetch_thread(&oid).await?;
-	}
+	// if auth.is_local() && q.fetch {
+	// 	ctx.fetch_thread(&oid).await?;
+	// }
 
 	let count = model::addressing::Entity::find_addressed(auth.my_id())
 		.filter(auth.filter_condition())
@@ -31,7 +31,7 @@ pub async fn page(
 	Path(id): Path<String>,
 	Query(page): Query<Pagination>,
 	AuthIdentity(auth): AuthIdentity,
-) -> upub::Result<JsonLD<serde_json::Value>> {
+) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let page_id = upub::url!(ctx, "/objects/{id}/replies/page");
 	let oid = ctx.oid(&id);
 

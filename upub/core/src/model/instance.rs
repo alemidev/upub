@@ -1,8 +1,6 @@
 use nodeinfo::NodeInfoOwned;
 use sea_orm::{entity::prelude::*, QuerySelect, SelectColumns};
 
-use crate::errors::UpubError;
-
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "instances")]
 pub struct Model {
@@ -48,23 +46,20 @@ impl Entity {
 		Entity::find().filter(Column::Domain.eq(domain))
 	}
 
-	pub async fn domain_to_internal(domain: &str, db: &DatabaseConnection) -> crate::Result<i64> {
+	pub async fn domain_to_internal(domain: &str, db: &DatabaseConnection) -> Result<Option<i64>, DbErr> {
 		Entity::find()
 			.filter(Column::Domain.eq(domain))
 			.select_only()
 			.select_column(Column::Internal)
 			.into_tuple::<i64>()
 			.one(db)
-			.await?
-			.ok_or_else(UpubError::not_found)
+			.await
 	}
 
-	pub async fn nodeinfo(domain: &str) -> crate::Result<NodeInfoOwned> {
-		Ok(
-			reqwest::get(format!("https://{domain}/nodeinfo/2.0.json"))
-				.await?
-				.json()
-				.await?
-		)
+	pub async fn nodeinfo(domain: &str) -> reqwest::Result<NodeInfoOwned> {
+		reqwest::get(format!("https://{domain}/nodeinfo/2.0.json"))
+			.await?
+			.json()
+			.await
 	}
 }

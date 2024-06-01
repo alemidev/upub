@@ -140,7 +140,7 @@ checksum = "d301b3b94cb4b2f23d7917810addbbaff90738e0ca2be692bd027e70d7e0330c"
 
 [[package]]
 name = "apb"
-version = "0.1.1"
+version = "0.2.0"
 dependencies = [
  "async-trait",
  "chrono",
@@ -1687,6 +1687,17 @@ name = "httpdate"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df3b46402a9d5adb4c86a0cf463f42e19994e3ee891101b1841f30a545cb49a9"
+
+[[package]]
+name = "httpsign"
+version = "0.1.0"
+dependencies = [
+ "axum",
+ "base64 0.22.1",
+ "openssl",
+ "thiserror",
+ "tracing",
+]
 
 [[package]]
 name = "hyper"
@@ -4735,6 +4746,7 @@ dependencies = [
  "sha256",
  "tracing",
  "upub",
+ "upub-processor",
  "uuid",
 ]
 
@@ -4746,12 +4758,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "upub-processor"
+version = "0.2.0"
+dependencies = [
+ "apb",
+ "async-trait",
+ "chrono",
+ "httpsign",
+ "jrd",
+ "mdhtml",
+ "reqwest",
+ "sea-orm",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "upub",
+]
+
+[[package]]
 name = "upub-routes"
 version = "0.2.0"
 dependencies = [
  "apb",
  "axum",
  "chrono",
+ "httpsign",
  "jrd",
  "mastodon-async-entities",
  "nodeinfo",
@@ -4761,6 +4793,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sha256",
+ "thiserror",
  "time",
  "tokio",
  "tower-http",

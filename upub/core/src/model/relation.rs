@@ -63,8 +63,11 @@ impl ActiveModelBehavior for ActiveModel {}
 
 impl Entity {
 	// TODO this is 2 queries!!! can it be optimized down to 1?
-	pub async fn followers(uid: &str, db: &DatabaseConnection) -> crate::Result<Vec<String>> {
-		let internal_id = super::actor::Entity::ap_to_internal(uid, db).await?;
+	pub async fn followers(uid: &str, db: &DatabaseConnection) -> Result<Option<Vec<String>>, DbErr> {
+		let Some(internal_id) = super::actor::Entity::ap_to_internal(uid, db).await?
+		else {
+			return Ok(None);
+		};
 		let out = Entity::find()
 			.join(
 				sea_orm::JoinType::InnerJoin,
@@ -81,12 +84,15 @@ impl Entity {
 			.all(db)
 			.await?;
 
-		Ok(out)
+		Ok(Some(out))
 	}
 
 	// TODO this is 2 queries!!! can it be optimized down to 1?
-	pub async fn following(uid: &str, db: &DatabaseConnection) -> crate::Result<Vec<String>> {
-		let internal_id = super::actor::Entity::ap_to_internal(uid, db).await?;
+	pub async fn following(uid: &str, db: &DatabaseConnection) -> Result<Option<Vec<String>>, DbErr> {
+		let Some(internal_id) = super::actor::Entity::ap_to_internal(uid, db).await?
+		else {
+			return Ok(None);
+		};
 		let out = Entity::find()
 			.join(
 				sea_orm::JoinType::InnerJoin,
@@ -103,7 +109,7 @@ impl Entity {
 			.all(db)
 			.await?;
 
-		Ok(out)
+		Ok(Some(out))
 	}
 
 	// TODO this is 3 queries!!! can it be optimized down to 1?

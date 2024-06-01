@@ -1,27 +1,26 @@
-use sea_orm::{ActiveValue::{NotSet, Set}, EntityTrait};
+use sea_orm::{ActiveValue::{NotSet, Set}, DbErr, EntityTrait};
 
-use crate::model;
+use crate::fetch::Fetcher;
 
-use super::{fetcher::Fetcher, Context};
-
-
-#[axum::async_trait]
+#[async_trait::async_trait]
 pub trait Addresser {
-	async fn expand_addressing(&self, targets: Vec<String>) -> crate::Result<Vec<String>>;
-	async fn address_to(&self, aid: Option<i64>, oid: Option<i64>, targets: &[String]) -> crate::Result<()>;
-	async fn deliver_to(&self, aid: &str, from: &str, targets: &[String]) -> crate::Result<()>;
+	async fn expand_addressing(&self, targets: Vec<String>) -> Result<Vec<String>, DbErr>;
+	async fn address_to(&self, aid: Option<i64>, oid: Option<i64>, targets: &[String]) -> Result<(), DbErr>;
+	async fn deliver_to(&self, aid: &str, from: &str, targets: &[String]) -> Result<(), DbErr>;
 	//#[deprecated = "should probably directly invoke address_to() since we most likely have internal ids at this point"]
-	async fn dispatch(&self, uid: &str, activity_targets: Vec<String>, aid: &str, oid: Option<&str>) -> crate::Result<()>;
+	async fn dispatch(&self, uid: &str, activity_targets: Vec<String>, aid: &str, oid: Option<&str>) -> Result<(), DbErr>;
 }
 
-#[axum::async_trait]
-impl Addresser for super::Context {
-	async fn expand_addressing(&self, targets: Vec<String>) -> crate::Result<Vec<String>> {
+#[async_trait::async_trait]
+impl Addresser for upub::Context {
+	async fn expand_addressing(&self, targets: Vec<String>) -> Result<Vec<String>, DbErr> {
 		let mut out = Vec::new();
 		for target in targets {
 			if target.ends_with("/followers") {
 				let target_id = target.replace("/followers", "");
-				let mut followers = model::relation::Entity::followers(&target_id, self.db()).await?;
+				let mut followers = upub::model::relation::Entity::followers(&target_id, self.db())
+					.await?
+					.unwrap_or_else(Vec::new);
 				if followers.is_empty() { // stuff with zero addressing will never be seen again!!! TODO
 					followers.push(target_id);
 				}
@@ -35,7 +34,7 @@ impl Addresser for super::Context {
 		Ok(out)
 	}
 
-	async fn address_to(&self, aid: Option<i64>, oid: Option<i64>, targets: &[String]) -> crate::Result<()> {
+	async fn address_to(&self, aid: Option<i64>, oid: Option<i64>, targets: &[String]) -> Result<(), DbErr> {
 		// TODO address_to became kind of expensive, with these two selects right away and then another
 		//      select for each target we're addressing to... can this be improved??
 		let local_activity = if let Some(x) = aid { self.is_local_internal_activity(x).await.unwrap_or(false) } else { false };
@@ -49,17 +48,16 @@ impl Addresser for super::Context {
 		{
 			let (server, actor) = if target == apb::target::PUBLIC { (None, None) } else {
 				match (
-					model::instance::Entity::domain_to_internal(&Context::server(target), self.db()).await,
-					model::actor::Entity::ap_to_internal(target, self.db()).await,
+					upub::model::instance::Entity::domain_to_internal(&upub::Context::server(target), self.db()).await?,
+					upub::model::actor::Entity::ap_to_internal(target, self.db()).await?,
 				) {
-					(Ok(server), Ok(actor)) => (Some(server), Some(actor)),
-					(Err(e), Ok(_)) => { tracing::error!("failed resolving domain: {e}"); continue; },
-					(Ok(_), Err(e)) => { tracing::error!("failed resolving actor: {e}"); continue; },
-					(Err(es), Err(ea)) => { tracing::error!("failed resolving domain ({es}) and actor ({ea})"); continue; },
+					(Some(server), Some(actor)) => (Some(server), Some(actor)),
+					(None, _) => { tracing::error!("failed resolving domain"); continue; },
+					(_, None) => { tracing::error!("failed resolving actor"); continue; },
 				}
 			};
 			addressing.push(
-				model::addressing::ActiveModel {
+				upub::model::addressing::ActiveModel {
 					internal: NotSet,
 					instance: Set(server),
 					actor: Set(actor),
@@ -71,7 +69,7 @@ impl Addresser for super::Context {
 		}
 
 		if !addressing.is_empty() {
-			model::addressing::Entity::insert_many(addressing)
+			upub::model::addressing::Entity::insert_many(addressing)
 				.exec(self.db())
 				.await?;
 		}
@@ -79,17 +77,17 @@ impl Addresser for super::Context {
 		Ok(())
 	}
 
-	async fn deliver_to(&self, aid: &str, from: &str, targets: &[String]) -> crate::Result<()> {
+	async fn deliver_to(&self, aid: &str, from: &str, targets: &[String]) -> Result<(), DbErr> {
 		let mut deliveries = Vec::new();
 		for target in targets.iter()
 			.filter(|to| !to.is_empty())
-			.filter(|to| Context::server(to) != self.domain())
+			.filter(|to| upub::Context::server(to) != self.domain())
 			.filter(|to| to != &apb::target::PUBLIC)
 		{
 			// TODO fetch concurrently
 			match self.fetch_user(target).await {
-				Ok(model::actor::Model { inbox: Some(inbox), .. }) => deliveries.push(
-					model::delivery::ActiveModel {
+				Ok(upub::model::actor::Model { inbox: Some(inbox), .. }) => deliveries.push(
+					upub::model::delivery::ActiveModel {
 						internal: sea_orm::ActiveValue::NotSet,
 						actor: Set(from.to_string()),
 						// TODO we should resolve each user by id and check its inbox because we can't assume
@@ -107,21 +105,30 @@ impl Addresser for super::Context {
 		}
 
 		if !deliveries.is_empty() {
-			model::delivery::Entity::insert_many(deliveries)
+			upub::model::delivery::Entity::insert_many(deliveries)
 				.exec(self.db())
 				.await?;
 		}
 
-		self.dispatcher().wakeup();
+		// TODO can we make deliveries instant? for better UX
+		// self.dispatcher().wakeup();
 
 		Ok(())
 	}
 
 	//#[deprecated = "should probably directly invoke address_to() since we most likely have internal ids at this point"]
-	async fn dispatch(&self, uid: &str, activity_targets: Vec<String>, aid: &str, oid: Option<&str>) -> crate::Result<()> {
+	async fn dispatch(&self, uid: &str, activity_targets: Vec<String>, aid: &str, oid: Option<&str>) -> Result<(), DbErr> {
 		let addressed = self.expand_addressing(activity_targets).await?;
-		let internal_aid = model::activity::Entity::ap_to_internal(aid, self.db()).await?;
-		let internal_oid = if let Some(o) = oid { Some(model::object::Entity::ap_to_internal(o, self.db()).await?) } else { None };
+		let internal_aid = upub::model::activity::Entity::ap_to_internal(aid, self.db())
+			.await?
+			.ok_or_else(|| DbErr::RecordNotFound(aid.to_string()))?;
+		let internal_oid = if let Some(o) = oid {
+			Some(
+				upub::model::object::Entity::ap_to_internal(o, self.db())
+				.await?
+				.ok_or_else(|| DbErr::RecordNotFound(o.to_string()))?
+			)
+		} else { None };
 		self.address_to(Some(internal_aid), internal_oid, &addressed).await?;
 		self.deliver_to(aid, uid, &addressed).await?;
 		Ok(())

@@ -6,10 +6,10 @@ pub mod following;
 
 use axum::extract::{Path, Query, State};
 
-use apb::{ActorMut, EndpointsMut, Node, ObjectMut};
-use upub::{ext::AnyQuery, model, server::{auth::AuthIdentity, fetcher::Fetcher, jsonld::LD}, Context};
+use apb::{LD, ActorMut, EndpointsMut, Node, ObjectMut};
+use upub::{ext::AnyQuery, model, Context};
 
-use crate::builders::JsonLD;
+use crate::{builders::JsonLD, ApiError, AuthIdentity};
 
 use super::TryFetch;
 
@@ -19,19 +19,21 @@ pub async fn view(
 	AuthIdentity(auth): AuthIdentity,
 	Path(id): Path<String>,
 	Query(query): Query<TryFetch>,
-) -> upub::Result<JsonLD<serde_json::Value>> {
+) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let mut uid = ctx.uid(&id);
-	if auth.is_local() {
-		if id.starts_with('@') {
-			if let Some((user, host)) = id.replacen('@', "", 1).split_once('@') {
-				uid = ctx.webfinger(user, host).await?;
-			}
-		}
-		if query.fetch && !ctx.is_local(&uid) {
-			ctx.fetch_user(&uid).await?;
-		}
-	}
-	let internal_uid = model::actor::Entity::ap_to_internal(&uid, ctx.db()).await?;
+	// if auth.is_local() {
+	// 	if id.starts_with('@') {
+	// 		if let Some((user, host)) = id.replacen('@', "", 1).split_once('@') {
+	// 			uid = ctx.webfinger(user, host).await?;
+	// 		}
+	// 	}
+	// 	if query.fetch && !ctx.is_local(&uid) {
+	// 		ctx.fetch_user(&uid).await?;
+	// 	}
+	// }
+	let internal_uid = model::actor::Entity::ap_to_internal(&uid, ctx.db())
+		.await?
+		.ok_or_else(ApiError::not_found)?;
 
 	let (followed_by_me, following_me) = match auth.my_id() {
 		None => (None, None),
@@ -85,7 +87,7 @@ pub async fn view(
 				.set_followed_by_me(followed_by_me)
 				.ld_context()
 		)),
-		None => Err(upub::Error::not_found()),
+		None => Err(crate::ApiError::not_found()),
 	}
 }
 

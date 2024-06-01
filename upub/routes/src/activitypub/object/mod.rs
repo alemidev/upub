@@ -1,11 +1,11 @@
 pub mod replies;
 
-use apb::{CollectionMut, ObjectMut};
+use apb::{CollectionMut, ObjectMut, LD};
 use axum::extract::{Path, Query, State};
 use sea_orm::{ColumnTrait, ModelTrait, QueryFilter, QuerySelect, SelectColumns};
-use upub::{model::{self, addressing::Event}, server::{auth::AuthIdentity, fetcher::Fetcher, jsonld::LD}, Context};
+use upub::{model::{self, addressing::Event}, Context};
 
-use crate::builders::JsonLD;
+use crate::{builders::JsonLD, AuthIdentity};
 
 use super::TryFetch;
 
@@ -14,15 +14,15 @@ pub async fn view(
 	Path(id): Path<String>,
 	AuthIdentity(auth): AuthIdentity,
 	Query(query): Query<TryFetch>,
-) -> upub::Result<JsonLD<serde_json::Value>> {
+) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let oid = ctx.oid(&id);
-	if auth.is_local() && query.fetch && !ctx.is_local(&oid) {
-		let obj = ctx.fetch_object(&oid).await?;
-		// some implementations serve statuses on different urls than their AP id
-		if obj.id != oid {
-			return Err(upub::Error::Redirect(upub::url!(ctx, "/objects/{}", ctx.id(&obj.id))));
-		}
-	}
+	// if auth.is_local() && query.fetch && !ctx.is_local(&oid) {
+	// 	let obj = ctx.fetch_object(&oid).await?;
+	// 	// some implementations serve statuses on different urls than their AP id
+	// 	if obj.id != oid {
+	// 		return Err(crate::ApiError::Redirect(upub::url!(ctx, "/objects/{}", ctx.id(&obj.id))));
+	// 	}
+	// }
 
 	let item = model::addressing::Entity::find_addressed(auth.my_id())
 		.filter(model::object::Column::Id.eq(&oid))
@@ -30,11 +30,11 @@ pub async fn view(
 		.into_model::<Event>()
 		.one(ctx.db())
 		.await?
-		.ok_or_else(upub::Error::not_found)?;
+		.ok_or_else(crate::ApiError::not_found)?;
 
 	let object = match item {
-		Event::Tombstone => return Err(upub::Error::not_found()),
-		Event::Activity(_) => return Err(upub::Error::not_found()),
+		Event::Tombstone => return Err(crate::ApiError::not_found()),
+		Event::Activity(_) => return Err(crate::ApiError::not_found()),
 		Event::StrayObject { liked: _, object } => object,
 		Event::DeepActivity { activity: _, liked: _, object } => object,
 	};

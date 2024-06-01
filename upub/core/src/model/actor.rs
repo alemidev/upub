@@ -1,8 +1,6 @@
 use sea_orm::{entity::prelude::*, QuerySelect, SelectColumns};
 
-use apb::{Actor, ActorMut, ActorType, BaseMut, DocumentMut, Endpoints, EndpointsMut, Object, ObjectMut, PublicKey, PublicKeyMut};
-
-use crate::errors::UpubError;
+use apb::{field::OptionalString, Actor, ActorMut, ActorType, BaseMut, DocumentMut, Endpoints, EndpointsMut, Object, ObjectMut, PublicKey, PublicKeyMut};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "actors")]
@@ -149,43 +147,43 @@ impl Entity {
 		Entity::delete_many().filter(Column::Id.eq(id))
 	}
 
-	pub async fn ap_to_internal(id: &str, db: &DatabaseConnection) -> crate::Result<i64> {
+	pub async fn ap_to_internal(id: &str, db: &DatabaseConnection) -> Result<Option<i64>, DbErr> {
 		Entity::find()
 			.filter(Column::Id.eq(id))
 			.select_only()
 			.select_column(Column::Internal)
 			.into_tuple::<i64>()
 			.one(db)
-			.await?
-			.ok_or_else(UpubError::not_found)
+			.await
 	}
 }
 
 impl ActiveModel {
-	pub fn new(object: &impl Actor) -> Result<Self, super::FieldError> {
-		let ap_id = object.id().ok_or(super::FieldError("id"))?.to_string();
+	#[deprecated = "use AP::actor() from processor::normalize"]
+	pub fn new(object: &impl Actor) -> Result<Self, apb::FieldErr> {
+		let ap_id = object.id()?.to_string();
 		let (domain, fallback_preferred_username) = split_user_id(&ap_id);
 		Ok(ActiveModel {
 			internal: sea_orm::ActiveValue::NotSet,
 			domain: sea_orm::ActiveValue::Set(domain),
 			id: sea_orm::ActiveValue::Set(ap_id),
 			preferred_username: sea_orm::ActiveValue::Set(object.preferred_username().unwrap_or(&fallback_preferred_username).to_string()),
-			actor_type: sea_orm::ActiveValue::Set(object.actor_type().ok_or(super::FieldError("type"))?),
-			name: sea_orm::ActiveValue::Set(object.name().map(|x| x.to_string())),
-			summary: sea_orm::ActiveValue::Set(object.summary().map(|x| x.to_string())),
-			icon: sea_orm::ActiveValue::Set(object.icon().get().and_then(|x| x.url().id())),
-			image: sea_orm::ActiveValue::Set(object.image().get().and_then(|x| x.url().id())),
-			inbox: sea_orm::ActiveValue::Set(object.inbox().id()),
-			outbox: sea_orm::ActiveValue::Set(object.outbox().id()),
-			shared_inbox: sea_orm::ActiveValue::Set(object.endpoints().get().and_then(|x| Some(x.shared_inbox()?.to_string()))),
-			followers: sea_orm::ActiveValue::Set(object.followers().id()),
-			following: sea_orm::ActiveValue::Set(object.following().id()),
+			actor_type: sea_orm::ActiveValue::Set(object.actor_type()?),
+			name: sea_orm::ActiveValue::Set(object.name().str()),
+			summary: sea_orm::ActiveValue::Set(object.summary().str()),
+			icon: sea_orm::ActiveValue::Set(object.icon().get().and_then(|x| x.url().id().str())),
+			image: sea_orm::ActiveValue::Set(object.image().get().and_then(|x| x.url().id().str())),
+			inbox: sea_orm::ActiveValue::Set(object.inbox().id().str()),
+			outbox: sea_orm::ActiveValue::Set(object.outbox().id().str()),
+			shared_inbox: sea_orm::ActiveValue::Set(object.endpoints().get().and_then(|x| x.shared_inbox().str())),
+			followers: sea_orm::ActiveValue::Set(object.followers().id().str()),
+			following: sea_orm::ActiveValue::Set(object.following().id().str()),
 			published: sea_orm::ActiveValue::Set(object.published().unwrap_or(chrono::Utc::now())),
 			updated: sea_orm::ActiveValue::Set(chrono::Utc::now()),
 			following_count: sea_orm::ActiveValue::Set(object.following_count().unwrap_or(0) as i32),
 			followers_count: sea_orm::ActiveValue::Set(object.followers_count().unwrap_or(0) as i32),
 			statuses_count: sea_orm::ActiveValue::Set(object.statuses_count().unwrap_or(0) as i32),
-			public_key: sea_orm::ActiveValue::Set(object.public_key().get().ok_or(super::FieldError("publicKey"))?.public_key_pem().to_string()),
+			public_key: sea_orm::ActiveValue::Set(object.public_key().get().ok_or(apb::FieldErr("publicKey"))?.public_key_pem().to_string()),
 			private_key: sea_orm::ActiveValue::Set(None), // there's no way to transport privkey over AP json, must come from DB
 		})
 	}

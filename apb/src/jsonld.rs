@@ -12,7 +12,7 @@ impl LD for serde_json::Value {
 			ctx.insert("sensitive".to_string(), serde_json::Value::String("as:sensitive".into()));
 			ctx.insert("quoteUrl".to_string(), serde_json::Value::String("as:quoteUrl".into()));
 			match o_type {
-				Some(crate::ObjectType::Actor(_)) => {
+				Ok(crate::ObjectType::Actor(_)) => {
 					ctx.insert("counters".to_string(), serde_json::Value::String("https://ns.alemi.dev/as/counters/#".into()));
 					ctx.insert("followingCount".to_string(), serde_json::Value::String("counters:followingCount".into()));
 					ctx.insert("followersCount".to_string(), serde_json::Value::String("counters:followersCount".into()));
@@ -21,13 +21,13 @@ impl LD for serde_json::Value {
 					ctx.insert("followingMe".to_string(), serde_json::Value::String("fe:followingMe".into()));
 					ctx.insert("followedByMe".to_string(), serde_json::Value::String("fe:followedByMe".into()));
 				},
-				Some(_) => {
+				Ok(_) => {
 					ctx.insert("fe".to_string(), serde_json::Value::String("https://ns.alemi.dev/as/fe/#".into()));
 					ctx.insert("likedByMe".to_string(), serde_json::Value::String("fe:likedByMe".into()));
 					ctx.insert("ostatus".to_string(), serde_json::Value::String("http://ostatus.org#".into()));
 					ctx.insert("conversation".to_string(), serde_json::Value::String("ostatus:conversation".into()));
 				},
-				None => {},
+				Err(_) => {},
 			}
 			obj.insert(
 				"@context".to_string(),

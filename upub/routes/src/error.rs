@@ -1,21 +1,15 @@
 use axum::{http::StatusCode, response::Redirect};
 
 #[derive(Debug, thiserror::Error)]
-pub enum UpubError {
+pub enum ApiError {
 	#[error("database error: {0:?}")]
 	Database(#[from] sea_orm::DbErr),
 
-	#[error("{0}")]
-	Status(axum::http::StatusCode),
-
-	#[error("{0}")]
+	#[error("encountered malformed object: {0}")]
 	Field(#[from] apb::FieldErr),
 
-	#[error("openssl error: {0:?}")]
-	OpenSSL(#[from] openssl::error::ErrorStack),
-
-	#[error("invalid UTF8 in key: {0:?}")]
-	OpenSSLParse(#[from] std::str::Utf8Error),
+	#[error("http signature error: {0:?}")]
+	HttpSignature(#[from] httpsign::HttpSignatureError),
 
 	#[error("fetch error: {0:?}")]
 	Reqwest(#[from] reqwest::Error),
@@ -25,14 +19,9 @@ pub enum UpubError {
 	#[error("fetch error: {0:?} -- server responded with {1}")]
 	FetchError(reqwest::Error, String),
 
-	#[error("invalid base64 string: {0:?}")]
-	Base64(#[from] base64::DecodeError),
-
-	#[error("type mismatch on object: expected {0:?}, found {1:?}")]
-	Mismatch(apb::ObjectType, apb::ObjectType),
-
-	#[error("os I/O error: {0}")]
-	IO(#[from] std::io::Error),
+	// wrapper error to return arbitraty status codes
+	#[error("{0}")]
+	Status(StatusCode),
 
 	// TODO this isn't really an error but i need to redirect from some routes so this allows me to
 	// keep the type hints on the return type, still what the hell!!!!
@@ -40,7 +29,7 @@ pub enum UpubError {
 	Redirect(String),
 }
 
-impl UpubError {
+impl ApiError {
 	pub fn bad_request() -> Self {
 		Self::Status(axum::http::StatusCode::BAD_REQUEST)
 	}
@@ -70,31 +59,31 @@ impl UpubError {
 	}
 }
 
-pub type UpubResult<T> = Result<T, UpubError>;
+pub type ApiResult<T> = Result<T, ApiError>;
 
-impl From<axum::http::StatusCode> for UpubError {
+impl From<axum::http::StatusCode> for ApiError {
 	fn from(value: axum::http::StatusCode) -> Self {
-		UpubError::Status(value)
+		ApiError::Status(value)
 	}
 }
 
-impl axum::response::IntoResponse for UpubError {
+impl axum::response::IntoResponse for ApiError {
 	fn into_response(self) -> axum::response::Response {
 		// TODO it's kind of jank to hide this print down here, i should probably learn how spans work
 		//      in tracing and use the library's features but ehhhh
 		tracing::debug!("emitting error response: {self:?}");
 		let descr = self.to_string();
 		match self {
-			UpubError::Redirect(to) => Redirect::to(&to).into_response(),
-			UpubError::Status(status) => status.into_response(),
-			UpubError::Database(e) => (
+			ApiError::Redirect(to) => Redirect::to(&to).into_response(),
+			ApiError::Status(status) => status.into_response(),
+			ApiError::Database(e) => (
 				StatusCode::SERVICE_UNAVAILABLE,
 				axum::Json(serde_json::json!({
 					"error": "database",
 					"inner": format!("{e:#?}"),
 				}))
 			).into_response(),
-			UpubError::Reqwest(x) | UpubError::FetchError(x, _) => (
+			ApiError::Reqwest(x) | ApiError::FetchError(x, _) => (
 				x.status().unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
 				axum::Json(serde_json::json!({
 					"error": "request",
@@ -104,20 +93,11 @@ impl axum::response::IntoResponse for UpubError {
 					"inner": format!("{x:#?}"),
 				}))
 			).into_response(),
-			UpubError::Field(x) => (
+			ApiError::Field(x) => (
 				axum::http::StatusCode::BAD_REQUEST,
 				axum::Json(serde_json::json!({
 					"error": "field",
 					"field": x.0.to_string(),
-					"description": descr,
-				}))
-			).into_response(),
-			UpubError::Mismatch(expected, found) => (
-				axum::http::StatusCode::UNPROCESSABLE_ENTITY,
-				axum::Json(serde_json::json!({
-					"error": "type",
-					"expected": expected.as_ref().to_string(),
-					"found": found.as_ref().to_string(),
 					"description": descr,
 				}))
 			).into_response(),
@@ -129,32 +109,6 @@ impl axum::response::IntoResponse for UpubError {
 					"inner": format!("{x:#?}"),
 				}))
 			).into_response(),
-		}
-	}
-}
-
-pub trait LoggableError {
-	fn info_failed(self, msg: &str);
-	fn warn_failed(self, msg: &str);
-	fn err_failed(self, msg: &str);
-}
-
-impl<T, E: std::error::Error> LoggableError for Result<T, E> {
-	fn info_failed(self, msg: &str) {
-		if let Err(e) = self {
-			tracing::info!("{} : {}", msg, e);
-		}
-	}
-
-	fn warn_failed(self, msg: &str) {
-		if let Err(e) = self {
-			tracing::warn!("{} : {}", msg, e);
-		}
-	}
-
-	fn err_failed(self, msg: &str) {
-		if let Err(e) = self {
-			tracing::error!("{} : {}", msg, e);
 		}
 	}
 }

@@ -98,7 +98,7 @@ pub async fn run(ctx: upub::Context, command: CliCommand) -> upub::Result<()> {
 		CliCommand::Faker { count } =>
 			Ok(faker(ctx, count as i64).await?),
 		CliCommand::Fetch { uri, save } =>
-			Ok(fetch(ctx, uri, save).await?),
+			Ok(fetch(ctx, uri, save).await.map_err(|_e| upub::Error::internal_server_error())?),
 		CliCommand::Relay { actor, accept } =>
 			Ok(relay(ctx, actor, accept).await?),
 		CliCommand::Fix { likes, shares, replies } =>

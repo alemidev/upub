@@ -1,8 +1,8 @@
 use axum::extract::{Path, Query, State};
 use sea_orm::{ColumnTrait, Condition, PaginatorTrait, QueryFilter};
-use upub::{model, server::auth::AuthIdentity, Context};
+use upub::{model, Context};
 
-use crate::builders::JsonLD;
+use crate::{AuthIdentity, builders::JsonLD};
 
 use super::Pagination;
 
@@ -10,7 +10,7 @@ pub async fn get(
 	State(ctx): State<Context>,
 	Path(id): Path<String>,
 	AuthIdentity(auth): AuthIdentity,
-) -> upub::Result<JsonLD<serde_json::Value>> {
+) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let local_context_id = upub::url!(ctx, "/context/{id}");
 	let context = ctx.oid(&id);
 
@@ -28,7 +28,7 @@ pub async fn page(
 	Path(id): Path<String>,
 	Query(page): Query<Pagination>,
 	AuthIdentity(auth): AuthIdentity,
-) -> upub::Result<JsonLD<serde_json::Value>> {
+) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let context = ctx.oid(&id);
 
 	crate::builders::paginate(

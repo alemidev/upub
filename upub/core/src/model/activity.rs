@@ -1,7 +1,7 @@
-use apb::{ActivityMut, ActivityType, BaseMut, ObjectMut};
+use apb::{field::OptionalString, ActivityMut, ActivityType, BaseMut, ObjectMut};
 use sea_orm::{entity::prelude::*, QuerySelect, SelectColumns};
 
-use crate::{model::Audience, errors::UpubError};
+use crate::model::Audience;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "activities")]
@@ -76,28 +76,27 @@ impl Entity {
 		Entity::find().filter(Column::Id.eq(id))
 	}
 
-	pub async fn ap_to_internal(id: &str, db: &DatabaseConnection) -> crate::Result<i64> {
+	pub async fn ap_to_internal(id: &str, db: &DatabaseConnection) -> Result<Option<i64>, DbErr> {
 		Entity::find()
 			.filter(Column::Id.eq(id))
 			.select_only()
 			.select_column(Column::Internal)
 			.into_tuple::<i64>()
 			.one(db)
-			.await?
-			.ok_or_else(UpubError::not_found)
+			.await
 	}
 }
 
 impl ActiveModel {
-	//#[deprecated = "should remove this, get models thru normalizer"]
-	pub fn new(activity: &impl apb::Activity) -> Result<Self, super::FieldError> {
+	#[deprecated = "use AP::activity() from processor::normalize"]
+	pub fn new(activity: &impl apb::Activity) -> Result<Self, apb::FieldErr> {
 		Ok(ActiveModel {
 			internal: sea_orm::ActiveValue::NotSet,
-			id: sea_orm::ActiveValue::Set(activity.id().ok_or(super::FieldError("id"))?.to_string()),
-			activity_type: sea_orm::ActiveValue::Set(activity.activity_type().ok_or(super::FieldError("type"))?),
-			actor: sea_orm::ActiveValue::Set(activity.actor().id().ok_or(super::FieldError("actor"))?),
-			object: sea_orm::ActiveValue::Set(activity.object().id()),
-			target: sea_orm::ActiveValue::Set(activity.target().id()),
+			id: sea_orm::ActiveValue::Set(activity.id()?.to_string()),
+			activity_type: sea_orm::ActiveValue::Set(activity.activity_type()?),
+			actor: sea_orm::ActiveValue::Set(activity.actor().id()?.to_string()),
+			object: sea_orm::ActiveValue::Set(activity.object().id().str()),
+			target: sea_orm::ActiveValue::Set(activity.target().id().str()),
 			published: sea_orm::ActiveValue::Set(activity.published().unwrap_or(chrono::Utc::now())),
 			to: sea_orm::ActiveValue::Set(activity.to().into()),
 			bto: sea_orm::ActiveValue::Set(activity.bto().into()),

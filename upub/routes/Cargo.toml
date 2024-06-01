@@ -11,6 +11,7 @@ readme = "README.md"
 [lib]
 
 [dependencies]
+thiserror = "1"
 rand = "0.8"
 sha256 = "1.5"
 chrono = { version = "0.4", features = ["serde"] }
@@ -23,7 +24,8 @@ tokio = { version = "1.35", features = ["full"] } # TODO slim this down
 reqwest = { version = "0.12", features = ["json"] }
 axum = "0.7"
 tower-http = { version = "0.5", features = ["cors", "trace"] }
-apb = { path = "../../apb", features = ["unstructured", "orm", "activitypub-fe", "activitypub-counters", "litepub", "ostatus", "toot"] }
+httpsign = { path = "../../utils/httpsign/", features = ["axum"] }
+apb = { path = "../../apb", features = ["unstructured", "orm", "activitypub-fe", "activitypub-counters", "litepub", "ostatus", "toot", "jsonld"] }
 sea-orm = { version = "0.12", features = ["macros", "sqlx-sqlite", "runtime-tokio-rustls"] }
 # nodeinfo = "0.0.2" # the version on crates.io doesn't re-export necessary types to build the struct!!!
 nodeinfo = { git = "https://codeberg.org/thefederationinfo/nodeinfo-rs", rev = "e865094804" }

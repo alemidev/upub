@@ -1,4 +1,4 @@
-use sea_orm::{ActiveValue::{Set, NotSet}, EntityTrait};
+use sea_orm::{ActiveValue::{NotSet, Set}, DbErr, EntityTrait};
 
 #[axum::async_trait]
 pub trait Administrable {
@@ -10,7 +10,7 @@ pub trait Administrable {
 		summary: Option<String>,
 		avatar_url: Option<String>,
 		banner_url: Option<String>,
-	) -> crate::Result<()>;
+	) -> Result<(), DbErr>;
 }
 
 #[axum::async_trait]
@@ -23,7 +23,7 @@ impl Administrable for super::Context {
 		summary: Option<String>,
 		avatar_url: Option<String>,
 		banner_url: Option<String>,
-	) -> crate::Result<()> {
+	) -> Result<(), DbErr> {
 		let key = openssl::rsa::Rsa::generate(2048).unwrap();
 		let ap_id = self.uid(&username);
 		let db = self.db();

@@ -5,7 +5,9 @@ members = [
 	"upub/cli",
 	"upub/migrations",
 	"upub/routes",
+	"upub/processor",
 	"web",
+	"utils/httpsign",
 	"utils/mdhtml",
 	"utils/uriproxy"
 ]
