@@ -30,7 +30,7 @@ httpsign = { path = "../../utils/httpsign/" }
 jrd = "0.1"
 tracing = "0.1"
 tokio = { version = "1.35", features = ["full"] } # TODO slim this down
-sea-orm = { version = "0.12", features = ["macros", "sqlx-sqlite", "runtime-tokio-rustls"] }
+sea-orm = { version = "0.12", features = ["macros", "sqlx-sqlite", "sqlx-postgres", "runtime-tokio-rustls"] }
 reqwest = { version = "0.12", features = ["json"] }
 apb = { path = "../../apb", features = ["unstructured", "orm", "activitypub-fe", "activitypub-counters", "litepub", "ostatus", "toot"] }
 # nodeinfo = "0.0.2" # the version on crates.io doesn't re-export necessary types to build the struct!!!
