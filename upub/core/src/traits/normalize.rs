@@ -201,7 +201,13 @@ impl AP {
 			apb::ObjectType::Activity(_)
 			| apb::ObjectType::Actor(_)
 			| apb::ObjectType::Collection(_)
-			| apb::ObjectType::Document(_)
+			| apb::ObjectType::Document(
+				// TODO lemmy posts are PAGEs...
+				apb::DocumentType::Document
+				| apb::DocumentType::Audio
+				| apb::DocumentType::Image
+				| apb::DocumentType::Video
+			)
 		) {
 			return Err(apb::FieldErr("type"));
 		}
