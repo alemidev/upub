@@ -28,6 +28,8 @@ pub struct Model {
 	pub bcc: Audience,
 	pub published: ChronoDateTimeUtc,
 	pub updated: ChronoDateTimeUtc,
+
+	pub audience: Option<String>, // added with migration m20240606_000001
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -195,6 +197,7 @@ impl Model {
 			.set_in_reply_to(apb::Node::maybe_link(self.in_reply_to.clone()))
 			.set_published(Some(self.published))
 			.set_updated(Some(self.updated))
+			.set_audience(apb::Node::maybe_link(self.audience))
 			.set_to(apb::Node::links(self.to.0.clone()))
 			.set_bto(apb::Node::Empty)
 			.set_cc(apb::Node::links(self.cc.0.clone()))

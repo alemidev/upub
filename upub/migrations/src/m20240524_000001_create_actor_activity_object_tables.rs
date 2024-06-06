@@ -65,6 +65,7 @@ pub enum Objects {
 	Bto,
 	Published,
 	Updated,
+	Audience, // added with migration m20240606_000001
 }
 
 #[derive(DeriveIden)]

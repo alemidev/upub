@@ -83,6 +83,7 @@ pub async fn faker(ctx: upub::Context, count: i64) -> Result<(), sea_orm::DbErr>
 			replies: Set(0),
 			likes: Set(0),
 			announces: Set(0),
+			audience: Set(None),
 			to: Set(Audience(vec![apb::target::PUBLIC.to_string()])),
 			bto: Set(Audience::default()),
 			cc: Set(Audience(vec![])),

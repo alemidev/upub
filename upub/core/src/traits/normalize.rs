@@ -231,6 +231,7 @@ impl AP {
 				.map_or(0, |x| x.total_items().unwrap_or(0)) as i32,
 			announces: object.shares().get()
 				.map_or(0, |x| x.total_items().unwrap_or(0)) as i32,
+			audience: object.audience().id().str(),
 			to: object.to().into(),
 			bto: object.bto().into(),
 			cc: object.cc().into(),
