@@ -49,9 +49,9 @@ pub async fn serve(ctx: upub::Context, bind: String) -> Result<(), std::io::Erro
 		.mastodon_routes() // no-op if mastodon feature is disabled
 		.with_state(ctx);
 
-	// run our app with hyper, listening locally on port 3000
-	let listener = tokio::net::TcpListener::bind(bind).await?;
+	tracing::info!("serving api routes on {bind}");
 
+	let listener = tokio::net::TcpListener::bind(bind).await?;
 	axum::serve(listener, router).await?;
 
 	Ok(())

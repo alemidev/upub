@@ -13,6 +13,7 @@ pub fn spawn(
 ) -> tokio::task::JoinHandle<()> {
 	use dispatcher::JobDispatcher;
 	tokio::spawn(async move {
+		tracing::info!("starting worker task");
 		ctx.run(concurrency, poll, filter).await
 	})
 }

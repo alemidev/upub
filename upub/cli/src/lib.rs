@@ -94,6 +94,7 @@ pub enum CliCommand {
 }
 
 pub async fn run(ctx: upub::Context, command: CliCommand) -> Result<(), Box<dyn std::error::Error>> {
+	tracing::info!("running cli task: {command:?}");
 	match command {
 		CliCommand::Faker { count } =>
 			Ok(faker(ctx, count as i64).await?),
