@@ -84,12 +84,12 @@ pub enum Event {
 	Activity(crate::model::activity::Model),
 	StrayObject {
 		object: crate::model::object::Model,
-		liked: Option<String>,
+		liked: Option<i64>,
 	},
 	DeepActivity {
 		activity: crate::model::activity::Model,
 		object: crate::model::object::Model,
-		liked: Option<String>,
+		liked: Option<i64>,
 	}
 }
 
