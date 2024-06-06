@@ -25,15 +25,6 @@ impl Normalizer for crate::Context {
 	async fn insert_object(&self, object: impl apb::Object, tx: &impl ConnectionTrait) -> Result<crate::model::object::Model, NormalizerError> {
 		let oid = object.id()?.to_string();
 		let uid = object.attributed_to().id().str();
-		let t = object.object_type()?;
-		if matches!(t,
-			apb::ObjectType::Activity(_)
-			| apb::ObjectType::Actor(_)
-			| apb::ObjectType::Collection(_)
-			| apb::ObjectType::Document(_)
-		) {
-			return Err(apb::FieldErr("type").into());
-		}
 		let mut object_active_model = AP::object_q(&object)?;
 
 		// make sure content only contains a safe subset of html
