@@ -1,4 +1,4 @@
-use apb::{field::OptionalString, ActivityMut, ActivityType, BaseMut, ObjectMut};
+use apb::{ActivityMut, ActivityType, BaseMut, ObjectMut};
 use sea_orm::{entity::prelude::*, QuerySelect, SelectColumns};
 
 use crate::model::Audience;
@@ -76,25 +76,6 @@ impl Entity {
 			.into_tuple::<i64>()
 			.one(db)
 			.await
-	}
-}
-
-impl ActiveModel {
-	#[deprecated = "use AP::activity() from processor::normalize"]
-	pub fn new(activity: &impl apb::Activity) -> Result<Self, apb::FieldErr> {
-		Ok(ActiveModel {
-			internal: sea_orm::ActiveValue::NotSet,
-			id: sea_orm::ActiveValue::Set(activity.id()?.to_string()),
-			activity_type: sea_orm::ActiveValue::Set(activity.activity_type()?),
-			actor: sea_orm::ActiveValue::Set(activity.actor().id()?.to_string()),
-			object: sea_orm::ActiveValue::Set(activity.object().id().str()),
-			target: sea_orm::ActiveValue::Set(activity.target().id().str()),
-			published: sea_orm::ActiveValue::Set(activity.published().unwrap_or(chrono::Utc::now())),
-			to: sea_orm::ActiveValue::Set(activity.to().into()),
-			bto: sea_orm::ActiveValue::Set(activity.bto().into()),
-			cc: sea_orm::ActiveValue::Set(activity.cc().into()),
-			bcc: sea_orm::ActiveValue::Set(activity.bcc().into()),
-		})
 	}
 }
 

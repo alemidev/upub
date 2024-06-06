@@ -1,4 +1,4 @@
-use apb::{field::OptionalString, BaseMut, Collection, CollectionMut, ObjectMut, ObjectType};
+use apb::{BaseMut, CollectionMut, ObjectMut, ObjectType};
 use sea_orm::{entity::prelude::*, QuerySelect, SelectColumns};
 
 use super::Audience;
@@ -139,47 +139,6 @@ impl Entity {
 			.into_tuple::<i64>()
 			.one(db)
 			.await
-	}
-}
-
-impl ActiveModel {
-	#[deprecated = "use AP::object() from processor::normalize"]
-	pub fn new(object: &impl apb::Object) -> Result<Self, apb::FieldErr> {
-		let t = object.object_type()?;
-		if matches!(t,
-			apb::ObjectType::Activity(_)
-			| apb::ObjectType::Actor(_)
-			| apb::ObjectType::Collection(_)
-			| apb::ObjectType::Document(_)
-		) {
-			return Err(apb::FieldErr("type"));
-		}
-		Ok(ActiveModel {
-			internal: sea_orm::ActiveValue::NotSet,
-			id: sea_orm::ActiveValue::Set(object.id()?.to_string()),
-			object_type: sea_orm::ActiveValue::Set(t),
-			attributed_to: sea_orm::ActiveValue::Set(object.attributed_to().id().str()),
-			name: sea_orm::ActiveValue::Set(object.name().str()),
-			summary: sea_orm::ActiveValue::Set(object.summary().str()),
-			content: sea_orm::ActiveValue::Set(object.content().str()),
-			context: sea_orm::ActiveValue::Set(object.context().id().str()),
-			in_reply_to: sea_orm::ActiveValue::Set(object.in_reply_to().id().str()),
-			published: sea_orm::ActiveValue::Set(object.published().unwrap_or_else(|_| chrono::Utc::now())),
-			updated: sea_orm::ActiveValue::Set(object.updated().unwrap_or_else(|_| chrono::Utc::now())),
-			url: sea_orm::ActiveValue::Set(object.url().id().str()),
-			replies: sea_orm::ActiveValue::Set(object.replies().get()
-				.map_or(0, |x| x.total_items().unwrap_or(0)) as i32),
-			likes: sea_orm::ActiveValue::Set(object.likes().get()
-				.map_or(0, |x| x.total_items().unwrap_or(0)) as i32),
-			announces: sea_orm::ActiveValue::Set(object.shares().get()
-				.map_or(0, |x| x.total_items().unwrap_or(0)) as i32),
-			to: sea_orm::ActiveValue::Set(object.to().into()),
-			bto: sea_orm::ActiveValue::Set(object.bto().into()),
-			cc: sea_orm::ActiveValue::Set(object.cc().into()),
-			bcc: sea_orm::ActiveValue::Set(object.bcc().into()),
-
-			sensitive: sea_orm::ActiveValue::Set(object.sensitive().unwrap_or(false)),
-		})
 	}
 }
 
