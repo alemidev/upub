@@ -116,6 +116,11 @@ async fn main() {
 
 	let config = upub::Config::load(args.config);
 
+	if matches!(args.command, Mode::Config) {
+		println!("{}", toml::to_string_pretty(&config).expect("failed serializing config"));
+		return;
+	}
+
 	let database = args.database.unwrap_or(config.datasource.connection_string.clone());
 	let domain = args.domain.unwrap_or(config.instance.domain.clone());
 
@@ -137,20 +142,21 @@ async fn main() {
 	let db = Database::connect(opts)
 		.await.expect("error connecting to db");
 
+	#[cfg(feature = "migrate")]
+	if matches!(args.command, Mode::Migrate) {
+		use migrations::MigratorTrait;
+
+		migrations::Migrator::up(&db, None)
+			.await
+			.expect("error applying migrations");
+
+		return;
+	}
+
 	let ctx = upub::Context::new(db, domain, config.clone())
 		.await.expect("failed creating server context");
 
-	#[cfg(feature = "migrate")]
-	use migrations::MigratorTrait;
-
 	match args.command {
-		Mode::Config => println!("{}", toml::to_string_pretty(&config).expect("failed serializing config")),
-
-		#[cfg(feature = "migrate")]
-		Mode::Migrate =>
-			migrations::Migrator::up(ctx.db(), None)
-				.await.expect("error applying migrations"),
-
 		#[cfg(feature = "cli")]
 		Mode::Cli { command } =>
 			cli::run(ctx, command)
@@ -173,6 +179,8 @@ async fn main() {
 			routes::serve(ctx, bind)
 				.await.expect("failed serving api routes");
 		},
+
+		_ => unreachable!(),
 	}
 }
 
