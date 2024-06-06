@@ -15,15 +15,16 @@ pub fn ObjectPage(tl: Timeline) -> impl IntoView {
 	let object = create_local_resource(
 		move || params.get().get("id").cloned().unwrap_or_default(),
 		move |oid| async move {
-			let tl_url = format!("{}/page", Uri::api(U::Context, &oid, false));
-			if !tl.next.get().starts_with(&tl_url) {
-				tl.reset(tl_url);
-			}
-			match CACHE.get(&Uri::full(U::Object, &oid)) {
-				Some(x) => Some(x.clone()),
+			let obj = match CACHE.get(&Uri::full(U::Object, &oid)) {
+				Some(x) => x.clone(),
 				None => {
-					let obj = Http::fetch::<serde_json::Value>(&Uri::api(U::Object, &oid, true), auth).await.ok()?;
-					let obj = Arc::new(obj);
+					let obj = match Http::fetch::<serde_json::Value>(&Uri::api(U::Object, &oid, true), auth).await {
+						Ok(obj) => Arc::new(obj),
+						Err(e) => {
+							tracing::error!("failed loading object from backend: {e}");
+							return None;
+						},
+					};
 					if let Ok(author) = obj.attributed_to().id() {
 						if let Ok(user) = Http::fetch::<serde_json::Value>(
 							&Uri::api(U::Actor, author, true), auth
@@ -32,9 +33,17 @@ pub fn ObjectPage(tl: Timeline) -> impl IntoView {
 						}
 					}
 					CACHE.put(Uri::full(U::Object, &oid), obj.clone());
-					Some(obj)
+					obj
+				}
+			};
+			if let Ok(ctx) = obj.context().id() {
+				let tl_url = format!("{}/page", ctx);
+				if !tl.next.get().starts_with(&tl_url) {
+					tl.reset(tl_url);
 				}
 			}
+
+			Some(obj)
 		}
 	);
 	view! {
