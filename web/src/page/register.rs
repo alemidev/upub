@@ -15,7 +15,7 @@ pub fn RegisterPage() -> impl IntoView {
 	view! {
 		<div class="two-col">
 			<Breadcrumb>register</Breadcrumb>
-			<div class="border ma-2">
+			<div class="border ma-2 pa-1">
 				<form on:submit=move|ev| {
 					ev.prevent_default();
 					logging::log!("registering new user...");

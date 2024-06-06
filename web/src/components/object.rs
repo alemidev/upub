@@ -131,6 +131,19 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 	} else {
 		Some(view! { <div class="pb-1"></div> })
 	};
+
+	let audience_badge = object.audience().id().str()
+		.map(|x| view! {
+			<div class="inline border-solid">
+				<code class="color">@</code>
+				<small>
+					<a class="clean dim" href={x.clone()} target="_blank" rel="nofollow noreferrer">
+						{Uri::pretty(&x)}
+					</a>
+				</small>
+			</div>
+		});
+
 	let post_inner = view! {
 		<Summary summary=object.summary().ok().map(|x| x.to_string()) >
 			<p inner_html={content}></p>
@@ -145,7 +158,7 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 		}.into_view(),
 		// lemmy with Page, peertube with Video
 		Ok(apb::ObjectType::Document(t)) => view! {
-			<div class="border ml-1 mr-1 mt-1">
+			<div class="border pa-1 ml-1 mr-1 mt-1">
 				<b>{object.name().unwrap_or_default().to_string()}</b>
 				<hr />
 				{post_inner}
@@ -188,6 +201,7 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 		</table>
 		{post}
 		<div class="mt-s ml-1 rev">
+			{audience_badge}
 			<ReplyButton n=comments target=oid.clone() />
 			<LikeButton n=likes liked=already_liked target=oid.clone() author=author_id private=!public />
 			<RepostButton n=shares target=oid />
