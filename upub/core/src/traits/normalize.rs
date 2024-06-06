@@ -6,6 +6,9 @@ pub enum NormalizerError {
 	#[error("normalized document misses required field: {0:?}")]
 	Malformed(#[from] apb::FieldErr),
 
+	#[error("wrong object type: expected {0}, got {1}")]
+	WrongType(apb::BaseType, apb::BaseType),
+
 	#[error("database error while normalizing object: {0:?}")]
 	DbErr(#[from] sea_orm::DbErr),
 }
@@ -150,7 +153,11 @@ impl Normalizer for crate::Context {
 pub struct AP;
 
 impl AP {
-	pub fn activity(activity: &impl apb::Activity) -> Result<crate::model::activity::Model, apb::FieldErr> {
+	pub fn activity(activity: &impl apb::Activity) -> Result<crate::model::activity::Model, NormalizerError> {
+		let t = activity.base_type()?;
+		if !matches!(t, apb::BaseType::Object(apb::ObjectType::Activity(_))) {
+			return Err(NormalizerError::WrongType(apb::BaseType::Object(apb::ObjectType::Activity(apb::ActivityType::Activity)), t));
+		}
 		Ok(crate::model::activity::Model {
 			internal: 0,
 			id: activity.id()?.to_string(),
@@ -166,7 +173,7 @@ impl AP {
 		})
 	}
 
-	pub fn activity_q(activity: &impl apb::Activity) -> Result<crate::model::activity::ActiveModel, apb::FieldErr> {
+	pub fn activity_q(activity: &impl apb::Activity) -> Result<crate::model::activity::ActiveModel, NormalizerError> {
 		let mut m = AP::activity(activity)?.into_active_model();
 		m.internal = NotSet;
 		Ok(m)
@@ -175,7 +182,11 @@ impl AP {
 
 
 
-	pub fn attachment(document: &impl apb::Document, parent: i64) -> Result<crate::model::attachment::Model, apb::FieldErr> {
+	pub fn attachment(document: &impl apb::Document, parent: i64) -> Result<crate::model::attachment::Model, NormalizerError> {
+		let t = document.base_type()?;
+		if !matches!(t, apb::BaseType::Object(apb::ObjectType::Document(_))) {
+			return Err(NormalizerError::WrongType(apb::BaseType::Object(apb::ObjectType::Document(apb::DocumentType::Document)), t));
+		}
 		Ok(crate::model::attachment::Model {
 			internal: 0,
 			url: document.url().id().str().unwrap_or_default(),
@@ -187,7 +198,7 @@ impl AP {
 		})
 	}
 
-	pub fn attachment_q(document: &impl apb::Document, parent: i64) -> Result<crate::model::attachment::ActiveModel, apb::FieldErr> {
+	pub fn attachment_q(document: &impl apb::Document, parent: i64) -> Result<crate::model::attachment::ActiveModel, NormalizerError> {
 		let mut m = AP::attachment(document, parent)?.into_active_model();
 		m.internal = NotSet;
 		Ok(m)
@@ -195,26 +206,25 @@ impl AP {
 
 
 
-	pub fn object(object: &impl apb::Object) -> Result<crate::model::object::Model, apb::FieldErr> {
-		let t = object.object_type()?;
-		if matches!(t,
-			apb::ObjectType::Activity(_)
-			| apb::ObjectType::Actor(_)
-			| apb::ObjectType::Collection(_)
-			| apb::ObjectType::Document(
-				// TODO lemmy posts are PAGEs...
-				apb::DocumentType::Document
-				| apb::DocumentType::Audio
-				| apb::DocumentType::Image
-				| apb::DocumentType::Video
+	pub fn object(object: &impl apb::Object) -> Result<crate::model::object::Model, NormalizerError> {
+		let t = object.base_type()?;
+		if !matches!(t,
+			apb::BaseType::Object(
+				apb::ObjectType::Object
+				| apb::ObjectType::Note
+				| apb::ObjectType::Article
+				| apb::ObjectType::Event
+				| apb::ObjectType::Place
+				| apb::ObjectType::Profile
+				| apb::ObjectType::Document(apb::DocumentType::Page) // why Document lemmy??????
 			)
 		) {
-			return Err(apb::FieldErr("type"));
+			return Err(NormalizerError::WrongType(apb::BaseType::Object(apb::ObjectType::Object), t));
 		}
 		Ok(crate::model::object::Model {
 			internal: 0,
 			id: object.id()?.to_string(),
-			object_type: t,
+			object_type: object.object_type()?,
 			attributed_to: object.attributed_to().id().str(),
 			name: object.name().str(),
 			summary: object.summary().str(),
@@ -239,7 +249,7 @@ impl AP {
 		})
 	}
 
-	pub fn object_q(object: &impl apb::Object) -> Result<crate::model::object::ActiveModel, apb::FieldErr> {
+	pub fn object_q(object: &impl apb::Object) -> Result<crate::model::object::ActiveModel, NormalizerError> {
 		let mut m = AP::object(object)?.into_active_model();
 		m.internal = NotSet;
 		Ok(m)
@@ -247,7 +257,11 @@ impl AP {
 
 
 
-	pub fn actor(actor: &impl apb::Actor) -> Result<crate::model::actor::Model, apb::FieldErr> {
+	pub fn actor(actor: &impl apb::Actor) -> Result<crate::model::actor::Model, NormalizerError> {
+		let t = actor.base_type()?;
+		if !matches!(t, apb::BaseType::Object(apb::ObjectType::Actor(_))) {
+			return Err(NormalizerError::WrongType(apb::BaseType::Object(apb::ObjectType::Actor(apb::ActorType::Person)), t));
+		}
 		let ap_id = actor.id()?.to_string();
 		let (domain, fallback_preferred_username) = {
 			let clean = ap_id
@@ -283,7 +297,7 @@ impl AP {
 		})
 	}
 
-	pub fn actor_q(actor: &impl apb::Actor) -> Result<crate::model::actor::ActiveModel, apb::FieldErr> {
+	pub fn actor_q(actor: &impl apb::Actor) -> Result<crate::model::actor::ActiveModel, NormalizerError> {
 		let mut m = AP::actor(actor)?.into_active_model();
 		m.internal = NotSet;
 		Ok(m)
