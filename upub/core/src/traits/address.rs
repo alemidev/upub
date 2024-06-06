@@ -4,19 +4,19 @@ use crate::traits::fetch::Fetcher;
 
 #[async_trait::async_trait]
 pub trait Addresser {
-	async fn expand_addressing(&self, targets: Vec<String>) -> Result<Vec<String>, DbErr>;
+	async fn expand_addressing(&self, targets: Vec<String>, tx: &impl ConnectionTrait) -> Result<Vec<String>, DbErr>;
 	async fn address_to(&self, aid: Option<i64>, oid: Option<i64>, targets: &[String], tx: &impl ConnectionTrait) -> Result<(), DbErr>;
 	async fn deliver_to(&self, aid: &str, from: &str, targets: &[String], tx: &impl ConnectionTrait) -> Result<(), DbErr>;
 }
 
 #[async_trait::async_trait]
 impl Addresser for crate::Context {
-	async fn expand_addressing(&self, targets: Vec<String>) -> Result<Vec<String>, DbErr> {
+	async fn expand_addressing(&self, targets: Vec<String>, tx: &impl ConnectionTrait) -> Result<Vec<String>, DbErr> {
 		let mut out = Vec::new();
 		for target in targets {
 			if target.ends_with("/followers") {
 				let target_id = target.replace("/followers", "");
-				let mut followers = crate::model::relation::Entity::followers(&target_id, self.db())
+				let mut followers = crate::model::relation::Entity::followers(&target_id, tx)
 					.await?
 					.unwrap_or_else(Vec::new);
 				if followers.is_empty() { // stuff with zero addressing will never be seen again!!! TODO

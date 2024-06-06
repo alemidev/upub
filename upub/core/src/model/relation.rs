@@ -63,7 +63,7 @@ impl ActiveModelBehavior for ActiveModel {}
 
 impl Entity {
 	// TODO this is 2 queries!!! can it be optimized down to 1?
-	pub async fn followers(uid: &str, db: &DatabaseConnection) -> Result<Option<Vec<String>>, DbErr> {
+	pub async fn followers(uid: &str, db: &impl ConnectionTrait) -> Result<Option<Vec<String>>, DbErr> {
 		let Some(internal_id) = super::actor::Entity::ap_to_internal(uid, db).await?
 		else {
 			return Ok(None);
@@ -88,7 +88,7 @@ impl Entity {
 	}
 
 	// TODO this is 2 queries!!! can it be optimized down to 1?
-	pub async fn following(uid: &str, db: &DatabaseConnection) -> Result<Option<Vec<String>>, DbErr> {
+	pub async fn following(uid: &str, db: &impl ConnectionTrait) -> Result<Option<Vec<String>>, DbErr> {
 		let Some(internal_id) = super::actor::Entity::ap_to_internal(uid, db).await?
 		else {
 			return Ok(None);

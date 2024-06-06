@@ -75,7 +75,7 @@ pub async fn create(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 		let object_model = ctx.insert_object(object_node, tx).await?;
 		object_model.internal
 	};
-	let expanded_addressing = ctx.expand_addressing(addressed).await?;
+	let expanded_addressing = ctx.expand_addressing(addressed, tx).await?;
 	ctx.address_to(Some(activity_model.internal), Some(internal_oid), &expanded_addressing, tx).await?;
 	tracing::info!("{} posted {}", activity_model.actor, oid);
 	Ok(())
@@ -110,7 +110,7 @@ pub async fn like(ctx: &crate::Context, activity: impl apb::Activity, tx: &Datab
 		.exec(tx)
 		.await?;
 
-	let mut expanded_addressing = ctx.expand_addressing(activity_model.addressed()).await?;
+	let mut expanded_addressing = ctx.expand_addressing(activity_model.addressed(), tx).await?;
 	if expanded_addressing.is_empty() { // WHY MASTODON!!!!!!!
 		expanded_addressing.push(
 			crate::model::object::Entity::find_by_id(obj.internal)
@@ -144,7 +144,7 @@ pub async fn follow(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 	};
 	crate::model::relation::Entity::insert(relation_model)
 		.exec(tx).await?;
-	let mut expanded_addressing = ctx.expand_addressing(activity_model.addressed()).await?;
+	let mut expanded_addressing = ctx.expand_addressing(activity_model.addressed(), tx).await?;
 	if !expanded_addressing.contains(&target_actor) {
 		expanded_addressing.push(target_actor);
 	}
@@ -192,7 +192,7 @@ pub async fn accept(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 
 	tracing::info!("{} accepted follow request by {}", target_actor, follow_activity.actor);
 
-	let mut expanded_addressing = ctx.expand_addressing(activity_model.addressed()).await?;
+	let mut expanded_addressing = ctx.expand_addressing(activity_model.addressed(), tx).await?;
 	if !expanded_addressing.contains(&follow_activity.actor) {
 		expanded_addressing.push(follow_activity.actor);
 	}
@@ -222,7 +222,7 @@ pub async fn reject(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 
 	tracing::info!("{} rejected follow request by {}", uid, follow_activity.actor);
 
-	let mut expanded_addressing = ctx.expand_addressing(activity_model.addressed()).await?;
+	let mut expanded_addressing = ctx.expand_addressing(activity_model.addressed(), tx).await?;
 	if !expanded_addressing.contains(&follow_activity.actor) {
 		expanded_addressing.push(follow_activity.actor);
 	}
@@ -276,7 +276,7 @@ pub async fn update(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 	}
 
 	tracing::info!("{} updated {}", uid, oid);
-	let expanded_addressing = ctx.expand_addressing(activity_model.addressed()).await?;
+	let expanded_addressing = ctx.expand_addressing(activity_model.addressed(), tx).await?;
 	ctx.address_to(Some(activity_model.internal), None, &expanded_addressing, tx).await?;
 	Ok(())
 }
@@ -298,7 +298,7 @@ pub async fn undo(ctx: &crate::Context, activity: impl apb::Activity, tx: &Datab
 		.ok_or(ProcessorError::Incomplete)?;
 
 	let activity_type = activity.activity_type()?;
-	let targets = ctx.expand_addressing(activity.addressed()).await?;
+	let targets = ctx.expand_addressing(activity.addressed(), tx).await?;
 	let activity_model = ctx.insert_activity(activity, tx).await?;
 	ctx.address_to(Some(activity_model.internal), None, &targets, tx).await?;
 
@@ -400,7 +400,7 @@ pub async fn announce(ctx: &crate::Context, activity: impl apb::Activity, tx: &D
 				published: Set(published),
 			};
 
-			let expanded_addressing = ctx.expand_addressing(addressed).await?;
+			let expanded_addressing = ctx.expand_addressing(addressed, tx).await?;
 			ctx.address_to(Some(activity_model.internal), None, &expanded_addressing, tx).await?;
 			crate::model::announce::Entity::insert(share)
 				.exec(tx).await?;
