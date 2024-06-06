@@ -5,7 +5,7 @@ use sea_orm::entity::prelude::*;
 pub enum JobType {
 	Inbound = 1,
 	Outbound = 2,
-	Local = 3,
+	Delivery = 3,
 }
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]

@@ -1,63 +1,71 @@
-use sea_orm::EntityTrait;
-use reqwest::Method;
+use apb::{target::Addressed, Activity, ActivityMut, BaseMut, Object, ObjectMut};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QuerySelect, SelectColumns, TransactionTrait};
+use upub::{model, traits::{Addresser, Processor}, Context};
 
-use apb::{LD, Node, ActivityMut};
-use upub::{Context, model, traits::Fetcher};
 
 pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<()> {
-	tracing::info!("delivering {} to {:?}", job.activity, job.target);
+	let payload = job.payload.as_ref().ok_or(crate::JobError::MissingPayload)?;
+	let mut activity : serde_json::Value = serde_json::from_str(payload)?;
+	let mut t = activity.object_type()?;
+	let tx = ctx.db().begin().await?;
 
-	let payload = match model::activity::Entity::find_by_ap_id(&job.activity)
-		.find_also_related(model::object::Entity)
-		.one(ctx.db())
-		.await?
-	{
-		Some((activity, None)) => activity.ap().ld_context(),
-		Some((activity, Some(object))) => {
-			let always_embed = matches!(
-				activity.activity_type,
-				apb::ActivityType::Create
-				| apb::ActivityType::Undo
-				| apb::ActivityType::Update
-				| apb::ActivityType::Accept(_)
-				| apb::ActivityType::Reject(_)
-			);
-			if always_embed {
-				activity.ap().set_object(Node::object(object.ap())).ld_context()
-			} else {
-				activity.ap().ld_context()
-			}
-		},
-		None => {
-			tracing::info!("skipping dispatch for deleted object {}", job.activity);
-			return Ok(());
-		},
-	};
-
-	let Some(actor) = model::actor::Entity::find_by_ap_id(&job.actor)
-		.one(ctx.db())
-		.await?
-	else {
-		tracing::error!("abandoning delivery from non existant actor {}: {job:#?}", job.actor);
-		return Ok(());
-	};
-
-	let Some(key) = actor.private_key
-	else {
-		tracing::error!("abandoning delivery from actor without private key {}: {job:#?}", job.actor);
-		return Ok(());
-	};
-
-	if let Err(e) = Context::request(
-		Method::POST, job.target.as_deref().unwrap_or(""),
-		Some(&serde_json::to_string(&payload).unwrap()),
-		&job.actor, &key, ctx.domain()
-	).await {
-		tracing::warn!("failed delivery of {} to {:?} : {e}", job.activity, job.target);
-		model::job::Entity::insert(job.clone().repeat())
-			.exec(ctx.db())
-			.await?;
+	if matches!(t, apb::ObjectType::Note) {
+		activity = apb::new()
+			.set_activity_type(Some(apb::ActivityType::Create))
+			.set_object(apb::Node::object(activity));
+		t = apb::ObjectType::Activity(apb::ActivityType::Create);
 	}
+
+	activity = activity
+		.set_id(Some(&job.activity))
+		.set_actor(apb::Node::link(job.actor.clone()))
+		.set_published(Some(chrono::Utc::now()));
+
+	if matches!(t, apb::ObjectType::Activity(apb::ActivityType::Create)) {
+		let raw_oid = Context::new_id();
+		let oid = ctx.oid(&raw_oid);
+		// object must be embedded, wont dereference here
+		let object = activity.object().extract().ok_or(apb::FieldErr("object"))?;
+		// TODO regex hell here i come...
+		let re = regex::Regex::new(r"@(.+)@([^ ]+)").expect("failed compiling regex pattern");
+		let mut content = object.content().map(|x| x.to_string()).ok();
+		if let Some(c) = content {
+			let mut tmp = mdhtml::safe_markdown(&c);
+			for (full, [user, domain]) in re.captures_iter(&tmp.clone()).map(|x| x.extract()) {
+				if let Ok(Some(uid)) = model::actor::Entity::find()
+					.filter(model::actor::Column::PreferredUsername.eq(user))
+					.filter(model::actor::Column::Domain.eq(domain))
+					.select_only()
+					.select_column(model::actor::Column::Id)
+					.into_tuple::<String>()
+					.one(&tx)
+					.await
+				{
+					tmp = tmp.replacen(full, &format!("<a href=\"{uid}\" class=\"u-url mention\">@{user}</a>"), 1);
+				}
+			}
+			content = Some(tmp);
+		}
+
+		activity = activity
+			.set_object(apb::Node::object(
+					object
+						.set_id(Some(&oid))
+						.set_content(content.as_deref())
+						.set_attributed_to(apb::Node::link(job.actor.clone()))
+						.set_published(Some(chrono::Utc::now()))
+						.set_url(apb::Node::maybe_link(ctx.cfg().frontend_url(&format!("/objects/{raw_oid}")))),
+			));
+	}
+
+	// TODO we expand addressing twice, ugghhhhh
+	let targets = ctx.expand_addressing(activity.addressed(), &tx).await?;
+
+	ctx.process(activity, &tx).await?;
+
+	ctx.deliver_to(&job.activity, &job.actor, &targets, &tx).await?;
+
+	tx.commit().await?;
 
 	Ok(())
 }

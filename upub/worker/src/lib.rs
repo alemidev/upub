@@ -1,7 +1,7 @@
 pub mod dispatcher;
 pub mod inbound;
 pub mod outbound;
-pub mod local;
+pub mod delivery;
 
 pub use dispatcher::{JobError, JobResult};
 

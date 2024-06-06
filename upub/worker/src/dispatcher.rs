@@ -104,12 +104,16 @@ impl JobDispatcher for Context {
 				restart!(now);
 			}
 
-			if let Ok(Some(_)) = model::activity::Entity::find_by_ap_id(&job.activity)
-				.one(self.db())
-				.await
-			{
-				tracing::info!("dropping already processed job '{}'", job.activity);
-				restart!(now);
+			if job.job_type != model::job::JobType::Delivery {
+				// delivery jobs are all pre-processed activities
+				// inbound/outbound jobs carry side effects which should only happen once
+				if let Ok(Some(_)) = model::activity::Entity::find_by_ap_id(&job.activity)
+					.one(self.db())
+					.await
+				{
+					tracing::info!("dropping already processed job '{}'", job.activity);
+					restart!(now);
+				}
 			}
 
 			let _ctx = self.clone();
@@ -117,7 +121,7 @@ impl JobDispatcher for Context {
 				let res = match job.job_type {
 					model::job::JobType::Inbound => crate::inbound::process(_ctx.clone(), &job).await,
 					model::job::JobType::Outbound => crate::outbound::process(_ctx.clone(), &job).await,
-					model::job::JobType::Local => crate::local::process(_ctx.clone(), &job).await,
+					model::job::JobType::Delivery => crate::delivery::process(_ctx.clone(), &job).await,
 				};
 	
 				if let Err(e) = res {

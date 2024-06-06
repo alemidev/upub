@@ -88,7 +88,7 @@ impl Addresser for crate::Context {
 					crate::model::job::ActiveModel {
 						internal: sea_orm::ActiveValue::NotSet,
 						actor: Set(from.to_string()),
-						job_type: Set(crate::model::job::JobType::Outbound),
+						job_type: Set(crate::model::job::JobType::Delivery),
 						payload: Set(None),
 						// TODO we should resolve each user by id and check its inbox because we can't assume
 						// it's /actors/{id}/inbox for every software, but oh well it's waaaaay easier now

@@ -56,7 +56,7 @@ pub async fn post(
 			let job = model::job::ActiveModel {
 				internal: NotSet,
 				activity: Set(aid.clone()),
-				job_type: Set(model::job::JobType::Local),
+				job_type: Set(model::job::JobType::Outbound),
 				actor: Set(uid.clone()),
 				target: Set(None),
 				published: Set(chrono::Utc::now()),

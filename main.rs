@@ -99,7 +99,7 @@ enum Mode {
 #[derive(Debug, Clone, clap::ValueEnum)]
 enum Filter {
 	All,
-	Local,
+	Delivery,
 	Inbound,
 	Outbound,
 }
@@ -188,7 +188,7 @@ impl From<Filter> for Option<upub::model::job::JobType> {
 	fn from(value: Filter) -> Self {
 		match value {
 			Filter::All => None,
-			Filter::Local => Some(upub::model::job::JobType::Local),
+			Filter::Delivery => Some(upub::model::job::JobType::Delivery),
 			Filter::Inbound => Some(upub::model::job::JobType::Inbound),
 			Filter::Outbound => Some(upub::model::job::JobType::Outbound),
 		}
