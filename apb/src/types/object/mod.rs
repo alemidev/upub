@@ -43,7 +43,7 @@ pub trait Object : Base {
 	fn object_type(&self) -> Field<ObjectType> { Err(FieldErr("type")) }
 	fn attachment(&self) -> Node<Self::Object> { Node::Empty }
 	fn attributed_to(&self) -> Node<Self::Actor> { Node::Empty }
-	fn audience(&self) -> Node<Self::Actor> { Node::Empty }
+	fn audience(&self) -> Node<Self::Object> { Node::Empty }
 	fn content(&self) -> Field<&str> { Err(FieldErr("content")) } // TODO handle language maps
 	fn context(&self) -> Node<Self::Object> { Node::Empty } 
 	fn name(&self) -> Field<&str> { Err(FieldErr("name")) }       // also in link // TODO handle language maps
