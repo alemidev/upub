@@ -38,7 +38,7 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 					.select_only()
 					.select_column(model::actor::Column::Id)
 					.into_tuple::<String>()
-					.one(ctx.db())
+					.one(&tx)
 					.await
 				{
 					tmp = tmp.replacen(full, &format!("<a href=\"{uid}\" class=\"u-url mention\">@{user}</a>"), 1);
