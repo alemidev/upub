@@ -1,6 +1,6 @@
 use apb::{target::Addressed, Activity, Base, Object};
 use sea_orm::{sea_query::Expr, ActiveValue::{NotSet, Set}, ColumnTrait, Condition, EntityTrait, QueryFilter, QuerySelect, SelectColumns};
-use crate::{ext::{AnyQuery, LoggableError}, traits::{fetch::Pull, Addresser, Fetcher, Normalizer}};
+use crate::{ext::{AnyQuery, LoggableError}, model, traits::{fetch::Pull, Addresser, Fetcher, Normalizer}};
 
 #[derive(Debug, thiserror::Error)]
 pub enum ProcessorError {
@@ -353,12 +353,34 @@ pub async fn announce(ctx: &crate::Context, activity: impl apb::Activity) -> Res
 	let announced_id = activity.object().id()?.to_string();
 	let published = activity.published().unwrap_or(chrono::Utc::now());
 	let addressed = activity.addressed();
-	
-	match ctx.pull(&announced_id).await? {
-		Pull::Actor(_) => Err(ProcessorError::Unprocessable),
-		Pull::Object(object) => {
 
-			let object_model = ctx.resolve_object(object).await?;
+	match match ctx.find_internal(&announced_id).await? {
+		// if we already have this activity, skip it
+		Some(crate::context::Internal::Activity(_)) => return Ok(()), // already processed
+		// actors and objects which we already have
+		Some(x) => x,
+		// something new, fetch it!
+		None => {
+			match ctx.pull(&announced_id).await? {
+				// if we receive a remote activity, process it directly
+				Pull::Activity(x) => return ctx.process(x).await,
+				// actors are not processable at all
+				Pull::Actor(_) => return Err(ProcessorError::Unprocessable),
+				// objects are processed down below, make a mock Internal::Object(internal)
+				Pull::Object(x) =>
+					crate::context::Internal::Object(
+						ctx.resolve_object(x).await?.internal
+					),
+			}
+		}
+	} {
+		crate::context::Internal::Actor(_) => Err(ProcessorError::Unprocessable),
+		crate::context::Internal::Activity(_) => Err(ProcessorError::AlreadyProcessed), // ???
+		crate::context::Internal::Object(internal) => {
+			let object_model = model::object::Entity::find_by_id(internal)
+				.one(ctx.db())
+				.await?
+				.ok_or_else(|| sea_orm::DbErr::RecordNotFound(internal.to_string()))?;
 			let activity_model = ctx.insert_activity(activity).await?;
 
 			// relays send us objects as Announce, but we don't really want to count those towards the
@@ -387,20 +409,6 @@ pub async fn announce(ctx: &crate::Context, activity: impl apb::Activity) -> Res
 
 			tracing::info!("{} shared {}", activity_model.actor, announced_id);
 			Ok(())
-		},
-		Pull::Activity(activity) => {
-			// groups update all members of other things that happen inside, process those
-			match activity.activity_type()? {
-				apb::ActivityType::Like | apb::ActivityType::EmojiReact => Ok(like(ctx, activity).await?),
-				apb::ActivityType::Create => Ok(create(ctx, activity).await?),
-				apb::ActivityType::Undo => Ok(undo(ctx, activity).await?),
-				apb::ActivityType::Delete => Ok(delete(ctx, activity).await?),
-				apb::ActivityType::Update => Ok(update(ctx, activity).await?),
-				x => {
-					tracing::warn!("ignoring unhandled announced activity of type {x:?}");
-					Err(ProcessorError::Unprocessable)
-				},
-			}
 		},
 	}
 }
