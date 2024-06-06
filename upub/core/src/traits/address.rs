@@ -87,12 +87,14 @@ impl Addresser for crate::Context {
 			// TODO fetch concurrently
 			match self.fetch_user(target).await {
 				Ok(crate::model::actor::Model { inbox: Some(inbox), .. }) => deliveries.push(
-					crate::model::delivery::ActiveModel {
+					crate::model::job::ActiveModel {
 						internal: sea_orm::ActiveValue::NotSet,
 						actor: Set(from.to_string()),
+						job_type: Set(crate::model::job::JobType::Outbound),
+						payload: Set(None),
 						// TODO we should resolve each user by id and check its inbox because we can't assume
 						// it's /actors/{id}/inbox for every software, but oh well it's waaaaay easier now
-						target: Set(inbox),
+						target: Set(Some(inbox)),
 						activity: Set(aid.to_string()),
 						published: Set(chrono::Utc::now()),
 						not_before: Set(chrono::Utc::now()),
@@ -105,7 +107,7 @@ impl Addresser for crate::Context {
 		}
 
 		if !deliveries.is_empty() {
-			crate::model::delivery::Entity::insert_many(deliveries)
+			crate::model::job::Entity::insert_many(deliveries)
 				.exec(self.db())
 				.await?;
 		}

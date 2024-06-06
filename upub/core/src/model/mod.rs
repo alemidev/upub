@@ -6,9 +6,8 @@ pub mod config;
 pub mod credential;
 pub mod session;
 
-pub mod addressing;
 pub mod instance;
-pub mod delivery;
+pub mod addressing;
 pub mod job;
 
 pub mod relation;

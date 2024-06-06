@@ -42,8 +42,6 @@ pub enum Relation {
 	Configs,
 	#[sea_orm(has_many = "super::credential::Entity")]
 	Credentials,
-	#[sea_orm(has_many = "super::delivery::Entity")]
-	Deliveries,
 	#[sea_orm(
 		belongs_to = "super::instance::Entity",
 		from = "Column::Domain",
@@ -91,12 +89,6 @@ impl Related<super::config::Entity> for Entity {
 impl Related<super::credential::Entity> for Entity {
 	fn to() -> RelationDef {
 		Relation::Credentials.def()
-	}
-}
-
-impl Related<super::delivery::Entity> for Entity {
-	fn to() -> RelationDef {
-		Relation::Deliveries.def()
 	}
 }
 
