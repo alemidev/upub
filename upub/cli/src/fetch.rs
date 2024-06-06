@@ -1,5 +1,5 @@
 use sea_orm::EntityTrait;
-use upub_processor::{fetch::{Fetchable, PullError}, normalize::{AP, Normalizer}};
+use upub::traits::{fetch::{Fetchable, PullError}, Normalizer};
 
 pub async fn fetch(ctx: upub::Context, uri: String, save: bool) -> Result<(), PullError> {
 	use apb::Base;
@@ -15,7 +15,7 @@ pub async fn fetch(ctx: upub::Context, uri: String, save: bool) -> Result<(), Pu
 		match obj.base_type() {
 			Ok(apb::BaseType::Object(apb::ObjectType::Actor(_))) => {
 				upub::model::actor::Entity::insert(
-					AP::actor_q(&obj).unwrap()
+					upub::AP::actor_q(&obj).unwrap()
 				).exec(ctx.db()).await.unwrap();
 			},
 			Ok(apb::BaseType::Object(apb::ObjectType::Activity(_))) => {

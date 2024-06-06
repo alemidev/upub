@@ -1,4 +1,4 @@
-use upub::server::admin::Administrable;
+use upub::traits::Administrable;
 
 pub async fn register(
 	ctx: upub::Context,
@@ -8,7 +8,7 @@ pub async fn register(
 	summary: Option<String>,
 	avatar_url: Option<String>,
 	banner_url: Option<String>,
-) -> upub::Result<()> {
+) -> Result<(), sea_orm::DbErr> {
 	ctx.register_user(
 		username.clone(),
 		password,

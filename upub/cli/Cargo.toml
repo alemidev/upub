@@ -13,7 +13,6 @@ readme = "README.md"
 [dependencies]
 apb = { path = "../../apb/" }
 upub = { path = "../core" }
-upub-processor = { path = "../processor/" }
 tracing = "0.1"
 serde_json = "1"
 sha256 = "1.5"

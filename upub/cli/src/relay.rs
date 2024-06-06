@@ -1,8 +1,7 @@
 use sea_orm::{ActiveValue::{Set, NotSet}, ColumnTrait, EntityTrait, QueryFilter, QueryOrder};
+use upub::traits::Addresser;
 
-use upub_processor::address::Addresser;
-
-pub async fn relay(ctx: upub::Context, actor: String, accept: bool) -> upub::Result<()> {
+pub async fn relay(ctx: upub::Context, actor: String, accept: bool) -> Result<(), sea_orm::DbErr> {
 	let aid = ctx.aid(&uuid::Uuid::new_v4().to_string());
 
 	let mut activity_model = upub::model::activity::ActiveModel {

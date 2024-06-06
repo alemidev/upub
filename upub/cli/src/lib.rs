@@ -93,12 +93,12 @@ pub enum CliCommand {
 	}
 }
 
-pub async fn run(ctx: upub::Context, command: CliCommand) -> upub::Result<()> {
+pub async fn run(ctx: upub::Context, command: CliCommand) -> Result<(), Box<dyn std::error::Error>> {
 	match command {
 		CliCommand::Faker { count } =>
 			Ok(faker(ctx, count as i64).await?),
 		CliCommand::Fetch { uri, save } =>
-			Ok(fetch(ctx, uri, save).await.map_err(|_e| upub::Error::internal_server_error())?),
+			Ok(fetch(ctx, uri, save).await?),
 		CliCommand::Relay { actor, accept } =>
 			Ok(relay(ctx, actor, accept).await?),
 		CliCommand::Fix { likes, shares, replies } =>

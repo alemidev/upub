@@ -1,6 +1,6 @@
 use sea_orm::EntityTrait;
 
-pub async fn fix(ctx: upub::Context, likes: bool, shares: bool, replies: bool) -> upub::Result<()> {
+pub async fn fix(ctx: upub::Context, likes: bool, shares: bool, replies: bool) -> Result<(), sea_orm::DbErr> {
 	use futures::TryStreamExt;
 	let db = ctx.db();
 
