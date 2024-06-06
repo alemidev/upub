@@ -99,7 +99,7 @@ impl JobDispatcher for Context {
 				},
 			}
 	
-			if job.expired() {
+			if chrono::Utc::now() > job.published + chrono::Duration::days(self.cfg().security.job_expiration_days as i64) {
 				tracing::info!("dropping expired job {job:?}");
 				restart!(now);
 			}

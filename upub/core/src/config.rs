@@ -79,6 +79,9 @@ pub struct SecurityConfig {
 
 	#[serde_inline_default(20)]
 	pub thread_crawl_depth: u32,
+
+	#[serde_inline_default(30)]
+	pub job_expiration_days: u32,
 }
 
 

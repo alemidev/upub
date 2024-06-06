@@ -42,10 +42,6 @@ impl Model {
 		}
 	}
 
-	pub fn expired(&self) -> bool {
-		chrono::Utc::now() - self.published > chrono::Duration::days(7)
-	}
-
 	pub fn repeat(self) -> ActiveModel {
 		ActiveModel {
 			internal: sea_orm::ActiveValue::NotSet,
