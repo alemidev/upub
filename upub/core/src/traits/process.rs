@@ -83,13 +83,11 @@ pub async fn create(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 
 pub async fn like(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 	let uid = activity.actor().id()?.to_string();
-	let internal_uid = crate::model::actor::Entity::ap_to_internal(&uid, tx)
-		.await?
-		.ok_or(ProcessorError::Incomplete)?;
+	let actor = ctx.fetch_user(&uid, tx).await?;
 	let object_uri = activity.object().id()?.to_string();
 	let published = activity.published().unwrap_or_else(|_|chrono::Utc::now());
 	let obj = ctx.fetch_object(&object_uri, tx).await?;
-	if crate::model::like::Entity::find_by_uid_oid(internal_uid, obj.internal)
+	if crate::model::like::Entity::find_by_uid_oid(actor.internal, obj.internal)
 		.any(tx)
 		.await?
 	{
@@ -100,7 +98,7 @@ pub async fn like(ctx: &crate::Context, activity: impl apb::Activity, tx: &Datab
 
 	let like = crate::model::like::ActiveModel {
 		internal: NotSet,
-		actor: Set(internal_uid),
+		actor: Set(actor.internal),
 		object: Set(obj.internal),
 		activity: Set(activity_model.internal),
 		published: Set(published),
@@ -355,9 +353,6 @@ pub async fn undo(ctx: &crate::Context, activity: impl apb::Activity, tx: &Datab
 pub async fn announce(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 	let uid = activity.actor().id()?.to_string();
 	let actor = ctx.fetch_user(&uid, tx).await?;
-	let internal_uid = crate::model::actor::Entity::ap_to_internal(&uid, tx)
-		.await?
-		.ok_or(ProcessorError::Incomplete)?;
 	let announced_id = activity.object().id()?.to_string();
 	let published = activity.published().unwrap_or(chrono::Utc::now());
 	let addressed = activity.addressed();
@@ -400,7 +395,7 @@ pub async fn announce(ctx: &crate::Context, activity: impl apb::Activity, tx: &D
 
 			let share = crate::model::announce::ActiveModel {
 				internal: NotSet,
-				actor: Set(internal_uid),
+				actor: Set(actor.internal),
 				object: Set(object_model.internal),
 				published: Set(published),
 			};
