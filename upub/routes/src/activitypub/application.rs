@@ -28,6 +28,7 @@ pub async fn view(
 			.set_published(Some(ctx.actor().published))
 			.set_endpoints(apb::Node::Empty)
 			.set_preferred_username(Some(ctx.domain()))
+			.set_url(apb::Node::link(upub::url!(ctx, "/")))
 			.set_public_key(apb::Node::object(
 				apb::new()
 					.set_id(Some(&upub::url!(ctx, "#main-key")))
