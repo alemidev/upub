@@ -1,12 +1,12 @@
-use sea_orm::{ActiveValue::{NotSet, Set}, DatabaseTransaction, DbErr, EntityTrait};
+use sea_orm::{ActiveValue::{NotSet, Set}, ConnectionTrait, DbErr, EntityTrait};
 
 use crate::traits::fetch::Fetcher;
 
 #[async_trait::async_trait]
 pub trait Addresser {
 	async fn expand_addressing(&self, targets: Vec<String>) -> Result<Vec<String>, DbErr>;
-	async fn address_to(&self, aid: Option<i64>, oid: Option<i64>, targets: &[String], tx: &DatabaseTransaction) -> Result<(), DbErr>;
-	async fn deliver_to(&self, aid: &str, from: &str, targets: &[String], tx: &DatabaseTransaction) -> Result<(), DbErr>;
+	async fn address_to(&self, aid: Option<i64>, oid: Option<i64>, targets: &[String], tx: &impl ConnectionTrait) -> Result<(), DbErr>;
+	async fn deliver_to(&self, aid: &str, from: &str, targets: &[String], tx: &impl ConnectionTrait) -> Result<(), DbErr>;
 }
 
 #[async_trait::async_trait]
@@ -32,7 +32,7 @@ impl Addresser for crate::Context {
 		Ok(out)
 	}
 
-	async fn address_to(&self, aid: Option<i64>, oid: Option<i64>, targets: &[String], tx: &DatabaseTransaction) -> Result<(), DbErr> {
+	async fn address_to(&self, aid: Option<i64>, oid: Option<i64>, targets: &[String], tx: &impl ConnectionTrait) -> Result<(), DbErr> {
 		// TODO address_to became kind of expensive, with these two selects right away and then another
 		//      select for each target we're addressing to... can this be improved??
 		let local_activity = if let Some(x) = aid { self.is_local_internal_activity(x).await.unwrap_or(false) } else { false };
@@ -75,7 +75,7 @@ impl Addresser for crate::Context {
 		Ok(())
 	}
 
-	async fn deliver_to(&self, aid: &str, from: &str, targets: &[String], tx: &DatabaseTransaction) -> Result<(), DbErr> {
+	async fn deliver_to(&self, aid: &str, from: &str, targets: &[String], tx: &impl ConnectionTrait) -> Result<(), DbErr> {
 		let mut deliveries = Vec::new();
 		for target in targets.iter()
 			.filter(|to| !to.is_empty())
@@ -83,7 +83,7 @@ impl Addresser for crate::Context {
 			.filter(|to| to != &apb::target::PUBLIC)
 		{
 			// TODO fetch concurrently
-			match self.fetch_user(target).await {
+			match self.fetch_user(target, tx).await {
 				Ok(crate::model::actor::Model { inbox: Some(inbox), .. }) => deliveries.push(
 					crate::model::job::ActiveModel {
 						internal: sea_orm::ActiveValue::NotSet,

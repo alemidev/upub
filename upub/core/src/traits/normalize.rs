@@ -1,5 +1,5 @@
 use apb::{field::OptionalString, Collection, Document, Endpoints, Node, Object, PublicKey};
-use sea_orm::{sea_query::Expr, ActiveValue::{NotSet, Set}, ColumnTrait, DatabaseTransaction, DbErr, EntityTrait, IntoActiveModel, QueryFilter};
+use sea_orm::{sea_query::Expr, ActiveValue::{NotSet, Set}, ColumnTrait, ConnectionTrait, DbErr, EntityTrait, IntoActiveModel, QueryFilter};
 
 #[derive(Debug, thiserror::Error)]
 pub enum NormalizerError {
@@ -12,14 +12,14 @@ pub enum NormalizerError {
 
 #[async_trait::async_trait]
 pub trait Normalizer {
-	async fn insert_object(&self, obj: impl apb::Object, tx: &DatabaseTransaction) -> Result<crate::model::object::Model, NormalizerError>;
-	async fn insert_activity(&self, act: impl apb::Activity, tx: &DatabaseTransaction) -> Result<crate::model::activity::Model, NormalizerError>;
+	async fn insert_object(&self, obj: impl apb::Object, tx: &impl ConnectionTrait) -> Result<crate::model::object::Model, NormalizerError>;
+	async fn insert_activity(&self, act: impl apb::Activity, tx: &impl ConnectionTrait) -> Result<crate::model::activity::Model, NormalizerError>;
 }
 
 #[async_trait::async_trait]
 impl Normalizer for crate::Context {
 
-	async fn insert_object(&self, object: impl apb::Object, tx: &DatabaseTransaction) -> Result<crate::model::object::Model, NormalizerError> {
+	async fn insert_object(&self, object: impl apb::Object, tx: &impl ConnectionTrait) -> Result<crate::model::object::Model, NormalizerError> {
 		let oid = object.id()?.to_string();
 		let uid = object.attributed_to().id().str();
 		let t = object.object_type()?;
@@ -131,7 +131,7 @@ impl Normalizer for crate::Context {
 		Ok(object_model)
 	}
 
-	async fn insert_activity(&self, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<crate::model::activity::Model, NormalizerError> {
+	async fn insert_activity(&self, activity: impl apb::Activity, tx: &impl ConnectionTrait) -> Result<crate::model::activity::Model, NormalizerError> {
 		let mut activity_model = AP::activity(&activity)?;
 
 		let mut active_model = activity_model.clone().into_active_model();

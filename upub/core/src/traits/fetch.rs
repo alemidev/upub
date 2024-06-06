@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use apb::{target::Addressed, Activity, Actor, ActorMut, Base, Collection, Object};
 use reqwest::{header::{ACCEPT, CONTENT_TYPE, USER_AGENT}, Method, Response};
-use sea_orm::{DbErr, EntityTrait, IntoActiveModel, NotSet, TransactionTrait};
+use sea_orm::{ConnectionTrait, DbErr, EntityTrait, IntoActiveModel, NotSet};
 
 use crate::traits::normalize::AP;
 
@@ -86,22 +86,18 @@ pub trait Fetcher {
 
 	async fn webfinger(&self, user: &str, host: &str) -> Result<Option<String>, PullError>;
 
-	async fn fetch_domain(&self, domain: &str) -> Result<crate::model::instance::Model, PullError>;
+	async fn fetch_domain(&self, domain: &str, tx: &impl ConnectionTrait) -> Result<crate::model::instance::Model, PullError>;
 
-	async fn fetch_user(&self, id: &str) -> Result<crate::model::actor::Model, PullError>;
-	async fn resolve_user(&self, actor: serde_json::Value) -> Result<crate::model::actor::Model, PullError>;
+	async fn fetch_user(&self, id: &str, tx: &impl ConnectionTrait) -> Result<crate::model::actor::Model, PullError>;
+	async fn resolve_user(&self, actor: serde_json::Value, tx: &impl ConnectionTrait) -> Result<crate::model::actor::Model, PullError>;
 
-	async fn fetch_activity(&self, id: &str) -> Result<crate::model::activity::Model, PullError>;
-	async fn resolve_activity(&self, activity: serde_json::Value) -> Result<crate::model::activity::Model, PullError>;
+	async fn fetch_activity(&self, id: &str, tx: &impl ConnectionTrait) -> Result<crate::model::activity::Model, PullError>;
+	async fn resolve_activity(&self, activity: serde_json::Value, tx: &impl ConnectionTrait) -> Result<crate::model::activity::Model, PullError>;
 
-	async fn fetch_object(&self, id: &str) -> Result<crate::model::object::Model, PullError> { self.fetch_object_r(id, 0).await }
-	async fn resolve_object(&self, object: serde_json::Value) -> Result<crate::model::object::Model, PullError> { self.resolve_object_r(object, 0).await }
+	async fn fetch_object(&self, id: &str, tx: &impl ConnectionTrait) -> Result<crate::model::object::Model, PullError>;
+	async fn resolve_object(&self, object: serde_json::Value, tx: &impl ConnectionTrait) -> Result<crate::model::object::Model, PullError>;
 
-	async fn fetch_object_r(&self, id: &str, depth: u32) -> Result<crate::model::object::Model, PullError>;
-	async fn resolve_object_r(&self, object: serde_json::Value, depth: u32) -> Result<crate::model::object::Model, PullError>;
-
-
-	async fn fetch_thread(&self, id: &str) -> Result<(), PullError>;
+	async fn fetch_thread(&self, id: &str, tx: &impl ConnectionTrait) -> Result<(), PullError>;
 
 	async fn request(
 		method: reqwest::Method,
@@ -163,7 +159,7 @@ pub trait Fetcher {
 #[async_trait::async_trait]
 impl Fetcher for crate::Context {
 	async fn pull_r(&self, id: &str, depth: u32) -> Result<Pull<serde_json::Value>, PullError> {
-		let _domain = self.fetch_domain(&crate::Context::server(id)).await?;
+		// let _domain = self.fetch_domain(&crate::Context::server(id)).await?;
 
 		let document = Self::request(
 			Method::GET, id, None,
@@ -223,8 +219,8 @@ impl Fetcher for crate::Context {
 		Ok(None)
 	}
 
-	async fn fetch_domain(&self, domain: &str) -> Result<crate::model::instance::Model, PullError> {
-		if let Some(x) = crate::model::instance::Entity::find_by_domain(domain).one(self.db()).await? {
+	async fn fetch_domain(&self, domain: &str, tx: &impl ConnectionTrait) -> Result<crate::model::instance::Model, PullError> {
+		if let Some(x) = crate::model::instance::Entity::find_by_domain(domain).one(tx).await? {
 			return Ok(x); // already in db, easy
 		}
 
@@ -265,8 +261,8 @@ impl Fetcher for crate::Context {
 
 		let mut active_model = instance_model.clone().into_active_model();
 		active_model.internal = NotSet;
-		crate::model::instance::Entity::insert(active_model).exec(self.db()).await?;
-		let internal = crate::model::instance::Entity::domain_to_internal(domain, self.db())
+		crate::model::instance::Entity::insert(active_model).exec(tx).await?;
+		let internal = crate::model::instance::Entity::domain_to_internal(domain, tx)
 			.await?
 			.ok_or_else(|| DbErr::RecordNotFound(domain.to_string()))?;
 		instance_model.internal = internal;
@@ -274,8 +270,10 @@ impl Fetcher for crate::Context {
 		Ok(instance_model)
 	}
 
-	async fn resolve_user(&self, mut document: serde_json::Value) -> Result<crate::model::actor::Model, PullError> {
+	async fn resolve_user(&self, mut document: serde_json::Value, tx: &impl ConnectionTrait) -> Result<crate::model::actor::Model, PullError> {
 		let id = document.id()?.to_string();
+
+		let _domain = self.fetch_domain(&crate::Context::server(&id), tx).await?;
 
 		// TODO try fetching these numbers from audience/generator fields to avoid making 2 more GETs every time
 		if let Ok(followers_url) = document.followers().id() {
@@ -311,116 +309,119 @@ impl Fetcher for crate::Context {
 		// TODO this may fail: while fetching, remote server may fetch our service actor.
 		//      if it does so with http signature, we will fetch that actor in background
 		//      meaning that, once we reach here, it's already inserted and returns an UNIQUE error
-		crate::model::actor::Entity::insert(user_model).exec(self.db()).await?;
+		crate::model::actor::Entity::insert(user_model).exec(tx).await?;
 		
 		// TODO fetch it back to get the internal id
 		Ok(
 			crate::model::actor::Entity::find_by_ap_id(&id)
-				.one(self.db())
+				.one(tx)
 				.await?
 				.ok_or_else(|| DbErr::RecordNotFound(id.to_string()))?
 		)
 	}
 
-	async fn fetch_user(&self, id: &str) -> Result<crate::model::actor::Model, PullError> {
-		if let Some(x) = crate::model::actor::Entity::find_by_ap_id(id).one(self.db()).await? {
+	async fn fetch_user(&self, id: &str, tx: &impl ConnectionTrait) -> Result<crate::model::actor::Model, PullError> {
+		if let Some(x) = crate::model::actor::Entity::find_by_ap_id(id).one(tx).await? {
 			return Ok(x); // already in db, easy
 		}
 
 		let document = self.pull(id).await?.actor()?;
 
-		self.resolve_user(document).await
+		self.resolve_user(document, tx).await
 	}
 
-	async fn fetch_activity(&self, id: &str) -> Result<crate::model::activity::Model, PullError> {
-		if let Some(x) = crate::model::activity::Entity::find_by_ap_id(id).one(self.db()).await? {
+	async fn fetch_activity(&self, id: &str, tx: &impl ConnectionTrait) -> Result<crate::model::activity::Model, PullError> {
+		if let Some(x) = crate::model::activity::Entity::find_by_ap_id(id).one(tx).await? {
 			return Ok(x); // already in db, easy
 		}
 
 		let activity = self.pull(id).await?.activity()?;
 
-		self.resolve_activity(activity).await
+		self.resolve_activity(activity, tx).await
 	}
 
-	async fn resolve_activity(&self, activity: serde_json::Value) -> Result<crate::model::activity::Model, PullError> {
+	async fn resolve_activity(&self, activity: serde_json::Value, tx: &impl ConnectionTrait) -> Result<crate::model::activity::Model, PullError> {
+		let _domain = self.fetch_domain(&crate::Context::server(activity.id()?), tx).await?;
+
 		if let Ok(activity_actor) = activity.actor().id() {
-			if let Err(e) = self.fetch_user(activity_actor).await {
+			if let Err(e) = self.fetch_user(activity_actor, tx).await {
 				tracing::warn!("could not get actor of fetched activity: {e}");
 			}
 		}
 
 		if let Ok(activity_object) = activity.object().id() {
-			if let Err(e) = self.fetch_object(activity_object).await {
+			if let Err(e) = self.fetch_object(activity_object, tx).await {
 				tracing::warn!("could not get object of fetched activity: {e}");
 			}
 		}
 
-		let tx = self.db().begin().await?;
-
-		let activity_model = self.insert_activity(activity, &tx).await?;
+		let activity_model = self.insert_activity(activity, tx).await?;
 
 		let addressed = activity_model.addressed();
 		let expanded_addresses = self.expand_addressing(addressed).await?;
-		self.address_to(Some(activity_model.internal), None, &expanded_addresses, &tx).await?;
-
-		tx.commit().await?;
+		self.address_to(Some(activity_model.internal), None, &expanded_addresses, tx).await?;
 
 		Ok(activity_model)
 	}
 
-	async fn fetch_thread(&self, _id: &str) -> Result<(), PullError> {
+	async fn fetch_thread(&self, _id: &str, _tx: &impl ConnectionTrait) -> Result<(), PullError> {
 		// crawl_replies(self, id, 0).await
 		todo!()
 	}
 
-	async fn fetch_object_r(&self, id: &str, depth: u32) -> Result<crate::model::object::Model, PullError> {
-		if let Some(x) = crate::model::object::Entity::find_by_ap_id(id).one(self.db()).await? {
-			return Ok(x); // already in db, easy
-		}
-
-		let object = self.pull(id).await?.object()?;
-
-		self.resolve_object_r(object, depth).await
+	async fn fetch_object(&self, id: &str, tx: &impl ConnectionTrait) -> Result<crate::model::object::Model, PullError> {
+		fetch_object_r(self, id, 0, tx).await
 	}
 
-	async fn resolve_object_r(&self, object: serde_json::Value, depth: u32) -> Result<crate::model::object::Model, PullError> {
-		let id = object.id()?.to_string();
-
-		if let Ok(oid) = object.id() {
-			if oid != id {
-				if let Some(x) = crate::model::object::Entity::find_by_ap_id(oid).one(self.db()).await? {
-					return Ok(x); // already in db, but with id different that given url
-				}
-			}
-		}
-
-		if let Ok(attributed_to) = object.attributed_to().id() {
-			if let Err(e) = self.fetch_user(attributed_to).await {
-				tracing::warn!("could not get actor of fetched object: {e}");
-			}
-		}
-
-		let addressed = object.addressed();
-
-		if let Ok(reply) = object.in_reply_to().id() {
-			if depth <= self.cfg().security.thread_crawl_depth {
-				self.fetch_object_r(reply, depth + 1).await?;
-			} else {
-				tracing::warn!("thread deeper than {}, giving up fetching more replies", self.cfg().security.thread_crawl_depth);
-			}
-		}
-
-		let tx = self.db().begin().await?;
-
-		let object_model = self.insert_object(object, &tx).await?;
-
-		let expanded_addresses = self.expand_addressing(addressed).await?;
-		self.address_to(None, Some(object_model.internal), &expanded_addresses, &tx).await?;
-
-		tx.commit().await?;
-
-		Ok(object_model)
+	async fn resolve_object(&self, object: serde_json::Value, tx: &impl ConnectionTrait) -> Result<crate::model::object::Model, PullError> {
+		resolve_object_r(self, object, 0, tx).await
 	}
+}
+
+#[async_recursion::async_recursion]
+async fn fetch_object_r(ctx: &crate::Context, id: &str, depth: u32, tx: &impl ConnectionTrait) -> Result<crate::model::object::Model, PullError> {
+	if let Some(x) = crate::model::object::Entity::find_by_ap_id(id).one(tx).await? {
+		return Ok(x); // already in db, easy
+	}
+
+	let object = ctx.pull(id).await?.object()?;
+
+	resolve_object_r(ctx, object, depth, tx).await
+}
+
+async fn resolve_object_r(ctx: &crate::Context, object: serde_json::Value, depth: u32, tx: &impl ConnectionTrait) -> Result<crate::model::object::Model, PullError> {
+	let id = object.id()?.to_string();
+
+	if let Ok(oid) = object.id() {
+		if oid != id {
+			if let Some(x) = crate::model::object::Entity::find_by_ap_id(oid).one(tx).await? {
+				return Ok(x); // already in db, but with id different that given url
+			}
+		}
+	}
+
+	if let Ok(attributed_to) = object.attributed_to().id() {
+		if let Err(e) = ctx.fetch_user(attributed_to, tx).await {
+			tracing::warn!("could not get actor of fetched object: {e}");
+		}
+	}
+
+	let addressed = object.addressed();
+
+	if let Ok(reply) = object.in_reply_to().id() {
+		if depth <= ctx.cfg().security.thread_crawl_depth {
+			fetch_object_r(ctx, reply, depth + 1, tx).await?;
+		} else {
+			tracing::warn!("thread deeper than {}, giving up fetching more replies", ctx.cfg().security.thread_crawl_depth);
+		}
+	}
+
+	let object_model = ctx.insert_object(object, tx).await?;
+
+	let expanded_addresses = ctx.expand_addressing(addressed).await?;
+	ctx.address_to(None, Some(object_model.internal), &expanded_addresses, tx).await?;
+
+	Ok(object_model)
 }
 
 #[async_trait::async_trait]

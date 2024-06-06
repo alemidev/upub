@@ -61,7 +61,7 @@ pub async fn create(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 		return Err(ProcessorError::Unprocessable);
 	};
 	if let Ok(reply) = object_node.in_reply_to().id() {
-		if let Err(e) = ctx.fetch_object(reply).await {
+		if let Err(e) = ctx.fetch_object(reply, tx).await {
 			tracing::warn!("failed fetching replies for received object: {e}");
 		}
 	}
@@ -80,7 +80,7 @@ pub async fn like(ctx: &crate::Context, activity: impl apb::Activity, tx: &Datab
 		.ok_or(ProcessorError::Incomplete)?;
 	let object_uri = activity.object().id()?.to_string();
 	let published = activity.published().unwrap_or_else(|_|chrono::Utc::now());
-	let obj = ctx.fetch_object(&object_uri).await?;
+	let obj = ctx.fetch_object(&object_uri, tx).await?;
 	if crate::model::like::Entity::find_by_uid_oid(internal_uid, obj.internal)
 		.any(tx)
 		.await?
@@ -127,7 +127,7 @@ pub async fn follow(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 		.await?
 		.ok_or(ProcessorError::Incomplete)?;
 	let target_actor = activity.object().id()?.to_string();
-	let usr = ctx.fetch_user(&target_actor).await?;
+	let usr = ctx.fetch_user(&target_actor, tx).await?;
 	let activity_model = ctx.insert_activity(activity, tx).await?;
 	let relation_model = crate::model::relation::ActiveModel {
 		internal: NotSet,
@@ -346,7 +346,7 @@ pub async fn undo(ctx: &crate::Context, activity: impl apb::Activity, tx: &Datab
 
 pub async fn announce(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 	let uid = activity.actor().id()?.to_string();
-	let actor = ctx.fetch_user(&uid).await?;
+	let actor = ctx.fetch_user(&uid, tx).await?;
 	let internal_uid = crate::model::actor::Entity::ap_to_internal(&uid, tx)
 		.await?
 		.ok_or(ProcessorError::Incomplete)?;
@@ -369,7 +369,7 @@ pub async fn announce(ctx: &crate::Context, activity: impl apb::Activity, tx: &D
 				// objects are processed down below, make a mock Internal::Object(internal)
 				Pull::Object(x) =>
 					crate::context::Internal::Object(
-						ctx.resolve_object(x).await?.internal
+						ctx.resolve_object(x, tx).await?.internal
 					),
 			}
 		}

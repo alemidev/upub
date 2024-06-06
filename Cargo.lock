@@ -4693,6 +4693,7 @@ name = "upub"
 version = "0.2.0"
 dependencies = [
  "apb",
+ "async-recursion",
  "async-trait",
  "base64 0.22.1",
  "chrono",

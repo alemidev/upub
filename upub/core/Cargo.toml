@@ -12,6 +12,7 @@ readme = "README.md"
 
 [dependencies]
 thiserror = "1"
+async-recursion = "1.1"
 async-trait = "0.1"
 sha256 = "1.5"
 openssl = "0.10" # TODO handle pubkeys with a smaller crate

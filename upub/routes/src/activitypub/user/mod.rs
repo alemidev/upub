@@ -30,7 +30,7 @@ pub async fn view(
 			}
 		}
 		if query.fetch && !ctx.is_local(&uid) {
-			ctx.fetch_user(&uid).await?;
+			ctx.fetch_user(&uid, ctx.db()).await?;
 		}
 	}
 	let internal_uid = model::actor::Entity::ap_to_internal(&uid, ctx.db())

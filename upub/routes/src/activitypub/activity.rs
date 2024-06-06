@@ -1,5 +1,5 @@
 use axum::extract::{Path, Query, State};
-use sea_orm::{ColumnTrait, QueryFilter};
+use sea_orm::{ColumnTrait, QueryFilter, TransactionTrait};
 use upub::{model::{self, addressing::Event, attachment::BatchFillable}, traits::Fetcher, Context};
 use apb::LD;
 
@@ -15,7 +15,9 @@ pub async fn view(
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let aid = ctx.aid(&id);
 	if auth.is_local() && query.fetch && !ctx.is_local(&aid) {
-		let obj = ctx.fetch_activity(&aid).await?;
+		let tx = ctx.db().begin().await?;
+		let obj = ctx.fetch_activity(&aid, &tx).await?;
+		tx.commit().await?;
 		if obj.id != aid {
 			return Err(crate::ApiError::Redirect(obj.id));
 		}

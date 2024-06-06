@@ -120,7 +120,7 @@ where
 				.next().ok_or(ApiError::bad_request())?
 				.to_string();
 
-			match ctx.fetch_user(&user_id).await {
+			match ctx.fetch_user(&user_id, ctx.db()).await {
 				Err(e) => tracing::warn!("failed resolving http signature actor: {e}"),
 				Ok(user) => match http_signature
 						.build_from_parts(parts)
