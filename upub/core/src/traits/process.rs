@@ -1,5 +1,5 @@
 use apb::{target::Addressed, Activity, Base, Object};
-use sea_orm::{sea_query::Expr, ActiveValue::{NotSet, Set}, ColumnTrait, Condition, EntityTrait, QueryFilter, QuerySelect, SelectColumns};
+use sea_orm::{sea_query::Expr, ActiveValue::{NotSet, Set}, ColumnTrait, Condition, DatabaseTransaction, EntityTrait, QueryFilter, QuerySelect, SelectColumns, TransactionTrait};
 use crate::{ext::{AnyQuery, LoggableError}, model, traits::{fetch::Pull, Addresser, Fetcher, Normalizer}};
 
 #[derive(Debug, thiserror::Error)]
@@ -31,30 +31,30 @@ pub enum ProcessorError {
 
 #[async_trait::async_trait]
 pub trait Processor {
-	async fn process(&self, activity: impl apb::Activity) -> Result<(), ProcessorError>;
+	async fn process(&self, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError>;
 }
 
 #[async_trait::async_trait]
 impl Processor for crate::Context {
-	async fn process(&self, activity: impl apb::Activity) -> Result<(), ProcessorError> {
+	async fn process(&self, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 		// TODO we could process Links and bare Objects maybe, but probably out of AP spec?
 		match activity.activity_type()? {
 			// TODO emojireacts are NOT likes, but let's process them like ones for now maybe?
-			apb::ActivityType::Like | apb::ActivityType::EmojiReact => Ok(like(self, activity).await?),
-			apb::ActivityType::Create => Ok(create(self, activity).await?),
-			apb::ActivityType::Follow => Ok(follow(self, activity).await?),
-			apb::ActivityType::Announce => Ok(announce(self, activity).await?),
-			apb::ActivityType::Accept(_) => Ok(accept(self, activity).await?),
-			apb::ActivityType::Reject(_) => Ok(reject(self, activity).await?),
-			apb::ActivityType::Undo => Ok(undo(self, activity).await?),
-			apb::ActivityType::Delete => Ok(delete(self, activity).await?),
-			apb::ActivityType::Update => Ok(update(self, activity).await?),
+			apb::ActivityType::Like | apb::ActivityType::EmojiReact => Ok(like(self, activity, tx).await?),
+			apb::ActivityType::Create => Ok(create(self, activity, tx).await?),
+			apb::ActivityType::Follow => Ok(follow(self, activity, tx).await?),
+			apb::ActivityType::Announce => Ok(announce(self, activity, tx).await?),
+			apb::ActivityType::Accept(_) => Ok(accept(self, activity, tx).await?),
+			apb::ActivityType::Reject(_) => Ok(reject(self, activity, tx).await?),
+			apb::ActivityType::Undo => Ok(undo(self, activity, tx).await?),
+			apb::ActivityType::Delete => Ok(delete(self, activity, tx).await?),
+			apb::ActivityType::Update => Ok(update(self, activity, tx).await?),
 			_ => Err(ProcessorError::Unprocessable),
 		}
 	}
 }
 
-pub async fn create(ctx: &crate::Context, activity: impl apb::Activity) -> Result<(), ProcessorError> {
+pub async fn create(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 	let Some(object_node) = activity.object().extract() else {
 		// TODO we could process non-embedded activities or arrays but im lazy rn
 		tracing::error!("refusing to process activity without embedded object");
@@ -65,30 +65,30 @@ pub async fn create(ctx: &crate::Context, activity: impl apb::Activity) -> Resul
 			tracing::warn!("failed fetching replies for received object: {e}");
 		}
 	}
-	let activity_model = ctx.insert_activity(activity).await?;
-	let object_model = ctx.insert_object(object_node).await?;
+	let activity_model = ctx.insert_activity(activity, tx).await?;
+	let object_model = ctx.insert_object(object_node, tx).await?;
 	let expanded_addressing = ctx.expand_addressing(object_model.addressed()).await?;
-	ctx.address_to(Some(activity_model.internal), Some(object_model.internal), &expanded_addressing).await?;
+	ctx.address_to(Some(activity_model.internal), Some(object_model.internal), &expanded_addressing, tx).await?;
 	tracing::info!("{} posted {}", activity_model.actor, object_model.id);
 	Ok(())
 }
 
-pub async fn like(ctx: &crate::Context, activity: impl apb::Activity) -> Result<(), ProcessorError> {
+pub async fn like(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 	let uid = activity.actor().id()?.to_string();
-	let internal_uid = crate::model::actor::Entity::ap_to_internal(&uid, ctx.db())
+	let internal_uid = crate::model::actor::Entity::ap_to_internal(&uid, tx)
 		.await?
 		.ok_or(ProcessorError::Incomplete)?;
 	let object_uri = activity.object().id()?.to_string();
 	let published = activity.published().unwrap_or_else(|_|chrono::Utc::now());
 	let obj = ctx.fetch_object(&object_uri).await?;
 	if crate::model::like::Entity::find_by_uid_oid(internal_uid, obj.internal)
-		.any(ctx.db())
+		.any(tx)
 		.await?
 	{
 		return Err(ProcessorError::AlreadyProcessed);
 	}
 
-	let activity_model = ctx.insert_activity(activity).await?;
+	let activity_model = ctx.insert_activity(activity, tx).await?;
 
 	let like = crate::model::like::ActiveModel {
 		internal: NotSet,
@@ -97,11 +97,11 @@ pub async fn like(ctx: &crate::Context, activity: impl apb::Activity) -> Result<
 		activity: Set(activity_model.internal),
 		published: Set(published),
 	};
-	crate::model::like::Entity::insert(like).exec(ctx.db()).await?;
+	crate::model::like::Entity::insert(like).exec(tx).await?;
 	crate::model::object::Entity::update_many()
 		.col_expr(crate::model::object::Column::Likes, Expr::col(crate::model::object::Column::Likes).add(1))
 		.filter(crate::model::object::Column::Internal.eq(obj.internal))
-		.exec(ctx.db())
+		.exec(tx)
 		.await?;
 
 	let mut expanded_addressing = ctx.expand_addressing(activity_model.addressed()).await?;
@@ -111,24 +111,24 @@ pub async fn like(ctx: &crate::Context, activity: impl apb::Activity) -> Result<
 				.select_only()
 				.select_column(crate::model::object::Column::AttributedTo)
 				.into_tuple::<String>()
-				.one(ctx.db())
+				.one(tx)
 				.await?
 				.ok_or(ProcessorError::Incomplete)?
 			);
 	}
-	ctx.address_to(Some(activity_model.internal), None, &expanded_addressing).await?;
+	ctx.address_to(Some(activity_model.internal), None, &expanded_addressing, tx).await?;
 	tracing::info!("{} liked {}", uid, obj.id);
 	Ok(())
 }
 
-pub async fn follow(ctx: &crate::Context, activity: impl apb::Activity) -> Result<(), ProcessorError> {
+pub async fn follow(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 	let source_actor = activity.actor().id()?.to_string();
-	let source_actor_internal = crate::model::actor::Entity::ap_to_internal(&source_actor, ctx.db())
+	let source_actor_internal = crate::model::actor::Entity::ap_to_internal(&source_actor, tx)
 		.await?
 		.ok_or(ProcessorError::Incomplete)?;
 	let target_actor = activity.object().id()?.to_string();
 	let usr = ctx.fetch_user(&target_actor).await?;
-	let activity_model = ctx.insert_activity(activity).await?;
+	let activity_model = ctx.insert_activity(activity, tx).await?;
 	let relation_model = crate::model::relation::ActiveModel {
 		internal: NotSet,
 		accept: Set(None),
@@ -137,22 +137,22 @@ pub async fn follow(ctx: &crate::Context, activity: impl apb::Activity) -> Resul
 		following: Set(usr.internal),
 	};
 	crate::model::relation::Entity::insert(relation_model)
-		.exec(ctx.db()).await?;
+		.exec(tx).await?;
 	let mut expanded_addressing = ctx.expand_addressing(activity_model.addressed()).await?;
 	if !expanded_addressing.contains(&target_actor) {
 		expanded_addressing.push(target_actor);
 	}
-	ctx.address_to(Some(activity_model.internal), None, &expanded_addressing).await?;
+	ctx.address_to(Some(activity_model.internal), None, &expanded_addressing, tx).await?;
 	tracing::info!("{} wants to follow {}", source_actor, usr.id);
 	Ok(())
 }
 
-pub async fn accept(ctx: &crate::Context, activity: impl apb::Activity) -> Result<(), ProcessorError> {
+pub async fn accept(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 	// TODO what about TentativeAccept
 	let target_actor = activity.actor().id()?.to_string();
 	let follow_request_id = activity.object().id()?.to_string();
 	let follow_activity = crate::model::activity::Entity::find_by_ap_id(&follow_request_id)
-		.one(ctx.db())
+		.one(tx)
 		.await?
 		.ok_or(ProcessorError::Incomplete)?;
 
@@ -160,7 +160,7 @@ pub async fn accept(ctx: &crate::Context, activity: impl apb::Activity) -> Resul
 		return Err(ProcessorError::Unauthorized);
 	}
 
-	let activity_model = ctx.insert_activity(activity).await?;
+	let activity_model = ctx.insert_activity(activity, tx).await?;
 
 	crate::model::actor::Entity::update_many()
 		.col_expr(
@@ -168,7 +168,7 @@ pub async fn accept(ctx: &crate::Context, activity: impl apb::Activity) -> Resul
 			Expr::col(crate::model::actor::Column::FollowingCount).add(1)
 		)
 		.filter(crate::model::actor::Column::Id.eq(&follow_activity.actor))
-		.exec(ctx.db())
+		.exec(tx)
 		.await?;
 	crate::model::actor::Entity::update_many()
 		.col_expr(
@@ -176,13 +176,13 @@ pub async fn accept(ctx: &crate::Context, activity: impl apb::Activity) -> Resul
 			Expr::col(crate::model::actor::Column::FollowersCount).add(1)
 		)
 		.filter(crate::model::actor::Column::Id.eq(&follow_activity.actor))
-		.exec(ctx.db())
+		.exec(tx)
 		.await?;
 
 	crate::model::relation::Entity::update_many()
 		.col_expr(crate::model::relation::Column::Accept, Expr::value(Some(activity_model.internal)))
 		.filter(crate::model::relation::Column::Activity.eq(follow_activity.internal))
-		.exec(ctx.db()).await?;
+		.exec(tx).await?;
 
 	tracing::info!("{} accepted follow request by {}", target_actor, follow_activity.actor);
 
@@ -190,16 +190,16 @@ pub async fn accept(ctx: &crate::Context, activity: impl apb::Activity) -> Resul
 	if !expanded_addressing.contains(&follow_activity.actor) {
 		expanded_addressing.push(follow_activity.actor);
 	}
-	ctx.address_to(Some(activity_model.internal), None, &expanded_addressing).await?;
+	ctx.address_to(Some(activity_model.internal), None, &expanded_addressing, tx).await?;
 	Ok(())
 }
 
-pub async fn reject(ctx: &crate::Context, activity: impl apb::Activity) -> Result<(), ProcessorError> {
+pub async fn reject(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 	// TODO what about TentativeReject?
 	let uid = activity.actor().id()?.to_string();
 	let follow_request_id = activity.object().id()?.to_string();
 	let follow_activity = crate::model::activity::Entity::find_by_ap_id(&follow_request_id)
-		.one(ctx.db())
+		.one(tx)
 		.await?
 		.ok_or(ProcessorError::Incomplete)?;
 
@@ -207,11 +207,11 @@ pub async fn reject(ctx: &crate::Context, activity: impl apb::Activity) -> Resul
 		return Err(ProcessorError::Unauthorized);
 	}
 
-	let activity_model = ctx.insert_activity(activity).await?;
+	let activity_model = ctx.insert_activity(activity, tx).await?;
 
 	crate::model::relation::Entity::delete_many()
 		.filter(crate::model::relation::Column::Activity.eq(activity_model.internal))
-		.exec(ctx.db())
+		.exec(tx)
 		.await?;
 
 	tracing::info!("{} rejected follow request by {}", uid, follow_activity.actor);
@@ -221,19 +221,19 @@ pub async fn reject(ctx: &crate::Context, activity: impl apb::Activity) -> Resul
 		expanded_addressing.push(follow_activity.actor);
 	}
 
-	ctx.address_to(Some(activity_model.internal), None, &expanded_addressing).await?;
+	ctx.address_to(Some(activity_model.internal), None, &expanded_addressing, tx).await?;
 	Ok(())
 }
 
-pub async fn delete(ctx: &crate::Context, activity: impl apb::Activity) -> Result<(), ProcessorError> {
+pub async fn delete(_ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 	let oid = activity.object().id()?.to_string();
-	crate::model::actor::Entity::delete_by_ap_id(&oid).exec(ctx.db()).await.info_failed("failed deleting from users");
-	crate::model::object::Entity::delete_by_ap_id(&oid).exec(ctx.db()).await.info_failed("failed deleting from objects");
+	crate::model::actor::Entity::delete_by_ap_id(&oid).exec(tx).await.info_failed("failed deleting from users");
+	crate::model::object::Entity::delete_by_ap_id(&oid).exec(tx).await.info_failed("failed deleting from objects");
 	tracing::debug!("deleted '{oid}'");
 	Ok(())
 }
 
-pub async fn update(ctx: &crate::Context, activity: impl apb::Activity) -> Result<(), ProcessorError> {
+pub async fn update(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 	let uid = activity.actor().id()?.to_string();
 	let Some(object_node) = activity.object().extract() else {
 		tracing::error!("refusing to process activity without embedded object");
@@ -241,29 +241,29 @@ pub async fn update(ctx: &crate::Context, activity: impl apb::Activity) -> Resul
 	};
 	let oid = object_node.id()?.to_string();
 
-	let activity_model = ctx.insert_activity(activity).await?;
+	let activity_model = ctx.insert_activity(activity, tx).await?;
 
 	match object_node.object_type()? {
 		apb::ObjectType::Actor(_) => {
-			let internal_uid = crate::model::actor::Entity::ap_to_internal(&oid, ctx.db())
+			let internal_uid = crate::model::actor::Entity::ap_to_internal(&oid, tx)
 				.await?
 				.ok_or(ProcessorError::Incomplete)?;
 			let mut actor_model = crate::AP::actor_q(object_node.as_actor()?)?;
 			actor_model.internal = Set(internal_uid);
 			actor_model.updated = Set(chrono::Utc::now());
 			crate::model::actor::Entity::update(actor_model)
-				.exec(ctx.db())
+				.exec(tx)
 				.await?;
 		},
 		apb::ObjectType::Note => {
-			let internal_oid = crate::model::object::Entity::ap_to_internal(&oid, ctx.db())
+			let internal_oid = crate::model::object::Entity::ap_to_internal(&oid, tx)
 				.await?
 				.ok_or(ProcessorError::Incomplete)?;
 			let mut object_model = crate::AP::object_q(&object_node)?;
 			object_model.internal = Set(internal_oid);
 			object_model.updated = Set(chrono::Utc::now());
 			crate::model::object::Entity::update(object_model)
-				.exec(ctx.db())
+				.exec(tx)
 				.await?;
 		},
 		t => tracing::warn!("no side effects implemented for update type {t:?}"),
@@ -271,11 +271,11 @@ pub async fn update(ctx: &crate::Context, activity: impl apb::Activity) -> Resul
 
 	tracing::info!("{} updated {}", uid, oid);
 	let expanded_addressing = ctx.expand_addressing(activity_model.addressed()).await?;
-	ctx.address_to(Some(activity_model.internal), None, &expanded_addressing).await?;
+	ctx.address_to(Some(activity_model.internal), None, &expanded_addressing, tx).await?;
 	Ok(())
 }
 
-pub async fn undo(ctx: &crate::Context, activity: impl apb::Activity) -> Result<(), ProcessorError> {
+pub async fn undo(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 	let uid = activity.actor().id()?.to_string();
 	// TODO in theory we could work with just object_id but right now only accept embedded
 	let undone_activity = activity.object().extract().ok_or(apb::FieldErr("object"))?;
@@ -287,18 +287,18 @@ pub async fn undo(ctx: &crate::Context, activity: impl apb::Activity) -> Result<
 
 	let undone_activity_target = undone_activity.as_activity()?.object().id()?.to_string();
 
-	let internal_uid = crate::model::actor::Entity::ap_to_internal(&uid, ctx.db())
+	let internal_uid = crate::model::actor::Entity::ap_to_internal(&uid, tx)
 		.await?
 		.ok_or(ProcessorError::Incomplete)?;
 
 	let activity_type = activity.activity_type()?;
 	let targets = ctx.expand_addressing(activity.addressed()).await?;
-	let activity_model = ctx.insert_activity(activity).await?;
-	ctx.address_to(Some(activity_model.internal), None, &targets).await?;
+	let activity_model = ctx.insert_activity(activity, tx).await?;
+	ctx.address_to(Some(activity_model.internal), None, &targets, tx).await?;
 
 	match activity_type {
 		apb::ActivityType::Like => {
-			let internal_oid = crate::model::object::Entity::ap_to_internal(&undone_activity_target, ctx.db())
+			let internal_oid = crate::model::object::Entity::ap_to_internal(&undone_activity_target, tx)
 				.await?
 				.ok_or(ProcessorError::Incomplete)?;
 			crate::model::like::Entity::delete_many()
@@ -307,32 +307,32 @@ pub async fn undo(ctx: &crate::Context, activity: impl apb::Activity) -> Result<
 						.add(crate::model::like::Column::Actor.eq(internal_uid))
 						.add(crate::model::like::Column::Object.eq(internal_oid))
 				)
-				.exec(ctx.db())
+				.exec(tx)
 				.await?;
 			crate::model::object::Entity::update_many()
 				.filter(crate::model::object::Column::Internal.eq(internal_oid))
 				.col_expr(crate::model::object::Column::Likes, Expr::col(crate::model::object::Column::Likes).sub(1))
-				.exec(ctx.db())
+				.exec(tx)
 				.await?;
 		},
 		apb::ActivityType::Follow => {
-			let internal_uid_following = crate::model::actor::Entity::ap_to_internal(&undone_activity_target, ctx.db())
+			let internal_uid_following = crate::model::actor::Entity::ap_to_internal(&undone_activity_target, tx)
 				.await?
 				.ok_or(ProcessorError::Incomplete)?;
 			crate::model::relation::Entity::delete_many()
 				.filter(crate::model::relation::Column::Follower.eq(internal_uid))
 				.filter(crate::model::relation::Column::Following.eq(internal_uid_following))
-				.exec(ctx.db())
+				.exec(tx)
 				.await?;
 			crate::model::actor::Entity::update_many()
 				.filter(crate::model::actor::Column::Internal.eq(internal_uid))
 				.col_expr(crate::model::actor::Column::FollowingCount, Expr::col(crate::model::actor::Column::FollowingCount).sub(1))
-				.exec(ctx.db())
+				.exec(tx)
 				.await?;
 			crate::model::actor::Entity::update_many()
 				.filter(crate::model::actor::Column::Internal.eq(internal_uid_following))
 				.col_expr(crate::model::actor::Column::FollowersCount, Expr::col(crate::model::actor::Column::FollowersCount).sub(1))
-				.exec(ctx.db())
+				.exec(tx)
 				.await?;
 		},
 		t => {
@@ -344,10 +344,10 @@ pub async fn undo(ctx: &crate::Context, activity: impl apb::Activity) -> Result<
 	Ok(())
 }
 
-pub async fn announce(ctx: &crate::Context, activity: impl apb::Activity) -> Result<(), ProcessorError> {
+pub async fn announce(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 	let uid = activity.actor().id()?.to_string();
 	let actor = ctx.fetch_user(&uid).await?;
-	let internal_uid = crate::model::actor::Entity::ap_to_internal(&uid, ctx.db())
+	let internal_uid = crate::model::actor::Entity::ap_to_internal(&uid, tx)
 		.await?
 		.ok_or(ProcessorError::Incomplete)?;
 	let announced_id = activity.object().id()?.to_string();
@@ -363,7 +363,7 @@ pub async fn announce(ctx: &crate::Context, activity: impl apb::Activity) -> Res
 		None => {
 			match ctx.pull(&announced_id).await? {
 				// if we receive a remote activity, process it directly
-				Pull::Activity(x) => return ctx.process(x).await,
+				Pull::Activity(x) => return ctx.process(x, tx).await,
 				// actors are not processable at all
 				Pull::Actor(_) => return Err(ProcessorError::Unprocessable),
 				// objects are processed down below, make a mock Internal::Object(internal)
@@ -378,10 +378,10 @@ pub async fn announce(ctx: &crate::Context, activity: impl apb::Activity) -> Res
 		crate::context::Internal::Activity(_) => Err(ProcessorError::AlreadyProcessed), // ???
 		crate::context::Internal::Object(internal) => {
 			let object_model = model::object::Entity::find_by_id(internal)
-				.one(ctx.db())
+				.one(tx)
 				.await?
 				.ok_or_else(|| sea_orm::DbErr::RecordNotFound(internal.to_string()))?;
-			let activity_model = ctx.insert_activity(activity).await?;
+			let activity_model = ctx.insert_activity(activity, tx).await?;
 
 			// relays send us objects as Announce, but we don't really want to count those towards the
 			// total shares count of an object, so just fetch the object and be done with it
@@ -398,13 +398,13 @@ pub async fn announce(ctx: &crate::Context, activity: impl apb::Activity) -> Res
 			};
 
 			let expanded_addressing = ctx.expand_addressing(addressed).await?;
-			ctx.address_to(Some(activity_model.internal), None, &expanded_addressing).await?;
+			ctx.address_to(Some(activity_model.internal), None, &expanded_addressing, tx).await?;
 			crate::model::announce::Entity::insert(share)
-				.exec(ctx.db()).await?;
+				.exec(tx).await?;
 			crate::model::object::Entity::update_many()
 				.col_expr(crate::model::object::Column::Announces, Expr::col(crate::model::object::Column::Announces).add(1))
 				.filter(crate::model::object::Column::Internal.eq(object_model.internal))
-				.exec(ctx.db())
+				.exec(tx)
 				.await?;
 
 			tracing::info!("{} shared {}", activity_model.actor, announced_id);

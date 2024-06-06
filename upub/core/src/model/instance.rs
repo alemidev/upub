@@ -46,7 +46,7 @@ impl Entity {
 		Entity::find().filter(Column::Domain.eq(domain))
 	}
 
-	pub async fn domain_to_internal(domain: &str, db: &DatabaseConnection) -> Result<Option<i64>, DbErr> {
+	pub async fn domain_to_internal(domain: &str, db: &impl ConnectionTrait) -> Result<Option<i64>, DbErr> {
 		Entity::find()
 			.filter(Column::Domain.eq(domain))
 			.select_only()

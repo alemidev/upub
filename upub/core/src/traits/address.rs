@@ -1,14 +1,12 @@
-use sea_orm::{ActiveValue::{NotSet, Set}, DbErr, EntityTrait};
+use sea_orm::{ActiveValue::{NotSet, Set}, DatabaseTransaction, DbErr, EntityTrait};
 
 use crate::traits::fetch::Fetcher;
 
 #[async_trait::async_trait]
 pub trait Addresser {
 	async fn expand_addressing(&self, targets: Vec<String>) -> Result<Vec<String>, DbErr>;
-	async fn address_to(&self, aid: Option<i64>, oid: Option<i64>, targets: &[String]) -> Result<(), DbErr>;
-	async fn deliver_to(&self, aid: &str, from: &str, targets: &[String]) -> Result<(), DbErr>;
-	//#[deprecated = "should probably directly invoke address_to() since we most likely have internal ids at this point"]
-	async fn dispatch(&self, uid: &str, activity_targets: Vec<String>, aid: &str, oid: Option<&str>) -> Result<(), DbErr>;
+	async fn address_to(&self, aid: Option<i64>, oid: Option<i64>, targets: &[String], tx: &DatabaseTransaction) -> Result<(), DbErr>;
+	async fn deliver_to(&self, aid: &str, from: &str, targets: &[String], tx: &DatabaseTransaction) -> Result<(), DbErr>;
 }
 
 #[async_trait::async_trait]
@@ -34,7 +32,7 @@ impl Addresser for crate::Context {
 		Ok(out)
 	}
 
-	async fn address_to(&self, aid: Option<i64>, oid: Option<i64>, targets: &[String]) -> Result<(), DbErr> {
+	async fn address_to(&self, aid: Option<i64>, oid: Option<i64>, targets: &[String], tx: &DatabaseTransaction) -> Result<(), DbErr> {
 		// TODO address_to became kind of expensive, with these two selects right away and then another
 		//      select for each target we're addressing to... can this be improved??
 		let local_activity = if let Some(x) = aid { self.is_local_internal_activity(x).await.unwrap_or(false) } else { false };
@@ -48,8 +46,8 @@ impl Addresser for crate::Context {
 		{
 			let (server, actor) = if target == apb::target::PUBLIC { (None, None) } else {
 				match (
-					crate::model::instance::Entity::domain_to_internal(&crate::Context::server(target), self.db()).await?,
-					crate::model::actor::Entity::ap_to_internal(target, self.db()).await?,
+					crate::model::instance::Entity::domain_to_internal(&crate::Context::server(target), tx).await?,
+					crate::model::actor::Entity::ap_to_internal(target, tx).await?,
 				) {
 					(Some(server), Some(actor)) => (Some(server), Some(actor)),
 					(None, _) => { tracing::error!("failed resolving domain of {target}"); continue; },
@@ -70,14 +68,14 @@ impl Addresser for crate::Context {
 
 		if !addressing.is_empty() {
 			crate::model::addressing::Entity::insert_many(addressing)
-				.exec(self.db())
+				.exec(tx)
 				.await?;
 		}
 
 		Ok(())
 	}
 
-	async fn deliver_to(&self, aid: &str, from: &str, targets: &[String]) -> Result<(), DbErr> {
+	async fn deliver_to(&self, aid: &str, from: &str, targets: &[String], tx: &DatabaseTransaction) -> Result<(), DbErr> {
 		let mut deliveries = Vec::new();
 		for target in targets.iter()
 			.filter(|to| !to.is_empty())
@@ -108,7 +106,7 @@ impl Addresser for crate::Context {
 
 		if !deliveries.is_empty() {
 			crate::model::job::Entity::insert_many(deliveries)
-				.exec(self.db())
+				.exec(tx)
 				.await?;
 		}
 
@@ -117,23 +115,4 @@ impl Addresser for crate::Context {
 
 		Ok(())
 	}
-
-	//#[deprecated = "should probably directly invoke address_to() since we most likely have internal ids at this point"]
-	async fn dispatch(&self, uid: &str, activity_targets: Vec<String>, aid: &str, oid: Option<&str>) -> Result<(), DbErr> {
-		let addressed = self.expand_addressing(activity_targets).await?;
-		let internal_aid = crate::model::activity::Entity::ap_to_internal(aid, self.db())
-			.await?
-			.ok_or_else(|| DbErr::RecordNotFound(aid.to_string()))?;
-		let internal_oid = if let Some(o) = oid {
-			Some(
-				crate::model::object::Entity::ap_to_internal(o, self.db())
-				.await?
-				.ok_or_else(|| DbErr::RecordNotFound(o.to_string()))?
-			)
-		} else { None };
-		self.address_to(Some(internal_aid), internal_oid, &addressed).await?;
-		self.deliver_to(aid, uid, &addressed).await?;
-		Ok(())
-	}
-
 }

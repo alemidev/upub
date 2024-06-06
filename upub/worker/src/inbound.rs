@@ -1,3 +1,4 @@
+use sea_orm::TransactionTrait;
 use upub::traits::Processor;
 
 
@@ -12,5 +13,9 @@ pub async fn process(ctx: upub::Context, job: &upub::model::job::Model) -> crate
 		return Ok(());
 	};
 
-	Ok(ctx.process(activity).await?)
+	let tx = ctx.db().begin().await?;
+	ctx.process(activity, &tx).await?;
+	tx.commit().await?;
+
+	Ok(())
 }

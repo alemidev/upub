@@ -1,5 +1,5 @@
 use apb::{field::OptionalString, Collection, Document, Endpoints, Node, Object, PublicKey};
-use sea_orm::{sea_query::Expr, ActiveValue::{NotSet, Set}, ColumnTrait, DbErr, EntityTrait, IntoActiveModel, QueryFilter};
+use sea_orm::{sea_query::Expr, ActiveValue::{NotSet, Set}, ColumnTrait, DatabaseTransaction, DbErr, EntityTrait, IntoActiveModel, QueryFilter};
 
 #[derive(Debug, thiserror::Error)]
 pub enum NormalizerError {
@@ -12,14 +12,14 @@ pub enum NormalizerError {
 
 #[async_trait::async_trait]
 pub trait Normalizer {
-	async fn insert_object(&self, obj: impl apb::Object) -> Result<crate::model::object::Model, NormalizerError>;
-	async fn insert_activity(&self, act: impl apb::Activity) -> Result<crate::model::activity::Model, NormalizerError>;
+	async fn insert_object(&self, obj: impl apb::Object, tx: &DatabaseTransaction) -> Result<crate::model::object::Model, NormalizerError>;
+	async fn insert_activity(&self, act: impl apb::Activity, tx: &DatabaseTransaction) -> Result<crate::model::activity::Model, NormalizerError>;
 }
 
 #[async_trait::async_trait]
 impl Normalizer for crate::Context {
 
-	async fn insert_object(&self, object: impl apb::Object) -> Result<crate::model::object::Model, NormalizerError> {
+	async fn insert_object(&self, object: impl apb::Object, tx: &DatabaseTransaction) -> Result<crate::model::object::Model, NormalizerError> {
 		let oid = object.id()?.to_string();
 		let uid = object.attributed_to().id().str();
 		let t = object.object_type()?;
@@ -45,7 +45,7 @@ impl Normalizer for crate::Context {
 		// > kind of dumb. there should be a job system so this can be done in waves. or maybe there's
 		// > some whole other way to do this?? im thinking but misskey aaaa!! TODO
 		if let Set(Some(ref reply)) = object_active_model.in_reply_to {
-			if let Some(o) = crate::model::object::Entity::find_by_ap_id(reply).one(self.db()).await? {
+			if let Some(o) = crate::model::object::Entity::find_by_ap_id(reply).one(tx).await? {
 				object_active_model.context = Set(o.context);
 			} else {
 				object_active_model.context = Set(None); // TODO to be filled by some other task
@@ -54,9 +54,9 @@ impl Normalizer for crate::Context {
 			object_active_model.context = Set(Some(oid.clone()));
 		}
 
-		crate::model::object::Entity::insert(object_active_model).exec(self.db()).await?;
+		crate::model::object::Entity::insert(object_active_model).exec(tx).await?;
 		let object_model = crate::model::object::Entity::find_by_ap_id(&oid)
-			.one(self.db())
+			.one(tx)
 			.await?
 			.ok_or_else(|| DbErr::RecordNotFound(oid.to_string()))?;
 
@@ -65,7 +65,7 @@ impl Normalizer for crate::Context {
 			crate::model::object::Entity::update_many()
 				.filter(crate::model::object::Column::Id.eq(in_reply_to))
 				.col_expr(crate::model::object::Column::Replies, Expr::col(crate::model::object::Column::Replies).add(1))
-				.exec(self.db())
+				.exec(tx)
 				.await?;
 		}
 		// update statuses counter
@@ -73,7 +73,7 @@ impl Normalizer for crate::Context {
 			crate::model::actor::Entity::update_many()
 				.col_expr(crate::model::actor::Column::StatusesCount, Expr::col(crate::model::actor::Column::StatusesCount).add(1))
 				.filter(crate::model::actor::Column::Id.eq(&object_author))
-				.exec(self.db())
+				.exec(tx)
 				.await?;
 		}
 
@@ -97,7 +97,7 @@ impl Normalizer for crate::Context {
 					AP::attachment_q(o.as_document()?, object_model.internal)?,
 			};
 			crate::model::attachment::Entity::insert(attachment_model)
-				.exec(self.db())
+				.exec(tx)
 				.await?;
 		}
 		// lemmy sends us an image field in posts, treat it like an attachment i'd say
@@ -124,23 +124,23 @@ impl Normalizer for crate::Context {
 			}
 
 			crate::model::attachment::Entity::insert(attachment_model)
-				.exec(self.db())
+				.exec(tx)
 				.await?;
 		}
 
 		Ok(object_model)
 	}
 
-	async fn insert_activity(&self, activity: impl apb::Activity) -> Result<crate::model::activity::Model, NormalizerError> {
+	async fn insert_activity(&self, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<crate::model::activity::Model, NormalizerError> {
 		let mut activity_model = AP::activity(&activity)?;
 
 		let mut active_model = activity_model.clone().into_active_model();
 		active_model.internal = NotSet;
 		crate::model::activity::Entity::insert(active_model)
-			.exec(self.db())
+			.exec(tx)
 			.await?;
 
-		let internal = crate::model::activity::Entity::ap_to_internal(&activity_model.id, self.db())
+		let internal = crate::model::activity::Entity::ap_to_internal(&activity_model.id, tx)
 			.await?
 			.ok_or_else(|| DbErr::RecordNotFound(activity_model.id.clone()))?;
 		activity_model.internal = internal;

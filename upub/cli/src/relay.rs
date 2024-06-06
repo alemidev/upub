@@ -1,5 +1,4 @@
 use sea_orm::{ActiveValue::{Set, NotSet}, ColumnTrait, EntityTrait, QueryFilter, QueryOrder};
-use upub::traits::Addresser;
 
 pub async fn relay(ctx: upub::Context, actor: String, accept: bool) -> Result<(), sea_orm::DbErr> {
 	let aid = ctx.aid(&uuid::Uuid::new_v4().to_string());
@@ -34,7 +33,8 @@ pub async fn relay(ctx: upub::Context, actor: String, accept: bool) -> Result<()
 	upub::model::activity::Entity::insert(activity_model)
 		.exec(ctx.db()).await?;
 
-	ctx.dispatch(ctx.base(), vec![actor, apb::target::PUBLIC.to_string()], &aid, None).await?;
+	// TODO!!!
+	// ctx.dispatch(ctx.base(), vec![actor, apb::target::PUBLIC.to_string()], &aid, None).await?;
 
 	Ok(())
 }

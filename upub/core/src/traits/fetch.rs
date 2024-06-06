@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use apb::{target::Addressed, Activity, Actor, ActorMut, Base, Collection, Object};
 use reqwest::{header::{ACCEPT, CONTENT_TYPE, USER_AGENT}, Method, Response};
-use sea_orm::{DbErr, EntityTrait, IntoActiveModel, NotSet};
+use sea_orm::{DbErr, EntityTrait, IntoActiveModel, NotSet, TransactionTrait};
 
 use crate::traits::normalize::AP;
 
@@ -355,11 +355,15 @@ impl Fetcher for crate::Context {
 			}
 		}
 
-		let activity_model = self.insert_activity(activity).await?;
+		let tx = self.db().begin().await?;
+
+		let activity_model = self.insert_activity(activity, &tx).await?;
 
 		let addressed = activity_model.addressed();
 		let expanded_addresses = self.expand_addressing(addressed).await?;
-		self.address_to(Some(activity_model.internal), None, &expanded_addresses).await?;
+		self.address_to(Some(activity_model.internal), None, &expanded_addresses, &tx).await?;
+
+		tx.commit().await?;
 
 		Ok(activity_model)
 	}
@@ -406,10 +410,14 @@ impl Fetcher for crate::Context {
 			}
 		}
 
-		let object_model = self.insert_object(object).await?;
+		let tx = self.db().begin().await?;
+
+		let object_model = self.insert_object(object, &tx).await?;
 
 		let expanded_addresses = self.expand_addressing(addressed).await?;
-		self.address_to(None, Some(object_model.internal), &expanded_addresses).await?;
+		self.address_to(None, Some(object_model.internal), &expanded_addresses, &tx).await?;
+
+		tx.commit().await?;
 
 		Ok(object_model)
 	}

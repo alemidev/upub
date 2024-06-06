@@ -129,7 +129,7 @@ impl Entity {
 		Entity::delete_many().filter(Column::Id.eq(id))
 	}
 
-	pub async fn ap_to_internal(id: &str, db: &DatabaseConnection) -> Result<Option<i64>, DbErr> {
+	pub async fn ap_to_internal(id: &str, db: &impl ConnectionTrait) -> Result<Option<i64>, DbErr> {
 		Entity::find()
 			.filter(Column::Id.eq(id))
 			.select_only()
