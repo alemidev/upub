@@ -159,7 +159,7 @@ pub trait Fetcher {
 #[async_trait::async_trait]
 impl Fetcher for crate::Context {
 	async fn pull_r(&self, id: &str, depth: u32) -> Result<Pull<serde_json::Value>, PullError> {
-		tracing::info!("fetching {id}");
+		tracing::debug!("fetching {id}");
 		// let _domain = self.fetch_domain(&crate::Context::server(id)).await?;
 
 		let document = Self::request(
