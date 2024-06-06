@@ -113,7 +113,7 @@ impl<T : super::Base> Node<T> {
 			Node::Empty => vec![],
 			Node::Link(uri) => vec![uri.href().to_string()],
 			Node::Object(x) => x.id().map_or(vec![], |x| vec![x.to_string()]),
-			Node::Array(x) => x.iter().filter_map(|x| x.id().ok()).map(|x| x.to_string()).collect()
+			Node::Array(x) => x.iter().filter_map(|x| Some(x.id().ok()?.to_string())).collect()
 		}
 	}
 

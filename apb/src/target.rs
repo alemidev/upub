@@ -43,3 +43,34 @@ impl<T: Object> Addressed for T {
 	// 	to
 	// }
 }
+
+#[cfg(test)]
+mod test {
+	use super::Addressed;
+
+	#[test]
+	#[cfg(feature = "unstructured")]
+	fn addressed_trait_finds_all_targets_on_json_objects() {
+		let obj = serde_json::json!({
+			"id": "http://localhost:8080/obj/1",
+			"type": "Note",
+			"content": "hello world!",
+			"published": "2024-06-04T17:09:20+00:00",
+			"to": ["http://localhost:8080/usr/root/followers"],
+			"bto": ["https://localhost:8080/usr/secret"],
+			"cc": [crate::target::PUBLIC],
+			"bcc": [],
+		});
+
+		let addressed = obj.addressed();
+
+		assert_eq!(
+			addressed,
+			vec![
+				"http://localhost:8080/usr/root/followers".to_string(), 
+				"https://localhost:8080/usr/secret".to_string(),
+				crate::target::PUBLIC.to_string(),
+			]
+		);
+	}
+}
