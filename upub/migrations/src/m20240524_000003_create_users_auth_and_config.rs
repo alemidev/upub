@@ -147,23 +147,11 @@ impl MigrationTrait for Migration {
 			.await?;
 
 		manager
-			.drop_index(Index::drop().name("index-configs-actor").table(Configs::Table).to_owned())
-			.await?;
-
-		manager
 			.drop_table(Table::drop().table(Credentials::Table).to_owned())
 			.await?;
 
 		manager
-			.drop_index(Index::drop().name("index-credentials-login").table(Credentials::Table).to_owned())
-			.await?;
-
-		manager
 			.drop_table(Table::drop().table(Sessions::Table).to_owned())
-			.await?;
-
-		manager
-			.drop_index(Index::drop().name("index-sessions-secret").table(Sessions::Table).to_owned())
 			.await?;
 
 		Ok(())

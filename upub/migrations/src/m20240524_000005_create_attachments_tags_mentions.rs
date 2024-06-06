@@ -173,33 +173,11 @@ impl MigrationTrait for Migration {
 			.await?;
 
 		manager
-			.drop_index(Index::drop().name("index-attachment-object").to_owned())
-			.await?;
-
-
-		manager
 			.drop_table(Table::drop().table(Mentions::Table).to_owned())
 			.await?;
 
 		manager
-			.drop_index(Index::drop().name("index-mentions-object").table(Mentions::Table).to_owned())
-			.await?;
-
-		manager
-			.drop_index(Index::drop().name("index-mentions-actor-published").table(Mentions::Table).to_owned())
-			.await?;
-
-
-		manager
 			.drop_table(Table::drop().table(Hashtags::Table).to_owned())
-			.await?;
-
-		manager
-			.drop_index(Index::drop().name("index-hashtags-object").table(Hashtags::Table).to_owned())
-			.await?;
-
-		manager
-			.drop_index(Index::drop().name("index-hashtags-name-published").table(Hashtags::Table).to_owned())
 			.await?;
 
 		Ok(())

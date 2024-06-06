@@ -167,27 +167,7 @@ impl MigrationTrait for Migration {
 			.await?;
 
 		manager
-			.drop_index(Index::drop().name("index-addressing-actor").to_owned())
-			.await?;
-
-		manager
-			.drop_index(Index::drop().name("index-addressing-server").to_owned())
-			.await?;
-
-		manager
-			.drop_index(Index::drop().name("index-addressing-activity").to_owned())
-			.await?;
-
-		manager
-			.drop_index(Index::drop().name("index-addressing-object").to_owned())
-			.await?;
-
-		manager
 			.drop_table(Table::drop().table(Deliveries::Table).to_owned())
-			.await?;
-
-		manager
-			.drop_index(Index::drop().name("index-deliveries-not-before").to_owned())
 			.await?;
 
 		Ok(())

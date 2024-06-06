@@ -216,40 +216,11 @@ impl MigrationTrait for Migration {
 			.await?;
 
 		manager
-			.drop_index(Index::drop().name("index-relations-follower").table(Relations::Table).to_owned())
-			.await?;
-
-		manager
-			.drop_index(Index::drop().name("index-relations-following").table(Relations::Table).to_owned())
-			.await?;
-
-		manager
-			.drop_index(Index::drop().name("index-relations-activity").table(Relations::Table).to_owned())
-			.await?;
-
-		manager
 			.drop_table(Table::drop().table(Likes::Table).to_owned())
 			.await?;
 
 		manager
-			.drop_index(Index::drop().name("index-likes-actor").table(Likes::Table).to_owned())
-			.await?;
-		manager
-			.drop_index(Index::drop().name("index-likes-object").table(Likes::Table).to_owned())
-			.await?;
-		manager
-			.drop_index(Index::drop().name("index-likes-actor-object").table(Likes::Table).to_owned())
-			.await?;
-
-		manager
 			.drop_table(Table::drop().table(Announces::Table).to_owned())
-			.await?;
-
-		manager
-			.drop_index(Index::drop().name("index-announces-actor").table(Announces::Table).to_owned())
-			.await?;
-		manager
-			.drop_index(Index::drop().name("index-announces-object").table(Announces::Table).to_owned())
 			.await?;
 
 		Ok(())

@@ -322,70 +322,15 @@ impl MigrationTrait for Migration {
 			.await?;
 
 		manager
-			.drop_index(Index::drop().name("index-actors-id").table(Actors::Table).to_owned())
-			.await?;
-
-		manager
-			.drop_index(Index::drop().name("index-actors-preferred-username").table(Actors::Table).to_owned())
-			.await?;
-
-		manager
-			.drop_index(Index::drop().name("index-actors-domain").table(Actors::Table).to_owned())
-			.await?;
-
-
-		manager
 			.drop_table(Table::drop().table(Activities::Table).to_owned())
 			.await?;
-
-		manager
-			.drop_index(Index::drop().name("index-activities-id").table(Activities::Table).to_owned())
-			.await?;
-
-		manager
-			.drop_index(Index::drop().name("index-activities-actor").table(Activities::Table).to_owned())
-			.await?;
-
-		manager
-			.drop_index(Index::drop().name("activities-object-index").table(Activities::Table).to_owned())
-			.await?;
-
-		manager
-			.drop_index(Index::drop().name("index-activities-published-descending").table(Activities::Table).to_owned())
-			.await?;
-
 
 		manager
 			.drop_table(Table::drop().table(Objects::Table).to_owned())
 			.await?;
 
 		manager
-			.drop_index(Index::drop().name("index-objects-id").table(Objects::Table).to_owned())
-			.await?;
-
-		manager
-			.drop_index(Index::drop().name("index-objects-attributed-to").table(Objects::Table).to_owned())
-			.await?;
-
-		manager
-			.drop_index(Index::drop().name("index-objects-in-reply-to").table(Objects::Table).to_owned())
-			.await?;
-
-		manager
-			.drop_index(Index::drop().name("index-objects-content-text").table(Objects::Table).to_owned())
-			.await?;
-
-		manager
-			.drop_index(Index::drop().name("index-objects-context").table(Objects::Table).to_owned())
-			.await?;
-
-
-		manager
 			.drop_table(Table::drop().table(Instances::Table).to_owned())
-			.await?;
-
-		manager
-			.drop_index(Index::drop().name("index-instances-domain").table(Instances::Table).to_owned())
 			.await?;
 
 		Ok(())
