@@ -17,7 +17,7 @@ pub async fn get(
 		.count(ctx.db())
 		.await?;
 
-	crate::builders::collection(&format!("{context}/context"), Some(count))
+	crate::builders::collection(&upub::url!(ctx, "/objects/{id}/context"), Some(count))
 }
 
 pub async fn page(
@@ -29,7 +29,7 @@ pub async fn page(
 	let context = ctx.oid(&id);
 
 	crate::builders::paginate(
-		format!("{context}/context/page"),
+		upub::url!(ctx, "/objects/{id}/context/page"),
 		Condition::all()
 			.add(auth.filter_condition())
 			.add(model::object::Column::Context.eq(context)),
