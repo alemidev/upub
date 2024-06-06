@@ -115,11 +115,18 @@ impl JobDispatcher for Context {
 				if let Err(e) = res {
 					tracing::error!("failed processing job '{}': {e}", job.activity);
 					let active = job.clone().repeat();
-					if let Err(e) = model::job::Entity::insert(active)
-						.exec(_ctx.db())
-						.await
-					{
-						tracing::error!("could not insert back job ({e}), dropping:\n{job:#?}")
+					let mut count = 0;
+					loop {
+						match model::job::Entity::insert(active.clone()).exec(_ctx.db()).await {
+							Err(e) => tracing::error!("could not insert back job '{}': {e}", job.activity),
+							Ok(_) => break,
+						}
+						count += 1;
+						if count > _ctx.cfg().security.reinsertion_attempt_limit {
+							tracing::error!("reached job reinsertion limit, dropping {job:#?}");
+							break;
+						}
+						tokio::time::sleep(std::time::Duration::from_secs(poll_interval)).await;
 					}
 				}
 			});

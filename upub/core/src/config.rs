@@ -82,6 +82,9 @@ pub struct SecurityConfig {
 
 	#[serde_inline_default(30)]
 	pub job_expiration_days: u32,
+
+	#[serde_inline_default(100)]
+	pub reinsertion_attempt_limit: u32,
 }
 
 
