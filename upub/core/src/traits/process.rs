@@ -19,8 +19,8 @@ pub enum ProcessorError {
 	#[error("could not resolve all objects involved in this activity")]
 	Incomplete,
 
-	#[error("activity not processable by this application")]
-	Unprocessable,
+	#[error("activity {0} not processable by this application")]
+	Unprocessable(String),
 
 	#[error("failed normalizing and inserting entity: {0:?}")]
 	NormalizerError(#[from] crate::traits::normalize::NormalizerError),
@@ -49,7 +49,7 @@ impl Processor for crate::Context {
 			apb::ActivityType::Undo => Ok(undo(self, activity, tx).await?),
 			apb::ActivityType::Delete => Ok(delete(self, activity, tx).await?),
 			apb::ActivityType::Update => Ok(update(self, activity, tx).await?),
-			_ => Err(ProcessorError::Unprocessable),
+			_ => Err(ProcessorError::Unprocessable(activity.id()?.to_string())),
 		}
 	}
 }
@@ -58,7 +58,7 @@ pub async fn create(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 	let Some(object_node) = activity.object().extract() else {
 		// TODO we could process non-embedded activities or arrays but im lazy rn
 		tracing::error!("refusing to process activity without embedded object");
-		return Err(ProcessorError::Unprocessable);
+		return Err(ProcessorError::Unprocessable(activity.id()?.to_string()));
 	};
 	let oid = object_node.id()?.to_string();
 	let addressed = object_node.addressed();
@@ -243,7 +243,7 @@ pub async fn update(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 	let uid = activity.actor().id()?.to_string();
 	let Some(object_node) = activity.object().extract() else {
 		tracing::error!("refusing to process activity without embedded object");
-		return Err(ProcessorError::Unprocessable);
+		return Err(ProcessorError::Unprocessable(activity.id()?.to_string()));
 	};
 	let oid = object_node.id()?.to_string();
 
@@ -342,8 +342,8 @@ pub async fn undo(ctx: &crate::Context, activity: impl apb::Activity, tx: &Datab
 				.await?;
 		},
 		t => {
-			tracing::error!("received 'Undo' for unimplemented activity type: {t:?}");
-			return Err(ProcessorError::Unprocessable);
+			tracing::error!("received 'Undo' activity '{}' for unimplemented activity type: {t:?}", activity_model.id);
+			return Err(ProcessorError::Unprocessable(activity_model.id));
 		},
 	}
 
@@ -368,7 +368,7 @@ pub async fn announce(ctx: &crate::Context, activity: impl apb::Activity, tx: &D
 				// if we receive a remote activity, process it directly
 				Pull::Activity(x) => return ctx.process(x, tx).await,
 				// actors are not processable at all
-				Pull::Actor(_) => return Err(ProcessorError::Unprocessable),
+				Pull::Actor(_) => return Err(ProcessorError::Unprocessable(activity.id()?.to_string())),
 				// objects are processed down below, make a mock Internal::Object(internal)
 				Pull::Object(x) =>
 					crate::context::Internal::Object(
@@ -377,7 +377,7 @@ pub async fn announce(ctx: &crate::Context, activity: impl apb::Activity, tx: &D
 			}
 		}
 	} {
-		crate::context::Internal::Actor(_) => Err(ProcessorError::Unprocessable),
+		crate::context::Internal::Actor(_) => Err(ProcessorError::Unprocessable(activity.id()?.to_string())),
 		crate::context::Internal::Activity(_) => Err(ProcessorError::AlreadyProcessed), // ???
 		crate::context::Internal::Object(internal) => {
 			let object_model = model::object::Entity::find_by_id(internal)
