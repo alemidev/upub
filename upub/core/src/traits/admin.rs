@@ -1,6 +1,6 @@
 use sea_orm::{ActiveValue::{NotSet, Set}, DbErr, EntityTrait};
 
-#[axum::async_trait]
+#[async_trait::async_trait]
 pub trait Administrable {
 	async fn register_user(
 		&self,
@@ -13,8 +13,8 @@ pub trait Administrable {
 	) -> Result<(), DbErr>;
 }
 
-#[axum::async_trait]
-impl Administrable for super::Context {
+#[async_trait::async_trait]
+impl Administrable for crate::Context {
 	async fn register_user(
 		&self,
 		username: String,

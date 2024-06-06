@@ -1,4 +1,4 @@
-use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
+use axum::{http::StatusCode, extract::{Path, Query, State}, Json};
 
 use sea_orm::{ColumnTrait, Condition};
 use upub::{model, Context};
@@ -54,7 +54,7 @@ pub async fn post(
 	Path(_id): Path<String>,
 	AuthIdentity(_auth): AuthIdentity,
 	Json(activity): Json<serde_json::Value>,
-) -> crate::ApiResult<()> {
+) -> crate::ApiResult<StatusCode> {
 	// POSTing to user inboxes is effectively the same as POSTing to the main inbox
 	super::super::inbox::post(State(ctx), AuthIdentity(_auth), Json(activity)).await
 }

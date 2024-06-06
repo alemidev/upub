@@ -3,7 +3,7 @@ pub mod replies;
 use apb::{CollectionMut, ObjectMut, LD};
 use axum::extract::{Path, Query, State};
 use sea_orm::{ColumnTrait, ModelTrait, QueryFilter, QuerySelect, SelectColumns};
-use upub::{model::{self, addressing::Event}, Context};
+use upub::{model::{self, addressing::Event}, traits::Fetcher, Context};
 
 use crate::{builders::JsonLD, AuthIdentity};
 
@@ -16,13 +16,13 @@ pub async fn view(
 	Query(query): Query<TryFetch>,
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let oid = ctx.oid(&id);
-	// if auth.is_local() && query.fetch && !ctx.is_local(&oid) {
-	// 	let obj = ctx.fetch_object(&oid).await?;
-	// 	// some implementations serve statuses on different urls than their AP id
-	// 	if obj.id != oid {
-	// 		return Err(crate::ApiError::Redirect(upub::url!(ctx, "/objects/{}", ctx.id(&obj.id))));
-	// 	}
-	// }
+	if auth.is_local() && query.fetch && !ctx.is_local(&oid) {
+		let obj = ctx.fetch_object(&oid).await?;
+		// some implementations serve statuses on different urls than their AP id
+		if obj.id != oid {
+			return Err(crate::ApiError::Redirect(upub::url!(ctx, "/objects/{}", ctx.id(&obj.id))));
+		}
+	}
 
 	let item = model::addressing::Entity::find_addressed(auth.my_id())
 		.filter(model::object::Column::Id.eq(&oid))

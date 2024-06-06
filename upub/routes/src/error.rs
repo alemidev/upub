@@ -11,13 +11,13 @@ pub enum ApiError {
 	#[error("http signature error: {0:?}")]
 	HttpSignature(#[from] httpsign::HttpSignatureError),
 
-	#[error("fetch error: {0:?}")]
+	#[error("outgoing request error: {0:?}")]
 	Reqwest(#[from] reqwest::Error),
 
 	// TODO this is quite ugly because its basically a reqwest::Error but with extra string... buuut
 	// helps with debugging!
-	#[error("fetch error: {0:?} -- server responded with {1}")]
-	FetchError(reqwest::Error, String),
+	#[error("fetch error: {0:?}")]
+	FetchError(#[from] upub::traits::fetch::PullError),
 
 	// wrapper error to return arbitraty status codes
 	#[error("{0}")]
@@ -83,7 +83,7 @@ impl axum::response::IntoResponse for ApiError {
 					"inner": format!("{e:#?}"),
 				}))
 			).into_response(),
-			ApiError::Reqwest(x) | ApiError::FetchError(x, _) => (
+			ApiError::Reqwest(x) => (
 				x.status().unwrap_or(StatusCode::INTERNAL_SERVER_ERROR),
 				axum::Json(serde_json::json!({
 					"error": "request",
@@ -91,6 +91,14 @@ impl axum::response::IntoResponse for ApiError {
 					"url": x.url().map(|x| x.to_string()).unwrap_or_default(),
 					"description": descr,
 					"inner": format!("{x:#?}"),
+				}))
+			).into_response(),
+			ApiError::FetchError(pull) => (
+				StatusCode::INTERNAL_SERVER_ERROR,
+				axum::Json(serde_json::json!({
+					"error": "fetch",
+					"description": descr,
+					"inner": format!("{pull:#?}"),
 				}))
 			).into_response(),
 			ApiError::Field(x) => (

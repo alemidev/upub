@@ -4,7 +4,9 @@ use apb::{target::Addressed, Activity, Actor, ActorMut, Base, Collection, Object
 use reqwest::{header::{ACCEPT, CONTENT_TYPE, USER_AGENT}, Method, Response};
 use sea_orm::{DbErr, EntityTrait, IntoActiveModel, NotSet};
 
-use super::{address::Addresser, normalize::Normalizer};
+use crate::traits::normalize::AP;
+
+use super::{Addresser, Normalizer};
 use httpsign::HttpSignature;
 
 #[derive(Debug, Clone)]
@@ -32,7 +34,7 @@ pub enum PullError {
 	Malformed(#[from] apb::FieldErr),
 
 	#[error("error normalizing resource: {0:?}")]
-	Normalization(#[from] crate::normalize::NormalizerError),
+	Normalization(#[from] crate::traits::normalize::NormalizerError),
 
 	#[error("too many redirects while resolving resource id, aborting")]
 	TooManyRedirects,
@@ -84,19 +86,19 @@ pub trait Fetcher {
 
 	async fn webfinger(&self, user: &str, host: &str) -> Result<Option<String>, PullError>;
 
-	async fn fetch_domain(&self, domain: &str) -> Result<upub::model::instance::Model, PullError>;
+	async fn fetch_domain(&self, domain: &str) -> Result<crate::model::instance::Model, PullError>;
 
-	async fn fetch_user(&self, id: &str) -> Result<upub::model::actor::Model, PullError>;
-	async fn resolve_user(&self, actor: serde_json::Value) -> Result<upub::model::actor::Model, PullError>;
+	async fn fetch_user(&self, id: &str) -> Result<crate::model::actor::Model, PullError>;
+	async fn resolve_user(&self, actor: serde_json::Value) -> Result<crate::model::actor::Model, PullError>;
 
-	async fn fetch_activity(&self, id: &str) -> Result<upub::model::activity::Model, PullError>;
-	async fn resolve_activity(&self, activity: serde_json::Value) -> Result<upub::model::activity::Model, PullError>;
+	async fn fetch_activity(&self, id: &str) -> Result<crate::model::activity::Model, PullError>;
+	async fn resolve_activity(&self, activity: serde_json::Value) -> Result<crate::model::activity::Model, PullError>;
 
-	async fn fetch_object(&self, id: &str) -> Result<upub::model::object::Model, PullError> { self.fetch_object_r(id, 0).await }
-	#[allow(unused)] async fn resolve_object(&self, object: serde_json::Value) -> Result<upub::model::object::Model, PullError> { self.resolve_object_r(object, 0).await }
+	async fn fetch_object(&self, id: &str) -> Result<crate::model::object::Model, PullError> { self.fetch_object_r(id, 0).await }
+	#[allow(unused)] async fn resolve_object(&self, object: serde_json::Value) -> Result<crate::model::object::Model, PullError> { self.resolve_object_r(object, 0).await }
 
-	async fn fetch_object_r(&self, id: &str, depth: u32) -> Result<upub::model::object::Model, PullError>;
-	async fn resolve_object_r(&self, object: serde_json::Value, depth: u32) -> Result<upub::model::object::Model, PullError>;
+	async fn fetch_object_r(&self, id: &str, depth: u32) -> Result<crate::model::object::Model, PullError>;
+	async fn resolve_object_r(&self, object: serde_json::Value, depth: u32) -> Result<crate::model::object::Model, PullError>;
 
 
 	async fn fetch_thread(&self, id: &str) -> Result<(), PullError>;
@@ -109,7 +111,7 @@ pub trait Fetcher {
 		key: &str,
 		domain: &str,
 	) -> Result<Response, PullError> {
-		let host = upub::Context::server(url);
+		let host = crate::Context::server(url);
 		let date = chrono::Utc::now().format("%a, %d %b %Y %H:%M:%S GMT").to_string(); // lmao @ "GMT"
 		let path = url.replace("https://", "").replace("http://", "").replace(&host, "");
 		let digest = httpsign::digest(payload.unwrap_or_default());
@@ -136,7 +138,7 @@ pub trait Fetcher {
 			.request(method.clone(), url)
 			.header(ACCEPT, "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"")
 			.header(CONTENT_TYPE, "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"")
-			.header(USER_AGENT, format!("upub+{} ({domain})", upub::VERSION))
+			.header(USER_AGENT, format!("upub+{} ({domain})", crate::VERSION))
 			.header("Host", host.clone())
 			.header("Date", date.clone())
 			.header("Digest", digest)
@@ -159,9 +161,9 @@ pub trait Fetcher {
 
 
 #[async_trait::async_trait]
-impl Fetcher for upub::Context {
+impl Fetcher for crate::Context {
 	async fn pull_r(&self, id: &str, depth: u32) -> Result<Pull<serde_json::Value>, PullError> {
-		let _domain = self.fetch_domain(&upub::Context::server(id)).await?;
+		let _domain = self.fetch_domain(&crate::Context::server(id)).await?;
 
 		let document = Self::request(
 			Method::GET, id, None,
@@ -195,7 +197,7 @@ impl Fetcher for upub::Context {
 		let resource = reqwest::Client::new()
 			.get(webfinger_uri)
 			.header(ACCEPT, "application/jrd+json")
-			.header(USER_AGENT, format!("upub+{} ({})", upub::VERSION, self.domain()))
+			.header(USER_AGENT, format!("upub+{} ({})", crate::VERSION, self.domain()))
 			.send()
 			.await?
 			.json::<jrd::JsonResourceDescriptor>()
@@ -221,12 +223,12 @@ impl Fetcher for upub::Context {
 		Ok(None)
 	}
 
-	async fn fetch_domain(&self, domain: &str) -> Result<upub::model::instance::Model, PullError> {
-		if let Some(x) = upub::model::instance::Entity::find_by_domain(domain).one(self.db()).await? {
+	async fn fetch_domain(&self, domain: &str) -> Result<crate::model::instance::Model, PullError> {
+		if let Some(x) = crate::model::instance::Entity::find_by_domain(domain).one(self.db()).await? {
 			return Ok(x); // already in db, easy
 		}
 
-		let mut instance_model = upub::model::instance::Model {
+		let mut instance_model = crate::model::instance::Model {
 			internal: 0,
 			domain: domain.to_string(),
 			name: None,
@@ -254,7 +256,7 @@ impl Fetcher for upub::Context {
 			}
 		}
 
-		if let Ok(nodeinfo) = upub::model::instance::Entity::nodeinfo(domain).await {
+		if let Ok(nodeinfo) = crate::model::instance::Entity::nodeinfo(domain).await {
 			instance_model.software = Some(nodeinfo.software.name);
 			instance_model.version = nodeinfo.software.version;
 			instance_model.users = nodeinfo.usage.users.and_then(|x| x.total);
@@ -263,8 +265,8 @@ impl Fetcher for upub::Context {
 
 		let mut active_model = instance_model.clone().into_active_model();
 		active_model.internal = NotSet;
-		upub::model::instance::Entity::insert(active_model).exec(self.db()).await?;
-		let internal = upub::model::instance::Entity::domain_to_internal(domain, self.db())
+		crate::model::instance::Entity::insert(active_model).exec(self.db()).await?;
+		let internal = crate::model::instance::Entity::domain_to_internal(domain, self.db())
 			.await?
 			.ok_or_else(|| DbErr::RecordNotFound(domain.to_string()))?;
 		instance_model.internal = internal;
@@ -272,7 +274,7 @@ impl Fetcher for upub::Context {
 		Ok(instance_model)
 	}
 
-	async fn resolve_user(&self, mut document: serde_json::Value) -> Result<upub::model::actor::Model, PullError> {
+	async fn resolve_user(&self, mut document: serde_json::Value) -> Result<crate::model::actor::Model, PullError> {
 		let id = document.id()?.to_string();
 
 		// TODO try fetching these numbers from audience/generator fields to avoid making 2 more GETs every time
@@ -304,24 +306,24 @@ impl Fetcher for upub::Context {
 			}
 		}
 
-		let user_model = upub::model::actor::ActiveModel::new(&document)?;
+		let user_model = AP::actor_q(&document)?;
 
 		// TODO this may fail: while fetching, remote server may fetch our service actor.
 		//      if it does so with http signature, we will fetch that actor in background
 		//      meaning that, once we reach here, it's already inserted and returns an UNIQUE error
-		upub::model::actor::Entity::insert(user_model).exec(self.db()).await?;
+		crate::model::actor::Entity::insert(user_model).exec(self.db()).await?;
 		
 		// TODO fetch it back to get the internal id
 		Ok(
-			upub::model::actor::Entity::find_by_ap_id(&id)
+			crate::model::actor::Entity::find_by_ap_id(&id)
 				.one(self.db())
 				.await?
 				.ok_or_else(|| DbErr::RecordNotFound(id.to_string()))?
 		)
 	}
 
-	async fn fetch_user(&self, id: &str) -> Result<upub::model::actor::Model, PullError> {
-		if let Some(x) = upub::model::actor::Entity::find_by_ap_id(id).one(self.db()).await? {
+	async fn fetch_user(&self, id: &str) -> Result<crate::model::actor::Model, PullError> {
+		if let Some(x) = crate::model::actor::Entity::find_by_ap_id(id).one(self.db()).await? {
 			return Ok(x); // already in db, easy
 		}
 
@@ -330,8 +332,8 @@ impl Fetcher for upub::Context {
 		self.resolve_user(document).await
 	}
 
-	async fn fetch_activity(&self, id: &str) -> Result<upub::model::activity::Model, PullError> {
-		if let Some(x) = upub::model::activity::Entity::find_by_ap_id(id).one(self.db()).await? {
+	async fn fetch_activity(&self, id: &str) -> Result<crate::model::activity::Model, PullError> {
+		if let Some(x) = crate::model::activity::Entity::find_by_ap_id(id).one(self.db()).await? {
 			return Ok(x); // already in db, easy
 		}
 
@@ -340,15 +342,15 @@ impl Fetcher for upub::Context {
 		self.resolve_activity(activity).await
 	}
 
-	async fn resolve_activity(&self, activity: serde_json::Value) -> Result<upub::model::activity::Model, PullError> {
+	async fn resolve_activity(&self, activity: serde_json::Value) -> Result<crate::model::activity::Model, PullError> {
 		if let Ok(activity_actor) = activity.actor().id() {
-			if let Err(e) = self.fetch_user(&activity_actor).await {
+			if let Err(e) = self.fetch_user(activity_actor).await {
 				tracing::warn!("could not get actor of fetched activity: {e}");
 			}
 		}
 
 		if let Ok(activity_object) = activity.object().id() {
-			if let Err(e) = self.fetch_object(&activity_object).await {
+			if let Err(e) = self.fetch_object(activity_object).await {
 				tracing::warn!("could not get object of fetched activity: {e}");
 			}
 		}
@@ -367,8 +369,8 @@ impl Fetcher for upub::Context {
 		todo!()
 	}
 
-	async fn fetch_object_r(&self, id: &str, depth: u32) -> Result<upub::model::object::Model, PullError> {
-		if let Some(x) = upub::model::object::Entity::find_by_ap_id(id).one(self.db()).await? {
+	async fn fetch_object_r(&self, id: &str, depth: u32) -> Result<crate::model::object::Model, PullError> {
+		if let Some(x) = crate::model::object::Entity::find_by_ap_id(id).one(self.db()).await? {
 			return Ok(x); // already in db, easy
 		}
 
@@ -377,12 +379,12 @@ impl Fetcher for upub::Context {
 		self.resolve_object_r(object, depth).await
 	}
 
-	async fn resolve_object_r(&self, object: serde_json::Value, depth: u32) -> Result<upub::model::object::Model, PullError> {
+	async fn resolve_object_r(&self, object: serde_json::Value, depth: u32) -> Result<crate::model::object::Model, PullError> {
 		let id = object.id()?.to_string();
 
 		if let Ok(oid) = object.id() {
 			if oid != id {
-				if let Some(x) = upub::model::object::Entity::find_by_ap_id(oid).one(self.db()).await? {
+				if let Some(x) = crate::model::object::Entity::find_by_ap_id(oid).one(self.db()).await? {
 					return Ok(x); // already in db, but with id different that given url
 				}
 			}
@@ -415,14 +417,14 @@ impl Fetcher for upub::Context {
 
 #[async_trait::async_trait]
 pub trait Fetchable : Sync + Send {
-	async fn fetch(&mut self, ctx: &upub::Context) -> Result<&mut Self, PullError>;
+	async fn fetch(&mut self, ctx: &crate::Context) -> Result<&mut Self, PullError>;
 }
 
 #[async_trait::async_trait]
 impl Fetchable for apb::Node<serde_json::Value> {
-	async fn fetch(&mut self, ctx: &upub::Context) -> Result<&mut Self, PullError> {
+	async fn fetch(&mut self, ctx: &crate::Context) -> Result<&mut Self, PullError> {
 		if let apb::Node::Link(uri) = self {
-			*self = upub::Context::request(Method::GET, uri.href(), None, ctx.base(), ctx.pkey(), ctx.domain())
+			*self = crate::Context::request(Method::GET, uri.href(), None, ctx.base(), ctx.pkey(), ctx.domain())
 				.await?
 				.json::<serde_json::Value>()
 				.await?
@@ -434,14 +436,14 @@ impl Fetchable for apb::Node<serde_json::Value> {
 }
 
 // #[async_recursion::async_recursion]
-// async fn crawl_replies(ctx: &upub::Context, id: &str, depth: usize) -> Result<(), PullError> {
+// async fn crawl_replies(ctx: &crate::Context, id: &str, depth: usize) -> Result<(), PullError> {
 // 	tracing::info!("crawling replies of '{id}'");
-// 	let object = upub::Context::request(
+// 	let object = crate::Context::request(
 // 		Method::GET, id, None, &format!("https://{}", ctx.domain()), &ctx.app().private_key, ctx.domain(),
 // 	).await?.json::<serde_json::Value>().await?;
 // 
-// 	let object_model = upub::model::object::Model::new(&object)?;
-// 	match upub::model::object::Entity::insert(object_model.into_active_model())
+// 	let object_model = crate::model::object::Model::new(&object)?;
+// 	match crate::model::object::Entity::insert(object_model.into_active_model())
 // 		.exec(ctx.db()).await
 // 	{
 // 		Ok(_) => {},
@@ -457,7 +459,7 @@ impl Fetchable for apb::Node<serde_json::Value> {
 // 
 // 	let mut page_url = match object.replies().get() {
 // 		Some(serde_json::Value::String(x)) => {
-// 			let replies = upub::Context::request(
+// 			let replies = crate::Context::request(
 // 				Method::GET, x, None, &format!("https://{}", ctx.domain()), &ctx.app().private_key, ctx.domain(),
 // 			).await?.json::<serde_json::Value>().await?;
 // 			replies.first().id()
@@ -470,7 +472,7 @@ impl Fetchable for apb::Node<serde_json::Value> {
 // 	};
 // 
 // 	while let Some(ref url) = page_url {
-// 		let replies = upub::Context::request(
+// 		let replies = crate::Context::request(
 // 			Method::GET, url, None, &format!("https://{}", ctx.domain()), &ctx.app().private_key, ctx.domain(),
 // 		).await?.json::<serde_json::Value>().await?;
 // 

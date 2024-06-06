@@ -8,7 +8,7 @@ pub async fn get(
 	State(ctx): State<Context>,
 	Path(id): Path<String>,
 	AuthIdentity(auth): AuthIdentity,
-	Query(q): Query<TryFetch>,
+	Query(_q): Query<TryFetch>,
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let replies_id = upub::url!(ctx, "/objects/{id}/replies");
 	let oid = ctx.oid(&id);

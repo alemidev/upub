@@ -1,6 +1,6 @@
 use sea_orm::{ActiveValue::{NotSet, Set}, DbErr, EntityTrait};
 
-use crate::fetch::Fetcher;
+use crate::traits::fetch::Fetcher;
 
 #[async_trait::async_trait]
 pub trait Addresser {
@@ -12,13 +12,13 @@ pub trait Addresser {
 }
 
 #[async_trait::async_trait]
-impl Addresser for upub::Context {
+impl Addresser for crate::Context {
 	async fn expand_addressing(&self, targets: Vec<String>) -> Result<Vec<String>, DbErr> {
 		let mut out = Vec::new();
 		for target in targets {
 			if target.ends_with("/followers") {
 				let target_id = target.replace("/followers", "");
-				let mut followers = upub::model::relation::Entity::followers(&target_id, self.db())
+				let mut followers = crate::model::relation::Entity::followers(&target_id, self.db())
 					.await?
 					.unwrap_or_else(Vec::new);
 				if followers.is_empty() { // stuff with zero addressing will never be seen again!!! TODO
@@ -48,8 +48,8 @@ impl Addresser for upub::Context {
 		{
 			let (server, actor) = if target == apb::target::PUBLIC { (None, None) } else {
 				match (
-					upub::model::instance::Entity::domain_to_internal(&upub::Context::server(target), self.db()).await?,
-					upub::model::actor::Entity::ap_to_internal(target, self.db()).await?,
+					crate::model::instance::Entity::domain_to_internal(&crate::Context::server(target), self.db()).await?,
+					crate::model::actor::Entity::ap_to_internal(target, self.db()).await?,
 				) {
 					(Some(server), Some(actor)) => (Some(server), Some(actor)),
 					(None, _) => { tracing::error!("failed resolving domain"); continue; },
@@ -57,7 +57,7 @@ impl Addresser for upub::Context {
 				}
 			};
 			addressing.push(
-				upub::model::addressing::ActiveModel {
+				crate::model::addressing::ActiveModel {
 					internal: NotSet,
 					instance: Set(server),
 					actor: Set(actor),
@@ -69,7 +69,7 @@ impl Addresser for upub::Context {
 		}
 
 		if !addressing.is_empty() {
-			upub::model::addressing::Entity::insert_many(addressing)
+			crate::model::addressing::Entity::insert_many(addressing)
 				.exec(self.db())
 				.await?;
 		}
@@ -81,13 +81,13 @@ impl Addresser for upub::Context {
 		let mut deliveries = Vec::new();
 		for target in targets.iter()
 			.filter(|to| !to.is_empty())
-			.filter(|to| upub::Context::server(to) != self.domain())
+			.filter(|to| crate::Context::server(to) != self.domain())
 			.filter(|to| to != &apb::target::PUBLIC)
 		{
 			// TODO fetch concurrently
 			match self.fetch_user(target).await {
-				Ok(upub::model::actor::Model { inbox: Some(inbox), .. }) => deliveries.push(
-					upub::model::delivery::ActiveModel {
+				Ok(crate::model::actor::Model { inbox: Some(inbox), .. }) => deliveries.push(
+					crate::model::delivery::ActiveModel {
 						internal: sea_orm::ActiveValue::NotSet,
 						actor: Set(from.to_string()),
 						// TODO we should resolve each user by id and check its inbox because we can't assume
@@ -105,7 +105,7 @@ impl Addresser for upub::Context {
 		}
 
 		if !deliveries.is_empty() {
-			upub::model::delivery::Entity::insert_many(deliveries)
+			crate::model::delivery::Entity::insert_many(deliveries)
 				.exec(self.db())
 				.await?;
 		}
@@ -119,12 +119,12 @@ impl Addresser for upub::Context {
 	//#[deprecated = "should probably directly invoke address_to() since we most likely have internal ids at this point"]
 	async fn dispatch(&self, uid: &str, activity_targets: Vec<String>, aid: &str, oid: Option<&str>) -> Result<(), DbErr> {
 		let addressed = self.expand_addressing(activity_targets).await?;
-		let internal_aid = upub::model::activity::Entity::ap_to_internal(aid, self.db())
+		let internal_aid = crate::model::activity::Entity::ap_to_internal(aid, self.db())
 			.await?
 			.ok_or_else(|| DbErr::RecordNotFound(aid.to_string()))?;
 		let internal_oid = if let Some(o) = oid {
 			Some(
-				upub::model::object::Entity::ap_to_internal(o, self.db())
+				crate::model::object::Entity::ap_to_internal(o, self.db())
 				.await?
 				.ok_or_else(|| DbErr::RecordNotFound(o.to_string()))?
 			)

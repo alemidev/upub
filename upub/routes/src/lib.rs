@@ -25,7 +25,7 @@ pub mod mastodon {
 	impl MastodonRouter for axum::Router<upub::Context> {}
 }
 
-pub async fn serve(ctx: upub::Context, bind: String) -> upub::Result<()> {
+pub async fn serve(ctx: upub::Context, bind: String) -> Result<(), std::io::Error> {
 	use activitypub::ActivityPubRouter;
 	use mastodon::MastodonRouter;
 	use tower_http::{cors::CorsLayer, trace::TraceLayer};
@@ -50,8 +50,7 @@ pub async fn serve(ctx: upub::Context, bind: String) -> upub::Result<()> {
 		.with_state(ctx);
 
 	// run our app with hyper, listening locally on port 3000
-	let listener = tokio::net::TcpListener::bind(bind)
-		.await.expect("could not bind tcp socket");
+	let listener = tokio::net::TcpListener::bind(bind).await?;
 
 	axum::serve(listener, router).await?;
 

@@ -2,7 +2,7 @@ use std::{collections::BTreeSet, sync::Arc};
 
 use sea_orm::{ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, QuerySelect, SelectColumns};
 
-use crate::{config::Config, errors::UpubError, model, ext::AnyQuery};
+use crate::{config::Config, ext::AnyQuery, model};
 use uriproxy::UriClass;
 
 #[derive(Clone)]
@@ -36,7 +36,7 @@ macro_rules! url {
 impl Context {
 
 	// TODO slim constructor down, maybe make a builder?
-	pub async fn new(db: DatabaseConnection, mut domain: String, config: Config) -> crate::Result<Self> {
+	pub async fn new(db: DatabaseConnection, mut domain: String, config: Config) -> Result<Self, crate::init::InitError> {
 		let protocol = if domain.starts_with("http://")
 		{ "http://" } else { "https://" }.to_string();
 		if domain.ends_with('/') {
@@ -50,10 +50,10 @@ impl Context {
 		let (actor, instance) = super::init::application(domain.clone(), base_url.clone(), &db).await?;
 
 		// TODO maybe we could provide a more descriptive error...
-		let pkey = actor.private_key.as_deref().ok_or_else(UpubError::internal_server_error)?.to_string();
+		let pkey = actor.private_key.as_deref().ok_or_else(|| DbErr::RecordNotFound("application private key".into()))?.to_string();
 
-		let relay_sinks = model::relation::Entity::followers(&actor.id, &db).await?.ok_or_else(UpubError::internal_server_error)?;
-		let relay_sources = model::relation::Entity::following(&actor.id, &db).await?.ok_or_else(UpubError::internal_server_error)?;
+		let relay_sinks = model::relation::Entity::followers(&actor.id, &db).await?.ok_or_else(|| DbErr::RecordNotFound(actor.id.clone()))?;
+		let relay_sources = model::relation::Entity::following(&actor.id, &db).await?.ok_or_else(|| DbErr::RecordNotFound(actor.id.clone()))?;
 
 		let relay = Relays {
 			sources: BTreeSet::from_iter(relay_sources),
@@ -96,6 +96,10 @@ impl Context {
 
 	pub fn base(&self) -> &str {
 		&self.0.base_url
+	}
+
+	pub fn new_id() -> String {
+		uuid::Uuid::new_v4().to_string()
 	}
 
 	/// get full user id uri

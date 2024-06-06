@@ -95,7 +95,10 @@ impl<T: serde::Serialize> IntoResponse for JsonRD<T> {
 	}
 }
 
-pub async fn webfinger(State(ctx): State<Context>, Query(query): Query<WebfingerQuery>) -> upub::Result<JsonRD<JsonResourceDescriptor>> {
+pub async fn webfinger(
+	State(ctx): State<Context>,
+	Query(query): Query<WebfingerQuery>
+) -> crate::ApiResult<JsonRD<JsonResourceDescriptor>> {
 	if let Some((user, domain)) = query
 		.resource
 		.replace("acct:", "")
@@ -106,7 +109,7 @@ pub async fn webfinger(State(ctx): State<Context>, Query(query): Query<Webfinger
 			.filter(model::actor::Column::Domain.eq(domain))
 			.one(ctx.db())
 			.await?
-			.ok_or_else(upub::Error::not_found)?;
+			.ok_or_else(crate::ApiError::not_found)?;
 
 		let expires = if domain == ctx.domain() {
 			// TODO configurable webfinger TTL, also 30 days may be too much???
@@ -162,7 +165,7 @@ pub struct OauthAuthorizationServerResponse {
 	authorization_response_iss_parameter_supported: bool,
 }
 
-pub async fn oauth_authorization_server(State(ctx): State<Context>) -> upub::Result<Json<OauthAuthorizationServerResponse>> {
+pub async fn oauth_authorization_server(State(ctx): State<Context>) -> crate::ApiResult<Json<OauthAuthorizationServerResponse>> {
 	Ok(Json(OauthAuthorizationServerResponse {
 		issuer: upub::url!(ctx, ""),
 		authorization_endpoint: upub::url!(ctx, "/auth"),

@@ -1,7 +1,6 @@
 use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
-use sea_orm::{ColumnTrait, Condition};
+use sea_orm::{ActiveValue::{NotSet, Set}, ColumnTrait, Condition, EntityTrait};
 
-use apb::{AcceptType, ActivityType, Base, BaseType, ObjectType, RejectType};
 use upub::{model, Context};
 
 use crate::{activitypub::{CreationResult, Pagination}, builders::JsonLD, AuthIdentity, Identity};
@@ -46,46 +45,29 @@ pub async fn post(
 	match auth {
 		Identity::Anonymous => Err(StatusCode::UNAUTHORIZED.into()),
 		Identity::Remote { .. } => Err(StatusCode::NOT_IMPLEMENTED.into()),
-		Identity::Local { id: uid, .. } => if ctx.uid(&id) == uid {
-			tracing::debug!("processing new local activity: {}", serde_json::to_string(&activity).unwrap_or_default());
-			todo!()
-			// match activity.base_type()? {
-			// 	BaseType::Link(_) => Err(StatusCode::UNPROCESSABLE_ENTITY.into()),
+		Identity::Local { id: uid, .. } => {
+			if ctx.uid(&id) != uid {
+				return Err(crate::ApiError::forbidden());
+			}
 
-			// 	BaseType::Object(ObjectType::Note) =>
-			// 		Ok(CreationResult(ctx.create_note(uid, activity).await?)),
+			tracing::debug!("enqueuing new local activity: {}", serde_json::to_string(&activity).unwrap_or_default());
+			let aid = ctx.aid(&Context::new_id());
 
-			// 	BaseType::Object(ObjectType::Activity(ActivityType::Create)) =>
-			// 		Ok(CreationResult(ctx.create(uid, activity).await?)),
+			let job = model::job::ActiveModel {
+				internal: NotSet,
+				activity: Set(aid.clone()),
+				job_type: Set(model::job::JobType::Local),
+				actor: Set(uid.clone()),
+				target: Set(None),
+				published: Set(chrono::Utc::now()),
+				not_before: Set(chrono::Utc::now()),
+				attempt: Set(0),
+				payload: Set(Some(serde_json::to_string(&activity).expect("failed serializing back json object"))),
+			};
 
-			// 	BaseType::Object(ObjectType::Activity(ActivityType::Like)) =>
-			// 		Ok(CreationResult(ctx.like(uid, activity).await?)),
+			model::job::Entity::insert(job).exec(ctx.db()).await?;
 
-			// 	BaseType::Object(ObjectType::Activity(ActivityType::Follow)) =>
-			// 		Ok(CreationResult(ctx.follow(uid, activity).await?)),
-
-			// 	BaseType::Object(ObjectType::Activity(ActivityType::Announce)) =>
-			// 		Ok(CreationResult(ctx.announce(uid, activity).await?)),
-
-			// 	BaseType::Object(ObjectType::Activity(ActivityType::Accept(AcceptType::Accept))) =>
-			// 		Ok(CreationResult(ctx.accept(uid, activity).await?)),
-
-			// 	BaseType::Object(ObjectType::Activity(ActivityType::Reject(RejectType::Reject))) =>
-			// 		Ok(CreationResult(ctx.reject(uid, activity).await?)),
-
-			// 	BaseType::Object(ObjectType::Activity(ActivityType::Undo)) =>
-			// 		Ok(CreationResult(ctx.undo(uid, activity).await?)),
-
-			// 	BaseType::Object(ObjectType::Activity(ActivityType::Delete)) =>
-			// 		Ok(CreationResult(ctx.delete(uid, activity).await?)),
-
-			// 	BaseType::Object(ObjectType::Activity(ActivityType::Update)) =>
-			// 		Ok(CreationResult(ctx.update(uid, activity).await?)),
-
-			// 	_ => Err(StatusCode::NOT_IMPLEMENTED.into()),
-			// }
-		} else {
-			Err(StatusCode::FORBIDDEN.into())
+			Ok(CreationResult(aid))
 		}
 	}
 }

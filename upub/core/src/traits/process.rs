@@ -1,7 +1,6 @@
 use apb::{target::Addressed, Activity, Base, Object};
 use sea_orm::{sea_query::Expr, ActiveValue::{NotSet, Set}, ColumnTrait, Condition, EntityTrait, QueryFilter, QuerySelect, SelectColumns};
-use upub::{errors::LoggableError, ext::AnyQuery};
-use crate::{address::Addresser, fetch::{Fetcher, Pull}, normalize::Normalizer};
+use crate::{ext::{AnyQuery, LoggableError}, traits::{fetch::Pull, Addresser, Fetcher, Normalizer}};
 
 #[derive(Debug, thiserror::Error)]
 pub enum ProcessorError {
@@ -24,10 +23,10 @@ pub enum ProcessorError {
 	Unprocessable,
 
 	#[error("failed normalizing and inserting entity: {0:?}")]
-	NormalizerError(#[from] crate::normalize::NormalizerError),
+	NormalizerError(#[from] crate::traits::normalize::NormalizerError),
 
 	#[error("failed fetching resource: {0:?}")]
-	PullError(#[from] crate::fetch::PullError),
+	PullError(#[from] crate::traits::fetch::PullError),
 }
 
 #[async_trait::async_trait]
@@ -36,7 +35,7 @@ pub trait Processor {
 }
 
 #[async_trait::async_trait]
-impl Processor for upub::Context {
+impl Processor for crate::Context {
 	async fn process(&self, activity: impl apb::Activity) -> Result<(), ProcessorError> {
 		// TODO we could process Links and bare Objects maybe, but probably out of AP spec?
 		match activity.activity_type()? {
@@ -55,7 +54,7 @@ impl Processor for upub::Context {
 	}
 }
 
-pub async fn create(ctx: &upub::Context, activity: impl apb::Activity) -> Result<(), ProcessorError> {
+pub async fn create(ctx: &crate::Context, activity: impl apb::Activity) -> Result<(), ProcessorError> {
 	let Some(object_node) = activity.object().extract() else {
 		// TODO we could process non-embedded activities or arrays but im lazy rn
 		tracing::error!("refusing to process activity without embedded object");
@@ -74,15 +73,15 @@ pub async fn create(ctx: &upub::Context, activity: impl apb::Activity) -> Result
 	Ok(())
 }
 
-pub async fn like(ctx: &upub::Context, activity: impl apb::Activity) -> Result<(), ProcessorError> {
+pub async fn like(ctx: &crate::Context, activity: impl apb::Activity) -> Result<(), ProcessorError> {
 	let uid = activity.actor().id()?.to_string();
-	let internal_uid = upub::model::actor::Entity::ap_to_internal(&uid, ctx.db())
+	let internal_uid = crate::model::actor::Entity::ap_to_internal(&uid, ctx.db())
 		.await?
 		.ok_or(ProcessorError::Incomplete)?;
 	let object_uri = activity.object().id()?.to_string();
 	let published = activity.published().unwrap_or_else(|_|chrono::Utc::now());
 	let obj = ctx.fetch_object(&object_uri).await?;
-	if upub::model::like::Entity::find_by_uid_oid(internal_uid, obj.internal)
+	if crate::model::like::Entity::find_by_uid_oid(internal_uid, obj.internal)
 		.any(ctx.db())
 		.await?
 	{
@@ -91,26 +90,26 @@ pub async fn like(ctx: &upub::Context, activity: impl apb::Activity) -> Result<(
 
 	let activity_model = ctx.insert_activity(activity).await?;
 
-	let like = upub::model::like::ActiveModel {
+	let like = crate::model::like::ActiveModel {
 		internal: NotSet,
 		actor: Set(internal_uid),
 		object: Set(obj.internal),
 		activity: Set(activity_model.internal),
 		published: Set(published),
 	};
-	upub::model::like::Entity::insert(like).exec(ctx.db()).await?;
-	upub::model::object::Entity::update_many()
-		.col_expr(upub::model::object::Column::Likes, Expr::col(upub::model::object::Column::Likes).add(1))
-		.filter(upub::model::object::Column::Internal.eq(obj.internal))
+	crate::model::like::Entity::insert(like).exec(ctx.db()).await?;
+	crate::model::object::Entity::update_many()
+		.col_expr(crate::model::object::Column::Likes, Expr::col(crate::model::object::Column::Likes).add(1))
+		.filter(crate::model::object::Column::Internal.eq(obj.internal))
 		.exec(ctx.db())
 		.await?;
 
 	let mut expanded_addressing = ctx.expand_addressing(activity_model.addressed()).await?;
 	if expanded_addressing.is_empty() { // WHY MASTODON!!!!!!!
 		expanded_addressing.push(
-			upub::model::object::Entity::find_by_id(obj.internal)
+			crate::model::object::Entity::find_by_id(obj.internal)
 				.select_only()
-				.select_column(upub::model::object::Column::AttributedTo)
+				.select_column(crate::model::object::Column::AttributedTo)
 				.into_tuple::<String>()
 				.one(ctx.db())
 				.await?
@@ -122,22 +121,22 @@ pub async fn like(ctx: &upub::Context, activity: impl apb::Activity) -> Result<(
 	Ok(())
 }
 
-pub async fn follow(ctx: &upub::Context, activity: impl apb::Activity) -> Result<(), ProcessorError> {
+pub async fn follow(ctx: &crate::Context, activity: impl apb::Activity) -> Result<(), ProcessorError> {
 	let source_actor = activity.actor().id()?.to_string();
-	let source_actor_internal = upub::model::actor::Entity::ap_to_internal(&source_actor, ctx.db())
+	let source_actor_internal = crate::model::actor::Entity::ap_to_internal(&source_actor, ctx.db())
 		.await?
 		.ok_or(ProcessorError::Incomplete)?;
 	let target_actor = activity.object().id()?.to_string();
 	let usr = ctx.fetch_user(&target_actor).await?;
 	let activity_model = ctx.insert_activity(activity).await?;
-	let relation_model = upub::model::relation::ActiveModel {
+	let relation_model = crate::model::relation::ActiveModel {
 		internal: NotSet,
 		accept: Set(None),
 		activity: Set(activity_model.internal),
 		follower: Set(source_actor_internal),
 		following: Set(usr.internal),
 	};
-	upub::model::relation::Entity::insert(relation_model)
+	crate::model::relation::Entity::insert(relation_model)
 		.exec(ctx.db()).await?;
 	let mut expanded_addressing = ctx.expand_addressing(activity_model.addressed()).await?;
 	if !expanded_addressing.contains(&target_actor) {
@@ -148,11 +147,11 @@ pub async fn follow(ctx: &upub::Context, activity: impl apb::Activity) -> Result
 	Ok(())
 }
 
-pub async fn accept(ctx: &upub::Context, activity: impl apb::Activity) -> Result<(), ProcessorError> {
+pub async fn accept(ctx: &crate::Context, activity: impl apb::Activity) -> Result<(), ProcessorError> {
 	// TODO what about TentativeAccept
 	let target_actor = activity.actor().id()?.to_string();
 	let follow_request_id = activity.object().id()?.to_string();
-	let follow_activity = upub::model::activity::Entity::find_by_ap_id(&follow_request_id)
+	let follow_activity = crate::model::activity::Entity::find_by_ap_id(&follow_request_id)
 		.one(ctx.db())
 		.await?
 		.ok_or(ProcessorError::Incomplete)?;
@@ -163,26 +162,26 @@ pub async fn accept(ctx: &upub::Context, activity: impl apb::Activity) -> Result
 
 	let activity_model = ctx.insert_activity(activity).await?;
 
-	upub::model::actor::Entity::update_many()
+	crate::model::actor::Entity::update_many()
 		.col_expr(
-			upub::model::actor::Column::FollowingCount,
-			Expr::col(upub::model::actor::Column::FollowingCount).add(1)
+			crate::model::actor::Column::FollowingCount,
+			Expr::col(crate::model::actor::Column::FollowingCount).add(1)
 		)
-		.filter(upub::model::actor::Column::Id.eq(&follow_activity.actor))
+		.filter(crate::model::actor::Column::Id.eq(&follow_activity.actor))
 		.exec(ctx.db())
 		.await?;
-	upub::model::actor::Entity::update_many()
+	crate::model::actor::Entity::update_many()
 		.col_expr(
-			upub::model::actor::Column::FollowersCount,
-			Expr::col(upub::model::actor::Column::FollowersCount).add(1)
+			crate::model::actor::Column::FollowersCount,
+			Expr::col(crate::model::actor::Column::FollowersCount).add(1)
 		)
-		.filter(upub::model::actor::Column::Id.eq(&follow_activity.actor))
+		.filter(crate::model::actor::Column::Id.eq(&follow_activity.actor))
 		.exec(ctx.db())
 		.await?;
 
-	upub::model::relation::Entity::update_many()
-		.col_expr(upub::model::relation::Column::Accept, Expr::value(Some(activity_model.internal)))
-		.filter(upub::model::relation::Column::Activity.eq(follow_activity.internal))
+	crate::model::relation::Entity::update_many()
+		.col_expr(crate::model::relation::Column::Accept, Expr::value(Some(activity_model.internal)))
+		.filter(crate::model::relation::Column::Activity.eq(follow_activity.internal))
 		.exec(ctx.db()).await?;
 
 	tracing::info!("{} accepted follow request by {}", target_actor, follow_activity.actor);
@@ -195,11 +194,11 @@ pub async fn accept(ctx: &upub::Context, activity: impl apb::Activity) -> Result
 	Ok(())
 }
 
-pub async fn reject(ctx: &upub::Context, activity: impl apb::Activity) -> Result<(), ProcessorError> {
+pub async fn reject(ctx: &crate::Context, activity: impl apb::Activity) -> Result<(), ProcessorError> {
 	// TODO what about TentativeReject?
 	let uid = activity.actor().id()?.to_string();
 	let follow_request_id = activity.object().id()?.to_string();
-	let follow_activity = upub::model::activity::Entity::find_by_ap_id(&follow_request_id)
+	let follow_activity = crate::model::activity::Entity::find_by_ap_id(&follow_request_id)
 		.one(ctx.db())
 		.await?
 		.ok_or(ProcessorError::Incomplete)?;
@@ -210,8 +209,8 @@ pub async fn reject(ctx: &upub::Context, activity: impl apb::Activity) -> Result
 
 	let activity_model = ctx.insert_activity(activity).await?;
 
-	upub::model::relation::Entity::delete_many()
-		.filter(upub::model::relation::Column::Activity.eq(activity_model.internal))
+	crate::model::relation::Entity::delete_many()
+		.filter(crate::model::relation::Column::Activity.eq(activity_model.internal))
 		.exec(ctx.db())
 		.await?;
 
@@ -226,17 +225,16 @@ pub async fn reject(ctx: &upub::Context, activity: impl apb::Activity) -> Result
 	Ok(())
 }
 
-pub async fn delete(ctx: &upub::Context, activity: impl apb::Activity) -> Result<(), ProcessorError> {
+pub async fn delete(ctx: &crate::Context, activity: impl apb::Activity) -> Result<(), ProcessorError> {
 	let oid = activity.object().id()?.to_string();
-	upub::model::actor::Entity::delete_by_ap_id(&oid).exec(ctx.db()).await.info_failed("failed deleting from users");
-	upub::model::object::Entity::delete_by_ap_id(&oid).exec(ctx.db()).await.info_failed("failed deleting from objects");
+	crate::model::actor::Entity::delete_by_ap_id(&oid).exec(ctx.db()).await.info_failed("failed deleting from users");
+	crate::model::object::Entity::delete_by_ap_id(&oid).exec(ctx.db()).await.info_failed("failed deleting from objects");
 	tracing::debug!("deleted '{oid}'");
 	Ok(())
 }
 
-pub async fn update(ctx: &upub::Context, activity: impl apb::Activity) -> Result<(), ProcessorError> {
+pub async fn update(ctx: &crate::Context, activity: impl apb::Activity) -> Result<(), ProcessorError> {
 	let uid = activity.actor().id()?.to_string();
-	let aid = activity.id()?.to_string();
 	let Some(object_node) = activity.object().extract() else {
 		tracing::error!("refusing to process activity without embedded object");
 		return Err(ProcessorError::Unprocessable);
@@ -247,24 +245,24 @@ pub async fn update(ctx: &upub::Context, activity: impl apb::Activity) -> Result
 
 	match object_node.object_type()? {
 		apb::ObjectType::Actor(_) => {
-			let internal_uid = upub::model::actor::Entity::ap_to_internal(&oid, ctx.db())
+			let internal_uid = crate::model::actor::Entity::ap_to_internal(&oid, ctx.db())
 				.await?
 				.ok_or(ProcessorError::Incomplete)?;
-			let mut actor_model = upub::model::actor::ActiveModel::new(object_node.as_actor()?)?;
+			let mut actor_model = crate::AP::actor_q(object_node.as_actor()?)?;
 			actor_model.internal = Set(internal_uid);
 			actor_model.updated = Set(chrono::Utc::now());
-			upub::model::actor::Entity::update(actor_model)
+			crate::model::actor::Entity::update(actor_model)
 				.exec(ctx.db())
 				.await?;
 		},
 		apb::ObjectType::Note => {
-			let internal_oid = upub::model::object::Entity::ap_to_internal(&oid, ctx.db())
+			let internal_oid = crate::model::object::Entity::ap_to_internal(&oid, ctx.db())
 				.await?
 				.ok_or(ProcessorError::Incomplete)?;
-			let mut object_model = upub::model::object::ActiveModel::new(&object_node)?;
+			let mut object_model = crate::AP::object_q(&object_node)?;
 			object_model.internal = Set(internal_oid);
 			object_model.updated = Set(chrono::Utc::now());
-			upub::model::object::Entity::update(object_model)
+			crate::model::object::Entity::update(object_model)
 				.exec(ctx.db())
 				.await?;
 		},
@@ -277,11 +275,10 @@ pub async fn update(ctx: &upub::Context, activity: impl apb::Activity) -> Result
 	Ok(())
 }
 
-pub async fn undo(ctx: &upub::Context, activity: impl apb::Activity) -> Result<(), ProcessorError> {
+pub async fn undo(ctx: &crate::Context, activity: impl apb::Activity) -> Result<(), ProcessorError> {
 	let uid = activity.actor().id()?.to_string();
 	// TODO in theory we could work with just object_id but right now only accept embedded
 	let undone_activity = activity.object().extract().ok_or(apb::FieldErr("object"))?;
-	let undone_activity_id = undone_activity.id()?;
 	let undone_activity_author = undone_activity.as_activity()?.actor().id()?.to_string();
 
 	if uid != undone_activity_author {
@@ -290,7 +287,7 @@ pub async fn undo(ctx: &upub::Context, activity: impl apb::Activity) -> Result<(
 
 	let undone_activity_target = undone_activity.as_activity()?.object().id()?.to_string();
 
-	let internal_uid = upub::model::actor::Entity::ap_to_internal(&uid, ctx.db())
+	let internal_uid = crate::model::actor::Entity::ap_to_internal(&uid, ctx.db())
 		.await?
 		.ok_or(ProcessorError::Incomplete)?;
 
@@ -301,40 +298,40 @@ pub async fn undo(ctx: &upub::Context, activity: impl apb::Activity) -> Result<(
 
 	match activity_type {
 		apb::ActivityType::Like => {
-			let internal_oid = upub::model::object::Entity::ap_to_internal(&undone_activity_target, ctx.db())
+			let internal_oid = crate::model::object::Entity::ap_to_internal(&undone_activity_target, ctx.db())
 				.await?
 				.ok_or(ProcessorError::Incomplete)?;
-			upub::model::like::Entity::delete_many()
+			crate::model::like::Entity::delete_many()
 				.filter(
 					Condition::all()
-						.add(upub::model::like::Column::Actor.eq(internal_uid))
-						.add(upub::model::like::Column::Object.eq(internal_oid))
+						.add(crate::model::like::Column::Actor.eq(internal_uid))
+						.add(crate::model::like::Column::Object.eq(internal_oid))
 				)
 				.exec(ctx.db())
 				.await?;
-			upub::model::object::Entity::update_many()
-				.filter(upub::model::object::Column::Internal.eq(internal_oid))
-				.col_expr(upub::model::object::Column::Likes, Expr::col(upub::model::object::Column::Likes).sub(1))
+			crate::model::object::Entity::update_many()
+				.filter(crate::model::object::Column::Internal.eq(internal_oid))
+				.col_expr(crate::model::object::Column::Likes, Expr::col(crate::model::object::Column::Likes).sub(1))
 				.exec(ctx.db())
 				.await?;
 		},
 		apb::ActivityType::Follow => {
-			let internal_uid_following = upub::model::actor::Entity::ap_to_internal(&undone_activity_target, ctx.db())
+			let internal_uid_following = crate::model::actor::Entity::ap_to_internal(&undone_activity_target, ctx.db())
 				.await?
 				.ok_or(ProcessorError::Incomplete)?;
-			upub::model::relation::Entity::delete_many()
-				.filter(upub::model::relation::Column::Follower.eq(internal_uid))
-				.filter(upub::model::relation::Column::Following.eq(internal_uid_following))
+			crate::model::relation::Entity::delete_many()
+				.filter(crate::model::relation::Column::Follower.eq(internal_uid))
+				.filter(crate::model::relation::Column::Following.eq(internal_uid_following))
 				.exec(ctx.db())
 				.await?;
-			upub::model::actor::Entity::update_many()
-				.filter(upub::model::actor::Column::Internal.eq(internal_uid))
-				.col_expr(upub::model::actor::Column::FollowingCount, Expr::col(upub::model::actor::Column::FollowingCount).sub(1))
+			crate::model::actor::Entity::update_many()
+				.filter(crate::model::actor::Column::Internal.eq(internal_uid))
+				.col_expr(crate::model::actor::Column::FollowingCount, Expr::col(crate::model::actor::Column::FollowingCount).sub(1))
 				.exec(ctx.db())
 				.await?;
-			upub::model::actor::Entity::update_many()
-				.filter(upub::model::actor::Column::Internal.eq(internal_uid_following))
-				.col_expr(upub::model::actor::Column::FollowersCount, Expr::col(upub::model::actor::Column::FollowersCount).sub(1))
+			crate::model::actor::Entity::update_many()
+				.filter(crate::model::actor::Column::Internal.eq(internal_uid_following))
+				.col_expr(crate::model::actor::Column::FollowersCount, Expr::col(crate::model::actor::Column::FollowersCount).sub(1))
 				.exec(ctx.db())
 				.await?;
 		},
@@ -347,10 +344,10 @@ pub async fn undo(ctx: &upub::Context, activity: impl apb::Activity) -> Result<(
 	Ok(())
 }
 
-pub async fn announce(ctx: &upub::Context, activity: impl apb::Activity) -> Result<(), ProcessorError> {
+pub async fn announce(ctx: &crate::Context, activity: impl apb::Activity) -> Result<(), ProcessorError> {
 	let uid = activity.actor().id()?.to_string();
 	let actor = ctx.fetch_user(&uid).await?;
-	let internal_uid = upub::model::actor::Entity::ap_to_internal(&uid, ctx.db())
+	let internal_uid = crate::model::actor::Entity::ap_to_internal(&uid, ctx.db())
 		.await?
 		.ok_or(ProcessorError::Incomplete)?;
 	let announced_id = activity.object().id()?.to_string();
@@ -371,7 +368,7 @@ pub async fn announce(ctx: &upub::Context, activity: impl apb::Activity) -> Resu
 				return Ok(())
 			}
 
-			let share = upub::model::announce::ActiveModel {
+			let share = crate::model::announce::ActiveModel {
 				internal: NotSet,
 				actor: Set(internal_uid),
 				object: Set(object_model.internal),
@@ -380,11 +377,11 @@ pub async fn announce(ctx: &upub::Context, activity: impl apb::Activity) -> Resu
 
 			let expanded_addressing = ctx.expand_addressing(addressed).await?;
 			ctx.address_to(Some(activity_model.internal), None, &expanded_addressing).await?;
-			upub::model::announce::Entity::insert(share)
+			crate::model::announce::Entity::insert(share)
 				.exec(ctx.db()).await?;
-			upub::model::object::Entity::update_many()
-				.col_expr(upub::model::object::Column::Announces, Expr::col(upub::model::object::Column::Announces).add(1))
-				.filter(upub::model::object::Column::Internal.eq(object_model.internal))
+			crate::model::object::Entity::update_many()
+				.col_expr(crate::model::object::Column::Announces, Expr::col(crate::model::object::Column::Announces).add(1))
+				.filter(crate::model::object::Column::Internal.eq(object_model.internal))
 				.exec(ctx.db())
 				.await?;
 

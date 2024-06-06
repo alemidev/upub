@@ -1,9 +1,9 @@
 [package]
-name = "upub-processor"
+name = "upub-worker"
 version = "0.2.0"
 edition = "2021"
 authors = [ "alemi <me@alemi.dev>" ]
-description = "upub background activity processing worker"
+description = "upub background activity processing and dispatching workers"
 license = "AGPL-3.0"
 repository = "https://git.alemi.dev/upub.git"
 readme = "README.md"
@@ -17,6 +17,7 @@ async-trait = "0.1"
 serde_json = "1"
 sea-orm = "0.12"
 jrd = "0.1"
+regex = "1.10"
 chrono = { version = "0.4", features = ["serde"] }
 tokio = { version = "1.35", features = ["full"] } # TODO slim this down
 reqwest = { version = "0.12", features = ["json"] }

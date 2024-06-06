@@ -1,7 +1,7 @@
 use axum::{extract::{FromRef, FromRequestParts}, http::{header, request::Parts}};
-use reqwest::StatusCode;
 use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter};
 use httpsign::HttpSignature;
+use upub::traits::Fetcher;
 
 use crate::ApiError;
 
@@ -120,11 +120,9 @@ where
 				.next().ok_or(ApiError::bad_request())?
 				.to_string();
 
-			match upub::model::actor::Entity::find_by_ap_id(&user_id)
-				.one(ctx.db())
-				.await?
-			{
-				Some(user) => match http_signature
+			match ctx.fetch_user(&user_id).await {
+				Err(e) => tracing::warn!("failed resolving http signature actor: {e}"),
+				Ok(user) => match http_signature
 						.build_from_parts(parts)
 						.verify(&user.public_key)
 					{
@@ -137,9 +135,6 @@ where
 						Ok(false) => tracing::warn!("invalid signature: {http_signature:?}"),
 						Err(e) => tracing::error!("error verifying signature: {e}"),
 					},
-				None => {
-					// TODO enqueue fetching who tried signing this
-				}
 			}
 		}
 

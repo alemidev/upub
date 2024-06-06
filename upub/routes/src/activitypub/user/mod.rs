@@ -7,7 +7,7 @@ pub mod following;
 use axum::extract::{Path, Query, State};
 
 use apb::{LD, ActorMut, EndpointsMut, Node, ObjectMut};
-use upub::{ext::AnyQuery, model, Context};
+use upub::{ext::AnyQuery, model, traits::Fetcher, Context};
 
 use crate::{builders::JsonLD, ApiError, AuthIdentity};
 
@@ -21,16 +21,18 @@ pub async fn view(
 	Query(query): Query<TryFetch>,
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let mut uid = ctx.uid(&id);
-	// if auth.is_local() {
-	// 	if id.starts_with('@') {
-	// 		if let Some((user, host)) = id.replacen('@', "", 1).split_once('@') {
-	// 			uid = ctx.webfinger(user, host).await?;
-	// 		}
-	// 	}
-	// 	if query.fetch && !ctx.is_local(&uid) {
-	// 		ctx.fetch_user(&uid).await?;
-	// 	}
-	// }
+	if auth.is_local() {
+		if id.starts_with('@') {
+			if let Some((user, host)) = id.replacen('@', "", 1).split_once('@') {
+				if let Some(webfinger) = ctx.webfinger(user, host).await? {
+					uid = webfinger;
+				}
+			}
+		}
+		if query.fetch && !ctx.is_local(&uid) {
+			ctx.fetch_user(&uid).await?;
+		}
+	}
 	let internal_uid = model::actor::Entity::ap_to_internal(&uid, ctx.db())
 		.await?
 		.ok_or_else(ApiError::not_found)?;

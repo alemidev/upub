@@ -3,11 +3,23 @@ use sea_orm::{ActiveValue::{NotSet, Set}, DatabaseConnection, EntityTrait};
 
 use crate::model;
 
+#[derive(Debug, thiserror::Error)]
+pub enum InitError {
+	#[error("database error: {0:?}")]
+	Database(#[from] sea_orm::DbErr),
+
+	#[error("openssl error: {0:?}")]
+	OpenSSL(#[from] openssl::error::ErrorStack),
+
+	#[error("pem format error: {0:?}")]
+	KeyError(#[from] std::str::Utf8Error),
+}
+
 pub async fn application(
 	domain: String,
 	base_url: String,
 	db: &DatabaseConnection
-) -> crate::Result<(model::actor::Model, model::instance::Model)> {
+) -> Result<(model::actor::Model, model::instance::Model), InitError> {
 	Ok((
 		match model::actor::Entity::find_by_ap_id(&base_url).one(db).await? {
 			Some(model) => model,

@@ -1,7 +1,7 @@
 use axum::{http::StatusCode, extract::State, Json};
 use rand::Rng;
 use sea_orm::{ActiveValue::{Set, NotSet}, ColumnTrait, Condition, EntityTrait, QueryFilter};
-use upub::{server::admin::Administrable, Context};
+use upub::{traits::Administrable, Context};
 
 
 #[derive(Debug, Clone, serde::Deserialize)]

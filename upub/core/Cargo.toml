@@ -12,6 +12,7 @@ readme = "README.md"
 
 [dependencies]
 thiserror = "1"
+async-trait = "0.1"
 sha256 = "1.5"
 openssl = "0.10" # TODO handle pubkeys with a smaller crate
 base64 = "0.22"
@@ -25,12 +26,12 @@ serde-inline-default = "0.2"
 toml = "0.8"
 mdhtml = { path = "../../utils/mdhtml", features = ["markdown"] }
 uriproxy = { path = "../../utils/uriproxy" }
+httpsign = { path = "../../utils/httpsign/" }
 jrd = "0.1"
 tracing = "0.1"
 tokio = { version = "1.35", features = ["full"] } # TODO slim this down
 sea-orm = { version = "0.12", features = ["macros", "sqlx-sqlite", "runtime-tokio-rustls"] }
 reqwest = { version = "0.12", features = ["json"] }
-axum = "0.7"
 apb = { path = "../../apb", features = ["unstructured", "orm", "activitypub-fe", "activitypub-counters", "litepub", "ostatus", "toot"] }
 # nodeinfo = "0.0.2" # the version on crates.io doesn't re-export necessary types to build the struct!!!
 nodeinfo = { git = "https://codeberg.org/thefederationinfo/nodeinfo-rs", rev = "e865094804" }

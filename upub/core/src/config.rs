@@ -94,4 +94,8 @@ impl Config {
 		}
 		Config::default()
 	}
+
+	pub fn frontend_url(&self, url: &str) -> Option<String> {
+		Some(format!("{}{}", self.instance.frontend.as_deref()?, url))
+	}
 }

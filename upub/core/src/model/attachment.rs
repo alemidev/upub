@@ -48,12 +48,12 @@ impl Model {
 	}
 }
 
-#[axum::async_trait]
+#[async_trait::async_trait]
 pub trait BatchFillable {
 	async fn load_attachments_batch(&self, db: &DatabaseConnection) -> Result<std::collections::BTreeMap<i64, Vec<Model>>, DbErr>;
 }
 
-#[axum::async_trait]
+#[async_trait::async_trait]
 impl BatchFillable for &[Event] {
 	async fn load_attachments_batch(&self, db: &DatabaseConnection) -> Result<std::collections::BTreeMap<i64, Vec<Model>>, DbErr> {
 		let objects : Vec<crate::model::object::Model> = self
@@ -80,14 +80,14 @@ impl BatchFillable for &[Event] {
 	}
 }
 
-#[axum::async_trait]
+#[async_trait::async_trait]
 impl BatchFillable for Vec<Event> {
 	async fn load_attachments_batch(&self, db: &DatabaseConnection) -> Result<std::collections::BTreeMap<i64, Vec<Model>>, DbErr> {
 		self.as_slice().load_attachments_batch(db).await
 	}
 }
 
-#[axum::async_trait]
+#[async_trait::async_trait]
 impl BatchFillable for Event {
 	async fn load_attachments_batch(&self, db: &DatabaseConnection) -> Result<std::collections::BTreeMap<i64, Vec<Model>>, DbErr> {
 		let x = vec![self.clone()]; // TODO wasteful clone and vec![] but ehhh convenient
