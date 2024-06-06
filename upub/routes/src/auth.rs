@@ -120,22 +120,21 @@ where
 				.next().ok_or(ApiError::bad_request())?
 				.to_string();
 
-			match ctx.fetch_user(&user_id, ctx.db()).await {
-				Err(e) => tracing::warn!("failed resolving http signature actor: {e}"),
-				Ok(user) => match http_signature
-						.build_from_parts(parts)
-						.verify(&user.public_key)
-					{
-						Ok(true) => {
-							let internal = upub::model::instance::Entity::domain_to_internal(&user.domain, ctx.db())
-								.await?
-								.ok_or_else(ApiError::internal_server_error)?; // user but not their domain???
-							identity = Identity::Remote { user: user.id, domain: user.domain, internal };
-						},
-						Ok(false) => tracing::warn!("invalid signature: {http_signature:?}"),
-						Err(e) => tracing::error!("error verifying signature: {e}"),
-					},
+			let user = ctx.fetch_user(&user_id, ctx.db()).await?;
+
+			let valid = http_signature
+				.build_from_parts(parts)
+				.verify(&user.public_key)?;
+
+			if !valid {
+				tracing::warn!("refusing mismatching http signature");
+				return Err(ApiError::unauthorized());
 			}
+
+			let internal = upub::model::instance::Entity::domain_to_internal(&user.domain, ctx.db())
+				.await?
+				.ok_or_else(ApiError::internal_server_error)?; // user but not their domain???
+			identity = Identity::Remote { user: user.id, domain: user.domain, internal };
 		}
 
 		Ok(AuthIdentity(identity))
