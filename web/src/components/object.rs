@@ -135,7 +135,7 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 	let audience_badge = object.audience().id().str()
 		.map(|x| view! {
 			<div class="inline border-solid">
-				<code class="color">!</code>
+				<code class="color">~</code>
 				<small>
 					<a class="clean dim" href={x.clone()} target="_blank" rel="nofollow noreferrer">
 						{Uri::pretty(&x)}
