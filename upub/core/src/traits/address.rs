@@ -52,8 +52,8 @@ impl Addresser for crate::Context {
 					crate::model::actor::Entity::ap_to_internal(target, self.db()).await?,
 				) {
 					(Some(server), Some(actor)) => (Some(server), Some(actor)),
-					(None, _) => { tracing::error!("failed resolving domain"); continue; },
-					(_, None) => { tracing::error!("failed resolving actor"); continue; },
+					(None, _) => { tracing::error!("failed resolving domain of {target}"); continue; },
+					(_, None) => { tracing::error!("failed resolving actor {target}"); continue; },
 				}
 			};
 			addressing.push(
