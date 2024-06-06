@@ -104,6 +104,14 @@ impl JobDispatcher for Context {
 				restart!(now);
 			}
 
+			if let Ok(Some(_)) = model::activity::Entity::find_by_ap_id(&job.activity)
+				.one(self.db())
+				.await
+			{
+				tracing::info!("dropping already processed job '{}'", job.activity);
+				restart!(now);
+			}
+
 			let _ctx = self.clone();
 			pool.spawn(async move {
 				let res = match job.job_type {

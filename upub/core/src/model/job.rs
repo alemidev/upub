@@ -16,7 +16,6 @@ pub struct Model {
 	pub job_type: JobType,
 	pub actor: String,
 	pub target: Option<String>,
-	#[sea_orm(unique)]
 	pub activity: String,
 	pub payload: Option<String>,
 	pub published: ChronoDateTimeUtc,

@@ -43,22 +43,11 @@ impl MigrationTrait for Migration {
 					.col(ColumnDef::new(Jobs::JobType).small_integer().not_null())
 					.col(ColumnDef::new(Jobs::Actor).string().not_null())
 					.col(ColumnDef::new(Jobs::Target).string().null())
-					.col(ColumnDef::new(Jobs::Activity).string().not_null().unique_key())
+					.col(ColumnDef::new(Jobs::Activity).string().not_null())
 					.col(ColumnDef::new(Jobs::Payload).string().null())
 					.col(ColumnDef::new(Jobs::Published).date_time().not_null().default(Expr::current_timestamp()))
 					.col(ColumnDef::new(Jobs::NotBefore).date_time().not_null().default(Expr::current_timestamp()))
 					.col(ColumnDef::new(Jobs::Attempt).small_integer().not_null().default(0))
-					.to_owned()
-			)
-			.await?;
-
-		manager
-			.create_index(
-				Index::create()
-					.unique()
-					.name("index-jobs-activity")
-					.table(Jobs::Table)
-					.col(Jobs::Activity)
 					.to_owned()
 			)
 			.await?;
