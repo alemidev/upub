@@ -12,9 +12,5 @@ pub async fn process(ctx: upub::Context, job: &upub::model::job::Model) -> crate
 		return Ok(());
 	};
 
-	if let Err(e) = ctx.process(activity).await {
-		tracing::error!("failed processing job #{}: {e}", job.internal);
-	}
-
-	Ok(())
+	Ok(ctx.process(activity).await?)
 }
