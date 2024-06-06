@@ -113,7 +113,7 @@ impl JobDispatcher for Context {
 				};
 	
 				if let Err(e) = res {
-					tracing::error!("failed processing job #{}: {e}", job.internal);
+					tracing::error!("failed processing job '{}': {e}", job.activity);
 					let active = job.clone().repeat();
 					if let Err(e) = model::job::Entity::insert(active)
 						.exec(_ctx.db())
