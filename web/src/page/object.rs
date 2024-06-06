@@ -37,7 +37,7 @@ pub fn ObjectPage(tl: Timeline) -> impl IntoView {
 				}
 			};
 			if let Ok(ctx) = obj.context().id() {
-				let tl_url = format!("{}/context/page", Uri::api(U::Object, ctx, true));
+				let tl_url = format!("{}/context/page", Uri::api(U::Object, ctx, false));
 				if !tl.next.get().starts_with(&tl_url) {
 					tl.reset(tl_url);
 				}
