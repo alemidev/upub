@@ -5,7 +5,7 @@ members = [
 	"upub/cli",
 	"upub/migrations",
 	"upub/routes",
-	"upub/processor",
+	"upub/worker",
 	"web",
 	"utils/httpsign",
 	"utils/mdhtml",
@@ -14,7 +14,7 @@ members = [
 
 [package]
 name = "upub-bin"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 authors = [ "alemi <me@alemi.dev>" ]
 description = "Traits and types to handle ActivityPub objects"
@@ -39,9 +39,11 @@ upub = { path = "upub/core" }
 upub-cli = { path = "upub/cli", optional = true }
 upub-migrations = { path = "upub/migrations", optional = true }
 upub-routes = { path = "upub/routes", optional = true }
+upub-worker = { path = "upub/worker", optional = true }
 
 [features]
-default = ["serve", "migrate", "cli"]
+default = ["serve", "migrate", "cli", "worker"]
 serve = ["dep:upub-routes"]
 migrate = ["dep:upub-migrations"]
 cli = ["dep:upub-cli"]
+worker = ["dep:upub-worker"]

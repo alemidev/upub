@@ -11,6 +11,9 @@ use upub_migrations as migrations;
 #[cfg(feature = "serve")]
 use upub_routes as routes;
 
+#[cfg(feature = "worker")]
+use upub_worker as worker;
+
 
 #[derive(Parser)]
 /// all names were taken
@@ -53,13 +56,52 @@ enum Mode {
 		command: cli::CliCommand,
 	},
 
+	#[cfg(all(feature = "serve", feature = "worker"))]
+	/// start both api routes and background workers
+	Monolith {
+		#[arg(short, long, default_value="127.0.0.1:3000")]
+		/// addr to bind and serve onto
+		bind: String,
+
+		#[arg(short, long, default_value_t = 4)]
+		/// how many concurrent jobs to process with this worker
+		tasks: usize,
+
+		#[arg(short, long, default_value_t = 20)]
+		/// interval for polling new tasks
+		poll: u64,
+	},
+
 	#[cfg(feature = "serve")]
-	/// run fediverse server
+	/// start api routes server
 	Serve {
 		#[arg(short, long, default_value="127.0.0.1:3000")]
 		/// addr to bind and serve onto
 		bind: String,
 	},
+
+	#[cfg(feature = "worker")]
+	/// start background job worker
+	Work {
+		/// only run tasks of this type, run all if not given
+		filter: Filter,
+
+		/// how many concurrent jobs to process with this worker
+		#[arg(short, long, default_value_t = 4)]
+		tasks: usize,
+
+		#[arg(short, long, default_value_t = 20)]
+		/// interval for polling new tasks
+		poll: u64,
+	},
+}
+
+#[derive(Debug, Clone, clap::ValueEnum)]
+enum Filter {
+	All,
+	Local,
+	Inbound,
+	Outbound,
 }
 
 #[tokio::main]
@@ -118,5 +160,29 @@ async fn main() {
 		Mode::Serve { bind } =>
 			routes::serve(ctx, bind)
 				.await.expect("failed serving api routes"),
+
+		#[cfg(feature = "worker")]
+		Mode::Work { filter, tasks, poll } =>
+			worker::spawn(ctx, tasks, poll, filter.into())
+				.await.expect("failed running worker"),
+
+		#[cfg(all(feature = "serve", feature = "worker"))]
+		Mode::Monolith { bind, tasks, poll } => {
+			worker::spawn(ctx.clone(), tasks, poll, None);
+
+			routes::serve(ctx, bind)
+				.await.expect("failed serving api routes");
+		},
+	}
+}
+
+impl From<Filter> for Option<upub::model::job::JobType> {
+	fn from(value: Filter) -> Self {
+		match value {
+			Filter::All => None,
+			Filter::Local => Some(upub::model::job::JobType::Local),
+			Filter::Inbound => Some(upub::model::job::JobType::Inbound),
+			Filter::Outbound => Some(upub::model::job::JobType::Outbound),
+		}
 	}
 }

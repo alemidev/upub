@@ -4693,9 +4693,10 @@ name = "upub"
 version = "0.2.0"
 dependencies = [
  "apb",
- "axum",
+ "async-trait",
  "base64 0.22.1",
  "chrono",
+ "httpsign",
  "jrd",
  "mdhtml",
  "nodeinfo",
@@ -4718,7 +4719,7 @@ dependencies = [
 
 [[package]]
 name = "upub-bin"
-version = "0.2.0"
+version = "0.3.0"
 dependencies = [
  "clap",
  "sea-orm",
@@ -4730,6 +4731,7 @@ dependencies = [
  "upub-cli",
  "upub-migrations",
  "upub-routes",
+ "upub-worker",
 ]
 
 [[package]]
@@ -4746,7 +4748,6 @@ dependencies = [
  "sha256",
  "tracing",
  "upub",
- "upub-processor",
  "uuid",
 ]
 
@@ -4755,25 +4756,6 @@ name = "upub-migrations"
 version = "0.2.0"
 dependencies = [
  "sea-orm-migration",
-]
-
-[[package]]
-name = "upub-processor"
-version = "0.2.0"
-dependencies = [
- "apb",
- "async-trait",
- "chrono",
- "httpsign",
- "jrd",
- "mdhtml",
- "reqwest",
- "sea-orm",
- "serde_json",
- "thiserror",
- "tokio",
- "tracing",
- "upub",
 ]
 
 [[package]]
@@ -4827,6 +4809,26 @@ dependencies = [
  "tracing-subscriber-wasm",
  "uriproxy",
  "web-sys",
+]
+
+[[package]]
+name = "upub-worker"
+version = "0.2.0"
+dependencies = [
+ "apb",
+ "async-trait",
+ "chrono",
+ "httpsign",
+ "jrd",
+ "mdhtml",
+ "regex",
+ "reqwest",
+ "sea-orm",
+ "serde_json",
+ "thiserror",
+ "tokio",
+ "tracing",
+ "upub",
 ]
 
 [[package]]
