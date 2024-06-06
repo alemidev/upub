@@ -2,7 +2,6 @@ pub mod user;
 pub mod inbox;
 pub mod outbox;
 pub mod object;
-pub mod context;
 pub mod activity;
 pub mod application;
 pub mod auth;
@@ -55,13 +54,12 @@ impl ActivityPubRouter for Router<upub::Context> {
 			.route("/actors/:id/following/page", get(ap::user::following::page::<true>))
 			// activities
 			.route("/activities/:id", get(ap::activity::view))
-			// context
-			.route("/context/:id", get(ap::context::get))
-			.route("/context/:id/page", get(ap::context::page))
 			// specific object routes
 			.route("/objects/:id", get(ap::object::view))
 			.route("/objects/:id/replies", get(ap::object::replies::get))
 			.route("/objects/:id/replies/page", get(ap::object::replies::page))
+			.route("/objects/:id/context", get(ap::object::context::get))
+			.route("/objects/:id/context/page", get(ap::object::context::page))
 			//.route("/objects/:id/likes", get(ap::object::likes::get))
 			//.route("/objects/:id/likes/page", get(ap::object::likes::page))
 			//.route("/objects/:id/shares", get(ap::object::announces::get))

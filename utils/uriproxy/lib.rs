@@ -5,7 +5,6 @@ pub enum UriClass {
 	Actor,
 	Object,
 	Activity,
-	Context,
 }
 
 impl AsRef<str> for UriClass {
@@ -14,7 +13,6 @@ impl AsRef<str> for UriClass {
 			Self::Actor => "actors",
 			Self::Object => "objects",
 			Self::Activity => "activities",
-			Self::Context => "context",
 		}
 	}
 }
