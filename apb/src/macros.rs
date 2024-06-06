@@ -38,6 +38,12 @@ macro_rules! strenum {
 				$($deep($inner),)*
 			}
 
+			impl std::fmt::Display for $enum_name {
+				fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+					write!(f, "{}", self.as_ref())
+				}
+			}
+
 			impl AsRef<str> for $enum_name {
 				fn as_ref(&self) -> &str {
 					match self {
