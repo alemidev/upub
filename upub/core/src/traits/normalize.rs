@@ -34,17 +34,15 @@ impl Normalizer for crate::Context {
 		let mut object_active_model = AP::object_q(&object)?;
 
 		// make sure content only contains a safe subset of html
-		if let Set(Some(content)) = object_active_model.content {
-			object_active_model.content = Set(Some(mdhtml::safe_html(&content)));
+		if let Ok(content) = object.content() {
+			object_active_model.content = Set(Some(mdhtml::safe_html(content)));
 		}
 
 		// fix context for remote posts
-		// > note that this will effectively recursively try to fetch the parent object, in order to find
-		// > the context (which is id of topmost object). there's a recursion limit of 16 hidden inside
-		// > btw! also if any link is broken or we get rate limited, the whole insertion fails which is
+		// > if any link is broken or we get rate limited, the whole insertion fails which is
 		// > kind of dumb. there should be a job system so this can be done in waves. or maybe there's
 		// > some whole other way to do this?? im thinking but misskey aaaa!! TODO
-		if let Set(Some(ref reply)) = object_active_model.in_reply_to {
+		if let Ok(reply) = object.in_reply_to().id() {
 			if let Some(o) = crate::model::object::Entity::find_by_ap_id(reply).one(tx).await? {
 				object_active_model.context = Set(o.context);
 			} else {
