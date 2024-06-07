@@ -1,6 +1,5 @@
 use leptos::*;
 use leptos_router::*;
-use reqwest::Method;
 use crate::prelude::*;
 
 use leptos_use::{storage::use_local_storage, use_cookie, utils::{FromToStringCodec, JsonCodec}};
@@ -36,36 +35,21 @@ pub fn App() -> impl IntoView {
 
 	let title_target = move || if auth.present() { "/web/home" } else { "/web/server" };
 
-	if let Some(tok) = token.get_untracked() {
-		spawn_local(async move {
-			// refresh token first, or verify that we're still authed
-			match reqwest::Client::new()
-				.request(Method::PATCH, format!("{URL_BASE}/auth"))
-				.json(&serde_json::json!({"token": tok}))
-				.send()
-				.await
-			{
-				Err(e) => tracing::error!("could not refresh token: {e}"),
-				Ok(res) => match res.error_for_status() {
-					Err(e) => tracing::error!("server rejected refresh: {e}"),
-					Ok(doc) => match doc.json::<AuthResponse>().await {
-						Err(e) => tracing::error!("failed parsing auth response: {e}"),
-						Ok(auth) => {
-							set_token.set(Some(auth.token));
-							set_userid.set(Some(auth.user));
-						},
-					}
-				}
-			}
+	local_tl.more(auth); // public outbox never contains private posts
+	spawn_local(async move {
+		// refresh token first, or verify that we're still authed
+		if Auth::refresh(auth.token, set_token, set_userid).await {
+			home_tl.more(auth); // home inbox requires auth to be read
+		}
+		server_tl.more(auth); // server inbox may contain private posts
+	});
 
-			server_tl.more(auth);
-			local_tl.more(auth);
-			if auth.token.get_untracked().is_some() { home_tl.more(auth) };
-		})
-	} else {
-		server_tl.more(auth);
-		local_tl.more(auth);
-	}
+
+	// refresh token every hour
+	set_interval(
+		move || spawn_local(async move { Auth::refresh(auth.token, set_token, set_userid).await; }),
+		std::time::Duration::from_secs(3600)
+	);
 
 	view! {
 		<nav class="w-100 mt-1 mb-1 pb-s">
