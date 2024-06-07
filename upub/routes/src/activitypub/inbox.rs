@@ -55,13 +55,17 @@ pub async fn post(
 		}
 		tracing::warn!("refusing unauthorized activity: {}", pretty_json!(activity));
 		if matches!(auth, Identity::Anonymous) {
-			return Ok(StatusCode::UNAUTHORIZED);
+			return Err(crate::ApiError::unauthorized());
 		} else {
-			return Ok(StatusCode::FORBIDDEN);
+			return Err(crate::ApiError::forbidden());
 		}
 	};
 
 	let aid = activity.id()?.to_string();
+
+	if activity.actor().id()? != uid {
+		return Err(crate::ApiError::forbidden());
+	}
 
 	if let Some(_internal) = upub::model::activity::Entity::ap_to_internal(&aid, ctx.db()).await? {
 		return Ok(StatusCode::OK); // already processed
