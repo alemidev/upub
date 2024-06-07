@@ -129,7 +129,7 @@ impl MigrationTrait for Migration {
 							.on_delete(ForeignKeyAction::Cascade)
 					)
 					.col(ColumnDef::new(Sessions::Secret).string().not_null())
-					.col(ColumnDef::new(Sessions::Expires).timestamp().not_null())
+					.col(ColumnDef::new(Sessions::Expires).timestamp_with_time_zone().not_null())
 					.to_owned()
 			)
 			.await?;
