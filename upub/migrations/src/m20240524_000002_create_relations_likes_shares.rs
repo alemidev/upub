@@ -140,7 +140,7 @@ impl MigrationTrait for Migration {
 							.on_update(ForeignKeyAction::Cascade)
 							.on_delete(ForeignKeyAction::Cascade)
 					)
-					.col(ColumnDef::new(Likes::Published).date_time().not_null().default(Expr::current_timestamp()))
+					.col(ColumnDef::new(Likes::Published).timestamp().not_null().default(Expr::current_timestamp()))
 					.to_owned()
 			)
 			.await?;
@@ -194,7 +194,7 @@ impl MigrationTrait for Migration {
 							.on_update(ForeignKeyAction::Cascade)
 							.on_delete(ForeignKeyAction::Cascade)
 					)
-					.col(ColumnDef::new(Announces::Published).date_time().not_null().default(Expr::current_timestamp()))
+					.col(ColumnDef::new(Announces::Published).timestamp().not_null().default(Expr::current_timestamp()))
 					.to_owned()
 			)
 			.await?;

@@ -109,11 +109,11 @@ impl MigrationTrait for Migration {
 					.col(ColumnDef::new(Instances::Software).string().null())
 					.col(ColumnDef::new(Instances::Version).string().null())
 					.col(ColumnDef::new(Instances::Icon).string().null())
-					.col(ColumnDef::new(Instances::DownSince).date_time().null())
+					.col(ColumnDef::new(Instances::DownSince).timestamp().null())
 					.col(ColumnDef::new(Instances::Users).big_integer().null())
 					.col(ColumnDef::new(Instances::Posts).big_integer().null())
-					.col(ColumnDef::new(Instances::Published).date_time().not_null().default(Expr::current_timestamp()))
-					.col(ColumnDef::new(Instances::Updated).date_time().not_null().default(Expr::current_timestamp()))
+					.col(ColumnDef::new(Instances::Published).timestamp().not_null().default(Expr::current_timestamp()))
+					.col(ColumnDef::new(Instances::Updated).timestamp().not_null().default(Expr::current_timestamp()))
 					.to_owned()
 			)
 			.await?;
@@ -161,8 +161,8 @@ impl MigrationTrait for Migration {
 					.col(ColumnDef::new(Actors::StatusesCount).integer().not_null().default(0))
 					.col(ColumnDef::new(Actors::PublicKey).string().not_null())
 					.col(ColumnDef::new(Actors::PrivateKey).string().null())
-					.col(ColumnDef::new(Actors::Published).date_time().not_null().default(Expr::current_timestamp()))
-					.col(ColumnDef::new(Actors::Updated).date_time().not_null().default(Expr::current_timestamp()))
+					.col(ColumnDef::new(Actors::Published).timestamp().not_null().default(Expr::current_timestamp()))
+					.col(ColumnDef::new(Actors::Updated).timestamp().not_null().default(Expr::current_timestamp()))
 					.to_owned()
 			)
 			.await?;
@@ -232,8 +232,8 @@ impl MigrationTrait for Migration {
 					.col(ColumnDef::new(Objects::Bto).json().null())
 					.col(ColumnDef::new(Objects::Cc).json().null())
 					.col(ColumnDef::new(Objects::Bcc).json().null())
-					.col(ColumnDef::new(Objects::Published).date_time().not_null().default(Expr::current_timestamp()))
-					.col(ColumnDef::new(Objects::Updated).date_time().not_null().default(Expr::current_timestamp()))
+					.col(ColumnDef::new(Objects::Published).timestamp().not_null().default(Expr::current_timestamp()))
+					.col(ColumnDef::new(Objects::Updated).timestamp().not_null().default(Expr::current_timestamp()))
 					.to_owned()
 			).await?;
 
@@ -290,7 +290,7 @@ impl MigrationTrait for Migration {
 					.col(ColumnDef::new(Activities::Bto).json().null())
 					.col(ColumnDef::new(Activities::Cc).json().null())
 					.col(ColumnDef::new(Activities::Bcc).json().null())
-					.col(ColumnDef::new(Activities::Published).date_time().not_null().default(Expr::current_timestamp()))
+					.col(ColumnDef::new(Activities::Published).timestamp().not_null().default(Expr::current_timestamp()))
 					.to_owned()
 			).await?;
 

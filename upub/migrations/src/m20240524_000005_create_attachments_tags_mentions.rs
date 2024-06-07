@@ -63,7 +63,7 @@ impl MigrationTrait for Migration {
 					.col(ColumnDef::new(Attachments::DocumentType).string().not_null())
 					.col(ColumnDef::new(Attachments::Name).string().null())
 					.col(ColumnDef::new(Attachments::MediaType).string().not_null())
-					.col(ColumnDef::new(Attachments::Published).date_time().not_null().default(Expr::current_timestamp()))
+					.col(ColumnDef::new(Attachments::Published).timestamp().not_null().default(Expr::current_timestamp()))
 					.to_owned()
 			)
 			.await?;
@@ -102,7 +102,7 @@ impl MigrationTrait for Migration {
 					// 		.on_update(ForeignKeyAction::Cascade)
 					// 		.on_delete(ForeignKeyAction::Cascade)
 					// )
-					.col(ColumnDef::new(Mentions::Published).date_time().not_null().default(Expr::current_timestamp()))
+					.col(ColumnDef::new(Mentions::Published).timestamp().not_null().default(Expr::current_timestamp()))
 					.to_owned()
 			)
 			.await?;
@@ -144,7 +144,7 @@ impl MigrationTrait for Migration {
 							.on_delete(ForeignKeyAction::Cascade)
 					)
 					.col(ColumnDef::new(Hashtags::Name).string().not_null())
-					.col(ColumnDef::new(Hashtags::Published).date_time().not_null().default(Expr::current_timestamp()))
+					.col(ColumnDef::new(Hashtags::Published).timestamp().not_null().default(Expr::current_timestamp()))
 					.to_owned()
 			)
 			.await?;
