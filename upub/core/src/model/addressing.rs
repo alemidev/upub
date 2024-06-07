@@ -154,7 +154,7 @@ impl FromQueryResult for Event {
 impl Entity {
 	pub fn find_addressed(uid: Option<i64>) -> Select<Entity> {
 		let mut select = Entity::find()
-			.distinct()
+			// .distinct()
 			.select_only()
 			.join(sea_orm::JoinType::LeftJoin, Relation::Objects.def())
 			.join(sea_orm::JoinType::LeftJoin, Relation::Activities.def())
