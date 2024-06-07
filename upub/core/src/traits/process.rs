@@ -297,12 +297,11 @@ pub async fn undo(ctx: &crate::Context, activity: impl apb::Activity, tx: &Datab
 		.await?
 		.ok_or(ProcessorError::Incomplete)?;
 
-	let activity_type = activity.activity_type()?;
 	let targets = ctx.expand_addressing(activity.addressed(), tx).await?;
 	let activity_model = ctx.insert_activity(activity, tx).await?;
 	ctx.address_to(Some(activity_model.internal), None, &targets, tx).await?;
 
-	match activity_type {
+	match undone_activity.as_activity()?.activity_type()? {
 		apb::ActivityType::Like => {
 			let internal_oid = crate::model::object::Entity::ap_to_internal(&undone_activity_target, tx)
 				.await?
