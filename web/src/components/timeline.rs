@@ -83,21 +83,23 @@ pub fn TimelineRepliesRecursive(tl: Timeline, root: String) -> impl IntoView {
 	let root_values = move || tl.feed
 		.get()
 		.into_iter()
-		.filter_map(|x| CACHE.get(&x))
 		.filter_map(|x| {
-			let oid = match x.object_type().ok()? {
+			let document = CACHE.get(&x)?;
+			let (oid, reply) = match document.object_type().ok()? {
 				// if it's a create, get and check created object: does it reply to root?
-				apb::ObjectType::Activity(apb::ActivityType::Create) =>
-					CACHE.get(x.object().id().ok()?)?.in_reply_to().id().str()?,
+				apb::ObjectType::Activity(apb::ActivityType::Create) => {
+					let object = CACHE.get(document.object().id().ok()?)?;
+					(object.id().str()?, object.in_reply_to().id().str()?)
+				},
 
 				// if it's a raw note, directly check if it replies to root
-				apb::ObjectType::Note => x.in_reply_to().id().str()?,
+				apb::ObjectType::Note => (document.id().str()?, document.in_reply_to().id().str()?),
 
 				// if it's anything else, check if it relates to root, maybe like or announce?
-				_ => x.object().id().str()?,
+				_ => (document.id().str()?, document.object().id().str()?),
 			};
-			if oid == root {
-				Some((oid, x))
+			if reply == root {
+				Some((oid, document))
 			} else {
 				None
 			}
@@ -108,7 +110,7 @@ pub fn TimelineRepliesRecursive(tl: Timeline, root: String) -> impl IntoView {
 		<For
 			each=root_values
 			key=|(id, _obj)| id.clone()
-			children=move |(id, obj)| {
+			children=move |(id, obj)|
 				view! {
 					<div class="context depth-r">
 						<Item item=obj replies=true />
@@ -117,7 +119,6 @@ pub fn TimelineRepliesRecursive(tl: Timeline, root: String) -> impl IntoView {
 						</div>
 					</div>
 				}
-			}
 		/ >
 	}
 }
