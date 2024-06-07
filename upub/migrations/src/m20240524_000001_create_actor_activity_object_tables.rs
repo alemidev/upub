@@ -250,10 +250,6 @@ impl MigrationTrait for Migration {
 			.await?;
 
 		manager
-			.create_index(Index::create().name("index-objects-content-text").table(Objects::Table).col(Objects::Content).full_text().to_owned())
-			.await?;
-
-		manager
 			.create_index(Index::create().name("index-objects-context").table(Objects::Table).col(Objects::Context).to_owned())
 			.await?;
 
