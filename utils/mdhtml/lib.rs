@@ -4,7 +4,10 @@ use comrak::{markdown_to_html, Options};
 
 /// In our case, our sink only contains a tokens vector
 #[derive(Debug, Clone, Default)]
-struct Sink(String);
+struct Sink {
+	pub media_proxy: Option<String>,
+	pub buffer: String,
+}
 
 impl TokenSink for Sink {
 	type Handle = ();
@@ -22,21 +25,28 @@ impl TokenSink for Sink {
 					| "img" | "a"
 				) { return TokenSinkResult::Continue } // skip this tag
 
-				self.0.push('<');
+				self.buffer.push('<');
 
 				if !tag.self_closing && matches!(tag.kind, TagKind::EndTag) {
-					self.0.push('/');
+					self.buffer.push('/');
 				}
 
-				self.0.push_str(tag.name.as_ref());
+				self.buffer.push_str(tag.name.as_ref());
 
 				if !matches!(tag.kind, TagKind::EndTag) {
 					match tag.name.as_ref() {
 						"img" => for attr in tag.attrs {
 							match attr.name.local.as_ref() {
-								"src" => self.0.push_str(&format!(" src=\"{}\"", attr.value.as_ref())),
-								"title" => self.0.push_str(&format!(" title=\"{}\"", attr.value.as_ref())),
-								"alt" => self.0.push_str(&format!(" alt=\"{}\"", attr.value.as_ref())),
+								"src" => {
+									let src = if let Some(ref proxy) = self.media_proxy {
+										format!("{proxy}{}", attr.value.as_ref())
+									} else {
+										attr.value.to_string()
+									};
+									self.buffer.push_str(&format!(" src=\"{src}\""))
+								},
+								"title" => self.buffer.push_str(&format!(" title=\"{}\"", attr.value.as_ref())),
+								"alt" => self.buffer.push_str(&format!(" alt=\"{}\"", attr.value.as_ref())),
 								_ => {},
 							}
 						},
@@ -44,13 +54,13 @@ impl TokenSink for Sink {
 							let any_attr = !tag.attrs.is_empty();
 							for attr in tag.attrs {
 								match attr.name.local.as_ref() {
-									"href" => self.0.push_str(&format!(" href=\"{}\"", attr.value.as_ref())),
-									"title" => self.0.push_str(&format!(" title=\"{}\"", attr.value.as_ref())),
+									"href" => self.buffer.push_str(&format!(" href=\"{}\"", attr.value.as_ref())),
+									"title" => self.buffer.push_str(&format!(" title=\"{}\"", attr.value.as_ref())),
 									_ => {},
 								}
 							}
 							if any_attr {
-								self.0.push_str(" rel=\"nofollow noreferrer\" target=\"_blank\"");
+								self.buffer.push_str(" rel=\"nofollow noreferrer\" target=\"_blank\"");
 							}
 						},
 						_ => {},
@@ -58,12 +68,12 @@ impl TokenSink for Sink {
 				}
 
 				if tag.self_closing {
-					self.0.push('/');
+					self.buffer.push('/');
 				}
 
-				self.0.push('>');
+				self.buffer.push('>');
 			},
-			Token::CharacterTokens(txt) => self.0.push_str(txt.as_ref()),
+			Token::CharacterTokens(txt) => self.buffer.push_str(txt.as_ref()),
 			Token::CommentToken(_) => {},
 			Token::DoctypeToken(_) => {},
 			Token::NullCharacterToken => {},
