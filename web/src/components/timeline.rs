@@ -84,29 +84,36 @@ pub fn TimelineRepliesRecursive(tl: Timeline, root: String) -> impl IntoView {
 		.get()
 		.into_iter()
 		.filter_map(|x| CACHE.get(&x))
-		.filter(|x| match x.object_type() {
-			Ok(apb::ObjectType::Activity(apb::ActivityType::Create)) => {
-				let Some(oid) = x.object().id().str() else { return false; };
-				let Some(object) = CACHE.get(&oid) else { return false; };
-				let Some(reply) = object.in_reply_to().id().str() else { return false; };
-				reply == root
-			},
-			Ok(apb::ObjectType::Activity(_)) => x.object().id().map(|o| o == root).unwrap_or(false),
-			_ => x.in_reply_to().id().map(|r| r == root).unwrap_or(false),
+		.filter_map(|x| {
+			let oid = match x.object_type().ok()? {
+				// if it's a create, get and check created object: does it reply to root?
+				apb::ObjectType::Activity(apb::ActivityType::Create) =>
+					CACHE.get(x.object().id().ok()?)?.in_reply_to().id().str()?,
+
+				// if it's a raw note, directly check if it replies to root
+				apb::ObjectType::Note => x.in_reply_to().id().str()?,
+
+				// if it's anything else, check if it relates to root, maybe like or announce?
+				_ => x.object().id().str()?,
+			};
+			if oid == root {
+				Some((oid, x))
+			} else {
+				None
+			}
 		})
-		.collect::<Vec<crate::Object>>();
+		.collect::<Vec<(String, crate::Object)>>();
 
 	view! {
 		<For
 			each=root_values
-			key=|k| k.id().unwrap_or_default().to_string()
-			children=move |obj: crate::Object| {
-				let oid = obj.id().unwrap_or_default().to_string();
+			key=|(id, _obj)| id.clone()
+			children=move |(id, obj)| {
 				view! {
 					<div class="context depth-r">
 						<Item item=obj replies=true />
 						<div class="depth-r">
-							<TimelineRepliesRecursive tl=tl root=oid />
+							<TimelineRepliesRecursive tl=tl root=id />
 						</div>
 					</div>
 				}
