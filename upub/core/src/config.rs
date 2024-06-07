@@ -71,8 +71,11 @@ pub struct SecurityConfig {
 	#[serde_inline_default(true)]
 	pub show_reply_ids: bool,
 
-	#[serde(default)]
+	#[serde_inline_default(true)]
 	pub allow_login_refresh: bool,
+
+	#[serde_inline_default(7 * 24)]
+	pub session_duration_hours: i64,
 
 	#[serde_inline_default(2)]
 	pub max_id_redirects: u32,

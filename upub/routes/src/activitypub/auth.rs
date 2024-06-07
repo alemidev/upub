@@ -41,7 +41,7 @@ pub async fn login(
 	{
 		Some(x) => {
 			let token = token();
-			let expires = chrono::Utc::now() + std::time::Duration::from_secs(3600 * 6);
+			let expires = chrono::Utc::now() + chrono::Duration::hours(ctx.cfg().security.session_duration_hours);
 			upub::model::session::Entity::insert(
 				upub::model::session::ActiveModel {
 					internal: sea_orm::ActiveValue::NotSet,
@@ -80,7 +80,9 @@ pub async fn refresh(
 		.await?
 		.ok_or_else(crate::ApiError::unauthorized)?;
 
-	if prev.expires > chrono::Utc::now() {
+	// allow refreshing tokens a little bit before they expire, specifically 1/4 of their lifespan before
+	let quarter_session_lifespan = chrono::Duration::days(ctx.cfg().security.session_duration_hours) / 4;
+	if prev.expires - quarter_session_lifespan > chrono::Utc::now() {
 		return Ok(Json(AuthSuccess { token: prev.secret, user: prev.actor, expires: prev.expires }));
 	}
 
