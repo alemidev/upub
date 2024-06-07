@@ -103,4 +103,10 @@ impl apb::target::Addressed for Model {
 		to.append(&mut self.bcc.0.clone());
 		to
 	}
+
+	fn mentioning(&self) -> Vec<String> {
+		let mut to = self.to.0.clone();
+		to.append(&mut self.bto.0.clone());
+		to
+	}
 }
