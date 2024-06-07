@@ -26,6 +26,7 @@ axum = "0.7"
 tower-http = { version = "0.5", features = ["cors", "trace"] }
 httpsign = { path = "../../utils/httpsign/", features = ["axum"] }
 apb = { path = "../../apb", features = ["unstructured", "orm", "activitypub-fe", "activitypub-counters", "litepub", "ostatus", "toot", "jsonld"] }
+uriproxy = { path = "../../utils/uriproxy" }
 sea-orm = { version = "0.12", features = ["macros", "sqlx-sqlite", "runtime-tokio-rustls"] }
 # nodeinfo = "0.0.2" # the version on crates.io doesn't re-export necessary types to build the struct!!!
 nodeinfo = { git = "https://codeberg.org/thefederationinfo/nodeinfo-rs", rev = "e865094804" }

@@ -1,9 +1,9 @@
 use apb::{LD, ActorMut, BaseMut, ObjectMut, PublicKeyMut};
-use axum::{extract::{Query, State}, http::HeaderMap, response::{IntoResponse, Redirect, Response}, Form, Json};
+use axum::{extract::{Path, Query, State}, http::{HeaderMap, HeaderName, HeaderValue}, response::{IntoResponse, Redirect, Response}, Form, Json};
 use reqwest::Method;
 use upub::{traits::Fetcher, Context};
 
-use crate::{builders::JsonLD, AuthIdentity};
+use crate::{builders::JsonLD, AuthIdentity, Identity};
 
 
 pub async fn view(
@@ -39,55 +39,56 @@ pub async fn view(
 	).into_response())
 }
 
+pub async fn proxy_path(
+	State(ctx): State<Context>,
+	AuthIdentity(auth): AuthIdentity,
+	Path(uri): Path<String>,
+) -> crate::ApiResult<impl IntoResponse> {
+	let query = uriproxy::expand(&uri)
+		.ok_or_else(crate::ApiError::bad_request)?;
+	proxy(ctx, query, auth).await
+}
+
 #[derive(Debug, serde::Deserialize)]
-pub struct FetchPath {
-	id: String,
+pub struct ProxyQuery {
+	uri: String,
 }
 
 pub async fn proxy_get(
 	State(ctx): State<Context>,
-	Query(query): Query<FetchPath>,
 	AuthIdentity(auth): AuthIdentity,
-) -> crate::ApiResult<Json<serde_json::Value>> {
-	// only local users can request fetches
-	if !ctx.cfg().security.allow_public_debugger && !auth.is_local() {
-		return Err(crate::ApiError::unauthorized());
-	}
-	Ok(Json(
-		Context::request(
-			Method::GET,
-			&query.id,
-			None,
-			ctx.base(),
-			ctx.pkey(),
-			&format!("{}+proxy", ctx.domain()),
-		)
-			.await?
-			.json::<serde_json::Value>()
-			.await?
-	))
+	Query(query): Query<ProxyQuery>,
+) -> crate::ApiResult<impl IntoResponse> {
+	proxy(ctx, query.uri, auth).await
 }
 
 pub async fn proxy_form(
 	State(ctx): State<Context>,
 	AuthIdentity(auth): AuthIdentity,
-	Form(query): Form<FetchPath>,
-) -> crate::ApiResult<Json<serde_json::Value>> {
+	Form(query): Form<String>,
+) -> crate::ApiResult<impl IntoResponse> {
+	proxy(ctx, query, auth).await
+}
+
+async fn proxy(ctx: Context, query: String, auth: Identity) -> crate::ApiResult<impl IntoResponse> {
 	// only local users can request fetches
-	if !ctx.cfg().security.allow_public_debugger && auth.is_local() {
+	if !ctx.cfg().security.allow_public_debugger && !auth.is_local() {
 		return Err(crate::ApiError::unauthorized());
 	}
-	Ok(Json(
-		Context::request(
+
+	let resp = Context::request(
 			Method::GET,
-			&query.id,
+			&query,
 			None,
 			ctx.base(),
 			ctx.pkey(),
 			&format!("{}+proxy", ctx.domain()),
 		)
 			.await?
-			.json::<serde_json::Value>()
-			.await?
+			.error_for_status()?;
+
+	Ok((
+		resp.headers().clone(),
+		resp.bytes().await?.to_vec(),
 	))
 }
