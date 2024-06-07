@@ -1,7 +1,7 @@
 use sea_orm::entity::prelude::*;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, EnumIter, DeriveActiveEnum)]
-#[sea_orm(rs_type = "i32", db_type = "Integer")]
+#[sea_orm(rs_type = "i16", db_type = "SmallInteger")]
 pub enum JobType {
 	Inbound = 1,
 	Outbound = 2,
