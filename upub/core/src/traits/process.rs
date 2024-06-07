@@ -261,7 +261,7 @@ pub async fn update(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 				.exec(tx)
 				.await?;
 		},
-		apb::ObjectType::Note => {
+		apb::ObjectType::Note | apb::ObjectType::Document(apb::DocumentType::Page) => {
 			let internal_oid = crate::model::object::Entity::ap_to_internal(&oid, tx)
 				.await?
 				.ok_or(ProcessorError::Incomplete)?;
