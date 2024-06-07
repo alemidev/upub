@@ -20,7 +20,7 @@ pub struct Model {
 	pub payload: Option<String>,
 	pub published: ChronoDateTimeUtc,
 	pub not_before: ChronoDateTimeUtc,
-	pub attempt: i32,
+	pub attempt: i16,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
