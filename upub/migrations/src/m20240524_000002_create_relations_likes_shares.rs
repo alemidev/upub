@@ -19,7 +19,7 @@ pub enum Likes {
 	Internal,
 	Actor,
 	Object,
-	Activity,
+	Activity, // DROPPED
 	Published,
 }
 

@@ -8,6 +8,7 @@ mod m20240524_000005_create_attachments_tags_mentions;
 mod m20240529_000001_add_relation_unique_index;
 mod m20240605_000001_add_jobs_table;
 mod m20240606_000001_add_audience_to_objects;
+mod m20240607_000001_activity_ref_is_optional;
 
 pub struct Migrator;
 
@@ -23,6 +24,7 @@ impl MigratorTrait for Migrator {
 			Box::new(m20240529_000001_add_relation_unique_index::Migration),
 			Box::new(m20240605_000001_add_jobs_table::Migration),
 			Box::new(m20240606_000001_add_audience_to_objects::Migration),
+			Box::new(m20240607_000001_activity_ref_is_optional::Migration),
 		]
 	}
 }
