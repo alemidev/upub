@@ -102,5 +102,5 @@ pub fn safe_html(text: &str) -> String {
 	}
 	tok.end();
 
-	tok.sink.0
+	tok.sink.buffer
 }
