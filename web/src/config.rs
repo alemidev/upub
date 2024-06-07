@@ -60,15 +60,18 @@ impl FiltersConfig {
 		};
 		let mut reply_filter = true;
 
-		if
-			item.in_reply_to().id().is_ok() ||
-			item.object().get().map(|x|
-				x.in_reply_to().id().is_ok()
-			).unwrap_or(false)
-		{
+		if let Ok(obj_id) = item.object().id() {
+			if let Some(obj) = crate::CACHE.get(obj_id) {
+				if obj.in_reply_to().id().is_ok() {
+					reply_filter = self.replies;
+				}
+			}
+		}
+
+		if item.in_reply_to().id().is_ok() {
 			reply_filter = self.replies;
-		};
-		
+		}
+
 		type_filter && reply_filter
 	}
 }
