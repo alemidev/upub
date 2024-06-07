@@ -1,5 +1,5 @@
 use apb::{LD, ActorMut, BaseMut, ObjectMut, PublicKeyMut};
-use axum::{extract::{Path, Query, State}, http::{HeaderMap, HeaderName, HeaderValue}, response::{IntoResponse, Redirect, Response}, Form, Json};
+use axum::{extract::{Path, Query, State}, http::HeaderMap, response::{IntoResponse, Redirect, Response}, Form};
 use reqwest::Method;
 use upub::{traits::Fetcher, Context};
 
