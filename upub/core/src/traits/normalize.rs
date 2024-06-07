@@ -1,6 +1,8 @@
 use apb::{field::OptionalString, Collection, Document, Endpoints, Node, Object, PublicKey};
 use sea_orm::{sea_query::Expr, ActiveValue::{NotSet, Set}, ColumnTrait, ConnectionTrait, DbErr, EntityTrait, IntoActiveModel, QueryFilter};
 
+use super::Addresser;
+
 #[derive(Debug, thiserror::Error)]
 pub enum NormalizerError {
 	#[error("normalized document misses required field: {0:?}")]
@@ -23,13 +25,11 @@ pub trait Normalizer {
 impl Normalizer for crate::Context {
 
 	async fn insert_object(&self, object: impl apb::Object, tx: &impl ConnectionTrait) -> Result<crate::model::object::Model, NormalizerError> {
-		let oid = object.id()?.to_string();
-		let uid = object.attributed_to().id().str();
-		let mut object_active_model = AP::object_q(&object)?;
+		let mut object_model = AP::object(&object)?;
 
 		// make sure content only contains a safe subset of html
-		if let Ok(content) = object.content() {
-			object_active_model.content = Set(Some(mdhtml::safe_html(content)));
+		if let Some(content) = object_model.content {
+			object_model.content = Some(mdhtml::safe_html(&content));
 		}
 
 		// fix context for remote posts
@@ -38,19 +38,22 @@ impl Normalizer for crate::Context {
 		// > some whole other way to do this?? im thinking but misskey aaaa!! TODO
 		if let Ok(reply) = object.in_reply_to().id() {
 			if let Some(o) = crate::model::object::Entity::find_by_ap_id(reply).one(tx).await? {
-				object_active_model.context = Set(o.context);
+				object_model.context = o.context;
 			} else {
-				object_active_model.context = Set(None); // TODO to be filled by some other task
+				object_model.context = None; // TODO to be filled by some other task
 			}
 		} else {
-			object_active_model.context = Set(Some(oid.clone()));
+			object_model.context = Some(object_model.id.clone());
 		}
 
+		let mut object_active_model = object_model.clone().into_active_model();
+		object_active_model.internal = NotSet;
 		crate::model::object::Entity::insert(object_active_model).exec(tx).await?;
-		let object_model = crate::model::object::Entity::find_by_ap_id(&oid)
-			.one(tx)
+		object_model.internal = crate::model::object::Entity::ap_to_internal(&object_model.id, tx)
 			.await?
-			.ok_or_else(|| DbErr::RecordNotFound(oid.to_string()))?;
+			.ok_or_else(|| DbErr::RecordNotFound(object_model.id.clone()))?;
+
+		self.address_object(&object_model, tx).await?;
 
 		// update replies counter
 		if let Some(ref in_reply_to) = object_model.in_reply_to {
@@ -61,10 +64,10 @@ impl Normalizer for crate::Context {
 				.await?;
 		}
 		// update statuses counter
-		if let Some(object_author) = uid {
+		if let Some(ref object_author) = object_model.attributed_to {
 			crate::model::actor::Entity::update_many()
 				.col_expr(crate::model::actor::Column::StatusesCount, Expr::col(crate::model::actor::Column::StatusesCount).add(1))
-				.filter(crate::model::actor::Column::Id.eq(&object_author))
+				.filter(crate::model::actor::Column::Id.eq(object_author))
 				.exec(tx)
 				.await?;
 		}
@@ -136,6 +139,8 @@ impl Normalizer for crate::Context {
 			.await?
 			.ok_or_else(|| DbErr::RecordNotFound(activity_model.id.clone()))?;
 		activity_model.internal = internal;
+
+		self.address_activity(&activity_model, tx).await?;
 
 		Ok(activity_model)
 	}

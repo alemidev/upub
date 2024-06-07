@@ -58,12 +58,9 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 			));
 	}
 
-	// TODO we expand addressing twice, ugghhhhh
-	let targets = ctx.expand_addressing(activity.addressed(), &tx).await?;
-
+	let targets = activity.addressed();
 	ctx.process(activity, &tx).await?;
-
-	ctx.deliver_to(&job.activity, &job.actor, &targets, &tx).await?;
+	ctx.deliver(targets, &job.activity, &job.actor, &tx).await?;
 
 	tx.commit().await?;
 

@@ -1,12 +1,12 @@
 use std::collections::BTreeMap;
 
-use apb::{target::Addressed, Activity, Actor, ActorMut, Base, Collection, Object};
+use apb::{Activity, Actor, ActorMut, Base, Collection, Object};
 use reqwest::{header::{ACCEPT, CONTENT_TYPE, USER_AGENT}, Method, Response};
 use sea_orm::{ConnectionTrait, DbErr, EntityTrait, IntoActiveModel, NotSet};
 
 use crate::traits::normalize::AP;
 
-use super::{Addresser, Normalizer};
+use super::Normalizer;
 use httpsign::HttpSignature;
 
 #[derive(Debug, Clone)]
@@ -358,10 +358,6 @@ impl Fetcher for crate::Context {
 
 		let activity_model = self.insert_activity(activity, tx).await?;
 
-		let addressed = activity_model.addressed();
-		let expanded_addresses = self.expand_addressing(addressed, tx).await?;
-		self.address_to(Some(activity_model.internal), None, &expanded_addresses, tx).await?;
-
 		Ok(activity_model)
 	}
 
@@ -407,8 +403,6 @@ async fn resolve_object_r(ctx: &crate::Context, object: serde_json::Value, depth
 		}
 	}
 
-	let addressed = object.addressed();
-
 	if let Ok(reply) = object.in_reply_to().id() {
 		if depth <= ctx.cfg().security.thread_crawl_depth {
 			fetch_object_r(ctx, reply, depth + 1, tx).await?;
@@ -418,9 +412,6 @@ async fn resolve_object_r(ctx: &crate::Context, object: serde_json::Value, depth
 	}
 
 	let object_model = ctx.insert_object(object, tx).await?;
-
-	let expanded_addresses = ctx.expand_addressing(addressed, tx).await?;
-	ctx.address_to(None, Some(object_model.internal), &expanded_addresses, tx).await?;
 
 	Ok(object_model)
 }
