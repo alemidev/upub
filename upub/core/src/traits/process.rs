@@ -74,7 +74,7 @@ pub async fn create(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 	let object_model = ctx.insert_object(object_node, tx).await?;
 	// only likes mentioning local users are stored to generate notifications, everything else
 	// produces side effects but no activity, and thus no notification
-	if activity.mentioning().iter().any(|x| ctx.is_local(x)) {
+	if ctx.is_local(activity.actor().id()?) || activity.mentioning().iter().any(|x| ctx.is_local(x)) {
 		ctx.insert_activity(activity, tx).await?;
 	}
 	tracing::debug!("{} posted {}", object_model.attributed_to.as_deref().unwrap_or("<anonymous>"), object_model.id);
@@ -107,7 +107,7 @@ pub async fn like(ctx: &crate::Context, activity: impl apb::Activity, tx: &Datab
 
 	// only likes mentioning local users are stored to generate notifications, everything else
 	// produces side effects but no activity, and thus no notification
-	if activity.mentioning().iter().any(|x| ctx.is_local(x)) {
+	if ctx.is_local(&actor.id) || activity.mentioning().iter().any(|x| ctx.is_local(x)) {
 		ctx.insert_activity(activity, tx).await?;
 	}
 
@@ -205,11 +205,13 @@ pub async fn delete(_ctx: &crate::Context, activity: impl apb::Activity, tx: &Da
 	Ok(())
 }
 
-pub async fn update(_ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
+pub async fn update(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 	let Some(object_node) = activity.object().extract() else {
 		tracing::error!("refusing to process activity without embedded object");
 		return Err(ProcessorError::Unprocessable(activity.id()?.to_string()));
 	};
+
+	let actor_id = activity.actor().id()?.to_string();
 	let oid = object_node.id()?.to_string();
 
 	match object_node.object_type()? {
@@ -238,7 +240,11 @@ pub async fn update(_ctx: &crate::Context, activity: impl apb::Activity, tx: &Da
 		_ => return Err(ProcessorError::Unprocessable(activity.id()?.to_string())),
 	}
 
-	tracing::debug!("{} updated {}", activity.actor().id()?, oid);
+	if ctx.is_local(&actor_id) {
+		ctx.insert_activity(activity, tx).await?;
+	}
+
+	tracing::debug!("{} updated {}", actor_id, oid);
 	Ok(())
 }
 
@@ -360,12 +366,16 @@ pub async fn announce(ctx: &crate::Context, activity: impl apb::Activity, tx: &D
 						.exec(tx)
 						.await?;
 				}
+			}
 
-				// TODO we should probably insert an activity, otherwise this won't appear on timelines!!
-				//      or maybe go update all addressing records for this object, pushing them up
-				//      or maybe create new addressing rows with more recent dates
-				//      or maybe create fake objects that reference the original one
-				//      idk!!!!
+			// TODO we should probably insert an activity, otherwise this won't appear on timelines!!
+			//      or maybe go update all addressing records for this object, pushing them up
+			//      or maybe create new addressing rows with more recent dates
+			//      or maybe create fake objects that reference the original one
+			//      idk!!!!
+
+			if ctx.is_local(&actor.id) {
+				ctx.insert_activity(activity, tx).await?;
 			}
 
 			tracing::debug!("{} shared {}", actor.id, announced_id);
