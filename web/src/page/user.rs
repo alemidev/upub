@@ -33,7 +33,7 @@ pub fn UserPage(tl: Timeline) -> impl IntoView {
 		move |id| {
 			async move {
 				let tl_url = format!("{}/outbox/page", Uri::api(U::Actor, &id, false));
-				if !tl.next.get().starts_with(&tl_url) {
+				if !tl.next.get_untracked().starts_with(&tl_url) {
 					tl.reset(tl_url);
 				}
 				match CACHE.get(&Uri::full(U::Actor, &id)) {

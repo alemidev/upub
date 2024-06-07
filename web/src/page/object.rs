@@ -10,8 +10,6 @@ use apb::{Base, Object};
 pub fn ObjectPage(tl: Timeline) -> impl IntoView {
 	let params = use_params_map();
 	let auth = use_context::<Auth>().expect("missing auth context");
-	let id = params.get().get("id").cloned().unwrap_or_default();
-	let uid =  uriproxy::uri(URL_BASE, uriproxy::UriClass::Object, &id);
 	let object = create_local_resource(
 		move || params.get().get("id").cloned().unwrap_or_default(),
 		move |oid| async move {
@@ -38,7 +36,7 @@ pub fn ObjectPage(tl: Timeline) -> impl IntoView {
 			};
 			if let Ok(ctx) = obj.context().id() {
 				let tl_url = format!("{}/context/page", Uri::api(U::Object, ctx, false));
-				if !tl.next.get().starts_with(&tl_url) {
+				if !tl.next.get_untracked().starts_with(&tl_url) {
 					tl.reset(tl_url);
 				}
 			}
@@ -64,7 +62,8 @@ pub fn ObjectPage(tl: Timeline) -> impl IntoView {
 				{move || match object.get() {
 					None => view! { <p class="center"> loading ... </p> }.into_view(),
 					Some(None) => {
-						let uid = uid.clone();
+						let raw_id = params.get().get("id").cloned().unwrap_or_default();
+						let uid =  uriproxy::uri(URL_BASE, uriproxy::UriClass::Object, &raw_id);
 						view! { <p class="center"><code>loading failed</code><sup><small><a class="clean" href={uid} target="_blank">"↗"</a></small></sup></p> }.into_view()
 					},
 					Some(Some(o)) => {
