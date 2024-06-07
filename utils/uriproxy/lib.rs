@@ -24,10 +24,8 @@ pub fn uri(base: &str, entity: UriClass, id: &str) -> String {
 	}
 
 	if id.starts_with('+') { // ready-to-use base64-encoded id
-		if let Ok(bytes) = base64::prelude::BASE64_URL_SAFE_NO_PAD.decode(id.replacen('+', "", 1)) {
-			if let Ok(uri) = std::str::from_utf8(&bytes) {
-				return uri.to_string();
-			}
+		if let Some(expanded) = expand(id) {
+			return expanded;
 		}
 	}
 
@@ -35,7 +33,7 @@ pub fn uri(base: &str, entity: UriClass, id: &str) -> String {
 }
 
 /// decompose local id constructed by uri() fn
-pub fn decompose_id(full_id: &str) -> String {
+pub fn decompose(full_id: &str) -> String {
 		full_id       //  https://example.org/actors/test/followers/page?offset=42
 			.replace("https://", "")
 			.replace("http://", "")
@@ -45,8 +43,17 @@ pub fn decompose_id(full_id: &str) -> String {
 			.to_string()
 }
 
+pub fn expand(uri: &str) -> Option<String> {
+	if let Ok(bytes) = base64::prelude::BASE64_URL_SAFE_NO_PAD.decode(uri.replacen('+', "", 1)) {
+		if let Ok(uri) = std::str::from_utf8(&bytes) {
+			return Some(uri.to_string());
+		}
+	}
+	None
+}
+
 /// encode with base64 remote url and prefix it with +
-pub fn compact_id(uri: &str) -> String {
+pub fn compact(uri: &str) -> String {
 	let encoded = base64::prelude::BASE64_URL_SAFE_NO_PAD.encode(uri.as_bytes());
 	format!("+{encoded}")
 }

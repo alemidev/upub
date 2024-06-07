@@ -120,9 +120,9 @@ impl Context {
 	/// get bare id, which is uuid for local stuff and +{uri|base64} for remote stuff
 	pub fn id(&self, full_id: &str) -> String {
 		if self.is_local(full_id) {
-			uriproxy::decompose_id(full_id)
+			uriproxy::decompose(full_id)
 		} else {
-			uriproxy::compact_id(full_id)
+			uriproxy::compact(full_id)
 		}
 	}
 
