@@ -1,7 +1,7 @@
 use axum::{extract::{FromRef, FromRequestParts}, http::{header, request::Parts}};
 use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter};
 use httpsign::HttpSignature;
-use upub::traits::Fetcher;
+use upub::traits::{fetch::PullError, Fetcher};
 
 use crate::ApiError;
 
@@ -120,21 +120,26 @@ where
 				.next().ok_or(ApiError::bad_request())?
 				.to_string();
 
-			let user = ctx.fetch_user(&user_id, ctx.db()).await?;
+			match ctx.fetch_user(&user_id, ctx.db()).await {
+				Err(PullError::Database(x)) => return Err(PullError::Database(x).into()),
+				Err(_) => tracing::debug!("could not fetch {user_id} to verify signature"),
+				Ok(user) => {
+					let valid = http_signature
+						.build_from_parts(parts)
+						.verify(&user.public_key)?;
 
-			let valid = http_signature
-				.build_from_parts(parts)
-				.verify(&user.public_key)?;
+					if !valid {
+						tracing::warn!("refusing mismatching http signature");
+						return Err(ApiError::unauthorized());
+					}
 
-			if !valid {
-				tracing::warn!("refusing mismatching http signature");
-				return Err(ApiError::unauthorized());
+					let internal = upub::model::instance::Entity::domain_to_internal(&user.domain, ctx.db())
+						.await?
+						.ok_or_else(ApiError::internal_server_error)?; // user but not their domain???
+					identity = Identity::Remote { user: user.id, domain: user.domain, internal };
+				},
 			}
 
-			let internal = upub::model::instance::Entity::domain_to_internal(&user.domain, ctx.db())
-				.await?
-				.ok_or_else(ApiError::internal_server_error)?; // user but not their domain???
-			identity = Identity::Remote { user: user.id, domain: user.domain, internal };
 		}
 
 		Ok(AuthIdentity(identity))
