@@ -1,8 +1,8 @@
 use std::{collections::BTreeSet, sync::Arc};
 
-use sea_orm::{ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, QuerySelect, SelectColumns};
+use sea_orm::{DatabaseConnection, DbErr};
 
-use crate::{config::Config, ext::AnyQuery, model};
+use crate::{config::Config, model};
 use uriproxy::UriClass;
 
 #[derive(Clone)]

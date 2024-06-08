@@ -21,6 +21,7 @@ impl Query {
 					.add(model::object::Column::Id.is_not_null())
 			)
 			.order_by(model::addressing::Column::Published, Order::Desc)
+			.order_by(model::activity::Column::Internal, Order::Desc)
 			.select_only();
 
 		for col in model::activity::Column::iter() {
@@ -52,6 +53,7 @@ impl Query {
 			])
 			.join(sea_orm::JoinType::InnerJoin, model::addressing::Relation::Objects.def())
 			.order_by(model::addressing::Column::Published, Order::Desc)
+			.order_by(model::object::Column::Internal, Order::Desc)
 			.select_only();
 
 		for col in model::object::Column::iter() {
