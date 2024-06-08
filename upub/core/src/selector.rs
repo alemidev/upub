@@ -8,10 +8,7 @@ pub struct Query;
 impl Query {
 	pub fn activities(my_id: Option<i64>) -> Select<model::addressing::Entity> {
 		let mut select = model::addressing::Entity::find()
-			.distinct_on([
-				(model::activity::Entity, model::activity::Column::Internal).into_column_ref(),
-				(model::addressing::Entity, model::addressing::Column::Published).into_column_ref(),
-			])
+			.distinct_on([(model::activity::Entity, model::activity::Column::Internal)])
 			.join(sea_orm::JoinType::InnerJoin, model::addressing::Relation::Activities.def())
 			.join(sea_orm::JoinType::LeftJoin, model::addressing::Relation::Objects.def())
 			.filter(
@@ -20,8 +17,8 @@ impl Query {
 					.add(model::activity::Column::Id.is_not_null())
 					.add(model::object::Column::Id.is_not_null())
 			)
-			.order_by(model::addressing::Column::Published, Order::Desc)
 			.order_by(model::activity::Column::Internal, Order::Desc)
+			.order_by(model::addressing::Column::Published, Order::Desc)
 			.select_only();
 
 		for col in model::activity::Column::iter() {
@@ -47,10 +44,11 @@ impl Query {
 
 	pub fn objects(my_id: Option<i64>) -> Select<model::addressing::Entity> {
 		let mut select = model::addressing::Entity::find()
-			.distinct_on([
-				(model::object::Entity, model::object::Column::Internal).into_column_ref(),
-				(model::addressing::Entity, model::addressing::Column::Published).into_column_ref(),
-			])
+			// .distinct_on([
+			// 	(model::object::Entity, model::object::Column::Internal).into_column_ref(),
+			// 	(model::addressing::Entity, model::addressing::Column::Published).into_column_ref(),
+			// ])
+			.distinct()
 			.join(sea_orm::JoinType::InnerJoin, model::addressing::Relation::Objects.def())
 			.order_by(model::addressing::Column::Published, Order::Desc)
 			.order_by(model::object::Column::Internal, Order::Desc)
@@ -140,6 +138,12 @@ impl RichObject {
 	pub fn ap(self) -> serde_json::Value {
 		self.object.ap()
 			.set_liked_by_me(if self.liked.is_some() { Some(true) } else { None })
+			.set_attachment(match self.attachments {
+				None => apb::Node::Empty,
+				Some(vec) => apb::Node::array(
+					vec.into_iter().map(|x| x.ap()).collect()
+				)
+			})
 	}
 }
 
@@ -229,5 +233,24 @@ impl BatchFillable for RichObject {
 		);
 
 		Ok(self)
+	}
+}
+
+#[cfg(test)]
+mod test {
+	use sea_orm::{ColumnTrait, Condition, QueryFilter, QueryTrait};
+
+	#[test]
+	fn wtf_postgres() {
+		panic!("{}", crate::Query::objects(None)
+			.filter(
+				Condition::any()
+					.add(crate::model::addressing::Column::Actor.is_null())
+					.add(crate::model::addressing::Column::Actor.eq(2))
+					.add(crate::model::object::Column::AttributedTo.eq("https://upub.alemi.dev/actors/alemi"))
+			)
+			.build(sea_orm::DatabaseBackend::Postgres)
+			.to_string()
+		)
 	}
 }
