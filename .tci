@@ -1,18 +1,18 @@
 #!/bin/bash
 
 echo "building release binary"
-cargo build --release --all-features -j 1 # limit memory usage
+cargo build --release --all-features
 echo "stopping service"
 systemctl --user stop upub
 echo "installing new binary"
 cp ./target/release/upub /opt/bin/upub
 echo "migrating database"
-/opt/bin/upub --db "sqlite:///srv/tci/upub.db" --domain https://upub.alemi.dev migrate
+/opt/bin/upub -c /srv/tci/upub.toml --domain https://upub.alemi.dev migrate
 echo "restarting service"
 systemctl --user start upub
 echo "rebuilding frontend"
 cd web
-CARGO_BUILD_JOBS=1 /opt/bin/trunk build --release --public-url 'https://upub.alemi.dev/web'
+/opt/bin/trunk build --release --public-url 'https://upub.alemi.dev/web'
 echo "deploying frontend"
 rm /srv/http/upub/web/*
 mv ./dist/* /srv/http/upub/web/
