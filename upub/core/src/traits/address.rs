@@ -56,25 +56,23 @@ impl Addresser for crate::Context {
 
 	async fn address_object(&self, object: &crate::model::object::Model, tx: &impl ConnectionTrait) -> Result<(), DbErr> {
 		let to = expand_addressing(object.addressed(), tx).await?;
-		address_to(self, to, None, Some(object.internal), tx).await
+		address_to(self, to, None, Some(object.internal), self.is_local(&object.id), tx).await
 	}
 
 	async fn address_activity(&self, activity: &crate::model::activity::Model, tx: &impl ConnectionTrait) -> Result<(), DbErr> {
 		let to = expand_addressing(activity.mentioning(), tx).await?;
-		address_to(self, to, Some(activity.internal), None, tx).await
+		address_to(self, to, Some(activity.internal), None, self.is_local(&activity.id), tx).await
 	}
 }
 
-async fn address_to(ctx: &crate::Context, to: Vec<String>, aid: Option<i64>, oid: Option<i64>, tx: &impl ConnectionTrait) -> Result<(), DbErr> {
+async fn address_to(ctx: &crate::Context, to: Vec<String>, aid: Option<i64>, oid: Option<i64>, local: bool, tx: &impl ConnectionTrait) -> Result<(), DbErr> {
 	// TODO address_to became kind of expensive, with these two selects right away and then another
 	//      select for each target we're addressing to... can this be improved??
-	let local_activity = if let Some(x) = aid { ctx.is_local_internal_activity(x).await.unwrap_or(false) } else { false };
-	let local_object = if let Some(x) = oid { ctx.is_local_internal_object(x).await.unwrap_or(false) } else { false };
 	let mut addressing = Vec::new();
 	for target in to.into_iter()
 		.filter(|to| !to.is_empty())
 		.filter(|to| !to.ends_with("/followers"))
-		.filter(|to| local_activity || local_object || to.as_str() == apb::target::PUBLIC || ctx.is_local(to))
+		.filter(|to| local || to.as_str() == apb::target::PUBLIC || ctx.is_local(to))
 	{
 		let (server, actor) = if target == apb::target::PUBLIC { (None, None) } else {
 			match (

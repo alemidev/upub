@@ -140,37 +140,6 @@ impl Context {
 		id.starts_with(self.base())
 	}
 
-	pub async fn is_local_internal_object(&self, internal: i64) -> Result<bool, DbErr> {
-		model::object::Entity::find()
-			.filter(model::object::Column::Internal.eq(internal))
-			.select_only()
-			.select_column(model::object::Column::Internal)
-			.into_tuple::<i64>()
-			.any(self.db())
-			.await
-	}
-
-	pub async fn is_local_internal_activity(&self, internal: i64) -> Result<bool, DbErr> {
-		model::activity::Entity::find()
-			.filter(model::activity::Column::Internal.eq(internal))
-			.select_only()
-			.select_column(model::activity::Column::Internal)
-			.into_tuple::<i64>()
-			.any(self.db())
-			.await
-	}
-
-	#[allow(unused)]
-	pub async fn is_local_internal_actor(&self, internal: i64) -> Result<bool, DbErr> {
-		model::actor::Entity::find()
-			.filter(model::actor::Column::Internal.eq(internal))
-			.select_only()
-			.select_column(model::actor::Column::Internal)
-			.into_tuple::<i64>()
-			.any(self.db())
-			.await
-	}
-
 	pub async fn find_internal(&self, id: &str) -> Result<Option<Internal>, DbErr> {
 		if let Some(internal) = model::object::Entity::ap_to_internal(id, self.db()).await? {
 			return Ok(Some(Internal::Object(internal)));
