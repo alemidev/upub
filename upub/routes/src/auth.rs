@@ -20,7 +20,16 @@ pub enum Identity {
 }
 
 impl Identity {
-	pub fn filter_condition(&self) -> Condition {
+	pub fn filter_activities(&self) -> Condition {
+		let base_cond = Condition::any().add(upub::model::addressing::Column::Actor.is_null());
+		match self {
+			Identity::Anonymous => base_cond,
+			Identity::Remote { internal, .. } => base_cond.add(upub::model::addressing::Column::Instance.eq(*internal)), 
+			Identity::Local { internal, .. } => base_cond.add(upub::model::addressing::Column::Actor.eq(*internal)),
+		}
+	}
+
+	pub fn filter_objects(&self) -> Condition {
 		let base_cond = Condition::any().add(upub::model::addressing::Column::Actor.is_null());
 		match self {
 			Identity::Anonymous => base_cond,
@@ -28,7 +37,6 @@ impl Identity {
 			// TODO should we allow all users on same server to see? or just specific user??
 			Identity::Local { id, internal } => base_cond
 				.add(upub::model::addressing::Column::Actor.eq(*internal))
-				.add(upub::model::activity::Column::Actor.eq(id))
 				.add(upub::model::object::Column::AttributedTo.eq(id)),
 		}
 	}
