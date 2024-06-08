@@ -17,6 +17,7 @@ impl Query {
 					.add(model::activity::Column::Id.is_not_null())
 					.add(model::object::Column::Id.is_not_null())
 			)
+			.group_by(model::activity::Column::Internal)
 			.order_by(model::addressing::Column::Published, Order::Desc)
 			.select_only();
 
@@ -45,6 +46,7 @@ impl Query {
 		let mut select = model::addressing::Entity::find()
 			// .distinct()
 			.join(sea_orm::JoinType::InnerJoin, model::addressing::Relation::Objects.def())
+			.group_by(model::object::Column::Internal)
 			.order_by(model::addressing::Column::Published, Order::Desc)
 			.select_only();
 
