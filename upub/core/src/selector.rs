@@ -1,5 +1,5 @@
 use apb::{ActivityMut, ObjectMut};
-use sea_orm::{sea_query::IntoCondition, ColumnTrait, Condition, ConnectionTrait, DbErr, EntityName, EntityTrait, FromQueryResult, Iden, Iterable, LoaderTrait, ModelTrait, Order, QueryFilter, QueryOrder, QueryResult, QuerySelect, RelationTrait, Select, SelectColumns};
+use sea_orm::{sea_query::{IntoColumnRef, IntoCondition}, ColumnTrait, Condition, ConnectionTrait, DbErr, EntityName, EntityTrait, FromQueryResult, Iden, Iterable, LoaderTrait, ModelTrait, Order, QueryFilter, QueryOrder, QueryResult, QuerySelect, RelationTrait, Select, SelectColumns};
 
 use crate::model;
 
@@ -8,7 +8,10 @@ pub struct Query;
 impl Query {
 	pub fn activities(my_id: Option<i64>) -> Select<model::addressing::Entity> {
 		let mut select = model::addressing::Entity::find()
-			// .distinct()
+			.distinct_on([
+				(model::activity::Entity, model::activity::Column::Internal).into_column_ref(),
+				(model::addressing::Entity, model::addressing::Column::Published).into_column_ref(),
+			])
 			.join(sea_orm::JoinType::InnerJoin, model::addressing::Relation::Activities.def())
 			.join(sea_orm::JoinType::LeftJoin, model::addressing::Relation::Objects.def())
 			.filter(
@@ -17,10 +20,6 @@ impl Query {
 					.add(model::activity::Column::Id.is_not_null())
 					.add(model::object::Column::Id.is_not_null())
 			)
-			.group_by(model::activity::Column::Internal)
-			.group_by(model::object::Column::Internal)
-			.group_by(model::like::Column::Internal)
-			.group_by(model::addressing::Column::Internal)
 			.order_by(model::addressing::Column::Published, Order::Desc)
 			.select_only();
 
@@ -47,11 +46,11 @@ impl Query {
 
 	pub fn objects(my_id: Option<i64>) -> Select<model::addressing::Entity> {
 		let mut select = model::addressing::Entity::find()
-			// .distinct()
+			.distinct_on([
+				(model::activity::Entity, model::activity::Column::Internal).into_column_ref(),
+				(model::addressing::Entity, model::addressing::Column::Published).into_column_ref(),
+			])
 			.join(sea_orm::JoinType::InnerJoin, model::addressing::Relation::Objects.def())
-			.group_by(model::object::Column::Internal)
-			.group_by(model::like::Column::Internal)
-			.group_by(model::addressing::Column::Internal)
 			.order_by(model::addressing::Column::Published, Order::Desc)
 			.select_only();
 
