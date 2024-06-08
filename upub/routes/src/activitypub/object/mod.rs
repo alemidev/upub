@@ -1,10 +1,10 @@
 pub mod replies;
 pub mod context;
 
-use apb::{CollectionMut, ObjectMut, LD};
+use apb::{BaseMut, CollectionMut, ObjectMut, LD};
 use axum::extract::{Path, Query, State};
 use sea_orm::{ColumnTrait, ModelTrait, QueryFilter, QuerySelect, SelectColumns, TransactionTrait};
-use upub::{model::{self, addressing::Event}, traits::Fetcher, Context};
+use upub::{model, selector::RichObject, traits::Fetcher, Context};
 
 use crate::{builders::JsonLD, AuthIdentity};
 
@@ -27,22 +27,15 @@ pub async fn view(
 		}
 	}
 
-	let item = model::addressing::Entity::find_addressed(auth.my_id())
+	let item = upub::Query::objects(auth.my_id())
 		.filter(model::object::Column::Id.eq(&oid))
-		.filter(auth.filter_condition())
-		.into_model::<Event>()
+		.filter(auth.filter_objects())
+		.into_model::<RichObject>()
 		.one(ctx.db())
 		.await?
 		.ok_or_else(crate::ApiError::not_found)?;
 
-	let object = match item {
-		Event::Tombstone => return Err(crate::ApiError::not_found()),
-		Event::Activity(_) => return Err(crate::ApiError::not_found()),
-		Event::StrayObject { liked: _, object } => object,
-		Event::DeepActivity { activity: _, liked: _, object } => object,
-	};
-
-	let attachments = object.find_related(model::attachment::Entity)
+	let attachments = item.object.find_related(model::attachment::Entity)
 		.all(ctx.db())
 		.await?
 		.into_iter()
@@ -52,9 +45,9 @@ pub async fn view(
 	let mut replies = apb::Node::Empty;
 	
 	if ctx.cfg().security.show_reply_ids {
-		let replies_ids = model::addressing::Entity::find_addressed(None)
+		let replies_ids = upub::Query::objects(auth.my_id())
 			.filter(model::object::Column::InReplyTo.eq(oid))
-			.filter(auth.filter_condition())
+			.filter(auth.filter_objects())
 			.select_only()
 			.select_column(model::object::Column::Id)
 			.into_tuple::<String>()
@@ -63,16 +56,16 @@ pub async fn view(
 
 		replies = apb::Node::object(
 			apb::new()
-				// .set_id(Some(&upub::url!(ctx, "/objects/{id}/replies")))
-				// .set_first(apb::Node::link(upub::url!(ctx, "/objects/{id}/replies/page")))
+				.set_id(Some(&upub::url!(ctx, "/objects/{id}/replies")))
+				.set_first(apb::Node::link(upub::url!(ctx, "/objects/{id}/replies/page")))
 				.set_collection_type(Some(apb::CollectionType::Collection))
-				.set_total_items(Some(object.replies as u64))
+				.set_total_items(Some(item.object.replies as u64))
 				.set_items(apb::Node::links(replies_ids))
 		);
 	}
 	
 	Ok(JsonLD(
-		object.ap()
+		item.ap()
 			.set_attachment(apb::Node::array(attachments))
 			.set_replies(replies)
 			.ld_context()

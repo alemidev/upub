@@ -1,6 +1,6 @@
 use axum::extract::{Path, Query, State};
 use sea_orm::{ColumnTrait, QueryFilter, TransactionTrait};
-use upub::{model::{self, addressing::Event, attachment::BatchFillable}, traits::Fetcher, Context};
+use upub::{model, selector::{BatchFillable, RichActivity}, traits::Fetcher, Context};
 use apb::LD;
 
 use crate::{builders::JsonLD, AuthIdentity};
@@ -23,17 +23,16 @@ pub async fn view(
 		}
 	}
 
-	let row = model::addressing::Entity::find_addressed(auth.my_id())
+	let row = upub::Query::activities(auth.my_id())
 		.filter(model::activity::Column::Id.eq(&aid))
-		.filter(auth.filter_condition())
-		.into_model::<Event>()
+		.filter(auth.filter_activities())
+		.into_model::<RichActivity>()
 		.one(ctx.db())
 		.await?
-		.ok_or_else(crate::ApiError::not_found)?;
+		.ok_or_else(crate::ApiError::not_found)?
+		.with_attachments(ctx.db())
+		.await?;
 
-	let mut attachments = row.load_attachments_batch(ctx.db()).await?;
-	let attach = attachments.remove(&row.internal());
-
-	Ok(JsonLD(row.ap(attach).ld_context()))
+	Ok(JsonLD(row.ap().ld_context()))
 }
 

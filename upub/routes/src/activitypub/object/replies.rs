@@ -17,8 +17,8 @@ pub async fn get(
 	// 	ctx.fetch_thread(&oid).await?;
 	// }
 
-	let count = model::addressing::Entity::find_addressed(auth.my_id())
-		.filter(auth.filter_condition())
+	let count = upub::Query::objects(auth.my_id())
+		.filter(auth.filter_objects())
 		.filter(model::object::Column::InReplyTo.eq(oid))
 		.count(ctx.db())
 		.await?;
@@ -35,10 +35,10 @@ pub async fn page(
 	let page_id = upub::url!(ctx, "/objects/{id}/replies/page");
 	let oid = ctx.oid(&id);
 
-	crate::builders::paginate(
+	crate::builders::paginate_objects(
 		page_id,
 		Condition::all()
-			.add(auth.filter_condition())
+			.add(auth.filter_objects())
 			.add(model::object::Column::InReplyTo.eq(oid)),
 		ctx.db(),
 		page,

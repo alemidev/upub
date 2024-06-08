@@ -1,14 +1,14 @@
 use apb::{BaseMut, CollectionMut, CollectionPageMut, LD};
-use sea_orm::{Condition, DatabaseConnection, QueryFilter, QuerySelect, RelationTrait};
+use sea_orm::{Condition, ConnectionTrait, QueryFilter, QuerySelect, RelationTrait};
 use axum::response::{IntoResponse, Response};
+use upub::selector::{BatchFillable, RichActivity, RichObject};
 
-use upub::model::{addressing::Event, attachment::BatchFillable};
 use crate::activitypub::Pagination;
 
-pub async fn paginate(
+pub async fn paginate_activities(
 	id: String,
 	filter: Condition,
-	db: &DatabaseConnection,
+	db: &impl ConnectionTrait,
 	page: Pagination,
 	my_id: Option<i64>,
 	with_users: bool, // TODO ewww too many arguments for this weird function...
@@ -16,7 +16,7 @@ pub async fn paginate(
 	let limit = page.batch.unwrap_or(20).min(50);
 	let offset = page.offset.unwrap_or(0);
 
-	let mut select = upub::model::addressing::Entity::find_addressed(my_id);
+	let mut select = upub::Query::activities(my_id);
 
 	if with_users {
 		select = select
@@ -28,18 +28,54 @@ pub async fn paginate(
 		// TODO also limit to only local activities
 		.limit(limit)
 		.offset(offset)
-		.into_model::<Event>()
+		.into_model::<RichActivity>()
 		.all(db)
+		.await?
+		.with_attachments(db)
 		.await?;
-
-	let mut attachments = items.load_attachments_batch(db).await?;
 
 	let items : Vec<serde_json::Value> = items
 		.into_iter()
-		.map(|item| {
-			let attach = attachments.remove(&item.internal());
-			item.ap(attach)
-		})
+		.map(|item| item.ap())
+		.collect();
+
+	collection_page(&id, offset, limit, items)
+}
+
+// TODO can we merge these two??? there are basically only two differences
+
+pub async fn paginate_objects(
+	id: String,
+	filter: Condition,
+	db: &impl ConnectionTrait,
+	page: Pagination,
+	my_id: Option<i64>,
+	with_users: bool, // TODO ewww too many arguments for this weird function...
+) -> crate::ApiResult<JsonLD<serde_json::Value>> {
+	let limit = page.batch.unwrap_or(20).min(50);
+	let offset = page.offset.unwrap_or(0);
+
+	let mut select = upub::Query::objects(my_id); // <--- difference one
+
+	if with_users {
+		select = select
+			.join(sea_orm::JoinType::InnerJoin, upub::model::activity::Relation::Actors.def());
+	}
+
+	let items = select
+		.filter(filter)
+		// TODO also limit to only local activities
+		.limit(limit)
+		.offset(offset)
+		.into_model::<RichObject>() // <--- difference two
+		.all(db)
+		.await?
+		.with_attachments(db)
+		.await?;
+
+	let items : Vec<serde_json::Value> = items
+		.into_iter()
+		.map(|item| item.ap())
 		.collect();
 
 	collection_page(&id, offset, limit, items)

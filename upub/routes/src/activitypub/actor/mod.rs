@@ -4,6 +4,8 @@ pub mod outbox;
 
 pub mod following;
 
+pub mod feed;
+
 use axum::extract::{Path, Query, State};
 
 use apb::{LD, ActorMut, EndpointsMut, Node, ObjectMut};
@@ -58,6 +60,7 @@ pub async fn view(
 			let mut user = user_model.ap()
 				.set_inbox(Node::link(upub::url!(ctx, "/actors/{id}/inbox")))
 				.set_outbox(Node::link(upub::url!(ctx, "/actors/{id}/outbox")))
+				.set_streams(Node::link(upub::url!(ctx, "/actors/{id}/feed")))
 				.set_following(Node::link(upub::url!(ctx, "/actors/{id}/following")))
 				.set_followers(Node::link(upub::url!(ctx, "/actors/{id}/followers")))
 				.set_following_me(following_me)

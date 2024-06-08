@@ -1,8 +1,6 @@
 use apb::{DocumentMut, DocumentType, ObjectMut};
 use sea_orm::entity::prelude::*;
 
-use super::addressing::Event;
-
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "attachments")]
 pub struct Model {
@@ -45,52 +43,5 @@ impl Model {
 			.set_media_type(Some(&self.media_type))
 			.set_name(self.name.as_deref())
 			.set_published(Some(self.published))
-	}
-}
-
-#[async_trait::async_trait]
-pub trait BatchFillable {
-	async fn load_attachments_batch(&self, db: &DatabaseConnection) -> Result<std::collections::BTreeMap<i64, Vec<Model>>, DbErr>;
-}
-
-#[async_trait::async_trait]
-impl BatchFillable for &[Event] {
-	async fn load_attachments_batch(&self, db: &DatabaseConnection) -> Result<std::collections::BTreeMap<i64, Vec<Model>>, DbErr> {
-		let objects : Vec<crate::model::object::Model> = self
-			.iter()
-			.filter_map(|x| match x {
-				Event::Tombstone => None,
-				Event::Activity(_) => None,
-				Event::StrayObject { object, liked: _ } => Some(object.clone()),
-				Event::DeepActivity { activity: _, liked: _, object } => Some(object.clone()),
-			})
-			.collect();
-
-		let attachments = objects.load_many(Entity, db).await?;
-
-		let mut out : std::collections::BTreeMap<i64, Vec<Model>> = std::collections::BTreeMap::new();
-		for attach in attachments.into_iter().flatten() {
-			match out.entry(attach.object) {
-				std::collections::btree_map::Entry::Vacant(a) => { a.insert(vec![attach]); },
-				std::collections::btree_map::Entry::Occupied(mut e) => { e.get_mut().push(attach); },
-			}
-		}
-
-		Ok(out)
-	}
-}
-
-#[async_trait::async_trait]
-impl BatchFillable for Vec<Event> {
-	async fn load_attachments_batch(&self, db: &DatabaseConnection) -> Result<std::collections::BTreeMap<i64, Vec<Model>>, DbErr> {
-		self.as_slice().load_attachments_batch(db).await
-	}
-}
-
-#[async_trait::async_trait]
-impl BatchFillable for Event {
-	async fn load_attachments_batch(&self, db: &DatabaseConnection) -> Result<std::collections::BTreeMap<i64, Vec<Model>>, DbErr> {
-		let x = vec![self.clone()]; // TODO wasteful clone and vec![] but ehhh convenient
-		x.load_attachments_batch(db).await
 	}
 }

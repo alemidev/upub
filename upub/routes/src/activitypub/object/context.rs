@@ -11,8 +11,8 @@ pub async fn get(
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let context = ctx.oid(&id);
 
-	let count = model::addressing::Entity::find_addressed(auth.my_id())
-		.filter(auth.filter_condition())
+	let count = upub::Query::objects(auth.my_id())
+		.filter(auth.filter_objects())
 		.filter(model::object::Column::Context.eq(&context))
 		.count(ctx.db())
 		.await?;
@@ -28,10 +28,10 @@ pub async fn page(
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let context = ctx.oid(&id);
 
-	crate::builders::paginate(
+	crate::builders::paginate_objects(
 		upub::url!(ctx, "/objects/{id}/context/page"),
 		Condition::all()
-			.add(auth.filter_condition())
+			.add(auth.filter_objects())
 			.add(model::object::Column::Context.eq(context)),
 		ctx.db(),
 		page,
