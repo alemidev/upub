@@ -68,6 +68,7 @@ impl Addresser for crate::Context {
 async fn address_to(ctx: &crate::Context, to: Vec<String>, aid: Option<i64>, oid: Option<i64>, local: bool, tx: &impl ConnectionTrait) -> Result<(), DbErr> {
 	// TODO address_to became kind of expensive, with these two selects right away and then another
 	//      select for each target we're addressing to... can this be improved??
+	let now = chrono::Utc::now();
 	let mut addressing = Vec::new();
 	for target in to.into_iter()
 		.filter(|to| !to.is_empty())
@@ -91,7 +92,7 @@ async fn address_to(ctx: &crate::Context, to: Vec<String>, aid: Option<i64>, oid
 				actor: Set(actor),
 				activity: Set(aid),
 				object: Set(oid),
-				published: Set(chrono::Utc::now()),
+				published: Set(now),
 			}
 		);
 	}
