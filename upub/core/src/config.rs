@@ -40,19 +40,19 @@ pub struct DatasourceConfig {
 	#[serde_inline_default("sqlite://./upub.db".into())]
 	pub connection_string: String,
 
-	#[serde_inline_default(4)]
+	#[serde_inline_default(32)]
 	pub max_connections: u32,
 
 	#[serde_inline_default(1)]
 	pub min_connections: u32,
 
-	#[serde_inline_default(300u64)]
+	#[serde_inline_default(90u64)]
 	pub connect_timeout_seconds: u64,
 
-	#[serde_inline_default(300u64)]
+	#[serde_inline_default(30u64)]
 	pub acquire_timeout_seconds: u64,
 
-	#[serde_inline_default(1u64)]
+	#[serde_inline_default(10u64)]
 	pub slow_query_warn_seconds: u64,
 
 	#[serde_inline_default(true)]
