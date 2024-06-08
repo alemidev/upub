@@ -95,9 +95,10 @@ impl FromQueryResult for RichActivity {
 
 impl RichActivity {
 	pub fn ap(self) -> serde_json::Value {
-		self.activity.ap()
-			.set_object(apb::Node::maybe_object(
-				self.object.map(|x| x.ap()
+		let object = match self.object {
+			None => apb::Node::maybe_link(self.activity.object.clone()),
+			Some(o) => apb::Node::object(
+				o.ap()
 					.set_liked_by_me(if self.liked.is_some() { Some(true) } else { None })
 					.set_attachment(match self.attachments {
 						None => apb::Node::Empty,
@@ -105,8 +106,9 @@ impl RichActivity {
 							vec.into_iter().map(|x| x.ap()).collect()
 						),
 					})
-				)
-			))
+			),
+		};
+		self.activity.ap().set_object(object)
 	}
 }
 
