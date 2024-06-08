@@ -4,6 +4,44 @@ use crate::prelude::*;
 
 use leptos_use::{storage::use_local_storage, use_cookie, utils::{FromToStringCodec, JsonCodec}};
 
+#[derive(Clone, Copy)]
+pub struct Feeds {
+	// object feeds
+	pub home: Timeline,
+	pub global: Timeline,
+	// notification feeds
+	pub private: Timeline,
+	pub public: Timeline,
+	// exploration feeds
+	pub user: Timeline,
+	pub server: Timeline,
+	pub context: Timeline,
+}
+
+impl Feeds {
+	pub fn new(username: &str) -> Self {
+		Feeds {
+			home: Timeline::new(format!("{URL_BASE}/actors/{username}/feed/page")),
+			global: Timeline::new(format!("{URL_BASE}/feed/page")),
+			private: Timeline::new(format!("{URL_BASE}/actors/{username}/inbox/page")),
+			public: Timeline::new(format!("{URL_BASE}/inbox/page")),
+			user: Timeline::new(format!("{URL_BASE}/actors/{username}/outbox/page")),
+			server: Timeline::new(format!("{URL_BASE}/outbox/page")),
+			context: Timeline::new(format!("{URL_BASE}/outbox/page")), // TODO ehhh
+		}
+	}
+
+	pub fn reset(&self) {
+		self.home.reset(None);
+		self.global.reset(None);
+		self.private.reset(None);
+		self.public.reset(None);
+		self.user.reset(None);
+		self.server.reset(None);
+		self.context.reset(None);
+	}
+}
+
 
 #[component]
 pub fn App() -> impl IntoView {
@@ -12,18 +50,16 @@ pub fn App() -> impl IntoView {
 	let (config, set_config, _) = use_local_storage::<crate::Config, JsonCodec>("config");
 
 	let auth = Auth { token, userid };
-	provide_context(auth);
-	provide_context(config);
 
 	let username = auth.userid.get_untracked()
 		.map(|x| x.split('/').last().unwrap_or_default().to_string())
 		.unwrap_or_default();
-	let home_tl = Timeline::new(format!("{URL_BASE}/actors/{username}/inbox/page"));
-	let user_tl = Timeline::new(format!("{URL_BASE}/actors/{username}/outbox/page"));
-	let server_tl = Timeline::new(format!("{URL_BASE}/inbox/page"));
-	let local_tl = Timeline::new(format!("{URL_BASE}/outbox/page"));
 
-	let context_tl = Timeline::new(format!("{URL_BASE}/outbox/page")); // TODO ehhh
+	let feeds = Feeds::new(&username);
+
+	provide_context(auth);
+	provide_context(config);
+	provide_context(feeds);
 
 	let reply_controls = ReplyControls::default();
 	provide_context(reply_controls);
@@ -35,13 +71,14 @@ pub fn App() -> impl IntoView {
 
 	let title_target = move || if auth.present() { "/web/home" } else { "/web/server" };
 
-	local_tl.more(auth); // public outbox never contains private posts
 	spawn_local(async move {
 		// refresh token first, or verify that we're still authed
 		if Auth::refresh(auth.token, set_token, set_userid).await {
-			home_tl.more(auth); // home inbox requires auth to be read
+			feeds.home.more(auth); // home inbox requires auth to be read
+			feeds.private.more(auth);
 		}
-		server_tl.more(auth); // server inbox may contain private posts
+		feeds.global.more(auth);
+		feeds.public.more(auth); // server inbox may contain private posts
 	});
 
 
@@ -67,8 +104,6 @@ pub fn App() -> impl IntoView {
 					<LoginBox
 						token_tx=set_token
 						userid_tx=set_userid
-						home_tl=home_tl
-						server_tl=server_tl
 					/>
 					<hr class="mt-1 mb-1" />
 					<div class:hidden=move || !auth.present() >
@@ -105,16 +140,17 @@ pub fn App() -> impl IntoView {
 										}
 									/>
 
-									<Route path="/web/home" view=move || view! { <TimelinePage name="home" tl=home_tl /> } />
-									<Route path="/web/server" view=move || view! { <TimelinePage name="server" tl=server_tl /> } />
-									<Route path="/web/local" view=move || view! { <TimelinePage name="local" tl=local_tl /> } />
+									<Route path="/web/home" view=move || view! { <TimelinePage name="home" tl=feeds.home /> } />
+									<Route path="/web/server" view=move || view! { <TimelinePage name="server" tl=feeds.global /> } />
+									<Route path="/web/local" view=move || view! { <TimelinePage name="local" tl=feeds.server /> } />
+									<Route path="/web/inbox" view=move || view! { <TimelinePage name="inbox" tl=feeds.private /> } />
 
 									<Route path="/web/about" view=AboutPage />
 									<Route path="/web/config" view=move || view! { <ConfigPage setter=set_config /> } />
 									<Route path="/web/config/dev" view=DebugPage />
 
-									<Route path="/web/actors/:id" view=move || view! { <UserPage tl=user_tl /> } />
-									<Route path="/web/objects/:id" view=move || view! { <ObjectPage tl=context_tl /> } />
+									<Route path="/web/actors/:id" view=UserPage />
+									<Route path="/web/objects/:id" view=ObjectPage />
 									// <Route path="/web/activities/:id" view=move || view! { <ActivityPage tl=context_tl /> } />
 
 									<Route path="/web/search" view=SearchPage />

@@ -5,21 +5,20 @@ use crate::prelude::*;
 pub fn LoginBox(
 	token_tx: WriteSignal<Option<String>>,
 	userid_tx: WriteSignal<Option<String>>,
-	home_tl: Timeline,
-	server_tl: Timeline,
 ) -> impl IntoView {
 	let auth = use_context::<Auth>().expect("missing auth context");
 	let username_ref: NodeRef<html::Input> = create_node_ref();
 	let password_ref: NodeRef<html::Input> = create_node_ref();
+	let feeds = use_context::<Feeds>().expect("missing feeds context");
 	view! {
 		<div>
 			<div class="w-100" class:hidden=move || !auth.present() >
 				"hi "<a href={move || Uri::web(U::Actor, &auth.username() )} >{move || auth.username() }</a>
 				<input style="float:right" type="submit" value="logout" on:click=move |_| {
 					token_tx.set(None);
-					home_tl.reset(format!("{URL_BASE}/outbox/page"));
-					server_tl.reset(format!("{URL_BASE}/inbox/page"));
-					server_tl.more(auth);
+					feeds.reset();
+					feeds.global.more(auth);
+					feeds.public.more(auth);
 				} />
 			</div>
 			<div class:hidden=move || auth.present() >
@@ -45,11 +44,15 @@ pub fn LoginBox(
 						userid_tx.set(Some(auth_response.user));
 						token_tx.set(Some(auth_response.token));
 						// reset home feed and point it to our user's inbox
-						home_tl.reset(format!("{URL_BASE}/actors/{}/inbox/page", username));
-						home_tl.more(auth);
+						feeds.home.reset(Some(format!("{URL_BASE}/actors/{username}/feed/page")));
+						feeds.home.more(auth);
+						feeds.private.reset(Some(format!("{URL_BASE}/actors/{username}/inbox/page")));
+						feeds.private.more(auth);
 						// reset server feed: there may be more content now that we're authed
-						server_tl.reset(format!("{URL_BASE}/inbox/page"));
-						server_tl.more(auth);
+						feeds.global.reset(Some(format!("{URL_BASE}/feed/page")));
+						feeds.global.more(auth);
+						feeds.server.reset(Some(format!("{URL_BASE}/inbox/page")));
+						feeds.server.more(auth);
 					});
 				} >
 					<table class="w-100 align">

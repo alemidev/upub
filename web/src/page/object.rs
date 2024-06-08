@@ -7,9 +7,10 @@ use crate::prelude::*;
 use apb::{Base, Object};
 
 #[component]
-pub fn ObjectPage(tl: Timeline) -> impl IntoView {
+pub fn ObjectPage() -> impl IntoView {
 	let params = use_params_map();
 	let auth = use_context::<Auth>().expect("missing auth context");
+	let feeds = use_context::<Feeds>().expect("missing feeds context");
 	let object = create_local_resource(
 		move || params.get().get("id").cloned().unwrap_or_default(),
 		move |oid| async move {
@@ -36,8 +37,8 @@ pub fn ObjectPage(tl: Timeline) -> impl IntoView {
 			};
 			if let Ok(ctx) = obj.context().id() {
 				let tl_url = format!("{}/context/page", Uri::api(U::Object, ctx, false));
-				if !tl.next.get_untracked().starts_with(&tl_url) {
-					tl.reset(tl_url);
+				if !feeds.context.next.get_untracked().starts_with(&tl_url) {
+					feeds.context.reset(Some(tl_url));
 				}
 			}
 
@@ -50,10 +51,10 @@ pub fn ObjectPage(tl: Timeline) -> impl IntoView {
 				objects::view
 				<a
 					class="clean ml-1" href="#"
-					class:hidden=move || tl.is_empty()
+					class:hidden=move || feeds.context.is_empty()
 					on:click=move |_| {
-						tl.reset(tl.next.get().split('?').next().unwrap_or_default().to_string());
-						tl.more(auth);
+						feeds.context.reset(Some(feeds.context.next.get().split('?').next().unwrap_or_default().to_string()));
+						feeds.context.more(auth);
 				}><span class="emoji">
 					"\u{1f5d8}"
 				</span></a>
@@ -71,7 +72,7 @@ pub fn ObjectPage(tl: Timeline) -> impl IntoView {
 						view!{
 							<Object object=object />
 							<div class="ml-1 mr-1 mt-2">
-								<TimelineReplies tl=tl root=o.id().unwrap_or_default().to_string() />
+								<TimelineReplies tl=feeds.context root=o.id().unwrap_or_default().to_string() />
 							</div>
 						}.into_view()
 					},

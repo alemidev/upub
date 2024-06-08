@@ -30,10 +30,12 @@ impl Timeline {
 		self.feed.get().is_empty()
 	}
 
-	pub fn reset(&self, url: String) {
+	pub fn reset(&self, url: Option<String>) {
 		self.feed.set(vec![]);
-		self.next.set(url);
 		self.over.set(false);
+		if let Some(url) = url {
+			self.next.set(url);
+		}
 	}
 
 	pub fn more(&self, auth: Auth) {

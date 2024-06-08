@@ -20,8 +20,9 @@ fn send_follow_request(target: String) {
 }
 
 #[component]
-pub fn UserPage(tl: Timeline) -> impl IntoView {
+pub fn UserPage() -> impl IntoView {
 	let params = use_params_map();
+	let feeds = use_context::<Feeds>().expect("missing feeds context");
 	let auth = use_context::<Auth>().expect("missing auth context");
 	let id = params.get()
 		.get("id")
@@ -33,8 +34,8 @@ pub fn UserPage(tl: Timeline) -> impl IntoView {
 		move |id| {
 			async move {
 				let tl_url = format!("{}/outbox/page", Uri::api(U::Actor, &id, false));
-				if !tl.next.get_untracked().starts_with(&tl_url) {
-					tl.reset(tl_url);
+				if !feeds.user.next.get_untracked().starts_with(&tl_url) {
+					feeds.user.reset(Some(tl_url));
 				}
 				match CACHE.get(&Uri::full(U::Actor, &id)) {
 					Some(x) => Some(x.clone()),
@@ -54,10 +55,10 @@ pub fn UserPage(tl: Timeline) -> impl IntoView {
 				users::view
 				<a
 					class="clean ml-1" href="#"
-					class:hidden=move || tl.is_empty()
+					class:hidden=move || feeds.user.is_empty()
 					on:click=move |_| {
-						tl.reset(tl.next.get().split('?').next().unwrap_or_default().to_string());
-						tl.more(auth);
+						feeds.user.reset(Some(feeds.user.next.get().split('?').next().unwrap_or_default().to_string()));
+						feeds.user.more(auth);
 				}><span class="emoji">
 					"\u{1f5d8}"
 				</span></a>
@@ -138,7 +139,7 @@ pub fn UserPage(tl: Timeline) -> impl IntoView {
 										<p class="ml-2 mt-1 center" inner_html={mdhtml::safe_html(&summary)}></p>
 									</div>
 								</div>
-								<TimelineFeed tl=tl />
+								<TimelineFeed tl=feeds.user />
 							}.into_view()
 						},
 					}
