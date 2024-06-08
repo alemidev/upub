@@ -44,6 +44,8 @@ pub trait Actor : Object {
 
 	#[cfg(feature = "toot")]
 	fn discoverable(&self) -> Field<bool> { Err(FieldErr("discoverable")) }
+	#[cfg(feature = "toot")]
+	fn featured(&self) -> Node<Self::Collection> { Node::Empty }
 }
 
 pub trait Endpoints : Object {
@@ -95,6 +97,8 @@ pub trait ActorMut : ObjectMut {
 
 	#[cfg(feature = "toot")]
 	fn set_discoverable(self, val: Option<bool>) -> Self;
+	#[cfg(feature = "toot")]
+	fn set_featured(self, val: Node<Self::Collection>) -> Self;
 }
 
 pub trait EndpointsMut : ObjectMut {
@@ -147,6 +151,8 @@ impl Actor for serde_json::Value {
 
 	#[cfg(feature = "toot")]
 	crate::getter! { discoverable -> bool }
+	#[cfg(feature = "toot")]
+	crate::getter! { featured -> node Self::Collection }
 }
 
 #[cfg(feature = "unstructured")]
@@ -194,6 +200,8 @@ impl ActorMut for serde_json::Value {
 
 	#[cfg(feature = "toot")]
 	crate::setter! { discoverable -> bool }
+	#[cfg(feature = "toot")]
+	crate::setter! { featured -> node Self::Collection }
 }
 
 #[cfg(feature = "unstructured")]
