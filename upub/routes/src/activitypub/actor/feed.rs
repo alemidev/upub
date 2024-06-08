@@ -35,7 +35,7 @@ pub async fn page(
 		return Err(crate::ApiError::forbidden());
 	}
 
-	crate::builders::paginate_activities(
+	crate::builders::paginate_objects(
 		upub::url!(ctx, "/actors/{id}/feed/page"),
 		upub::model::addressing::Column::Actor.eq(*internal).into_condition(),
 		ctx.db(),
