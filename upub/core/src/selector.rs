@@ -47,7 +47,7 @@ impl Query {
 	pub fn objects(my_id: Option<i64>) -> Select<model::addressing::Entity> {
 		let mut select = model::addressing::Entity::find()
 			.distinct_on([
-				(model::activity::Entity, model::activity::Column::Internal).into_column_ref(),
+				(model::object::Entity, model::object::Column::Internal).into_column_ref(),
 				(model::addressing::Entity, model::addressing::Column::Published).into_column_ref(),
 			])
 			.join(sea_orm::JoinType::InnerJoin, model::addressing::Relation::Objects.def())
