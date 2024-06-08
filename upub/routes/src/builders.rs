@@ -42,7 +42,7 @@ pub async fn paginate_activities(
 	collection_page(&id, offset, limit, items)
 }
 
-// TODO can we merge these two??? there are basically only two differences
+// TODO can we merge these two??? there are basically only three differences
 
 pub async fn paginate_objects(
 	id: String,
@@ -59,7 +59,10 @@ pub async fn paginate_objects(
 
 	if with_users {
 		select = select
-			.join(sea_orm::JoinType::InnerJoin, upub::model::activity::Relation::Actors.def());
+			.join(
+				sea_orm::JoinType::InnerJoin,
+				upub::model::object::Relation::Actors.def() // <--- difference two
+			);
 	}
 
 	let items = select
@@ -67,7 +70,7 @@ pub async fn paginate_objects(
 		// TODO also limit to only local activities
 		.limit(limit)
 		.offset(offset)
-		.into_model::<RichObject>() // <--- difference two
+		.into_model::<RichObject>() // <--- difference three
 		.all(db)
 		.await?
 		.with_attachments(db)

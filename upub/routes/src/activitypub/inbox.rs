@@ -1,6 +1,6 @@
 use apb::{Activity, ActivityType, Base};
 use axum::{extract::{Query, State}, http::StatusCode, Json};
-use sea_orm::{ActiveValue::{NotSet, Set}, ColumnTrait, Condition, EntityTrait};
+use sea_orm::{ActiveValue::{NotSet, Set}, EntityTrait};
 use upub::{model::job::JobType, Context};
 
 use crate::{AuthIdentity, Identity, builders::JsonLD};

@@ -86,7 +86,7 @@ impl FromQueryResult for RichActivity {
 	fn from_query_result(res: &QueryResult, _pre: &str) -> Result<Self, DbErr> {
 		Ok(RichActivity {
 			activity: model::activity::Model::from_query_result(res, model::activity::Entity.table_name())?,
-			object: model::object::Model::from_query_result(res, model::activity::Entity.table_name()).ok(),
+			object: model::object::Model::from_query_result(res, model::object::Entity.table_name()).ok(),
 			liked: res.try_get(model::like::Entity.table_name(), &model::like::Column::Actor.to_string()).ok(),
 			attachments: None,
 		})
@@ -119,7 +119,7 @@ pub struct RichObject {
 impl FromQueryResult for RichObject {
 	fn from_query_result(res: &QueryResult, _pre: &str) -> Result<Self, DbErr> {
 		Ok(RichObject {
-			object: model::object::Model::from_query_result(res, model::activity::Entity.table_name())?,
+			object: model::object::Model::from_query_result(res, model::object::Entity.table_name())?,
 			liked: res.try_get(model::like::Entity.table_name(), &model::like::Column::Actor.to_string()).ok(),
 			attachments: None,
 		})
@@ -144,8 +144,7 @@ impl BatchFillable for Vec<RichActivity> {
 	async fn with_attachments(mut self, tx: &impl ConnectionTrait) -> Result<Self, DbErr> {
 		let objects : Vec<model::object::Model> = self
 			.iter()
-			.filter_map(|x| x.object.as_ref())
-			.map(|o| o.clone())
+			.filter_map(|x| x.object.as_ref().cloned())
 			.collect();
 
 		let attachments = objects.load_many(model::attachment::Entity, tx).await?;
