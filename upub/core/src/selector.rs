@@ -18,6 +18,8 @@ impl Query {
 					.add(model::object::Column::Id.is_not_null())
 			)
 			.group_by(model::activity::Column::Internal)
+			.group_by(model::object::Column::Internal)
+			.group_by(model::like::Column::Internal)
 			.order_by(model::addressing::Column::Published, Order::Desc)
 			.select_only();
 
@@ -47,6 +49,7 @@ impl Query {
 			// .distinct()
 			.join(sea_orm::JoinType::InnerJoin, model::addressing::Relation::Objects.def())
 			.group_by(model::object::Column::Internal)
+			.group_by(model::like::Column::Internal)
 			.order_by(model::addressing::Column::Published, Order::Desc)
 			.select_only();
 
