@@ -12,6 +12,10 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 	if matches!(t, apb::ObjectType::Note) {
 		activity = apb::new()
 			.set_activity_type(Some(apb::ActivityType::Create))
+			.set_to(activity.to())
+			.set_bto(activity.bto())
+			.set_cc(activity.cc())
+			.set_bcc(activity.bcc())
 			.set_object(apb::Node::object(activity));
 		t = apb::ObjectType::Activity(apb::ActivityType::Create);
 	}
