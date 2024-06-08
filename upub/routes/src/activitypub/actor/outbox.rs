@@ -62,7 +62,7 @@ pub async fn post(
 				published: Set(chrono::Utc::now()),
 				not_before: Set(chrono::Utc::now()),
 				attempt: Set(0),
-				payload: Set(Some(serde_json::to_string(&activity).expect("failed serializing back json object"))),
+				payload: Set(Some(activity)),
 			};
 
 			model::job::Entity::insert(job).exec(ctx.db()).await?;

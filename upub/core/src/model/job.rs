@@ -17,7 +17,7 @@ pub struct Model {
 	pub actor: String,
 	pub target: Option<String>,
 	pub activity: String,
-	pub payload: Option<String>,
+	pub payload: Option<serde_json::Value>,
 	pub published: ChronoDateTimeUtc,
 	pub not_before: ChronoDateTimeUtc,
 	pub attempt: i16,

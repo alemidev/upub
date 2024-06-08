@@ -76,7 +76,7 @@ pub async fn post(
 		actor: Set(uid),
 		target: Set(None),
 		activity: Set(aid),
-		payload: Set(Some(serde_json::to_string(&activity).expect("failed serializing json payload"))),
+		payload: Set(Some(activity)),
 		published: Set(chrono::Utc::now()),
 		not_before: Set(chrono::Utc::now()),
 		attempt: Set(0)

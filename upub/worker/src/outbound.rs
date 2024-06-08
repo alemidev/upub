@@ -4,8 +4,8 @@ use upub::{model, traits::{Addresser, Processor}, Context};
 
 
 pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<()> {
-	let payload = job.payload.as_ref().ok_or(crate::JobError::MissingPayload)?;
-	let mut activity : serde_json::Value = serde_json::from_str(payload)?;
+	// TODO can we get rid of this cloned??
+	let mut activity = job.payload.as_ref().cloned().ok_or(crate::JobError::MissingPayload)?;
 	let mut t = activity.object_type()?;
 	let tx = ctx.db().begin().await?;
 
