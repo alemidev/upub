@@ -1,6 +1,7 @@
-pub mod user;
+pub mod actor;
 pub mod inbox;
 pub mod outbox;
+pub mod feed;
 pub mod object;
 pub mod activity;
 pub mod application;
@@ -24,13 +25,14 @@ impl ActivityPubRouter for Router<upub::Context> {
 			.route("/proxy", post(ap::application::proxy_form))
 			.route("/proxy", get(ap::application::proxy_get))
 			.route("/proxy/:uri", get(ap::application::proxy_path))
-			// TODO shared inboxes and instance stream will come later, just use users *boxes for now
 			.route("/inbox", post(ap::inbox::post))
 			.route("/inbox", get(ap::inbox::get))
 			.route("/inbox/page", get(ap::inbox::page))
 			.route("/outbox", post(ap::outbox::post))
 			.route("/outbox", get(ap::outbox::get))
 			.route("/outbox/page", get(ap::outbox::page))
+			.route("/feed", get(ap::feed::get))
+			.route("/feed/page", get(ap::feed::page))
 			// AUTH routes
 			.route("/auth", put(ap::auth::register))
 			.route("/auth", post(ap::auth::login))
@@ -42,17 +44,19 @@ impl ActivityPubRouter for Router<upub::Context> {
 			.route("/.well-known/oauth-authorization-server", get(ap::well_known::oauth_authorization_server))
 			.route("/nodeinfo/:version", get(ap::well_known::nodeinfo))
 			// actor routes
-			.route("/actors/:id", get(ap::user::view))
-			.route("/actors/:id/inbox", post(ap::user::inbox::post))
-			.route("/actors/:id/inbox", get(ap::user::inbox::get))
-			.route("/actors/:id/inbox/page", get(ap::user::inbox::page))
-			.route("/actors/:id/outbox", post(ap::user::outbox::post))
-			.route("/actors/:id/outbox", get(ap::user::outbox::get))
-			.route("/actors/:id/outbox/page", get(ap::user::outbox::page))
-			.route("/actors/:id/followers", get(ap::user::following::get::<false>))
-			.route("/actors/:id/followers/page", get(ap::user::following::page::<false>))
-			.route("/actors/:id/following", get(ap::user::following::get::<true>))
-			.route("/actors/:id/following/page", get(ap::user::following::page::<true>))
+			.route("/actors/:id", get(ap::actor::view))
+			.route("/actors/:id/inbox", post(ap::actor::inbox::post))
+			.route("/actors/:id/inbox", get(ap::actor::inbox::get))
+			.route("/actors/:id/inbox/page", get(ap::actor::inbox::page))
+			.route("/actors/:id/outbox", post(ap::actor::outbox::post))
+			.route("/actors/:id/outbox", get(ap::actor::outbox::get))
+			.route("/actors/:id/outbox/page", get(ap::actor::outbox::page))
+			.route("/actors/:id/feed", get(ap::actor::feed::get))
+			.route("/actors/:id/feed/page", get(ap::actor::feed::page))
+			.route("/actors/:id/followers", get(ap::actor::following::get::<false>))
+			.route("/actors/:id/followers/page", get(ap::actor::following::page::<false>))
+			.route("/actors/:id/following", get(ap::actor::following::get::<true>))
+			.route("/actors/:id/following/page", get(ap::actor::following::page::<true>))
 			// activities
 			.route("/activities/:id", get(ap::activity::view))
 			// specific object routes

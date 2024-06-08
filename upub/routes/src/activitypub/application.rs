@@ -23,6 +23,10 @@ pub async fn view(
 			.set_actor_type(Some(apb::ActorType::Application))
 			.set_name(Some(&ctx.cfg().instance.name))
 			.set_summary(Some(&ctx.cfg().instance.description))
+			.set_streams(apb::Node::links(vec![
+					upub::url!(ctx, "/feed"),
+					upub::url!(ctx, "/local"),
+			]))
 			.set_inbox(apb::Node::link(upub::url!(ctx, "/inbox")))
 			.set_outbox(apb::Node::link(upub::url!(ctx, "/outbox")))
 			.set_published(Some(ctx.actor().published))
