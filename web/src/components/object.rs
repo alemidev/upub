@@ -135,7 +135,10 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 	let audience_badge = object.audience().id().str()
 		.map(|x| view! {
 			<a class="clean dim" href={x.clone()} target="_blank" rel="nofollow noreferrer">
-				<span class="border-button">
+				<span
+					class="border-button"
+					title="this is a group: all interactions will be broadcasted to group members!"
+				>
 					<code class="color">&</code>
 					<small>
 						{Uri::pretty(&x)}
