@@ -189,10 +189,11 @@ pub async fn accept(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 
 	crate::model::relation::Entity::update_many()
 		.col_expr(crate::model::relation::Column::Accept, Expr::value(Some(activity_model.internal)))
-		.col_expr(crate::model::relation::Column::Activity, Expr::value(Some(follow_activity.internal)))
+		.col_expr(crate::model::relation::Column::Activity, Expr::value(follow_activity.internal))
 		.filter(crate::model::relation::Column::Follower.eq(follower))
 		.filter(crate::model::relation::Column::Following.eq(following))
-		.exec(tx).await?;
+		.exec(tx)
+		.await?;
 
 	crate::model::actor::Entity::update_many()
 		.col_expr(
