@@ -116,15 +116,16 @@ pub async fn like(ctx: &crate::Context, activity: impl apb::Activity, tx: &Datab
 }
 
 pub async fn follow(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
-	let source_actor_internal = crate::model::actor::Entity::ap_to_internal(activity.actor().id()?, tx)
+	let source_actor = crate::model::actor::Entity::find_by_ap_id(activity.actor().id()?)
+		.one(tx)
 		.await?
 		.ok_or(ProcessorError::Incomplete)?;
-	let usr = ctx.fetch_user(activity.object().id()?, tx).await?;
+	let target_actor = ctx.fetch_user(activity.object().id()?, tx).await?;
 	let activity_model = ctx.insert_activity(activity, tx).await?;
 
 	if let Some(relation) = crate::model::relation::Entity::find()
-		.filter(crate::model::relation::Column::Follower.eq(source_actor_internal))
-		.filter(crate::model::relation::Column::Following.eq(usr.internal))
+		.filter(crate::model::relation::Column::Follower.eq(source_actor.internal))
+		.filter(crate::model::relation::Column::Following.eq(target_actor.internal))
 		.select_only()
 		.select_column(crate::model::relation::Column::Internal)
 		.into_tuple::<i64>()
@@ -140,19 +141,29 @@ pub async fn follow(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 
 	} else {
 
+		let follower_instance = crate::model::instance::Entity::domain_to_internal(&source_actor.domain, tx)
+			.await?
+			.ok_or(ProcessorError::Incomplete)?;
+
+		let following_instance = crate::model::instance::Entity::domain_to_internal(&target_actor.domain, tx)
+			.await?
+			.ok_or(ProcessorError::Incomplete)?;
+
 		// new follow request, make new row
 		let relation_model = crate::model::relation::ActiveModel {
 			internal: NotSet,
 			accept: Set(None),
 			activity: Set(activity_model.internal),
-			follower: Set(source_actor_internal),
-			following: Set(usr.internal),
+			follower: Set(source_actor.internal),
+			follower_instance: Set(follower_instance),
+			following: Set(target_actor.internal),
+			following_instance: Set(following_instance),
 		};
 		crate::model::relation::Entity::insert(relation_model)
 			.exec(tx).await?;
 	}
 
-	tracing::info!("{} wants to follow {}", activity_model.actor, usr.id);
+	tracing::info!("{} wants to follow {}", activity_model.actor, target_actor.id);
 	Ok(())
 }
 

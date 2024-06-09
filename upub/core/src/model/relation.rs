@@ -9,6 +9,8 @@ pub struct Model {
 	pub following: i64,
 	pub accept: Option<i64>,
 	pub activity: i64,
+	pub follower_instance: i64,
+	pub following_instance: i64,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -45,6 +47,22 @@ pub enum Relation {
 		on_delete = "Cascade"
 	)]
 	ActorsFollowing,
+	#[sea_orm(
+		belongs_to = "super::instance::Entity",
+		from = "Column::FollowerInstance",
+		to = "super::instance::Column::Internal",
+		on_update = "Cascade",
+		on_delete = "NoAction"
+	)]
+	InstancesFollower,
+	#[sea_orm(
+		belongs_to = "super::instance::Entity",
+		from = "Column::FollowingInstance",
+		to = "super::instance::Column::Internal",
+		on_update = "Cascade",
+		on_delete = "NoAction"
+	)]
+	InstancesFollowing,
 }
 
 impl Related<super::actor::Entity> for Entity {
@@ -56,6 +74,12 @@ impl Related<super::actor::Entity> for Entity {
 impl Related<super::activity::Entity> for Entity {
 	fn to() -> RelationDef {
 		Relation::ActivitiesFollow.def()
+	}
+}
+
+impl Related<super::instance::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::InstancesFollowing.def()
 	}
 }
 

@@ -10,6 +10,8 @@ pub enum Relations {
 	Following,
 	Activity,
 	Accept,
+	FollowerInstance, // ADDED AFTERWARDS
+	FollowingInstance, // ADDED AFTERWARDS
 }
 
 #[derive(DeriveIden)]
