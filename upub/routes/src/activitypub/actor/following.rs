@@ -1,38 +1,107 @@
 use axum::extract::{Path, Query, State};
-use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QuerySelect, SelectColumns};
+use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter, QuerySelect, SelectColumns};
 
 use upub::{model, Context};
 
-use crate::{activitypub::Pagination, builders::JsonLD};
+use crate::{activitypub::Pagination, builders::JsonLD, ApiError, AuthIdentity, Identity};
 
 pub async fn get<const OUTGOING: bool>(
 	State(ctx): State<Context>,
 	Path(id): Path<String>,
+	AuthIdentity(auth): AuthIdentity,
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let follow___ = if OUTGOING { "following" } else { "followers" };
-	use upub::model::relation::Column::{Follower, Following};
-	let count = model::relation::Entity::find()
-		.filter(if OUTGOING { Follower } else { Following }.eq(ctx.uid(&id)))
-		.count(ctx.db()).await.unwrap_or_else(|e| {
-			tracing::error!("failed counting {follow___} for {id}: {e}");
-			0
-		});
 
-	crate::builders::collection(&upub::url!(ctx, "/actors/{id}/{follow___}"), Some(count))
+	// TODO technically we could show remote instances following/followers count from that specific
+	// instance, but that's annoying because means running a COUNT every time, so likely this will
+	// keep answering 0
+
+	let count = match model::actor::Entity::find_by_ap_id(&ctx.oid(&id))
+		.find_also_related(model::config::Entity)
+		.one(ctx.db())
+		.await?
+		.ok_or_else(ApiError::not_found)?
+	{
+		(user, Some(config)) => {
+			let mut hide_count = if OUTGOING { !config.show_following } else { !config.show_followers };
+			if hide_count {
+				if let Some(internal) = auth.my_id() {
+					if internal == user.internal {
+						hide_count = false;
+					}
+				}
+			}
+
+			match (hide_count, OUTGOING) {
+				(true, _) => 0,
+				(false, true) => user.following_count,
+				(false, false) => user.followers_count,
+			}
+		},
+		(user, None) => {
+			if !auth.is_local() {
+				return Err(ApiError::forbidden());
+			}
+			if OUTGOING { user.following_count } else { user.followers_count }
+		},
+	};
+
+
+	crate::builders::collection(&upub::url!(ctx, "/actors/{id}/{follow___}"), Some(count as u64))
 }
 
 pub async fn page<const OUTGOING: bool>(
 	State(ctx): State<Context>,
 	Path(id): Path<String>,
 	Query(page): Query<Pagination>,
+	AuthIdentity(auth): AuthIdentity,
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
+	use upub::model::relation::Column::{Follower, Following, FollowerInstance, FollowingInstance};
 	let follow___ = if OUTGOING { "following" } else { "followers" };
+
 	let limit = page.batch.unwrap_or(20).min(50);
 	let offset = page.offset.unwrap_or(0);
 
-	use upub::model::relation::Column::{Follower, Following};
+	let mut filter = Condition::all()
+		.add(if OUTGOING { Follower } else { Following }.eq(ctx.uid(&id)));
+
+	let hidden = {
+		// TODO i could avoid this query if ctx.uid(id) == Identity::Local { id }
+		match model::actor::Entity::find_by_ap_id(&ctx.oid(&id))
+			.find_also_related(model::config::Entity)
+			.one(ctx.db())
+			.await?
+			.ok_or_else(ApiError::not_found)?
+		{
+			// assume all remote users have private followers
+			//  this because we get to see some of their "private" followers if they follow local users,
+			//  and there is no mechanism to broadcast privacy on/off, so we could be leaking followers. to
+			//  mitigate this, just assume them all private: local users can only see themselves and remote
+			//  fetchers can only see relations from their instance (meaning likely zero because we only
+			//  store relations for which at least one end is on local instance)
+			(_, None) => true,
+			(_, Some(config)) => {
+				if OUTGOING { !config.show_followers } else { !config.show_following }
+			},
+		}
+	};
+
+	if hidden {
+		match auth {
+			Identity::Anonymous => return Err(ApiError::unauthorized()),
+			Identity::Local { id, internal } => {
+				if id != ctx.uid(&id) {
+					filter = filter.add(if OUTGOING { Following } else { Follower }.eq(internal));
+				}
+			},
+			Identity::Remote { internal, .. } => {
+				filter = filter.add(if OUTGOING { FollowingInstance } else { FollowerInstance }.eq(internal));
+			},
+		}
+	}
+
 	let following = model::relation::Entity::find()
-		.filter(if OUTGOING { Follower } else { Following }.eq(ctx.uid(&id)))
+		.filter(filter)
 		.select_only()
 		.select_column(if OUTGOING { Following } else { Follower })
 		.limit(limit)
