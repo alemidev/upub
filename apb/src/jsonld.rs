@@ -21,13 +21,18 @@ impl LD for serde_json::Value {
 					ctx.insert("followingMe".to_string(), serde_json::Value::String("fe:followingMe".into()));
 					ctx.insert("followedByMe".to_string(), serde_json::Value::String("fe:followedByMe".into()));
 				},
-				Ok(_) => {
+				Ok(
+					crate::ObjectType::Note
+					| crate::ObjectType::Article
+					| crate::ObjectType::Event
+					| crate::ObjectType::Document(crate::DocumentType::Page) // TODO why Document lemmyyyyyy
+				) => {
 					ctx.insert("fe".to_string(), serde_json::Value::String("https://ns.alemi.dev/as/fe/#".into()));
 					ctx.insert("likedByMe".to_string(), serde_json::Value::String("fe:likedByMe".into()));
 					ctx.insert("ostatus".to_string(), serde_json::Value::String("http://ostatus.org#".into()));
 					ctx.insert("conversation".to_string(), serde_json::Value::String("ostatus:conversation".into()));
 				},
-				Err(_) => {},
+				_ => {},
 			}
 			obj.insert(
 				"@context".to_string(),
