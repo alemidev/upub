@@ -65,6 +65,7 @@ pub async fn view(
 				.set_followers(Node::link(upub::url!(ctx, "/actors/{id}/followers")))
 				.set_following_me(following_me)
 				.set_followed_by_me(followed_by_me)
+				.set_manually_approves_followers(Some(!cfg.accept_follow_requests))
 				.set_endpoints(Node::object(
 					apb::new()
 						.set_shared_inbox(Some(&upub::url!(ctx, "/inbox")))
