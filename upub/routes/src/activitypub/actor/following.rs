@@ -82,6 +82,7 @@ pub async fn page<const OUTGOING: bool>(
 	};
 
 	let mut filter = Condition::all()
+		.add(model::relation::Column::Accept.is_not_null())
 		.add(if OUTGOING { Follower } else { Following }.eq(user.internal));
 
 	if hidden {
