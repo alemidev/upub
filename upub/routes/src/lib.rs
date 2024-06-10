@@ -25,7 +25,7 @@ pub mod mastodon {
 	impl MastodonRouter for axum::Router<upub::Context> {}
 }
 
-pub async fn serve(ctx: upub::Context, bind: String) -> Result<(), std::io::Error> {
+pub async fn serve(ctx: upub::Context, bind: String, shutdown: impl ShutdownToken) -> Result<(), std::io::Error> {
 	use activitypub::ActivityPubRouter;
 	use mastodon::MastodonRouter;
 	use tower_http::{cors::CorsLayer, trace::TraceLayer};
@@ -52,7 +52,14 @@ pub async fn serve(ctx: upub::Context, bind: String) -> Result<(), std::io::Erro
 	tracing::info!("serving api routes on {bind}");
 
 	let listener = tokio::net::TcpListener::bind(bind).await?;
-	axum::serve(listener, router).await?;
+	axum::serve(listener, router)
+		.with_graceful_shutdown(async move { shutdown.event().await })
+		.await?;
 
 	Ok(())
+}
+
+#[axum::async_trait]
+pub trait ShutdownToken: Sync + Send + 'static {
+	async fn event(self);
 }

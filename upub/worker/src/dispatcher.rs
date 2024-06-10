@@ -29,7 +29,7 @@ pub type JobResult<T> = Result<T, JobError>;
 pub trait JobDispatcher : Sized {
 	async fn poll(&self, filter: Option<model::job::JobType>) -> JobResult<Option<model::job::Model>>;
 	async fn lock(&self, job_internal: i64) -> JobResult<bool>;
-	async fn run(self, concurrency: usize, poll_interval: u64, job_filter: Option<model::job::JobType>);
+	async fn run(self, concurrency: usize, poll_interval: u64, job_filter: Option<model::job::JobType>, stop: impl crate::StopToken);
 }
 
 #[async_trait::async_trait]
@@ -67,7 +67,7 @@ impl JobDispatcher for Context {
 		Ok(true)
 	}
 
-	async fn run(self, concurrency: usize, poll_interval: u64, job_filter: Option<model::job::JobType>) {
+	async fn run(self, concurrency: usize, poll_interval: u64, job_filter: Option<model::job::JobType>, stop: impl crate::StopToken) {
 		macro_rules! restart {
 			(now) => { continue };
 			() => {
@@ -81,6 +81,8 @@ impl JobDispatcher for Context {
 		let mut pool = tokio::task::JoinSet::new();
 	
 		loop {
+			if stop.stop() { break }
+
 			let job = match self.poll(job_filter).await {
 				Ok(Some(j)) => j,
 				Ok(None) => restart!(),
@@ -154,5 +156,12 @@ impl JobDispatcher for Context {
 				}
 			}
 		}
+
+		while let Some(joined) = pool.join_next().await {
+			if let Err(e) = joined {
+				tracing::error!("failed joining process task: {e}");
+			}
+		}
+
 	}
 }

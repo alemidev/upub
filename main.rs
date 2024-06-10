@@ -1,7 +1,11 @@
 use std::path::PathBuf;
 use clap::{Parser, Subcommand};
 use sea_orm::{ConnectOptions, Database};
+use signal_hook::consts::signal::*;
+use signal_hook_tokio::Signals;
+use futures::stream::StreamExt;
 
+use upub::ext::LoggableError;
 #[cfg(feature = "cli")]
 use upub_cli as cli;
 
@@ -96,14 +100,6 @@ enum Mode {
 	},
 }
 
-#[derive(Debug, Clone, clap::ValueEnum)]
-enum Filter {
-	All,
-	Delivery,
-	Inbound,
-	Outbound,
-}
-
 #[tokio::main]
 async fn main() {
 
@@ -153,6 +149,12 @@ async fn main() {
 		return;
 	}
 
+	let (tx, rx) = tokio::sync::watch::channel(false);
+	let signals = Signals::new(&[SIGTERM, SIGINT]).expect("failed registering signal handler");
+	let handle = signals.handle();
+	let signals_task = tokio::spawn(handle_signals(signals, tx));
+	let stop = CancellationToken(rx);
+
 	let ctx = upub::Context::new(db, domain, config.clone())
 		.await.expect("failed creating server context");
 
@@ -164,24 +166,68 @@ async fn main() {
 
 		#[cfg(feature = "serve")]
 		Mode::Serve { bind } =>
-			routes::serve(ctx, bind)
+			routes::serve(ctx, bind, stop)
 				.await.expect("failed serving api routes"),
 
 		#[cfg(feature = "worker")]
 		Mode::Work { filter, tasks, poll } =>
-			worker::spawn(ctx, tasks, poll, filter.into())
+			worker::spawn(ctx, tasks, poll, filter.into(), stop)
 				.await.expect("failed running worker"),
 
 		#[cfg(all(feature = "serve", feature = "worker"))]
 		Mode::Monolith { bind, tasks, poll } => {
-			worker::spawn(ctx.clone(), tasks, poll, None);
+			worker::spawn(ctx.clone(), tasks, poll, None, stop.clone());
 
-			routes::serve(ctx, bind)
+			routes::serve(ctx, bind, stop)
 				.await.expect("failed serving api routes");
 		},
 
-		_ => unreachable!(),
+		Mode::Config => unreachable!(),
+		#[cfg(feature = "migrate")]
+		Mode::Migrate => unreachable!(),
 	}
+
+	handle.close();
+	signals_task.await.expect("failed joining signal handler task");
+}
+
+#[derive(Clone)]
+struct CancellationToken(tokio::sync::watch::Receiver<bool>);
+
+impl worker::StopToken for CancellationToken {
+	fn stop(&self) -> bool {
+		*self.0.borrow()
+	}
+}
+
+#[sea_orm::prelude::async_trait::async_trait] // ahahaha we avoid this???
+impl routes::ShutdownToken for CancellationToken {
+	async fn event(mut self) {
+		self.0.changed().await.warn_failed("cancellation token channel closed, stopping...");
+	}
+}
+
+async fn handle_signals(
+	mut signals: signal_hook_tokio::Signals,
+	tx: tokio::sync::watch::Sender<bool>,
+) {
+	while let Some(signal) = signals.next().await {
+		match signal {
+			SIGTERM | SIGINT => {
+				tracing::info!("received stop signal, closing tasks");
+				tx.send(true).info_failed("error sending stop signal to tasks")
+			},
+			_ => unreachable!(),
+		}
+	}
+}
+
+#[derive(Debug, Clone, clap::ValueEnum)]
+enum Filter {
+	All,
+	Delivery,
+	Inbound,
+	Outbound,
 }
 
 impl From<Filter> for Option<upub::model::job::JobType> {
