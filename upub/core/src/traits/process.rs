@@ -335,21 +335,33 @@ pub async fn undo(_ctx: &crate::Context, activity: impl apb::Activity, tx: &Data
 			)
 				.await?
 				.ok_or(ProcessorError::Incomplete)?;
+
+			// no pending relation to undo
+			let relation = crate::model::relation::Entity::find()
+				.filter(model::relation::Column::Follower.eq(internal_uid))
+				.filter(model::relation::Column::Following.eq(internal_uid_following))
+				.one(tx)
+				.await?
+				.ok_or(ProcessorError::AlreadyProcessed)?;
+
 			crate::model::relation::Entity::delete_many()
 				.filter(crate::model::relation::Column::Follower.eq(internal_uid))
 				.filter(crate::model::relation::Column::Following.eq(internal_uid_following))
 				.exec(tx)
 				.await?;
-			crate::model::actor::Entity::update_many()
-				.filter(crate::model::actor::Column::Internal.eq(internal_uid))
-				.col_expr(crate::model::actor::Column::FollowingCount, Expr::col(crate::model::actor::Column::FollowingCount).sub(1))
-				.exec(tx)
-				.await?;
-			crate::model::actor::Entity::update_many()
-				.filter(crate::model::actor::Column::Internal.eq(internal_uid_following))
-				.col_expr(crate::model::actor::Column::FollowersCount, Expr::col(crate::model::actor::Column::FollowersCount).sub(1))
-				.exec(tx)
-				.await?;
+
+			if relation.accept.is_some() {
+				crate::model::actor::Entity::update_many()
+					.filter(crate::model::actor::Column::Internal.eq(internal_uid))
+					.col_expr(crate::model::actor::Column::FollowingCount, Expr::col(crate::model::actor::Column::FollowingCount).sub(1))
+					.exec(tx)
+					.await?;
+				crate::model::actor::Entity::update_many()
+					.filter(crate::model::actor::Column::Internal.eq(internal_uid_following))
+					.col_expr(crate::model::actor::Column::FollowersCount, Expr::col(crate::model::actor::Column::FollowersCount).sub(1))
+					.exec(tx)
+					.await?;
+			}
 		},
 		_ => return Err(ProcessorError::Unprocessable(activity.id()?.to_string())),
 	}
