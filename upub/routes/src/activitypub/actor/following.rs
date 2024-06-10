@@ -16,7 +16,7 @@ pub async fn get<const OUTGOING: bool>(
 	// instance, but that's annoying because means running a COUNT every time, so likely this will
 	// keep answering 0
 
-	let count = match model::actor::Entity::find_by_ap_id(&ctx.oid(&id))
+	let count = match model::actor::Entity::find_by_ap_id(&ctx.uid(&id))
 		.find_also_related(model::config::Entity)
 		.one(ctx.db())
 		.await?
@@ -67,7 +67,7 @@ pub async fn page<const OUTGOING: bool>(
 
 	let hidden = {
 		// TODO i could avoid this query if ctx.uid(id) == Identity::Local { id }
-		match model::actor::Entity::find_by_ap_id(&ctx.oid(&id))
+		match model::actor::Entity::find_by_ap_id(&ctx.uid(&id))
 			.find_also_related(model::config::Entity)
 			.one(ctx.db())
 			.await?
