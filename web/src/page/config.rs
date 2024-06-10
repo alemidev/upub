@@ -1,9 +1,11 @@
+use apb::{ActivityMut, ActorMut, Object, ObjectMut};
 use leptos::*;
 use crate::{prelude::*, DEFAULT_COLOR};
 
 #[component]
 pub fn ConfigPage(setter: WriteSignal<crate::Config>) -> impl IntoView {
 	let config = use_context::<Signal<crate::Config>>().expect("missing config context");
+	let auth = use_context::<Auth>().expect("missing auth context");
 	let (color, set_color) = leptos_use::use_css_var("--accent");
 	let (_color_rgb, set_color_rgb) = leptos_use::use_css_var("--accent-rgb");
 
@@ -11,6 +13,17 @@ pub fn ConfigPage(setter: WriteSignal<crate::Config>) -> impl IntoView {
 	let previous_color = config.get_untracked().accent_color;
 	set_color_rgb.set(parse_hex(&previous_color));
 	set_color.set(previous_color);
+
+	let display_name_ref: NodeRef<html::Input> = create_node_ref();
+	let summary_ref: NodeRef<html::Textarea> = create_node_ref();
+	let avatar_url_ref: NodeRef<html::Input> = create_node_ref();
+	let banner_url_ref: NodeRef<html::Input> = create_node_ref();
+
+	let myself = CACHE.get(&auth.userid.get_untracked().unwrap_or_default());
+	let curr_display_name = myself.as_ref().and_then(|x| Some(x.name().ok()?.to_string())).unwrap_or_default();
+	let curr_summary = myself.as_ref().and_then(|x| Some(x.summary().ok()?.to_string())).unwrap_or_default();
+	let curr_icon = myself.as_ref().and_then(|x| Some(x.icon().get()?.url().id().ok()?.to_string())).unwrap_or_default();
+	let curr_banner = myself.as_ref().and_then(|x| Some(x.image().get()?.url().id().ok()?.to_string())).unwrap_or_default();
 
 	macro_rules! get_cfg {
 		(filter $field:ident) => {
@@ -94,7 +107,62 @@ pub fn ConfigPage(setter: WriteSignal<crate::Config>) -> impl IntoView {
 					<li><span title="objects without a related activity to display"><input type="checkbox" prop:checked=get_cfg!(filter orphans) on:input=set_cfg!(filter orphans) />" orphans"</span></li>
 			</ul>
 			<hr />
-			<p class="center"><a href="/web/config/dev" title="access the devtools page">devtools</a></p>
+			<div class="border ma-2 pa-1">
+				<code class="center cw color mb-1">update profile</code>
+				<div class="col-side mb-0">display name</div>
+				<div class="col-main">
+					<input class="w-100" type="text" node_ref=display_name_ref placeholder="bmdieGo=" value={curr_display_name}/>
+				</div>
+
+				<div class="col-side mb-0">avatar url</div>
+				<div class="col-main">
+					<input class="w-100" type="text" node_ref=avatar_url_ref placeholder="https://cdn.alemi.dev/social/circle-square.png" value={curr_icon} />
+				</div>
+
+				<div class="col-side mb-0">banner url</div>
+				<div class="col-main">
+					<input class="w-100" type="text" node_ref=banner_url_ref placeholder="https://cdn.alemi.dev/social/gradient.png" value={curr_banner} />
+				</div>
+
+				<div class="col-side mb-0">summary</div>
+				<div class="col-main">
+					<textarea class="w-100" node_ref=summary_ref placeholder="when you lose control of yourself, who's controlling you?">{curr_summary}</textarea>
+				</div>
+
+				<input class="w-100" type="submit" value="submit"
+					on:click=move|e| {
+						e.prevent_default();
+						let display_name = display_name_ref.get().map(|x| x.value()).unwrap_or("".into());
+						let avatar = avatar_url_ref.get().map(|x| x.value()).unwrap_or("".into());
+						let banner = banner_url_ref.get().map(|x| x.value()).unwrap_or("".into());
+						let summary = summary_ref.get().map(|x| x.value()).unwrap_or("".into());
+						
+						let id = auth.userid.get_untracked().unwrap_or_default();
+						let Some(me) = CACHE.get(&id) else {
+							tracing::error!("self user not in cache! can't update");
+							return;
+						};
+
+						let payload = apb::new()
+							.set_activity_type(Some(apb::ActivityType::Update))
+							.set_to(apb::Node::links(vec![apb::target::PUBLIC.to_string(), format!("{id}/followers")]))
+							.set_object(apb::Node::object(
+								(*me).clone()
+									.set_name(Some(&display_name))
+									.set_summary(Some(&summary))
+									.set_icon(apb::Node::link(avatar))
+									.set_image(apb::Node::link(banner))
+									.set_published(Some(chrono::Utc::now()))
+							));
+
+						spawn_local(async move {
+							if let Err(e) = Http::post(&format!("{id}/outbox"), &payload, auth).await {
+								tracing::error!("could not send update activity: {e}");
+							}
+						});
+					}
+				/>
+			</div>
 		</div>
 	}
 }
