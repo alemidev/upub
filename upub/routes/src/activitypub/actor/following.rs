@@ -1,5 +1,5 @@
 use axum::extract::{Path, Query, State};
-use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter, QuerySelect, SelectColumns};
+use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter, QuerySelect, SelectColumns, RelationTrait};
 
 use upub::{model, Context};
 
@@ -59,7 +59,7 @@ pub async fn page<const OUTGOING: bool>(
 	use upub::model::relation::Column::{Follower, Following, FollowerInstance, FollowingInstance};
 	let follow___ = if OUTGOING { "following" } else { "followers" };
 
-	let limit = page.batch.unwrap_or(20).min(50);
+	let limit = page.batch.unwrap_or(100).min(500);
 	let offset = page.offset.unwrap_or(0);
 
 	let (user, config) = model::actor::Entity::find_by_ap_id(&ctx.uid(&id))
@@ -98,10 +98,17 @@ pub async fn page<const OUTGOING: bool>(
 		}
 	}
 
+	let join = if OUTGOING {
+		model::relation::Relation::ActorsFollowing.def()
+	} else {
+		model::relation::Relation::ActorsFollower.def()
+	};
+
 	let following = model::relation::Entity::find()
 		.filter(filter)
+		.join(sea_orm::JoinType::LeftJoin, join)
 		.select_only()
-		.select_column(if OUTGOING { Following } else { Follower })
+		.select_column(model::actor::Column::Id)
 		.limit(limit)
 		.offset(page.offset.unwrap_or(0))
 		.into_tuple::<String>()
