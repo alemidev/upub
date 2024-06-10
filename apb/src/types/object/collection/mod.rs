@@ -17,11 +17,18 @@ pub trait Collection : Object {
 
 	fn collection_type(&self) -> Field<CollectionType> { Err(FieldErr("type")) }
 
+	/// A non-negative integer specifying the total number of objects contained by the logical view of the collection.
+	/// This number might not reflect the actual number of items serialized within the Collection object instance. 
 	fn total_items(&self) -> Field<u64> { Err(FieldErr("totalItems")) }
+	/// In a paged Collection, indicates the page that contains the most recently updated member items. 
 	fn current(&self) -> Node<Self::CollectionPage> { Node::Empty }
+	/// In a paged Collection, indicates the furthest preceeding page of items in the collection. 
 	fn first(&self) -> Node<Self::CollectionPage> { Node::Empty }
+	/// In a paged Collection, indicates the furthest proceeding page of the collection.
 	fn last(&self) -> Node<Self::CollectionPage> { Node::Empty }
+	/// Identifies the items contained in a collection. The items might be ordered or unordered.
 	fn items(&self) -> Node<Self::Object> { Node::Empty }
+	/// ??????????????? same as items but ordered?? spec just uses it without saying
 	fn ordered_items(&self) -> Node<Self::Object> { Node::Empty }
 }
 

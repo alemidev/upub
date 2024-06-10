@@ -15,15 +15,24 @@ pub trait Actor : Object {
 	type Endpoints : Endpoints;
 
 	fn actor_type(&self) -> Field<ActorType> { Err(FieldErr("type")) }
+	/// A short username which may be used to refer to the actor, with no uniqueness guarantees.
 	fn preferred_username(&self) -> Field<&str> { Err(FieldErr("preferredUsername")) }
+	/// A reference to an [ActivityStreams] OrderedCollection comprised of all the messages received by the actor; see 5.2 Inbox. 
 	fn inbox(&self) -> Node<Self::Collection>;
+	/// An [ActivityStreams] OrderedCollection comprised of all the messages produced by the actor; see 5.1 Outbox. 
 	fn outbox(&self) -> Node<Self::Collection>;
+	/// A link to an [ActivityStreams] collection of the actors that this actor is following; see 5.4 Following Collection
 	fn following(&self) -> Node<Self::Collection> { Node::Empty }
+	/// A link to an [ActivityStreams] collection of the actors that follow this actor; see 5.3 Followers Collection. 
 	fn followers(&self) -> Node<Self::Collection> { Node::Empty }
+	/// A link to an [ActivityStreams] collection of objects this actor has liked; see 5.5 Liked Collection.
 	fn liked(&self) -> Node<Self::Collection> { Node::Empty }
+	/// A list of supplementary Collections which may be of interest.
 	fn streams(&self) -> Node<Self::Collection> { Node::Empty }
+	/// A json object which maps additional (typically server/domain-wide) endpoints which may be useful either for this actor or someone referencing this actor.
+	/// This mapping may be nested inside the actor document as the value or may be a link to a JSON-LD document with these properties. 
 	fn endpoints(&self) -> Node<Self::Endpoints> { Node::Empty }
-	fn public_key(&self) -> Node<Self::PublicKey> { Node::Empty }
+	fn public_key(&self) -> Node<Self::PublicKey> { Node::Empty } // TODO hmmm where is this from??
 
 	#[cfg(feature = "activitypub-miscellaneous-terms")]
 	fn moved_to(&self) -> Node<Self::Actor> { Node::Empty }
