@@ -147,6 +147,7 @@ pub fn App() -> impl IntoView {
 
 									<Route path="/web/about" view=AboutPage />
 									<Route path="/web/config" view=move || view! { <ConfigPage setter=set_config /> } />
+									<Route path="/web/dev" view=DebugPage />
 									<Route path="/web/config/dev" view=DebugPage />
 
 									<Route path="/web/actors/:id" view=UserPage />
@@ -168,7 +169,7 @@ pub fn App() -> impl IntoView {
 		</div>
 		<footer>
 			<div class="sep-top">
-				<span class="footer" >"\u{26fc} woven under moonlight  :: "<a class="clean" href="https://git.alemi.dev/upub.git" target="_blank" >src</a>" :: "<a class="clean" href="mailto:abuse@alemi.dev">contact</a>" :: "<a class="clean" href="javascript:window.scrollTo({top:0, behavior:'smooth'})">top</a></span>
+				<span class="footer" >"\u{26fc} woven under moonlight  :: "<a class="clean" href="https://git.alemi.dev/upub.git" target="_blank" >src</a>" :: "<a class="clean" href="mailto:abuse@alemi.dev">contact</a>" :: "<a class="clean" href="/web/dev">dev</a>" :: "<a class="clean" href="javascript:window.scrollTo({top:0, behavior:'smooth'})">top</a></span>
 			</div>
 		</footer>
 	}
