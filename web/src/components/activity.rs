@@ -20,7 +20,7 @@ pub fn ActivityLine(activity: crate::Object) -> impl IntoView {
 	};
 	view! {
 		<div>
-			<span class="ml-1-r">
+			<span class="ml-1-l">
 				<ActorStrip object=actor />
 			</span>
 			<span style="float:right">
