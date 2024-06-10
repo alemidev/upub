@@ -191,7 +191,7 @@ pub fn TimelineFeed(tl: Timeline) -> impl IntoView {
 				on:click=move |_| tl.more(auth)
 			>
 				{move || if tl.loading.get() {
-					view! { "loading"<span class="dots"></span> }.into_view()
+					view! { "loading "<span class="dots"></span> }.into_view()
 				} else { "more".into_view() }}
 			</button>
 		</div>

@@ -14,7 +14,7 @@ pub fn ActorPosts() -> impl IntoView {
 		}
 	}).track();
 	view! {
-		<code class="cw color center mt-1 mb-1 ml-3 mr-3"><span class="emoji">"🖂"</span>" posts"</code>
+		<code class="cw color center mt-1 mb-1 ml-3 mr-3"><span class="emoji">"🖂"</span>" "<b>posts</b></code>
 		<TimelineFeed tl=feeds.user />
 	}
 }
