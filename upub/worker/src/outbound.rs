@@ -62,6 +62,9 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 			));
 	}
 
+	// TODO very important that we limit Update activities!!! otherwise with .process() local users
+	// can change their document completely
+
 	let targets = activity.addressed();
 	ctx.process(activity, &tx).await?;
 	ctx.deliver(targets, &job.activity, &job.actor, &tx).await?;
