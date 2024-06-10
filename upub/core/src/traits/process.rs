@@ -259,6 +259,9 @@ pub async fn update(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 
 	match object_node.object_type()? {
 		apb::ObjectType::Actor(_) => {
+			if oid != actor_id {
+				return Err(ProcessorError::Unauthorized);
+			}
 			let internal_uid = crate::model::actor::Entity::ap_to_internal(&oid, tx)
 				.await?
 				.ok_or(ProcessorError::Incomplete)?;
