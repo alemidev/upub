@@ -118,49 +118,43 @@ pub fn App() -> impl IntoView {
 				<div class="col-main" class:w-100=move || menu.get() >
 					<Router // TODO maybe set base="/web" ?
 						trailing_slash=TrailingSlash::Redirect
-						fallback=move || view! { 
-							<Breadcrumb back=true >404</Breadcrumb>
-							<div class="center">
-								<h3>nothing to see here!</h3>
-								<p><a href="/web"><button type="button">back to root</button></a></p>
-							</div>
-						}.into_view()
+						fallback=|| view! { <NotFound /> }
 					>
-						// TODO this is kind of ugly: the whole router gets rebuilt every time we log in/out
-						// in a sense it's what we want: refreshing the home tl is main purpose, but also
-						// server tl may contain stuff we can no longer see, or otherwise we may now be
-						// entitled to see new posts. so while being ugly it's techically correct ig?
 						<main>
 								<Routes>
-									<Route path="/web" view=move ||
-										if auth.present() {
-											view! { <Redirect path="/web/home" /> }
-										} else {
-											view! { <Redirect path="/web/server" /> }
-										}
-									/>
-
-									<Route path="/web/home" view=move || view! { <TimelinePage name="home" tl=feeds.home /> } />
-									<Route path="/web/server" view=move || view! { <TimelinePage name="server" tl=feeds.global /> } />
-									<Route path="/web/local" view=move || view! { <TimelinePage name="local" tl=feeds.server /> } />
-									<Route path="/web/inbox" view=move || view! { <TimelinePage name="inbox" tl=feeds.private /> } />
-
-									<Route path="/web/about" view=AboutPage />
-									<Route path="/web/config" view=move || view! { <ConfigPage setter=set_config /> } />
-									<Route path="/web/dev" view=DebugPage />
-									<Route path="/web/config/dev" view=DebugPage />
-
-									<Route path="/web/actors/:id" view=UserPage />
-									<Route path="/web/actors/:id/following" view=move || view! { <FollowPage outgoing=true /> } />
-									<Route path="/web/actors/:id/followers" view=move || view! { <FollowPage outgoing=false /> } />
-
-									<Route path="/web/objects/:id" view=ObjectPage />
-									// <Route path="/web/activities/:id" view=move || view! { <ActivityPage tl=context_tl /> } />
-
-									<Route path="/web/search" view=SearchPage />
-									<Route path="/web/register" view=RegisterPage />
-
 									<Route path="/" view=move || view! { <Redirect path="/web" /> } />
+									<Route path="/web" view=Navigable >
+										<Route path="" view=move ||
+											if auth.present() {
+												view! { <Redirect path="home" /> }
+											} else {
+												view! { <Redirect path="server" /> }
+											}
+										/>
+										<Route path="home" view=move || view! { <TimelinePage name="home" tl=feeds.home /> } />
+										<Route path="server" view=move || view! { <TimelinePage name="server" tl=feeds.global /> } />
+										<Route path="local" view=move || view! { <TimelinePage name="local" tl=feeds.server /> } />
+										<Route path="inbox" view=move || view! { <TimelinePage name="inbox" tl=feeds.private /> } />
+
+										<Route path="about" view=AboutPage />
+										<Route path="config" view=move || view! { <ConfigPage setter=set_config /> } />
+										<Route path="dev" view=DebugPage />
+
+										<Route path="actors" view=Outlet > // TODO can we avoid this?
+											<Route path=":id" view=ActorHeader >
+												<Route path="" view=ActorPosts />
+												<Route path="following" view=move || view! { <FollowList outgoing=true /> } />
+												<Route path="followers" view=move || view! { <FollowList outgoing=false /> } />
+											</Route>
+											<Route path="" view=NotFound />
+										</Route>
+
+										<Route path="objects/:id" view=ObjectPage />
+										// <Route path="/web/activities/:id" view=move || view! { <ActivityPage tl=context_tl /> } />
+
+										<Route path="search" view=SearchPage />
+										<Route path="register" view=RegisterPage />
+									</Route>
 								</Routes>
 						</main>
 					</Router>
@@ -172,5 +166,61 @@ pub fn App() -> impl IntoView {
 				<span class="footer" >"\u{26fc} woven under moonlight  :: "<a class="clean" href="https://git.alemi.dev/upub.git" target="_blank" >src</a>" :: "<a class="clean" href="mailto:abuse@alemi.dev">contact</a>" :: "<a class="clean" href="/web/dev">dev</a>" :: "<a class="clean" href="javascript:window.scrollTo({top:0, behavior:'smooth'})">top</a></span>
 			</div>
 		</footer>
+	}
+}
+
+#[component]
+fn Navigable() -> impl IntoView {
+	let location = use_location();
+	let breadcrumb = Signal::derive(move || {
+		let path = location.pathname.get();
+		let mut path_iter = path.split('/').skip(1);
+		// TODO wow this breadcrumb logic really isnt nice can we make it better??
+		match path_iter.next() {
+			Some("actors") => match path_iter.next() {
+				None => "actors :: all".to_string(),
+				Some(id) => {
+					let mut out = "actors :: ".to_string();
+					if id.starts_with('+') {
+						out.push_str("proxy");
+					} else {
+						out.push_str(id);
+					}
+					if let Some(x) = path_iter.next() {
+						out.push_str(" :: ");
+						out.push_str(x);
+					}
+					out
+				},
+			},
+			Some(p) => p.to_string(),
+			None => "?".to_string(),
+		}
+	});
+	view! {
+		<div class="tl-header w-100 center" >
+			<a class="breadcrumb mr-1" href="javascript:history.back()" ><b>"<<"</b></a>
+			<b>{crate::NAME}</b>" :: "{breadcrumb}
+		</div>
+		<Outlet />
+	}
+}
+
+#[component]
+pub fn NotFound() -> impl IntoView {
+	view! {
+		<div class="center">
+			<h3>nothing to see here!</h3>
+			<p><a href="/web"><button type="button">back to root</button></a></p>
+		</div>
+	}
+}
+
+#[component]
+pub fn Loader(#[prop(optional)] margin: bool) -> impl IntoView {
+	view! {
+		<div class="center" class:mt-1={margin}>
+			<button type="button" disabled>"loading "<span class="dots"></span></button>
+		</div>
 	}
 }

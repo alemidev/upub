@@ -4,6 +4,7 @@ mod components;
 mod page;
 mod config;
 
+pub mod actors;
 pub use app::App;
 pub use config::Config;
 pub use auth::Auth;
