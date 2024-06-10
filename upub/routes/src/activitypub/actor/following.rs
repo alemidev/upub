@@ -62,29 +62,27 @@ pub async fn page<const OUTGOING: bool>(
 	let limit = page.batch.unwrap_or(20).min(50);
 	let offset = page.offset.unwrap_or(0);
 
-	let mut filter = Condition::all()
-		.add(if OUTGOING { Follower } else { Following }.eq(ctx.uid(&id)));
+	let (user, config) = model::actor::Entity::find_by_ap_id(&ctx.uid(&id))
+		.find_also_related(model::config::Entity)
+		.one(ctx.db())
+		.await?
+		.ok_or_else(ApiError::not_found)?;
 
-	let hidden = {
-		// TODO i could avoid this query if ctx.uid(id) == Identity::Local { id }
-		match model::actor::Entity::find_by_ap_id(&ctx.uid(&id))
-			.find_also_related(model::config::Entity)
-			.one(ctx.db())
-			.await?
-			.ok_or_else(ApiError::not_found)?
-		{
-			// assume all remote users have private followers
-			//  this because we get to see some of their "private" followers if they follow local users,
-			//  and there is no mechanism to broadcast privacy on/off, so we could be leaking followers. to
-			//  mitigate this, just assume them all private: local users can only see themselves and remote
-			//  fetchers can only see relations from their instance (meaning likely zero because we only
-			//  store relations for which at least one end is on local instance)
-			(_, None) => true,
-			(_, Some(config)) => {
-				if OUTGOING { !config.show_followers } else { !config.show_following }
-			},
+	let hidden = match config {
+		// assume all remote users have private followers
+		//  this because we get to see some of their "private" followers if they follow local users,
+		//  and there is no mechanism to broadcast privacy on/off, so we could be leaking followers. to
+		//  mitigate this, just assume them all private: local users can only see themselves and remote
+		//  fetchers can only see relations from their instance (meaning likely zero because we only
+		//  store relations for which at least one end is on local instance)
+		None => true,
+		Some(config) => {
+			if OUTGOING { !config.show_followers } else { !config.show_following }
 		}
 	};
+
+	let mut filter = Condition::all()
+		.add(if OUTGOING { Follower } else { Following }.eq(user.internal));
 
 	if hidden {
 		match auth {
