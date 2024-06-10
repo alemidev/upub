@@ -150,6 +150,9 @@ pub fn App() -> impl IntoView {
 									<Route path="/web/config/dev" view=DebugPage />
 
 									<Route path="/web/actors/:id" view=UserPage />
+									<Route path="/web/actors/:id/following" view=move || view! { <FollowPage outgoing=true /> } />
+									<Route path="/web/actors/:id/followers" view=move || view! { <FollowPage outgoing=false /> } />
+
 									<Route path="/web/objects/:id" view=ObjectPage />
 									// <Route path="/web/activities/:id" view=move || view! { <ActivityPage tl=context_tl /> } />
 

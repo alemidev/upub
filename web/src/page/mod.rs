@@ -19,5 +19,6 @@ pub use search::SearchPage;
 mod timeline;
 pub use timeline::TimelinePage;
 
-mod user;
-pub use user::UserPage;
+mod actor;
+pub use actor::view::UserPage;
+pub use actor::follow::FollowPage;
