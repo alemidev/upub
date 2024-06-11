@@ -51,6 +51,8 @@ impl ActivityPubRouter for Router<upub::Context> {
 			.route("/actors/:id/outbox", post(ap::actor::outbox::post))
 			.route("/actors/:id/outbox", get(ap::actor::outbox::get))
 			.route("/actors/:id/outbox/page", get(ap::actor::outbox::page))
+			.route("/actors/:id/streams", get(ap::actor::streams::get))
+			.route("/actors/:id/streams/page", get(ap::actor::streams::page))
 			.route("/actors/:id/feed", get(ap::actor::feed::get))
 			.route("/actors/:id/feed/page", get(ap::actor::feed::page))
 			.route("/actors/:id/followers", get(ap::actor::following::get::<false>))

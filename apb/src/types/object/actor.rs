@@ -43,6 +43,8 @@ pub trait Actor : Object {
 	fn following_me(&self) -> Field<bool> { Err(FieldErr("followingMe")) }
 	#[cfg(feature = "activitypub-fe")]
 	fn followed_by_me(&self) -> Field<bool> { Err(FieldErr("followedByMe")) }
+	#[cfg(feature = "activitypub-fe")]
+	fn feed(&self) -> Node<Self::Collection> { Node::Empty }
 
 	#[cfg(feature = "activitypub-counters")]
 	fn followers_count(&self) -> Field<u64> { Err(FieldErr("followersCount")) }
@@ -96,6 +98,8 @@ pub trait ActorMut : ObjectMut {
 	fn set_following_me(self, val: Option<bool>) -> Self;
 	#[cfg(feature = "activitypub-fe")]
 	fn set_followed_by_me(self, val: Option<bool>) -> Self;
+	#[cfg(feature = "activitypub-fe")]
+	fn set_feed(self, val: Node<Self::Collection>) -> Self;
 
 	#[cfg(feature = "activitypub-counters")]
 	fn set_followers_count(self, val: Option<u64>) -> Self;
@@ -150,6 +154,8 @@ impl Actor for serde_json::Value {
 	crate::getter! { followingMe -> bool }
 	#[cfg(feature = "activitypub-fe")]
 	crate::getter! { followedByMe -> bool }
+	#[cfg(feature = "activitypub-fe")]
+	crate::getter! { feed -> node Self::Collection }
 
 	#[cfg(feature = "activitypub-counters")]
 	crate::getter! { followingCount -> u64 }
@@ -199,6 +205,8 @@ impl ActorMut for serde_json::Value {
 	crate::setter! { followingMe -> bool }
 	#[cfg(feature = "activitypub-fe")]
 	crate::setter! { followedByMe -> bool }
+	#[cfg(feature = "activitypub-fe")]
+	crate::setter! { feed -> node Self::Collection }
 
 	#[cfg(feature = "activitypub-counters")]
 	crate::setter! { followingCount -> u64 }

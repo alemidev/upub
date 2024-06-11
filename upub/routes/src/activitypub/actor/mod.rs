@@ -1,10 +1,8 @@
 pub mod inbox;
-
 pub mod outbox;
-
 pub mod following;
-
 pub mod feed;
+pub mod streams;
 
 use axum::extract::{Path, Query, State};
 
@@ -60,7 +58,7 @@ pub async fn view(
 			let mut user = user_model.ap()
 				.set_inbox(Node::link(upub::url!(ctx, "/actors/{id}/inbox")))
 				.set_outbox(Node::link(upub::url!(ctx, "/actors/{id}/outbox")))
-				.set_streams(Node::link(upub::url!(ctx, "/actors/{id}/feed")))
+				.set_streams(Node::link(upub::url!(ctx, "/actors/{id}/streams")))
 				.set_following(Node::link(upub::url!(ctx, "/actors/{id}/following")))
 				.set_followers(Node::link(upub::url!(ctx, "/actors/{id}/followers")))
 				.set_following_me(following_me)
@@ -71,6 +69,10 @@ pub async fn view(
 						.set_shared_inbox(Some(&upub::url!(ctx, "/inbox")))
 						.set_proxy_url(Some(&upub::url!(ctx, "/proxy")))
 				));
+
+			if auth.is(&uid) {
+				user = user.set_feed(Node::link(upub::url!(ctx, "/actors/{id}/feed")));
+			}
 
 			if !auth.is(&uid) && !cfg.show_followers_count {
 				user = user.set_followers_count(None);
@@ -91,6 +93,8 @@ pub async fn view(
 			user_model.ap()
 				.set_following_me(following_me)
 				.set_followed_by_me(followed_by_me)
+				// TODO should we set streams?? we offer this collection but actor is remote
+				.set_streams(Node::link(upub::url!(ctx, "/actors/{id}/streams")))
 				.ld_context()
 		)),
 		None => Err(crate::ApiError::not_found()),
