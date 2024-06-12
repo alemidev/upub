@@ -2,7 +2,7 @@ use leptos::*;
 use leptos_router::*;
 use crate::prelude::*;
 
-use leptos_use::{signal_debounced, signal_debounced_with_options, signal_throttled, signal_throttled_with_options, storage::use_local_storage, use_cookie, use_element_size, use_window_scroll, utils::{FromToStringCodec, JsonCodec}, DebounceOptions, ThrottleOptions, UseElementSizeReturn};
+use leptos_use::{signal_debounced, storage::use_local_storage, use_cookie, use_element_size, use_window_scroll, utils::{FromToStringCodec, JsonCodec}, UseElementSizeReturn};
 
 #[derive(Clone, Copy)]
 pub struct Feeds {
