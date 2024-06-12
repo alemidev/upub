@@ -8,14 +8,7 @@ pub fn Feed(tl: Timeline) -> impl IntoView {
 	if let Some(auto_scroll) = use_context::<Signal<bool>>() {
 		let _ = leptos::watch(
 			move || auto_scroll.get(),
-			move |new, old, _| {
-				match old {
-					None => tl.spawn_more(auth), // always do it first time
-					Some(old) => if *new && new != old {
-						tl.spawn_more(auth);
-					},
-				}
-			},
+			move |at_end, _, _| if *at_end { tl.spawn_more(auth) },
 			true,
 		);
 	}

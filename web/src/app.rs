@@ -2,7 +2,7 @@ use leptos::*;
 use leptos_router::*;
 use crate::prelude::*;
 
-use leptos_use::{signal_throttled, storage::use_local_storage, use_cookie, use_element_size, use_window_scroll, utils::{FromToStringCodec, JsonCodec}, UseElementSizeReturn};
+use leptos_use::{signal_debounced, signal_debounced_with_options, signal_throttled, signal_throttled_with_options, storage::use_local_storage, use_cookie, use_element_size, use_window_scroll, utils::{FromToStringCodec, JsonCodec}, DebounceOptions, ThrottleOptions, UseElementSizeReturn};
 
 #[derive(Clone, Copy)]
 pub struct Feeds {
@@ -184,7 +184,7 @@ fn Scrollable() -> impl IntoView {
 		}
 	});
 	let element = create_node_ref();
-	let should_load = use_scroll_limit(element, 1750.0);
+	let should_load = use_scroll_limit(element, 500.0);
 	provide_context(should_load);
 	view! {
 		<div class="mb-1" node_ref=element>
@@ -223,15 +223,22 @@ where
 {
 	let (load, set_load) = create_signal(false);
 	let (_x, y) = use_window_scroll();
+	let UseElementSizeReturn { height: screen_height, .. } = use_element_size("html");
 	let UseElementSizeReturn { height, .. } = use_element_size(el);
-	let scroll_state = Signal::derive(move || (y.get(), height.get()));
-	let scroll_state_throttled = signal_throttled(scroll_state, 200.);
+	let scroll_state = Signal::derive(move || (y.get(), height.get(), screen_height.get()));
+	let scroll_state_throttled = signal_debounced(
+		scroll_state,
+		50.
+	);
 	let _ = watch(
 		move || scroll_state_throttled.get(),
-		move |(y, height), _, _| {
+		move |(y, height, screen), _, _| {
 			let before = load.get();
-			let after = y + offset >= *height;
-			if after != before { set_load.set(after) };
+			let after = *height <= *screen || y + screen + offset >= *height;
+			let force = *y + screen >= *height;
+			if force || after != before || *height < *screen {
+				set_load.set(after)
+			}
 		},
 		false,
 	);
