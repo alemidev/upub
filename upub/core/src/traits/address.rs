@@ -60,7 +60,12 @@ impl Addresser for crate::Context {
 	}
 
 	async fn address_activity(&self, activity: &crate::model::activity::Model, tx: &impl ConnectionTrait) -> Result<(), DbErr> {
-		let to = expand_addressing(activity.mentioning(), tx).await?;
+		let mut to = expand_addressing(activity.mentioning(), tx).await?;
+		if !to.iter().any(|x| x == apb::target::PUBLIC)
+			&& activity.addressed().iter().any(|x| x == apb::target::PUBLIC)
+		{
+			to.push(apb::target::PUBLIC.to_string());
+		}
 		address_to(self, to, Some(activity.internal), None, self.is_local(&activity.id), tx).await
 	}
 }
