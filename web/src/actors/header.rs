@@ -105,6 +105,7 @@ pub fn ActorHeader() -> impl IntoView {
 	}
 }
 
+#[allow(unused)]
 async fn send_follow_response(kind: apb::ActivityType, target: String, to: String, auth: Auth) {
 	let payload = apb::new()
 		.set_activity_type(Some(kind))

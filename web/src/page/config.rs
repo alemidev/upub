@@ -1,4 +1,4 @@
-use apb::{ActivityMut, ActorMut, Object, ObjectMut};
+use apb::{ActivityMut, Object, ObjectMut};
 use leptos::*;
 use crate::{prelude::*, DEFAULT_COLOR};
 

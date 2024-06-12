@@ -115,16 +115,3 @@ async fn send_follow_response(kind: apb::ActivityType, target: String, to: Strin
 		tracing::error!("failed posting follow response: {e}");
 	}
 }
-
-fn send_follow_request(target: String) {
-	let auth = use_context::<Auth>().expect("missing auth context");
-	spawn_local(async move {
-		let payload = serde_json::Value::Object(serde_json::Map::default())
-			.set_activity_type(Some(apb::ActivityType::Follow))
-			.set_object(apb::Node::link(target.clone()))
-			.set_to(apb::Node::links(vec![target]));
-		if let Err(e) = Http::post(&auth.outbox(), &payload, auth).await {
-			tracing::error!("failed sending follow request: {e}");
-		}
-	})
-}
