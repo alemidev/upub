@@ -5,7 +5,6 @@ use crate::prelude::*;
 pub fn AboutPage() -> impl IntoView {
 	view! {
 		<div>
-			<Breadcrumb>about</Breadcrumb>
 			<div class="mt-s mb-s" >
 				<p><code>μpub</code>" is a micro social network powered by "<a href="">ActivityPub</a></p>
 				<p><i>"the "<a href="https://en.wikipedia.org/wiki/Fediverse">fediverse</a>" is an ensemble of social networks, which, while independently hosted, can communicate with each other"</i></p>

@@ -16,9 +16,6 @@ pub use user::*;
 mod post;
 pub use post::*;
 
-mod timeline;
-pub use timeline::*;
-
 use leptos::*;
 
 #[component]

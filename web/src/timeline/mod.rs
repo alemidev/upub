@@ -1,8 +1,10 @@
+pub mod feed;
+pub mod thread;
+
 use std::{collections::BTreeSet, pin::Pin, sync::Arc};
 
 use apb::{field::OptionalString, Activity, ActivityMut, Base, Object};
 use leptos::*;
-use leptos_use::{signal_throttled, use_element_size, use_window_scroll, UseElementSizeReturn};
 use crate::prelude::*;
 
 #[derive(Debug, Clone, Copy)]
@@ -38,18 +40,26 @@ impl Timeline {
 		}
 	}
 
-	pub fn more(&self, auth: Auth) {
-		if self.loading.get_untracked() { return }
-		if self.over.get_untracked() { return }
+	pub fn spawn_more(&self, auth: Auth) {
 		let _self = *self;
 		spawn_local(async move {
-			_self.loading.set(true);
-			let res = _self.load_more(auth).await;
-			_self.loading.set(false);
-			if let Err(e) = res {
-				tracing::error!("failed loading posts for timeline: {e}");
-			}
+			_self.more(auth).await
 		});
+	}
+
+	pub fn loading(&self) -> bool {
+		self.loading.get_untracked()
+	}
+
+	pub async fn more(&self, auth: Auth) {
+		if self.loading.get_untracked() { return }
+		if self.over.get_untracked() { return }
+		self.loading.set(true);
+		let res = self.load_more(auth).await;
+		self.loading.set(false);
+		if let Err(e) = res {
+			tracing::error!("failed loading posts for timeline: {e}");
+		}
 	}
 
 	pub async fn load_more(&self, auth: Auth) -> reqwest::Result<()> {
@@ -77,124 +87,6 @@ impl Timeline {
 		}
 
 		Ok(())
-	}
-}
-
-#[component]
-pub fn TimelineRepliesRecursive(tl: Timeline, root: String) -> impl IntoView {
-	let root_values = move || tl.feed
-		.get()
-		.into_iter()
-		.filter_map(|x| {
-			let document = CACHE.get(&x)?;
-			let (oid, reply) = match document.object_type().ok()? {
-				// if it's a create, get and check created object: does it reply to root?
-				apb::ObjectType::Activity(apb::ActivityType::Create) => {
-					let object = CACHE.get(document.object().id().ok()?)?;
-					(object.id().str()?, object.in_reply_to().id().str()?)
-				},
-
-				// if it's a raw note, directly check if it replies to root
-				apb::ObjectType::Note => (document.id().str()?, document.in_reply_to().id().str()?),
-
-				// if it's anything else, check if it relates to root, maybe like or announce?
-				_ => (document.id().str()?, document.object().id().str()?),
-			};
-			if reply == root {
-				Some((oid, document))
-			} else {
-				None
-			}
-		})
-		.collect::<Vec<(String, crate::Object)>>();
-
-	view! {
-		<For
-			each=root_values
-			key=|(id, _obj)| id.clone()
-			children=move |(id, obj)|
-				view! {
-					<div class="context depth-r">
-						<Item item=obj replies=true />
-						<div class="depth-r">
-							<TimelineRepliesRecursive tl=tl root=id />
-						</div>
-					</div>
-				}
-		/ >
-	}
-}
-
-#[component]
-pub fn TimelineReplies(tl: Timeline, root: String) -> impl IntoView {
-	let auth = use_context::<Auth>().expect("missing auth context");
-
-	view! {
-		<div>
-			<TimelineRepliesRecursive tl=tl root=root />
-		</div>
-		<div class="center mt-1 mb-1" class:hidden=tl.over >
-			<button type="button"
-				prop:disabled=tl.loading 
-				on:click=move |_| tl.more(auth)
-			>
-				{move || if tl.loading.get() {
-					view! { "loading"<span class="dots"></span> }.into_view()
-				} else { "more".into_view() }}
-			</button>
-		</div>
-	}
-}
-
-#[component]
-pub fn TimelineFeed(tl: Timeline) -> impl IntoView {
-	let auth = use_context::<Auth>().expect("missing auth context");
-	let config = use_context::<Signal<crate::Config>>().expect("missing config context");
-	// double view height: preload when 1 screen away
-	let view_height = 2.0 * window()
-		.inner_height()
-		.map_or(500.0, |v| v.as_f64().unwrap_or_default());
-	let scroll_ref = create_node_ref();
-	let UseElementSizeReturn { width: _w, height } = use_element_size(scroll_ref);
-	let (_x, scroll) = use_window_scroll();
-	let scroll_debounced = signal_throttled(scroll, 500.0);
-	let _auto_loader = create_local_resource(
-		move || (scroll_debounced.get(), height.get()),
-		move |(s, h)| async move {
-			if !config.get_untracked().infinite_scroll { return }
-			if h - s < view_height {
-				tl.more(auth);
-			}
-		},
-	);
-	view! {
-		<div ref=scroll_ref>
-			<For
-				each=move || tl.feed.get()
-				key=|k| k.to_string()
-				children=move |id: String| {
-					match CACHE.get(&id) {
-						Some(i) => view! {
-							<Item item=i sep=true />
-						}.into_view(),
-						None => view! {
-							<p><code>{id}</code>" "[<a href={uri}>go</a>]</p>
-							<hr />
-						}.into_view(),
-					}
-				}
-			/ >
-		</div>
-		<div class="center mt-1 mb-1" class:hidden=tl.over >
-			<button type="button"
-				prop:disabled=tl.loading 
-				on:click=move |_| tl.more(auth)
-			>
-				{move || if tl.loading.get() {
-					view! { "loading "<span class="dots"></span> }.into_view()
-				} else { "more".into_view() }}
-			</button>
-		</div>
 	}
 }
 

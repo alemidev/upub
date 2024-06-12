@@ -53,7 +53,6 @@ pub fn ConfigPage(setter: WriteSignal<crate::Config>) -> impl IntoView {
 
 	view! {
 		<div>
-			<Breadcrumb>config</Breadcrumb>
 			<p class="center mt-0"><small>config is saved in your browser local storage</small></p>
 			<p>
 				<span title="embedded video attachments will loop like gifs if this option is enabled">

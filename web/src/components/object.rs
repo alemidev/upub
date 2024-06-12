@@ -157,7 +157,7 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 	let post = match object.object_type() {
 		// mastodon, pleroma, misskey
 		Ok(apb::ObjectType::Note) => view! {
-			<blockquote class="tl">{post_inner}</blockquote>
+			<article class="tl">{post_inner}</article>
 		}.into_view(),
 		// lemmy with Page, peertube with Video
 		Ok(apb::ObjectType::Document(t)) => view! {

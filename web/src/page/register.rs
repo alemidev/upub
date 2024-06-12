@@ -14,7 +14,6 @@ pub fn RegisterPage() -> impl IntoView {
 	let (error, set_error) = create_signal(None);
 	view! {
 		<div class="two-col">
-			<Breadcrumb>register</Breadcrumb>
 			<div class="border ma-2 pa-1">
 				<form on:submit=move|ev| {
 					ev.prevent_default();

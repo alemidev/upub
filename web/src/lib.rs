@@ -3,8 +3,12 @@ mod app;
 mod components;
 mod page;
 mod config;
+mod objects;
 
-pub mod actors;
+mod actors;
+mod getters;
+mod timeline;
+
 pub use app::App;
 pub use config::Config;
 pub use auth::Auth;

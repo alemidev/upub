@@ -40,7 +40,6 @@ pub fn DebugPage() -> impl IntoView {
 
 	view! {
 		<div>
-			<Breadcrumb back=true>devtools</Breadcrumb>
 			<div class="mt-1" >
 				<form on:submit=move|ev| {
 					ev.prevent_default();

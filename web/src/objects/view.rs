@@ -7,7 +7,7 @@ use crate::prelude::*;
 use apb::{Base, Object};
 
 #[component]
-pub fn ObjectPage() -> impl IntoView {
+pub fn ObjectView() -> impl IntoView {
 	let params = use_params_map();
 	let auth = use_context::<Auth>().expect("missing auth context");
 	let feeds = use_context::<Feeds>().expect("missing feeds context");
@@ -45,39 +45,23 @@ pub fn ObjectPage() -> impl IntoView {
 			Some(obj)
 		}
 	);
-	view! {
-		<div>
-			<Breadcrumb back=true >
-				objects::view
-				<a
-					class="clean ml-1" href="#"
-					class:hidden=move || feeds.context.is_empty()
-					on:click=move |_| {
-						feeds.context.reset(Some(feeds.context.next.get().split('?').next().unwrap_or_default().to_string()));
-						feeds.context.more(auth);
-				}><span class="emoji">
-					"\u{1f5d8}"
-				</span></a>
-			</Breadcrumb>
-			<div class="ma-2" >
-				{move || match object.get() {
-					None => view! { <p class="center"> loading ... </p> }.into_view(),
-					Some(None) => {
-						let raw_id = params.get().get("id").cloned().unwrap_or_default();
-						let uid =  uriproxy::uri(URL_BASE, uriproxy::UriClass::Object, &raw_id);
-						view! { <p class="center"><code>loading failed</code><sup><small><a class="clean" href={uid} target="_blank">"↗"</a></small></sup></p> }.into_view()
-					},
-					Some(Some(o)) => {
-						let object = o.clone();
-						view!{
-							<Object object=object />
-							<div class="ml-1 mr-1 mt-2">
-								<TimelineReplies tl=feeds.context root=o.id().unwrap_or_default().to_string() />
-							</div>
-						}.into_view()
-					},
-				}}
-			</div>
-		</div>
-	}
+
+	{move || match object.get() {
+		None => view! { <Loader /> }.into_view(),
+		Some(None) => {
+			let raw_id = params.get().get("id").cloned().unwrap_or_default();
+			let uid =  uriproxy::uri(URL_BASE, uriproxy::UriClass::Object, &raw_id);
+			view! { <p class="center"><code>loading failed</code><sup><small><a class="clean" href={uid} target="_blank">"↗"</a></small></sup></p> }.into_view()
+		},
+		Some(Some(o)) => {
+			let object = o.clone();
+			view!{
+				<Object object=object />
+				<hr class="color ma-2" />
+				<div class="mr-1-r ml-1-r">
+					<Thread tl=feeds.context root=o.id().unwrap_or_default().to_string() />
+				</div>
+			}.into_view()
+		},
+	}}
 }

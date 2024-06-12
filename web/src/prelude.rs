@@ -1,14 +1,22 @@
 pub use crate::{
 	Http, Uri,
 	CACHE, URL_BASE,
-	app::Feeds,
+	app::{Feeds, Loader},
 	auth::Auth,
 	page::*,
 	components::*,
 	actors::{
-		view::ActorHeader,
+		header::ActorHeader,
 		follow::FollowList,
 		posts::ActorPosts,
+	},
+	timeline::{
+		Timeline,
+		feed::Feed,
+		thread::Thread,
+	},
+	objects::{
+		view::ObjectView,
 	}
 };
 

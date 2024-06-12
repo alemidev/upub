@@ -25,7 +25,6 @@ pub fn SearchPage() -> impl IntoView {
 	);
 
 	view! {
-		<Breadcrumb>search</Breadcrumb>
 		<blockquote class="mt-3 mb-3">
 			<details open>
 				<summary class="mb-2">

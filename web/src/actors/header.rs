@@ -27,7 +27,7 @@ pub fn ActorHeader() -> impl IntoView {
 		}
 	);
 	move || match actor.get() {
-		None => view! { <Loader margin=true /> }.into_view(),
+		None => view! { <Loader /> }.into_view(),
 		Some(Err(e)) => view! { <code class="center cw color">"could not resolve user: "{e}</code> }.into_view(),
 		Some(Ok(actor)) => {
 			let avatar_url = actor.icon().get().map(|x| x.url().id().str().unwrap_or(DEFAULT_AVATAR_URL.into())).unwrap_or(DEFAULT_AVATAR_URL.into());

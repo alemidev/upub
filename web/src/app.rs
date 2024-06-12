@@ -2,7 +2,7 @@ use leptos::*;
 use leptos_router::*;
 use crate::prelude::*;
 
-use leptos_use::{storage::use_local_storage, use_cookie, utils::{FromToStringCodec, JsonCodec}};
+use leptos_use::{signal_throttled, storage::use_local_storage, use_cookie, use_element_size, use_window_scroll, utils::{FromToStringCodec, JsonCodec}, UseElementSizeReturn};
 
 #[derive(Clone, Copy)]
 pub struct Feeds {
@@ -64,29 +64,18 @@ pub fn App() -> impl IntoView {
 	let reply_controls = ReplyControls::default();
 	provide_context(reply_controls);
 
-	let screen_width = window().screen().map(|x| x.avail_width().unwrap_or_default()).unwrap_or_default();
+	let screen_width = document().body().map(|x| x.client_width()).unwrap_or_default();
+	tracing::info!("detected width of {screen_width}");
 
-	let (menu, set_menu) = create_signal(screen_width <= 786);
+	let (menu, set_menu) = create_signal(screen_width < 768);
 	let (advanced, set_advanced) = create_signal(false);
 
 	let title_target = move || if auth.present() { "/web/home" } else { "/web/server" };
 
-	spawn_local(async move {
-		// refresh token first, or verify that we're still authed
-		if Auth::refresh(auth.token, set_token, set_userid).await {
-			feeds.home.more(auth); // home inbox requires auth to be read
-			feeds.private.more(auth);
-		}
-		feeds.global.more(auth);
-		feeds.public.more(auth); // server inbox may contain private posts
-	});
-
-
-	// refresh token every hour
-	set_interval(
-		move || spawn_local(async move { Auth::refresh(auth.token, set_token, set_userid).await; }),
-		std::time::Duration::from_secs(3600)
-	);
+	// refresh token immediately and  every hour
+	let refresh = move || spawn_local(async move { Auth::refresh(auth.token, set_token, set_userid).await; });
+	refresh();
+	set_interval(refresh, std::time::Duration::from_secs(3600));
 
 	view! {
 		<nav class="w-100 mt-1 mb-1 pb-s">
@@ -98,7 +87,7 @@ pub fn App() -> impl IntoView {
 		<hr class="sep sticky" />
 		<div class="container mt-2 pt-2" >
 			<div class="two-col" >
-				<div class="col-side sticky pb-s" class:hidden=move || menu.get() >
+				<div class="col-side sticky pb-s" class:hidden=menu >
 					<Navigator />
 					<hr class="mt-1 mb-1" />
 					<LoginBox
@@ -115,7 +104,7 @@ pub fn App() -> impl IntoView {
 						<hr class="only-on-mobile sep mb-0 pb-0" />
 					</div>
 				</div>
-				<div class="col-main" class:w-100=move || menu.get() >
+				<div class="col-main" class:w-100=menu >
 					<Router // TODO maybe set base="/web" ?
 						trailing_slash=TrailingSlash::Redirect
 						fallback=|| view! { <NotFound /> }
@@ -123,7 +112,7 @@ pub fn App() -> impl IntoView {
 						<main>
 								<Routes>
 									<Route path="/" view=move || view! { <Redirect path="/web" /> } />
-									<Route path="/web" view=Navigable >
+									<Route path="/web" view=Scrollable >
 										<Route path="" view=move ||
 											if auth.present() {
 												view! { <Redirect path="home" /> }
@@ -131,25 +120,22 @@ pub fn App() -> impl IntoView {
 												view! { <Redirect path="server" /> }
 											}
 										/>
-										<Route path="home" view=move || view! { <TimelinePage name="home" tl=feeds.home /> } />
-										<Route path="server" view=move || view! { <TimelinePage name="server" tl=feeds.global /> } />
-										<Route path="local" view=move || view! { <TimelinePage name="local" tl=feeds.server /> } />
-										<Route path="inbox" view=move || view! { <TimelinePage name="inbox" tl=feeds.private /> } />
+										<Route path="home" view=move || view! { <Feed tl=feeds.home /> } />
+										<Route path="server" view=move || view! { <Feed tl=feeds.global /> } />
+										<Route path="local" view=move || view! { <Feed tl=feeds.server /> } />
+										<Route path="inbox" view=move || view! { <Feed tl=feeds.private /> } />
 
 										<Route path="about" view=AboutPage />
 										<Route path="config" view=move || view! { <ConfigPage setter=set_config /> } />
 										<Route path="dev" view=DebugPage />
 
-										<Route path="actors" view=Outlet > // TODO can we avoid this?
-											<Route path=":id" view=ActorHeader >
-												<Route path="" view=ActorPosts />
-												<Route path="following" view=move || view! { <FollowList outgoing=true /> } />
-												<Route path="followers" view=move || view! { <FollowList outgoing=false /> } />
-											</Route>
-											<Route path="" view=NotFound />
+										<Route path="actors/:id" view=ActorHeader > // TODO can we avoid this?
+											<Route path="" view=ActorPosts />
+											<Route path="following" view=move || view! { <FollowList outgoing=true /> } />
+											<Route path="followers" view=move || view! { <FollowList outgoing=false /> } />
 										</Route>
 
-										<Route path="objects/:id" view=ObjectPage />
+										<Route path="objects/:id" view=ObjectView />
 										// <Route path="/web/activities/:id" view=move || view! { <ActivityPage tl=context_tl /> } />
 
 										<Route path="search" view=SearchPage />
@@ -170,11 +156,11 @@ pub fn App() -> impl IntoView {
 }
 
 #[component]
-fn Navigable() -> impl IntoView {
+fn Scrollable() -> impl IntoView {
 	let location = use_location();
 	let breadcrumb = Signal::derive(move || {
 		let path = location.pathname.get();
-		let mut path_iter = path.split('/').skip(1);
+		let mut path_iter = path.split('/').skip(2);
 		// TODO wow this breadcrumb logic really isnt nice can we make it better??
 		match path_iter.next() {
 			Some("actors") => match path_iter.next() {
@@ -197,12 +183,17 @@ fn Navigable() -> impl IntoView {
 			None => "?".to_string(),
 		}
 	});
+	let element = create_node_ref();
+	let should_load = use_scroll_limit(element, 1750.0);
+	provide_context(should_load);
 	view! {
-		<div class="tl-header w-100 center" >
-			<a class="breadcrumb mr-1" href="javascript:history.back()" ><b>"<<"</b></a>
-			<b>{crate::NAME}</b>" :: "{breadcrumb}
+		<div class="mb-1" node_ref=element>
+			<div class="tl-header w-100 center mb-1">
+				<a class="breadcrumb mr-1" href="javascript:history.back()" ><b>"<<"</b></a>
+				<b>{crate::NAME}</b>" :: "{breadcrumb}
+			</div>
+			<Outlet />
 		</div>
-		<Outlet />
 	}
 }
 
@@ -217,10 +208,32 @@ pub fn NotFound() -> impl IntoView {
 }
 
 #[component]
-pub fn Loader(#[prop(optional)] margin: bool) -> impl IntoView {
+pub fn Loader() -> impl IntoView {
 	view! {
-		<div class="center" class:mt-1={margin}>
+		<div class="center mt-1 mb-1" >
 			<button type="button" disabled>"loading "<span class="dots"></span></button>
 		</div>
 	}
+}
+
+pub fn use_scroll_limit<El, T>(el: El, offset: f64) -> Signal<bool>
+where 
+	El: Into<leptos_use::core::ElementMaybeSignal<T, web_sys::Element>> + Clone + 'static,
+	T: Into<web_sys::Element> + Clone + 'static,
+{
+	let (load, set_load) = create_signal(false);
+	let (_x, y) = use_window_scroll();
+	let UseElementSizeReturn { height, .. } = use_element_size(el);
+	let scroll_state = Signal::derive(move || (y.get(), height.get()));
+	let scroll_state_throttled = signal_throttled(scroll_state, 200.);
+	let _ = watch(
+		move || scroll_state_throttled.get(),
+		move |(y, height), _, _| {
+			let before = load.get();
+			let after = y + offset >= *height;
+			if after != before { set_load.set(after) };
+		},
+		false,
+	);
+	load.into()
 }

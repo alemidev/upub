@@ -39,6 +39,10 @@
 		* {
 			font-family: 'Fira Code', Menlo, DejaVu Sans Mono, Monaco, Consolas, Ubuntu Mono, monospace;
 		}
+		html {
+			overflow-y: scroll;
+			height: 100vh;
+		}
 
 		body {
 			margin: 0;
@@ -76,14 +80,23 @@
 			hyphens: auto;
 			border-left: solid 3px var(--background-secondary);
 		}
-		blockquote.tl {
+		article.tl {
 			color: var(--text);
 			border-left: solid 3px var(--accent);
+			margin-left: 1.25em;
+			margin-right: 1em;
 			margin-top: 0;
 			margin-bottom: 0;
+			word-wrap: break-word;
 		}
-		blockquote.tl p {
-			margin: 0 .5em;
+		article p {
+			margin: 0 0 0 .5em;
+		}
+		b.displayname {
+			overflow-wrap: break-word;
+		}
+		table.align {
+			max-width: 100%;
 		}
 		span.footer {
 			padding: .1em;
@@ -257,10 +270,10 @@
 			color: var(--background);
 			cursor: pointer;
 		}
-		.ml-1-l {
+		.ml-1-r {
 			margin-left: 1em;
 		}
-		.ml-1-r {
+		.mr-1-r {
 			margin-right: 1em;
 		}
 		.ml-3-r {
@@ -282,7 +295,7 @@
 			.ml-1-l {
 				margin-left: 0;
 			}
-			.ml-1-r {
+			.mr-1-r {
 				margin-right: 0;
 			}
 			.ml-3-r {
