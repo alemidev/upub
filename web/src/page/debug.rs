@@ -43,7 +43,7 @@ pub fn DebugPage() -> impl IntoView {
 			<div class="mt-1" >
 				<form on:submit=move|ev| {
 					ev.prevent_default();
-					navigate(&format!("/web/config/dev?q={}", text.get()), NavigateOptions::default());
+					navigate(&format!("/web/dev?q={}", text.get()), NavigateOptions::default());
 				} >
 					<table class="align w-100">
 						<tr>
@@ -138,7 +138,7 @@ fn DocumentNode(obj: serde_json::Value, #[prop(optional)] depth: usize) -> impl 
 		serde_json::Value::String(s) => {
 			if s.starts_with("https://") || s.starts_with("http://") {
 				view! {
-					<a href=format!("/web/config/dev?q={s}")>{s}</a>
+					<a href=format!("/web/dev?q={s}")>{s}</a>
 				}.into_view()
 			} else {
 				let pretty_string = s
