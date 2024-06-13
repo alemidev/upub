@@ -1,4 +1,4 @@
-use sea_orm::EntityTrait;
+use sea_orm::{ActiveModelTrait, EntityTrait};
 
 pub async fn fix(ctx: upub::Context, likes: bool, shares: bool, replies: bool) -> Result<(), sea_orm::DbErr> {
 	use futures::TryStreamExt;
@@ -16,14 +16,11 @@ pub async fn fix(ctx: upub::Context, likes: bool, shares: bool, replies: bool) -
 
 		for (k, v) in store {
 			let m = upub::model::object::ActiveModel {
-				internal: sea_orm::Set(k),
+				internal: sea_orm::Unchanged(k),
 				likes: sea_orm::Set(v),
 				..Default::default()
 			};
-			if let Err(e) = upub::model::object::Entity::update(m)
-				.exec(db)
-				.await
-			{
+			if let Err(e) = m.update(db).await {
 				tracing::warn!("record not updated ({k}): {e}");
 			}
 		}
@@ -41,14 +38,11 @@ pub async fn fix(ctx: upub::Context, likes: bool, shares: bool, replies: bool) -
 
 		for (k, v) in store {
 			let m = upub::model::object::ActiveModel {
-				internal: sea_orm::Set(k),
+				internal: sea_orm::Unchanged(k),
 				announces: sea_orm::Set(v),
 				..Default::default()
 			};
-			if let Err(e) = upub::model::object::Entity::update(m)
-				.exec(db)
-				.await
-			{
+			if let Err(e) = m.update(db).await {
 				tracing::warn!("record not updated ({k}): {e}");
 			}
 		}
@@ -69,14 +63,12 @@ pub async fn fix(ctx: upub::Context, likes: bool, shares: bool, replies: bool) -
 
 		for (k, v) in store {
 			let m = upub::model::object::ActiveModel {
-				id: sea_orm::Set(k.clone()),
+				id: sea_orm::Unchanged(k.clone()),
 				replies: sea_orm::Set(v),
 				..Default::default()
 			};
-			if let Err(e) = upub::model::object::Entity::update(m)
-				.exec(db)
-				.await
-			{
+			// TODO will update work with non-primary-key field??
+			if let Err(e) = m.update(db).await {
 				tracing::warn!("record not updated ({k}): {e}");
 			}
 		}

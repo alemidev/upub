@@ -1,5 +1,5 @@
 use futures::TryStreamExt;
-use sea_orm::{ActiveValue::{Unchanged, Set}, ColumnTrait, EntityTrait, QueryFilter};
+use sea_orm::{ActiveModelTrait, ActiveValue::{Set, Unchanged}, ColumnTrait, EntityTrait, QueryFilter};
 use upub::traits::Fetcher;
 
 pub async fn update_users(ctx: upub::Context, days: i64) -> Result<(), sea_orm::DbErr> {
@@ -33,9 +33,7 @@ pub async fn update_users(ctx: upub::Context, days: i64) -> Result<(), sea_orm::
 
 	for (uid, user_model) in insertions {
 		tracing::info!("updating user {}", uid);
-		upub::model::actor::Entity::update(user_model)
-			.exec(ctx.db())
-			.await?;
+		user_model.update(ctx.db()).await?;
 	}
 
 	tracing::info!("updated {count} users");
