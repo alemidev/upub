@@ -1,5 +1,5 @@
 use apb::{field::OptionalString, Collection, Document, Endpoints, Node, Object, PublicKey};
-use sea_orm::{sea_query::Expr, ActiveValue::{NotSet, Set}, ColumnTrait, ConnectionTrait, DbErr, EntityTrait, IntoActiveModel, QueryFilter};
+use sea_orm::{sea_query::Expr, ActiveModelTrait, ActiveValue::{Unchanged, NotSet, Set}, ColumnTrait, ConnectionTrait, DbErr, EntityTrait, IntoActiveModel, QueryFilter};
 
 use super::Addresser;
 
@@ -89,7 +89,7 @@ impl Normalizer for crate::Context {
 					published: Set(chrono::Utc::now()),
 				},
 				Node::Object(o) =>
-					AP::attachment_q(o.as_document()?, object_model.internal)?,
+					AP::attachment_q(o.as_document()?, object_model.internal, None)?,
 			};
 			crate::model::attachment::Entity::insert(attachment_model)
 				.exec(tx)
@@ -109,7 +109,7 @@ impl Normalizer for crate::Context {
 				None
 			};
 
-			let mut attachment_model = AP::attachment_q(img, object_model.internal)?;
+			let mut attachment_model = AP::attachment_q(img, object_model.internal, None)?;
 
 			// ugly fix for lemmy
 			if let Some(m) = media_type {
@@ -169,9 +169,13 @@ impl AP {
 		})
 	}
 
-	pub fn activity_q(activity: &impl apb::Activity) -> Result<crate::model::activity::ActiveModel, NormalizerError> {
+	pub fn activity_q(activity: &impl apb::Activity, internal: Option<i64>) -> Result<crate::model::activity::ActiveModel, NormalizerError> {
 		let mut m = AP::activity(activity)?.into_active_model();
-		m.internal = NotSet;
+		m = m.reset_all();
+		match internal {
+			Some(x) => m.internal = Unchanged(x),
+			None => m.internal = NotSet,
+		}
 		Ok(m)
 	}
 
@@ -194,9 +198,13 @@ impl AP {
 		})
 	}
 
-	pub fn attachment_q(document: &impl apb::Document, parent: i64) -> Result<crate::model::attachment::ActiveModel, NormalizerError> {
+	pub fn attachment_q(document: &impl apb::Document, parent: i64, internal: Option<i64>) -> Result<crate::model::attachment::ActiveModel, NormalizerError> {
 		let mut m = AP::attachment(document, parent)?.into_active_model();
-		m.internal = NotSet;
+		m = m.reset_all();
+		match internal {
+			Some(x) => m.internal = Unchanged(x),
+			None => m.internal = NotSet,
+		}
 		Ok(m)
 	}
 
@@ -246,9 +254,13 @@ impl AP {
 		})
 	}
 
-	pub fn object_q(object: &impl apb::Object) -> Result<crate::model::object::ActiveModel, NormalizerError> {
+	pub fn object_q(object: &impl apb::Object, internal: Option<i64>) -> Result<crate::model::object::ActiveModel, NormalizerError> {
 		let mut m = AP::object(object)?.into_active_model();
-		m.internal = NotSet;
+		m = m.reset_all();
+		match internal {
+			Some(x) => m.internal = Unchanged(x),
+			None => m.internal = NotSet,
+		}
 		Ok(m)
 	}
 
@@ -294,9 +306,13 @@ impl AP {
 		})
 	}
 
-	pub fn actor_q(actor: &impl apb::Actor) -> Result<crate::model::actor::ActiveModel, NormalizerError> {
+	pub fn actor_q(actor: &impl apb::Actor, internal: Option<i64>) -> Result<crate::model::actor::ActiveModel, NormalizerError> {
 		let mut m = AP::actor(actor)?.into_active_model();
-		m.internal = NotSet;
+		m = m.reset_all();
+		match internal {
+			Some(x) => m.internal = Unchanged(x),
+			None => m.internal = NotSet,
+		}
 		Ok(m)
 	}
 }

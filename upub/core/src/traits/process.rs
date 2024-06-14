@@ -1,5 +1,5 @@
 use apb::{target::Addressed, Activity, Base, Object};
-use sea_orm::{sea_query::Expr, ActiveModelTrait, ActiveValue::{NotSet, Set, Unchanged}, ColumnTrait, Condition, DatabaseTransaction, EntityTrait, QueryFilter, QuerySelect, SelectColumns};
+use sea_orm::{sea_query::Expr, ActiveModelTrait, ActiveValue::{NotSet, Set}, ColumnTrait, Condition, DatabaseTransaction, EntityTrait, QueryFilter, QuerySelect, SelectColumns};
 use crate::{ext::{AnyQuery, LoggableError}, model, traits::{fetch::Pull, Fetcher, Normalizer}};
 
 #[derive(Debug, thiserror::Error)]
@@ -265,8 +265,7 @@ pub async fn update(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 			let internal_uid = crate::model::actor::Entity::ap_to_internal(&oid, tx)
 				.await?
 				.ok_or(ProcessorError::Incomplete)?;
-			let mut actor_model = crate::AP::actor_q(object_node.as_actor()?)?;
-			actor_model.internal = Unchanged(internal_uid);
+			let mut actor_model = crate::AP::actor_q(object_node.as_actor()?, Some(internal_uid))?;
 			actor_model.updated = Set(chrono::Utc::now());
 			actor_model.update(tx).await?;
 		},
@@ -274,8 +273,7 @@ pub async fn update(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 			let internal_oid = crate::model::object::Entity::ap_to_internal(&oid, tx)
 				.await?
 				.ok_or(ProcessorError::Incomplete)?;
-			let mut object_model = crate::AP::object_q(&object_node)?;
-			object_model.internal = Unchanged(internal_oid);
+			let mut object_model = crate::AP::object_q(&object_node, Some(internal_oid))?;
 			object_model.updated = Set(chrono::Utc::now());
 			object_model.update(tx).await?;
 		},

@@ -305,7 +305,7 @@ impl Fetcher for crate::Context {
 			}
 		}
 
-		let user_model = AP::actor_q(&document)?;
+		let user_model = AP::actor_q(&document, None)?;
 
 		// TODO this may fail: while fetching, remote server may fetch our service actor.
 		//      if it does so with http signature, we will fetch that actor in background

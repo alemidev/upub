@@ -17,7 +17,7 @@ pub async fn fetch(ctx: upub::Context, uri: String, save: bool) -> Result<(), Pu
 		match obj.base_type() {
 			Ok(apb::BaseType::Object(apb::ObjectType::Actor(_))) => {
 				upub::model::actor::Entity::insert(
-					upub::AP::actor_q(&obj).unwrap()
+					upub::AP::actor_q(&obj, None).unwrap()
 				).exec(&tx).await.unwrap();
 			},
 			Ok(apb::BaseType::Object(apb::ObjectType::Activity(_))) => {
