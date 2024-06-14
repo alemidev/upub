@@ -92,7 +92,7 @@ pub struct SecurityConfig {
 
 
 impl Config {
-	pub fn load(path: Option<std::path::PathBuf>) -> Self {
+	pub fn load(path: Option<&std::path::PathBuf>) -> Self {
 		let Some(cfg_path) = path else { return Config::default() };
 		match std::fs::read_to_string(cfg_path) {
 			Ok(x) => match toml::from_str(&x) {

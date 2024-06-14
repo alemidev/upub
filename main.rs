@@ -41,6 +41,10 @@ struct Args {
 	#[arg(long, default_value_t=false)]
 	/// run with debug level tracing
 	debug: bool,
+
+	#[arg(long)]
+	/// force set number of worker threads for async runtime, defaults to number of cores
+	threads: Option<usize>,
 }
 
 #[derive(Clone, Subcommand)]
@@ -100,9 +104,7 @@ enum Mode {
 	},
 }
 
-#[tokio::main]
-async fn main() {
-
+fn main() {
 	let args = Args::parse();
 
 	tracing_subscriber::fmt()
@@ -110,13 +112,29 @@ async fn main() {
 		.with_max_level(if args.debug { tracing::Level::DEBUG } else { tracing::Level::INFO })
 		.init();
 
-	let config = upub::Config::load(args.config);
+	let config = upub::Config::load(args.config.as_ref());
 
 	if matches!(args.command, Mode::Config) {
 		println!("{}", toml::to_string_pretty(&config).expect("failed serializing config"));
 		return;
 	}
 
+	let mut runtime = tokio::runtime::Builder::new_multi_thread();
+
+	if let Some(threads) = args.threads {
+		runtime.worker_threads(threads);
+	}
+
+	runtime
+		.enable_io()
+		.enable_time()
+		.thread_name("upub-async-worker")
+		.build()
+		.expect("failed creating tokio async runtime")
+		.block_on(async { init(args, config).await })
+}
+
+async fn init(args: Args, config: upub::Config) {
 	let database = args.database.unwrap_or(config.datasource.connection_string.clone());
 	let domain = args.domain.unwrap_or(config.instance.domain.clone());
 
@@ -150,7 +168,7 @@ async fn main() {
 	}
 
 	let (tx, rx) = tokio::sync::watch::channel(false);
-	let signals = Signals::new(&[SIGTERM, SIGINT]).expect("failed registering signal handler");
+	let signals = Signals::new([SIGTERM, SIGINT]).expect("failed registering signal handler");
 	let handle = signals.handle();
 	let signals_task = tokio::spawn(handle_signals(signals, tx));
 	let stop = CancellationToken(rx);
