@@ -130,7 +130,7 @@ where
 
 			match ctx.fetch_user(&user_id, ctx.db()).await {
 				Err(PullError::Database(x)) => return Err(PullError::Database(x).into()),
-				Err(_) => tracing::debug!("could not fetch {user_id} to verify signature"),
+				Err(e) => tracing::debug!("could not fetch {user_id} to verify signature: {e}"),
 				Ok(user) => {
 					let valid = http_signature
 						.build_from_parts(parts)
