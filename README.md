@@ -75,6 +75,3 @@ don't hesitate to get in touch, i'd be thrilled to showcase the project to you!
  - [ ] lists
  - [ ] full mastodon api
  - [ ] get rid of internal ids from code
-
-## what about the name?
-μpub (or simply `upub`) means "[micro](https://en.wikipedia.org/wiki/International_System_of_Units#Prefixes)-pub", but could also be read "upub", "you-pub" or "mu-pub"
