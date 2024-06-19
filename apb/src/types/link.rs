@@ -18,6 +18,7 @@ crate::strenum! {
 }
 
 pub trait Link : crate::Base {
+	fn link_type(&self) -> Field<LinkType> { Err(FieldErr("type")) }
 	fn href(&self) -> &str;
 	fn rel(&self) -> Field<&str> { Err(FieldErr("rel")) }
 	fn media_type(&self) -> Field<&str> { Err(FieldErr("mediaType")) } // also in obj
@@ -29,6 +30,7 @@ pub trait Link : crate::Base {
 }
 
 pub trait LinkMut : crate::BaseMut {
+	fn set_link_type(self, val: Option<LinkType>) -> Self;
 	fn set_href(self, href: &str) -> Self;
 	fn set_rel(self, val: Option<&str>) -> Self;
 	fn set_media_type(self, val: Option<&str>) -> Self; // also in obj
@@ -56,6 +58,7 @@ impl Link for serde_json::Value {
 		}
 	}
 
+	crate::getter! { link_type -> type LinkType }
 	crate::getter! { rel -> &str }
 	crate::getter! { mediaType -> &str }
 	crate::getter! { name -> &str }
@@ -80,6 +83,7 @@ impl LinkMut for serde_json::Value {
 		self
 	}
 
+	crate::setter! { link_type -> type LinkType }
 	crate::setter! { rel -> &str }
 	crate::setter! { mediaType -> &str }
 	crate::setter! { name -> &str }

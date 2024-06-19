@@ -92,7 +92,8 @@ pub trait Object : Base {
 	fn summary(&self) -> Field<&str> { Err(FieldErr("summary")) }
 	/// One or more "tags" that have been associated with an objects. A tag can be any kind of Object
 	/// The key difference between attachment and tag is that the former implies association by inclusion, while the latter implies associated by reference
-	fn tag(&self) -> Node<Self::Object> { Node::Empty }
+	// TODO technically this is an object? but spec says that it works my reference, idk
+	fn tag(&self) -> Node<Self::Link> { Node::Empty }
 	/// Identifies one or more links to representations of the object
 	fn url(&self) -> Node<Self::Link> { Node::Empty }
 	/// Identifies an entity considered to be part of the public primary audience of an Object
