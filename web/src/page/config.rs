@@ -1,4 +1,4 @@
-use apb::{ActivityMut, Object, ObjectMut};
+use apb::{ActivityMut, DocumentMut, Object, ObjectMut};
 use leptos::*;
 use crate::{prelude::*, DEFAULT_COLOR};
 
@@ -131,10 +131,31 @@ pub fn ConfigPage(setter: WriteSignal<crate::Config>) -> impl IntoView {
 				<input class="w-100" type="submit" value="submit"
 					on:click=move|e| {
 						e.prevent_default();
-						let display_name = display_name_ref.get().map(|x| x.value()).unwrap_or("".into());
-						let avatar = avatar_url_ref.get().map(|x| x.value()).unwrap_or("".into());
-						let banner = banner_url_ref.get().map(|x| x.value()).unwrap_or("".into());
-						let summary = summary_ref.get().map(|x| x.value()).unwrap_or("".into());
+						let display_name = display_name_ref.get()
+							.map(|x| x.value())
+							.filter(|x| !x.is_empty());
+
+						let summary = summary_ref.get()
+							.map(|x| x.value())
+							.filter(|x| !x.is_empty());
+
+						let avatar = avatar_url_ref.get()
+							.map(|x| x.value())
+							.filter(|x| !x.is_empty())
+							.map(|x|
+								apb::new()
+									.set_document_type(Some(apb::DocumentType::Image))
+									.set_url(apb::Node::link(x))
+							);
+
+						let banner = banner_url_ref.get()
+							.map(|x| x.value())
+							.filter(|x| !x.is_empty())
+							.map(|x|
+								apb::new()
+									.set_document_type(Some(apb::DocumentType::Image))
+									.set_url(apb::Node::link(x))
+							);
 						
 						let id = auth.userid.get_untracked().unwrap_or_default();
 						let Some(me) = CACHE.get(&id) else {
@@ -147,10 +168,10 @@ pub fn ConfigPage(setter: WriteSignal<crate::Config>) -> impl IntoView {
 							.set_to(apb::Node::links(vec![apb::target::PUBLIC.to_string(), format!("{id}/followers")]))
 							.set_object(apb::Node::object(
 								(*me).clone()
-									.set_name(Some(&display_name))
-									.set_summary(Some(&summary))
-									.set_icon(apb::Node::link(avatar))
-									.set_image(apb::Node::link(banner))
+									.set_name(display_name.as_deref())
+									.set_summary(summary.as_deref())
+									.set_icon(apb::Node::maybe_object(avatar))
+									.set_image(apb::Node::maybe_object(banner))
 									.set_published(Some(chrono::Utc::now()))
 							));
 
