@@ -57,9 +57,13 @@ impl Entity {
 	}
 
 	pub async fn nodeinfo(domain: &str) -> reqwest::Result<NodeInfoOwned> {
-		reqwest::get(format!("https://{domain}/nodeinfo/2.0.json"))
-			.await?
-			.json()
-			.await
+		match reqwest::get(format!("https://{domain}/nodeinfo/2.0.json")).await {
+			Ok(res) => res.json().await,
+			// ughhh pleroma wants with json, key without
+			Err(_) => reqwest::get(format!("https://{domain}/nodeinfo/2.0.json"))
+				.await?
+				.json()
+				.await,
+		}
 	}
 }
