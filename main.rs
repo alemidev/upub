@@ -128,7 +128,7 @@ fn main() {
 	runtime
 		.enable_io()
 		.enable_time()
-		.thread_name("upub-async-worker")
+		.thread_name("upub-worker")
 		.build()
 		.expect("failed creating tokio async runtime")
 		.block_on(async { init(args, config).await })
