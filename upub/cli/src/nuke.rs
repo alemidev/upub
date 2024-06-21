@@ -51,12 +51,23 @@ pub async fn nuke(ctx: upub::Context, for_real: bool, delete_posts: bool) -> Res
 			continue;
 		};
 
+		let target = if matches!(activity.activity_type, apb::ActivityType::Follow) {
+			oid.clone()
+		} else {
+			let follow_activity = upub::model::activity::Entity::find_by_ap_id(&oid)
+				.one(ctx.db())
+				.await?
+				.ok_or(sea_orm::DbErr::RecordNotFound(oid.clone()))?;
+			follow_activity.object.unwrap_or_default()
+		};
+
 		let aid = ctx.aid(&upub::Context::new_id());
 		let undo_activity = apb::new()
 			.set_id(Some(&aid))
 			.set_activity_type(Some(apb::ActivityType::Undo))
 			.set_actor(apb::Node::link(activity.actor.clone()))
 			.set_object(apb::Node::link(oid))
+			.set_to(apb::Node::links(vec![target]))
 			.set_published(Some(chrono::Utc::now()));
 
 
@@ -76,6 +87,47 @@ pub async fn nuke(ctx: upub::Context, for_real: bool, delete_posts: bool) -> Res
 
 		if for_real {
 			upub::model::job::Entity::insert(job).exec(ctx.db()).await?;
+		}
+	}
+
+	if delete_posts {
+		let mut stream = upub::model::object::Entity::find()
+			.filter(upub::model::object::Column::Id.like(format!("{}%", ctx.base())))
+			.stream(ctx.db())
+			.await?;
+
+		while let Some(object) = stream.try_next().await? {
+			let aid = ctx.aid(&upub::Context::new_id());
+			let actor = object.attributed_to.unwrap_or_else(|| ctx.domain().to_string());
+			let undo_activity = apb::new()
+				.set_id(Some(&aid))
+				.set_activity_type(Some(apb::ActivityType::Delete))
+				.set_actor(apb::Node::link(actor.clone()))
+				.set_object(apb::Node::link(object.id.clone()))
+				.set_to(apb::Node::links(object.to.0))
+				.set_cc(apb::Node::links(object.cc.0))
+				.set_bto(apb::Node::links(object.bto.0))
+				.set_bcc(apb::Node::links(object.bcc.0))
+				.set_published(Some(chrono::Utc::now()));
+
+
+			let job = upub::model::job::ActiveModel {
+				internal: NotSet,
+				activity: Set(aid.clone()),
+				job_type: Set(upub::model::job::JobType::Outbound),
+				actor: Set(actor),
+				target: Set(None),
+				published: Set(chrono::Utc::now()),
+				not_before: Set(chrono::Utc::now()),
+				attempt: Set(0),
+				payload: Set(Some(undo_activity)),
+			};
+
+			tracing::debug!("deleting {}", object.id);
+
+			if for_real {
+				upub::model::job::Entity::insert(job).exec(ctx.db()).await?;
+			}
 		}
 	}
 
