@@ -16,6 +16,9 @@ pub use register::*;
 mod update;
 pub use update::*;
 
+mod nuke;
+pub use nuke::*;
+
 #[derive(Debug, Clone, clap::Subcommand)]
 pub enum CliCommand {
 	/// generate fake user, note and activity
@@ -90,6 +93,17 @@ pub enum CliCommand {
 		/// url for banner image of new user
 		#[arg(long = "banner")]
 		banner_url: Option<String>,
+	},
+
+	/// break all user relations so that instance can be shut down
+	Nuke {
+		/// unless this is set, nuke will be a dry run
+		#[arg(long, default_value_t = false)]
+		for_real: bool,
+
+		/// also send Delete activities for all local objects
+		#[arg(long, default_value_t = false)]
+		delete_objects: bool,
 	}
 }
 
@@ -108,5 +122,7 @@ pub async fn run(ctx: upub::Context, command: CliCommand) -> Result<(), Box<dyn 
 			Ok(update_users(ctx, days).await?),
 		CliCommand::Register { username, password, display_name, summary, avatar_url, banner_url } =>
 			Ok(register(ctx, username, password, display_name, summary, avatar_url, banner_url).await?),
+		CliCommand::Nuke { for_real, delete_objects } =>
+			Ok(nuke(ctx, for_real, delete_objects).await?),
 	}
 }
