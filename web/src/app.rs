@@ -133,6 +133,7 @@ pub fn App() -> impl IntoView {
 											<Route path="" view=ActorPosts />
 											<Route path="following" view=move || view! { <FollowList outgoing=true /> } />
 											<Route path="followers" view=move || view! { <FollowList outgoing=false /> } />
+											<Route path="activity" view=ActorActivity />
 										</Route>
 
 										<Route path="objects/:id" view=ObjectView />
