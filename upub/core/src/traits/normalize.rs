@@ -309,6 +309,7 @@ impl AP {
 	pub fn actor_q(actor: &impl apb::Actor, internal: Option<i64>) -> Result<crate::model::actor::ActiveModel, NormalizerError> {
 		let mut m = AP::actor(actor)?.into_active_model();
 		m = m.reset_all();
+		m.public_key = NotSet;
 		match internal {
 			Some(x) => m.internal = Unchanged(x),
 			None => m.internal = NotSet,
