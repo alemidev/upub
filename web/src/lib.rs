@@ -17,6 +17,7 @@ pub mod prelude;
 
 pub const URL_BASE: &str = "https://dev.upub.social";
 pub const URL_PREFIX: &str = "/web";
+pub const CONTACT: &str = "abuse@alemi.dev";
 pub const URL_SENSITIVE: &str = "https://cdn.alemi.dev/social/nsfw.png";
 pub const DEFAULT_AVATAR_URL: &str = "https://cdn.alemi.dev/social/gradient.png";
 pub const NAME: &str = "μ";

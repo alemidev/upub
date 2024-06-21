@@ -1,6 +1,7 @@
 use leptos::*;
 use leptos_router::*;
 use crate::prelude::*;
+use crate::CONTACT;
 
 use leptos_use::{signal_debounced, storage::use_local_storage, use_cookie, use_element_size, use_window_scroll, utils::{FromToStringCodec, JsonCodec}, UseElementSizeReturn};
 
@@ -150,7 +151,7 @@ pub fn App() -> impl IntoView {
 		</div>
 		<footer>
 			<div class="sep-top">
-				<span class="footer" >"\u{26fc} woven under moonlight  :: "<a class="clean" href="https://git.alemi.dev/upub.git" target="_blank" >src</a>" :: "<a class="clean" href="mailto:abuse@alemi.dev">contact</a>" :: "<a class="clean" href="/web/dev">dev</a>" :: "<a class="clean" href="javascript:window.scrollTo({top:0, behavior:'smooth'})">top</a></span>
+				<span class="footer" >"\u{26fc} woven under moonlight  :: "<a class="clean" href="https://join.upub.social/" target="_blank" >about</a>" :: "<a class="clean" href=format!("mailto:{CONTACT}")>contact</a>" :: "<a class="clean" href="/web/dev">dev</a>" :: "<a class="clean" href="javascript:window.scrollTo({top:0, behavior:'smooth'})">top</a></span>
 			</div>
 		</footer>
 	}
