@@ -14,6 +14,6 @@ echo "rebuilding frontend"
 cd web
 CARGO_BUILD_JOBS=2 /opt/bin/trunk build --release --public-url 'https://dev.upub.social/web'
 echo "deploying frontend"
-rm /srv/http/upub/dev/*
-mv ./dist/* /srv/http/upub/dev/
+rm /srv/http/upub/dev/web/*
+mv ./dist/* /srv/http/upub/dev/web/
 echo "done"
