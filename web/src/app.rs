@@ -160,6 +160,25 @@ pub fn App() -> impl IntoView {
 #[component]
 fn Scrollable() -> impl IntoView {
 	let location = use_location();
+	let feeds = use_context::<Feeds>().expect("missing feeds context");
+	let relevant_timeline = Signal::derive(move || {
+		let path = location.pathname.get();
+		if path.contains("/web/home") {
+			Some(feeds.home)
+		} else if path.contains("/web/server") {
+			Some(feeds.global)
+		} else if path.starts_with("/web/local") {
+			Some(feeds.server)
+		} else if path.starts_with("/web/inbox") {
+			Some(feeds.private)
+		} else if path.starts_with("/web/actors") {
+			Some(feeds.user)
+		} else if path.starts_with("/web/objects") {
+			Some(feeds.context)
+		} else {
+			None
+		}
+	});
 	let breadcrumb = Signal::derive(move || {
 		let path = location.pathname.get();
 		let mut path_iter = path.split('/').skip(2);
@@ -193,6 +212,9 @@ fn Scrollable() -> impl IntoView {
 			<div class="tl-header w-100 center mb-1">
 				<a class="breadcrumb mr-1" href="javascript:history.back()" ><b>"<<"</b></a>
 				<b>{crate::NAME}</b>" :: "{breadcrumb}
+				{move || relevant_timeline.get().map(|tl| view! {
+					<a class="breadcrumb ml-1" href="#" on:click=move|_| tl.refresh()  ><span class="emoji">"♻️"</span></a>
+				})}
 			</div>
 			<Outlet />
 		</div>

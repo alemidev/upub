@@ -40,6 +40,16 @@ impl Timeline {
 		}
 	}
 
+	pub fn refresh(&self) {
+		self.reset(
+			self.next
+				.get_untracked()
+				.split('?')
+				.next()
+				.map(|x| x.to_string())
+		);
+	}
+
 	pub fn spawn_more(&self, auth: Auth) {
 		let _self = *self;
 		spawn_local(async move {
