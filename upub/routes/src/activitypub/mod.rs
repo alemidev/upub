@@ -71,6 +71,9 @@ impl ActivityPubRouter for Router<upub::Context> {
 			//.route("/objects/:id/likes/page", get(ap::object::likes::page))
 			//.route("/objects/:id/shares", get(ap::object::announces::get))
 			//.route("/objects/:id/shares/page", get(ap::object::announces::page))
+			// hashtags routes
+			//.route("/hashtags/:name", get(ap::hashtags::get))
+			//.route("/hashtags/:name/page", get(ap::hashtags::page))
 	}
 }
 
