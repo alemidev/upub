@@ -168,6 +168,7 @@ impl Model {
 					.set_url(apb::Node::link(i.clone()))
 			)))
 			.set_published(Some(self.published))
+			.set_updated(if self.updated != self.published { Some(self.updated) } else { None })
 			.set_preferred_username(Some(&self.preferred_username))
 			.set_statuses_count(Some(self.statuses_count as u64))
 			.set_followers_count(Some(self.followers_count as u64))

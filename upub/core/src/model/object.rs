@@ -155,7 +155,7 @@ impl Model {
 			.set_conversation(apb::Node::maybe_link(self.context.clone())) // duplicate context for mastodon
 			.set_in_reply_to(apb::Node::maybe_link(self.in_reply_to.clone()))
 			.set_published(Some(self.published))
-			.set_updated(Some(self.updated))
+			.set_updated(if self.updated != self.published { Some(self.updated) } else { None })
 			.set_audience(apb::Node::maybe_link(self.audience))
 			.set_to(apb::Node::links(self.to.0.clone()))
 			.set_bto(apb::Node::Empty)
