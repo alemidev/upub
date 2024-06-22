@@ -343,19 +343,19 @@ mod hell {
 
 	impl BatchFillableKey for crate::model::attachment::Model {
 		fn key(&self) -> i64 {
-			self.internal
+			self.object
 		}
 	}
 
 	impl BatchFillableKey for crate::model::mention::Model {
 		fn key(&self) -> i64 {
-			self.internal
+			self.object
 		}
 	}
 
 	impl BatchFillableKey for crate::model::hashtag::Model {
 		fn key(&self) -> i64 {
-			self.internal
+			self.object
 		}
 	}
 	
