@@ -63,14 +63,14 @@ don't hesitate to get in touch, i'd be thrilled to showcase the project to you!
  - [x] backend config
  - [x] frontend config
  - [x] optimize `addressing` database schema
- - [ ] mentions, notifications
- - [ ] hashtags
- - [ ] public vs unlisted for discovery
- - [ ] mastodon-like search bar
- - [ ] polls
+ - [x] mentions, notifications
+ - [x] hashtags
  - [ ] better editing via web frontend
  - [ ] remote media proxy
  - [ ] upload media
+ - [ ] public vs unlisted for discovery
+ - [ ] mastodon-like search bar
+ - [ ] polls
  - [ ] user fields
  - [ ] lists
  - [ ] full mastodon api
