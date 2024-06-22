@@ -213,7 +213,7 @@ fn Scrollable() -> impl IntoView {
 				<a class="breadcrumb mr-1" href="javascript:history.back()" ><b>"<<"</b></a>
 				<b>{crate::NAME}</b>" :: "{breadcrumb}
 				{move || relevant_timeline.get().map(|tl| view! {
-					<a class="breadcrumb ml-1" href="#" on:click=move|_| tl.refresh()  ><span class="emoji">"↺"</span></a>
+					<a class="breadcrumb ml-1" href="#" on:click=move|_| tl.refresh()  ><b>"↺"</b></a>
 				})}
 			</div>
 			<Outlet />
