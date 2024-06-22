@@ -50,6 +50,7 @@ impl MigrationTrait for Migration {
 							.from(Addressing::Table, Addressing::Actor)
 							.to(Actors::Table, Actors::Internal)
 							.on_update(ForeignKeyAction::Cascade)
+							.on_delete(ForeignKeyAction::Cascade)
 					)
 					.col(ColumnDef::new(Addressing::Instance).big_integer().null())
 					.foreign_key(
@@ -58,6 +59,7 @@ impl MigrationTrait for Migration {
 							.from(Addressing::Table, Addressing::Instance)
 							.to(Instances::Table, Instances::Internal)
 							.on_update(ForeignKeyAction::Cascade)
+							.on_update(ForeignKeyAction::NoAction)
 					)
 					.col(ColumnDef::new(Addressing::Activity).big_integer().null())
 					.foreign_key(
@@ -66,6 +68,7 @@ impl MigrationTrait for Migration {
 							.from(Addressing::Table, Addressing::Activity)
 							.to(Activities::Table, Activities::Internal)
 							.on_update(ForeignKeyAction::Cascade)
+							.on_delete(ForeignKeyAction::Cascade)
 					)
 					.col(ColumnDef::new(Addressing::Object).big_integer().null())
 					.foreign_key(
@@ -74,6 +77,7 @@ impl MigrationTrait for Migration {
 							.from(Addressing::Table, Addressing::Object)
 							.to(Objects::Table, Objects::Internal)
 							.on_update(ForeignKeyAction::Cascade)
+							.on_delete(ForeignKeyAction::Cascade)
 					)
 					.col(ColumnDef::new(Addressing::Published).timestamp_with_time_zone().not_null().default(Expr::current_timestamp()))
 					.to_owned()

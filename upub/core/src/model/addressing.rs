@@ -19,7 +19,7 @@ pub enum Relation {
 		from = "Column::Activity",
 		to = "super::activity::Column::Internal",
 		on_update = "Cascade",
-		on_delete = "NoAction"
+		on_delete = "Cascade"
 	)]
 	Activities,
 	#[sea_orm(
@@ -27,7 +27,7 @@ pub enum Relation {
 		from = "Column::Actor",
 		to = "super::actor::Column::Internal",
 		on_update = "Cascade",
-		on_delete = "NoAction"
+		on_delete = "Cascade"
 	)]
 	Actors,
 	#[sea_orm(
@@ -43,7 +43,7 @@ pub enum Relation {
 		from = "Column::Object",
 		to = "super::object::Column::Internal",
 		on_update = "Cascade",
-		on_delete = "NoAction"
+		on_delete = "Cascade"
 	)]
 	Objects,
 }

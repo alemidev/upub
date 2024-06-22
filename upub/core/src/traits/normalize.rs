@@ -1,4 +1,4 @@
-use apb::{field::OptionalString, Link, Collection, Document, Endpoints, Node, Object, PublicKey};
+use apb::{field::OptionalString, Collection, Document, Endpoints, Node, Object, PublicKey};
 use sea_orm::{sea_query::Expr, ActiveModelTrait, ActiveValue::{Unchanged, NotSet, Set}, ColumnTrait, ConnectionTrait, DbErr, EntityTrait, IntoActiveModel, QueryFilter};
 
 use super::Addresser;
