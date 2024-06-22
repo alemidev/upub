@@ -389,13 +389,13 @@ pub async fn announce(ctx: &crate::Context, activity: impl apb::Activity, tx: &D
 			}
 		}
 	} {
+		crate::context::Internal::Activity(_) => unreachable!(),
 		crate::context::Internal::Actor(_) => Err(ProcessorError::Unprocessable(activity.id()?.to_string())),
-		crate::context::Internal::Activity(_) => Err(ProcessorError::AlreadyProcessed), // ???
 		crate::context::Internal::Object(internal) => {
 			let actor = ctx.fetch_user(activity.actor().id()?, tx).await?;
 
-			// we only care about "organic" announces, as in those produced by people
-			// anything shared by groups, services or applications is just mirroring: fetch it and be done
+			// we only care about announces produced by "Person" actors, because there's intention
+			// anything shared by groups, services or applications is automated: fetch it and be done
 			if actor.actor_type == apb::ActorType::Person {
 				let share = crate::model::announce::ActiveModel {
 					internal: NotSet,
