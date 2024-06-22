@@ -124,34 +124,37 @@ impl Normalizer for crate::Context {
 				.await?;
 		}
 
-		for tag in object.tag() {
-			match tag.link_type() {
-				Ok(apb::LinkType::Mention) => {
-					let model = crate::model::mention::ActiveModel {
-						internal: NotSet,
-						object: Set(object_model.internal),
-						actor: Set(tag.href().to_string()),
-						published: Set(now),
-					};
-					crate::model::mention::Entity::insert(model)
-						.exec(tx)
-						.await?;
-				},
-				Ok(apb::LinkType::Hashtag) => {
-					let hashtag = tag.name()
-						.unwrap_or_else(|_| tag.href().split('/').last().unwrap_or_default())
-						.replace('#', "");
-					let model = crate::model::hashtag::ActiveModel {
-						internal: NotSet,
-						object: Set(object_model.internal),
-						name: Set(hashtag),
-						published: Set(now),
-					};
-					crate::model::hashtag::Entity::insert(model)
-						.exec(tx)
-						.await?;
-				},
-				_ => {},
+		for tag in object.tag().flat() {
+			match tag {
+				Node::Empty | Node::Object(_) | Node::Array(_) => {},
+				Node::Link(l) => match l.link_type() {
+					Ok(apb::LinkType::Mention) => {
+						let model = crate::model::mention::ActiveModel {
+							internal: NotSet,
+							object: Set(object_model.internal),
+							actor: Set(l.href().to_string()),
+							published: Set(now),
+						};
+						crate::model::mention::Entity::insert(model)
+							.exec(tx)
+							.await?;
+					},
+					Ok(apb::LinkType::Hashtag) => {
+						let hashtag = l.name()
+							.unwrap_or_else(|_| l.href().split('/').last().unwrap_or_default())
+							.replace('#', "");
+						let model = crate::model::hashtag::ActiveModel {
+							internal: NotSet,
+							object: Set(object_model.internal),
+							name: Set(hashtag),
+							published: Set(now),
+						};
+						crate::model::hashtag::Entity::insert(model)
+							.exec(tx)
+							.await?;
+					},
+					_ => {},
+				}
 			}
 		}
 
