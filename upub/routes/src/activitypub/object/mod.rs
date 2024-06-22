@@ -3,8 +3,8 @@ pub mod context;
 
 use apb::{BaseMut, CollectionMut, ObjectMut, LD};
 use axum::extract::{Path, Query, State};
-use sea_orm::{ColumnTrait, ModelTrait, QueryFilter, QuerySelect, SelectColumns, TransactionTrait};
-use upub::{model, selector::RichObject, traits::Fetcher, Context};
+use sea_orm::{ColumnTrait, QueryFilter, QuerySelect, SelectColumns, TransactionTrait};
+use upub::{model, selector::{BatchFillable, RichObject}, traits::Fetcher, Context};
 
 use crate::{builders::JsonLD, AuthIdentity};
 
@@ -33,14 +33,14 @@ pub async fn view(
 		.into_model::<RichObject>()
 		.one(ctx.db())
 		.await?
-		.ok_or_else(crate::ApiError::not_found)?;
-
-	let attachments = item.object.find_related(model::attachment::Entity)
-		.all(ctx.db())
+		.ok_or_else(crate::ApiError::not_found)?
+		.with_batched::<upub::model::attachment::Entity>(ctx.db())
 		.await?
-		.into_iter()
-		.map(|x| x.ap())
-		.collect::<Vec<serde_json::Value>>();
+		.with_batched::<upub::model::mention::Entity>(ctx.db())
+		.await?
+		.with_batched::<upub::model::hashtag::Entity>(ctx.db())
+		.await?;
+
 
 	let mut replies = apb::Node::Empty;
 	
@@ -66,7 +66,6 @@ pub async fn view(
 	
 	Ok(JsonLD(
 		item.ap()
-			.set_attachment(apb::Node::array(attachments))
 			.set_replies(replies)
 			.ld_context()
 	))

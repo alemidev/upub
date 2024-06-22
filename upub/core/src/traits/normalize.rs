@@ -1,4 +1,4 @@
-use apb::{field::OptionalString, Collection, Document, Endpoints, Node, Object, PublicKey};
+use apb::{field::OptionalString, Link, Collection, Document, Endpoints, Node, Object, PublicKey};
 use sea_orm::{sea_query::Expr, ActiveModelTrait, ActiveValue::{Unchanged, NotSet, Set}, ColumnTrait, ConnectionTrait, DbErr, EntityTrait, IntoActiveModel, QueryFilter};
 
 use super::Addresser;
@@ -25,6 +25,7 @@ pub trait Normalizer {
 impl Normalizer for crate::Context {
 
 	async fn insert_object(&self, object: impl apb::Object, tx: &impl ConnectionTrait) -> Result<crate::model::object::Model, NormalizerError> {
+		let now = chrono::Utc::now();
 		let mut object_model = AP::object(&object)?;
 
 		// make sure content only contains a safe subset of html
@@ -86,7 +87,7 @@ impl Normalizer for crate::Context {
 					document_type: Set(apb::DocumentType::Page),
 					name: Set(l.name().str()),
 					media_type: Set(l.media_type().unwrap_or("link").to_string()),
-					published: Set(chrono::Utc::now()),
+					published: Set(now),
 				},
 				Node::Object(o) =>
 					AP::attachment_q(o.as_document()?, object_model.internal, None)?,
@@ -121,6 +122,37 @@ impl Normalizer for crate::Context {
 			crate::model::attachment::Entity::insert(attachment_model)
 				.exec(tx)
 				.await?;
+		}
+
+		for tag in object.tag() {
+			match tag.link_type() {
+				Ok(apb::LinkType::Mention) => {
+					let model = crate::model::mention::ActiveModel {
+						internal: NotSet,
+						object: Set(object_model.internal),
+						actor: Set(tag.href().to_string()),
+						published: Set(now),
+					};
+					crate::model::mention::Entity::insert(model)
+						.exec(tx)
+						.await?;
+				},
+				Ok(apb::LinkType::Hashtag) => {
+					let hashtag = tag.name()
+						.unwrap_or_else(|_| tag.href().split('/').last().unwrap_or_default())
+						.replace('#', "");
+					let model = crate::model::hashtag::ActiveModel {
+						internal: NotSet,
+						object: Set(object_model.internal),
+						name: Set(hashtag),
+						published: Set(now),
+					};
+					crate::model::hashtag::Entity::insert(model)
+						.exec(tx)
+						.await?;
+				},
+				_ => {},
+			}
 		}
 
 		Ok(object_model)

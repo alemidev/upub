@@ -31,7 +31,11 @@ pub async fn paginate_activities(
 		.into_model::<RichActivity>()
 		.all(db)
 		.await?
-		.with_attachments(db)
+		.with_batched::<upub::model::attachment::Entity>(db)
+		.await?
+		.with_batched::<upub::model::mention::Entity>(db)
+		.await?
+		.with_batched::<upub::model::hashtag::Entity>(db)
 		.await?;
 
 	let items : Vec<serde_json::Value> = items
@@ -73,7 +77,11 @@ pub async fn paginate_objects(
 		.into_model::<RichObject>() // <--- difference three
 		.all(db)
 		.await?
-		.with_attachments(db)
+		.with_batched::<upub::model::attachment::Entity>(db)
+		.await?
+		.with_batched::<upub::model::mention::Entity>(db)
+		.await?
+		.with_batched::<upub::model::hashtag::Entity>(db)
 		.await?;
 
 	let items : Vec<serde_json::Value> = items

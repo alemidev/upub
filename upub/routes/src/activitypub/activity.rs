@@ -30,7 +30,11 @@ pub async fn view(
 		.one(ctx.db())
 		.await?
 		.ok_or_else(crate::ApiError::not_found)?
-		.with_attachments(ctx.db())
+		.with_batched::<upub::model::attachment::Entity>(ctx.db())
+		.await?
+		.with_batched::<upub::model::mention::Entity>(ctx.db())
+		.await?
+		.with_batched::<upub::model::hashtag::Entity>(ctx.db())
 		.await?;
 
 	Ok(JsonLD(row.ap().ld_context()))
