@@ -114,6 +114,16 @@ async fn address_to(ctx: &crate::Context, to: Vec<String>, aid: Option<i64>, oid
 async fn expand_addressing(targets: Vec<String>, tx: &impl ConnectionTrait) -> Result<Vec<String>, DbErr> {
 	let mut out = Vec::new();
 	for target in targets {
+		// TODO this is definitely NOT a reliable way to expand followers collections...
+		//      we should add an index on following field in users and try to search for that: no
+		//      guarantee that all followers collections end with 'followers'! once we get the actual
+		//      user we can resolve their followers with the relations table
+		//   !  NOTE THAT local users have followers set to NULL, either fill all local users followers
+		//      field or manually check if it's local and then do the .ends_with("/followers")
+		// TODO should also expand /following
+		// TODO should probably expand audience too but it's not reachable anymore from here, should we
+		//      count audience field too in the .addressed() trait? maybe pre-expand it because it's
+		//      only used for groups anyway??
 		if target.ends_with("/followers") {
 			let target_id = target.replace("/followers", "");
 			let mut followers = crate::model::relation::Entity::followers(&target_id, tx)
