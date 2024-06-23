@@ -1,6 +1,7 @@
+use reqwest::StatusCode;
 use sea_orm::{ColumnTrait, EntityTrait, Order, QueryFilter, QueryOrder};
 
-use upub::{model, traits::process::ProcessorError, Context};
+use upub::{model, traits::{fetch::PullError, process::ProcessorError}, Context};
 
 #[derive(Debug, thiserror::Error)]
 pub enum JobError {
@@ -128,7 +129,22 @@ impl JobDispatcher for Context {
 
 				match res {
 					Ok(()) => tracing::debug!("job {} completed", job.activity),
-					Err(JobError::ProcessorError(ProcessorError::AlreadyProcessed)) => tracing::info!("dropping job already processed: {}", job.activity),
+					Err(JobError::Json(x)) =>
+						tracing::error!("dropping job with invalid json payload: {x}"),
+					Err(JobError::MissingPayload) =>
+						tracing::warn!("dropping job without payload"),
+					Err(JobError::Malformed(f)) =>
+						tracing::error!("dropping job with malformed activity (missing field {f})"),
+					Err(JobError::ProcessorError(ProcessorError::AlreadyProcessed)) =>
+						tracing::info!("dropping job already processed: {}", job.activity),
+					Err(JobError::ProcessorError(ProcessorError::PullError(PullError::Fetch(StatusCode::FORBIDDEN, e)))) => 
+						tracing::warn!("dropping job because requested resource is not accessible: {e}"),
+					Err(JobError::ProcessorError(ProcessorError::PullError(PullError::Fetch(StatusCode::NOT_FOUND, e)))) => 
+						tracing::warn!("dropping job because requested resource is not available: {e}"),
+					Err(JobError::ProcessorError(ProcessorError::PullError(PullError::Fetch(StatusCode::GONE, e)))) => 
+						tracing::warn!("dropping job because requested resource is no longer available: {e}"),
+					Err(JobError::ProcessorError(ProcessorError::PullError(PullError::Malformed(f)))) => 
+						tracing::warn!("dropping job because requested resource could not be verified (fetch is invalid AP object: {f})"),
 					Err(e) => {
 						tracing::error!("failed processing job '{}': {e}", job.activity);
 						let active = job.clone().repeat();
