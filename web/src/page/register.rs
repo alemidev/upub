@@ -2,6 +2,23 @@ use leptos::*;
 use reqwest::Method;
 use crate::prelude::*;
 
+macro_rules! get_ref {
+	($r:ident) => {
+		$r.get().map(|x| x.value()).filter(|x| !x.is_empty())
+	}
+}
+
+// TODO this should get moved in a common crate so its not duplicated across FE/BE
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct RegisterForm {
+	username: String,
+	password: String,
+	display_name: Option<String>,
+	summary: Option<String>,
+	avatar_url: Option<String>,
+	banner_url: Option<String>,
+}
+
 #[component]
 pub fn RegisterPage() -> impl IntoView {
 	let auth = use_context::<Auth>().expect("missing auth context");
@@ -17,17 +34,29 @@ pub fn RegisterPage() -> impl IntoView {
 			<div class="border ma-2 pa-1">
 				<form on:submit=move|ev| {
 					ev.prevent_default();
-					logging::log!("registering new user...");
-					let _email = username_ref.get().map(|x| x.value()).unwrap_or("".into());
-					let _password = password_ref.get().map(|x| x.value()).unwrap_or("".into());
+					let email = get_ref!(username_ref);
+					let password = get_ref!(password_ref);
+					let display_name = get_ref!(display_name_ref);
+					let summary = get_ref!(summary_ref);
+					let avatar_url = get_ref!(avatar_url_ref);
+					let banner_url = get_ref!(banner_url_ref);
+
+					if email.is_none() || password.is_none() {
+						set_error.set(Some(
+							view! { <blockquote>no credentials provided</blockquote> }
+						));
+					}
+
 					spawn_local(async move {
-						match Http::request::<()>(
-							Method::PUT, &format!("{URL_BASE}/auth"), None, auth
-						).await {
-							Ok(_x) => {},
-							Err(e) => set_error.set(Some(
+						let payload = RegisterForm {
+							username: email.unwrap_or_default(),
+							password: password.unwrap_or_default(),
+							display_name, summary, avatar_url, banner_url
+						};
+						if let Err(e) = Http::request(Method::PUT, &format!("{URL_BASE}/auth"), Some(&payload), auth).await {
+							set_error.set(Some(
 								view! { <blockquote>{e.to_string()}</blockquote> }
-							)),
+							));
 						}
 					});
 				} >

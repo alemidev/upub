@@ -131,7 +131,7 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 								for mention in mentions.get().as_deref().unwrap_or(&[]) {
 									to_vec.push(mention.to_string());
 								}
-								let payload = serde_json::Value::Object(serde_json::Map::default())
+								let payload = apb::new()
 									.set_object_type(Some(apb::ObjectType::Note))
 									.set_summary(summary.as_deref())
 									.set_content(Some(&content))
