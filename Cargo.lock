@@ -4864,7 +4864,9 @@ version = "0.2.0"
 dependencies = [
  "apb",
  "axum",
+ "base64 0.22.1",
  "chrono",
+ "hmac",
  "httpsign",
  "jrd",
  "mastodon-async-entities",
@@ -4874,6 +4876,7 @@ dependencies = [
  "sea-orm",
  "serde",
  "serde_json",
+ "sha2",
  "sha256",
  "thiserror",
  "time",

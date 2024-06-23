@@ -1,9 +1,11 @@
 use apb::{LD, ActorMut, BaseMut, ObjectMut, PublicKeyMut};
 use axum::{extract::{Path, Query, State}, http::HeaderMap, response::{IntoResponse, Redirect, Response}, Form};
+use hmac::{Hmac, Mac};
 use reqwest::Method;
+use base64::{engine::general_purpose::URL_SAFE, Engine as _};
 use upub::{traits::Fetcher, Context};
 
-use crate::{builders::JsonLD, AuthIdentity, Identity};
+use crate::{builders::JsonLD, ApiError, AuthIdentity, Identity};
 
 
 pub async fn view(
@@ -72,6 +74,31 @@ pub async fn proxy_form(
 	Form(query): Form<String>,
 ) -> crate::ApiResult<impl IntoResponse> {
 	proxy(ctx, query, auth).await
+}
+
+pub async fn proxy_hmac(
+	State(ctx): State<Context>,
+	AuthIdentity(auth): AuthIdentity,
+	Path(hmac): Path<String>,
+	Path(uri): Path<String>,
+) -> crate::ApiResult<impl IntoResponse> {
+	let bytes = URL_SAFE.decode(hmac).map_err(|_| ApiError::bad_request())?;
+	let uri =
+		std::str::from_utf8(
+			&URL_SAFE.decode(uri).map_err(|_| ApiError::bad_request())?
+		)
+		.map_err(|_| ApiError::bad_request())?
+		.to_string();
+
+	type HmacSha256 = Hmac<sha2::Sha256>;
+	let mut mac = HmacSha256::new_from_slice(ctx.cfg().security.proxy_secret.as_bytes())
+		.map_err(|_| ApiError::internal_server_error())?;
+
+	mac.update(uri.as_bytes());
+	mac.verify_slice(&bytes)
+		.map_err(|_| ApiError::forbidden())?;
+
+	proxy(ctx, uri, auth).await
 }
 
 async fn proxy(ctx: Context, query: String, auth: Identity) -> crate::ApiResult<impl IntoResponse> {

@@ -68,6 +68,9 @@ pub struct SecurityConfig {
 	#[serde(default)]
 	pub allow_public_debugger: bool,
 
+	#[serde_inline_default("changeme".to_string())]
+	pub proxy_secret: String,
+
 	#[serde_inline_default(true)]
 	pub show_reply_ids: bool,
 
