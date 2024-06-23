@@ -50,6 +50,8 @@ pub enum Relation {
 		on_delete = "NoAction"
 	)]
 	Instances,
+	#[sea_orm(has_many = "super::dislike::Entity")]
+	Dislikes,
 	#[sea_orm(has_many = "super::like::Entity")]
 	Likes,
 	#[sea_orm(has_many = "super::mention::Entity")]
@@ -95,6 +97,12 @@ impl Related<super::credential::Entity> for Entity {
 impl Related<super::instance::Entity> for Entity {
 	fn to() -> RelationDef {
 		Relation::Instances.def()
+	}
+}
+
+impl Related<super::dislike::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Dislikes.def()
 	}
 }
 

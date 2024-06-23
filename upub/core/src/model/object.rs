@@ -50,6 +50,8 @@ pub enum Relation {
 	Announces,
 	#[sea_orm(has_many = "super::attachment::Entity")]
 	Attachments,
+	#[sea_orm(has_many = "super::dislike::Entity")]
+	Dislikes,
 	#[sea_orm(has_many = "super::hashtag::Entity")]
 	Hashtags,
 	#[sea_orm(has_many = "super::like::Entity")]
@@ -93,6 +95,12 @@ impl Related<super::announce::Entity> for Entity {
 impl Related<super::attachment::Entity> for Entity {
 	fn to() -> RelationDef {
 		Relation::Attachments.def()
+	}
+}
+
+impl Related<super::dislike::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Dislikes.def()
 	}
 }
 

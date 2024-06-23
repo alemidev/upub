@@ -39,8 +39,8 @@ impl Processor for crate::Context {
 	async fn process(&self, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 		// TODO we could process Links and bare Objects maybe, but probably out of AP spec?
 		match activity.activity_type()? {
-			// TODO emojireacts are NOT likes, but let's process them like ones for now maybe?
-			apb::ActivityType::Like | apb::ActivityType::EmojiReact => Ok(like(self, activity, tx).await?),
+			apb::ActivityType::Like => Ok(like(self, activity, tx).await?),
+			apb::ActivityType::Dislike => Ok(dislike(self, activity, tx).await?),
 			apb::ActivityType::Create => Ok(create(self, activity, tx).await?),
 			apb::ActivityType::Follow => Ok(follow(self, activity, tx).await?),
 			apb::ActivityType::Announce => Ok(announce(self, activity, tx).await?),
@@ -112,6 +112,36 @@ pub async fn like(ctx: &crate::Context, activity: impl apb::Activity, tx: &Datab
 	}
 
 	tracing::debug!("{} liked {}", actor.id, obj.id);
+	Ok(())
+}
+
+// TODO basically same as like, can we make one function, maybe with const generic???
+pub async fn dislike(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
+	let actor = ctx.fetch_user(activity.actor().id()?, tx).await?;
+	let obj = ctx.fetch_object(activity.object().id()?, tx).await?;
+	if crate::model::like::Entity::find_by_uid_oid(actor.internal, obj.internal)
+		.any(tx)
+		.await?
+	{
+		return Err(ProcessorError::AlreadyProcessed);
+	}
+
+	let dislike = crate::model::dislike::ActiveModel {
+		internal: NotSet,
+		actor: Set(actor.internal),
+		object: Set(obj.internal),
+		published: Set(activity.published().unwrap_or_else(|_|chrono::Utc::now())),
+	};
+
+	crate::model::dislike::Entity::insert(dislike).exec(tx).await?;
+
+	// only dislikes mentioning local users are stored to generate notifications, everything else
+	// produces side effects but no activity, and thus no notification
+	if ctx.is_local(&actor.id) || activity.mentioning().iter().any(|x| ctx.is_local(x)) {
+		ctx.insert_activity(activity, tx).await?;
+	}
+
+	tracing::debug!("{} disliked {}", actor.id, obj.id);
 	Ok(())
 }
 

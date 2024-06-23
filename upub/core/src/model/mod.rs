@@ -13,6 +13,7 @@ pub mod job;
 pub mod relation;
 pub mod announce;
 pub mod like;
+pub mod dislike;
 
 pub mod hashtag;
 pub mod mention;
