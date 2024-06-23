@@ -114,6 +114,7 @@ macro_rules! strenum {
 
 pub(crate) use strenum;
 
+#[cfg(feature = "unstructured")]
 macro_rules! getter {
 	($name:ident -> type $t:ty) => {
 		paste::paste! {
@@ -208,8 +209,10 @@ macro_rules! getter {
 	};
 }
 
+#[cfg(feature = "unstructured")]
 pub(crate) use getter;
 
+#[cfg(feature = "unstructured")]
 macro_rules! setter {
 	($name:ident -> bool) => {
 		paste::item! {
@@ -300,6 +303,7 @@ macro_rules! setter {
 	};
 }
 
+#[cfg(feature = "unstructured")]
 pub(crate) use setter;
 
 #[cfg(feature = "unstructured")]

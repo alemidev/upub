@@ -88,7 +88,10 @@
 
 
 mod macros;
-pub(crate) use macros::{strenum, getter, setter};
+pub(crate) use macros::strenum;
+
+#[cfg(feature = "unstructured")]
+pub(crate) use macros::{getter, setter};
 
 mod node;
 pub use node::Node;
