@@ -5,6 +5,7 @@ use upub::{model, traits::{Addresser, Processor}, Context};
 
 pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<()> {
 	// TODO can we get rid of this cloned??
+	let now = chrono::Utc::now();
 	let mut activity = job.payload.as_ref().cloned().ok_or(crate::JobError::MissingPayload)?;
 	let mut t = activity.object_type()?;
 	let tx = ctx.db().begin().await?;
@@ -23,7 +24,7 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 	activity = activity
 		.set_id(Some(&job.activity))
 		.set_actor(apb::Node::link(job.actor.clone()))
-		.set_published(Some(chrono::Utc::now()));
+		.set_published(Some(now));
 
 	if matches!(t, apb::ObjectType::Activity(apb::ActivityType::Create)) {
 		let raw_oid = Context::new_id();
@@ -57,7 +58,8 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 						.set_id(Some(&oid))
 						.set_content(content.as_deref())
 						.set_attributed_to(apb::Node::link(job.actor.clone()))
-						.set_published(Some(chrono::Utc::now()))
+						.set_published(Some(now))
+						.set_updated(Some(now))
 						.set_url(apb::Node::maybe_link(ctx.cfg().frontend_url(&format!("/objects/{raw_oid}")))),
 			));
 	}
