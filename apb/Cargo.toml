@@ -6,7 +6,7 @@ authors = [ "alemi <me@alemi.dev>" ]
 description = "Traits and types to handle ActivityPub objects"
 license = "MIT"
 keywords = ["activitypub", "activitystreams", "json"]
-repository = "https://git.alemi.dev/upub.git"
+repository = "https://moonlit.technology/alemi/upub"
 readme = "README.md"
 
 [lib]
