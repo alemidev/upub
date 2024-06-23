@@ -50,7 +50,7 @@ impl MigrationTrait for Migration {
 							.primary_key()
 							.auto_increment()
 					)
-					.col(ColumnDef::new(Attachments::Url).string().not_null().unique_key())
+					.col(ColumnDef::new(Attachments::Url).string().not_null())
 					.col(ColumnDef::new(Attachments::Object).big_integer().not_null())
 					.foreign_key(
 						ForeignKey::create()
@@ -70,6 +70,10 @@ impl MigrationTrait for Migration {
 
 		manager
 			.create_index(Index::create().name("index-attachment-object").table(Attachments::Table).col(Attachments::Object).to_owned())
+			.await?;
+
+		manager
+			.create_index(Index::create().name("index-attachment-url").table(Attachments::Table).col(Attachments::Url).to_owned())
 			.await?;
 
 		manager
