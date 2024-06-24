@@ -19,6 +19,9 @@ pub use update::*;
 mod nuke;
 pub use nuke::*;
 
+mod thread;
+pub use thread::*;
+
 #[derive(Debug, Clone, clap::Subcommand)]
 pub enum CliCommand {
 	/// generate fake user, note and activity
@@ -104,6 +107,11 @@ pub enum CliCommand {
 		/// also send Delete activities for all local objects
 		#[arg(long, default_value_t = false)]
 		delete_objects: bool,
+	},
+
+	/// attempt to fix broken threads and completely gather their context
+	Thread {
+		
 	}
 }
 
@@ -124,5 +132,7 @@ pub async fn run(ctx: upub::Context, command: CliCommand) -> Result<(), Box<dyn 
 			Ok(register(ctx, username, password, display_name, summary, avatar_url, banner_url).await?),
 		CliCommand::Nuke { for_real, delete_objects } =>
 			Ok(nuke(ctx, for_real, delete_objects).await?),
+		CliCommand::Thread { } =>
+			Ok(thread(ctx).await?),
 	}
 }
