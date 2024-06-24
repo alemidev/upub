@@ -78,7 +78,7 @@ pub fn Attachment(
 
 		"link" =>
 			view! {
-				<code class="cw color center">
+				<code class="cw color center mt-1 mb-1 mr-s ml-s">
 					<a href={href.clone()} title={href.clone()} rel="noreferrer nofollow" target="_blank">
 						{Uri::pretty(&href)}
 					</a>
@@ -161,22 +161,20 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 		}.into_view(),
 		// lemmy with Page, peertube with Video
 		Ok(apb::ObjectType::Document(t)) => view! {
-			<div class="border pa-1 ml-1 mr-1 mt-1">
-				<b>{object.name().unwrap_or_default().to_string()}</b>
-				<hr />
+			<article>
+				<div class="border center pr-1 pl-1 pt-s pb-s ma-1" title={t.as_ref().to_string()}>
+					<b>{object.name().unwrap_or_default().to_string()}</b>
+				</div>
 				{post_inner}
-				<a class="clean color" rel="nofollow noreferrer" href={oid.clone()} target="_blank">
-					<input class="w-100" type="button" value={t.as_ref().to_string()} />
-				</a>
-			</div>
+			</article>
 		}.into_view(),
 		// wordpress, ... ?
 		Ok(apb::ObjectType::Article) => view! {
-			<div>
+			<article>
 				<h3>{object.name().unwrap_or_default().to_string()}</h3>
 				<hr />
 				{post_inner}
-			</div>
+			</article>
 		}.into_view(),
 		// everything else
 		Ok(t) => view! {
