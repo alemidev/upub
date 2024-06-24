@@ -455,8 +455,7 @@ pub async fn announce(ctx: &crate::Context, activity: impl apb::Activity, tx: &D
 			//      or maybe create new addressing rows with more recent dates
 			//      or maybe create fake objects that reference the original one
 			//      idk!!!!
-
-			if ctx.is_local(&actor.id) {
+			if actor.actor_type == apb::ActorType::Person || ctx.is_local(&actor.id) {
 				ctx.insert_activity(activity, tx).await?;
 			}
 
