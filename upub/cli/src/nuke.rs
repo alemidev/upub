@@ -51,14 +51,14 @@ pub async fn nuke(ctx: upub::Context, for_real: bool, delete_posts: bool) -> Res
 			continue;
 		};
 
-		let target = if matches!(activity.activity_type, apb::ActivityType::Follow) {
-			activity.id.clone()
+		let (target, undone) = if matches!(activity.activity_type, apb::ActivityType::Follow) {
+			(oid.clone(), activity.id.clone())
 		} else {
 			let follow_activity = upub::model::activity::Entity::find_by_ap_id(&oid)
 				.one(ctx.db())
 				.await?
 				.ok_or(sea_orm::DbErr::RecordNotFound(oid.clone()))?;
-			follow_activity.id
+			(follow_activity.object.unwrap_or_default(), follow_activity.id)
 		};
 
 		let aid = ctx.aid(&upub::Context::new_id());
@@ -66,7 +66,7 @@ pub async fn nuke(ctx: upub::Context, for_real: bool, delete_posts: bool) -> Res
 			.set_id(Some(&aid))
 			.set_activity_type(Some(apb::ActivityType::Undo))
 			.set_actor(apb::Node::link(activity.actor.clone()))
-			.set_object(apb::Node::link(oid))
+			.set_object(apb::Node::link(undone))
 			.set_to(apb::Node::links(vec![target]))
 			.set_published(Some(chrono::Utc::now()));
 
@@ -83,7 +83,7 @@ pub async fn nuke(ctx: upub::Context, for_real: bool, delete_posts: bool) -> Res
 			payload: Set(Some(undo_activity)),
 		};
 
-		tracing::debug!("undoing {}", activity.id);
+		tracing::info!("undoing {}", activity.id);
 
 		if for_real {
 			upub::model::job::Entity::insert(job).exec(ctx.db()).await?;
@@ -123,7 +123,7 @@ pub async fn nuke(ctx: upub::Context, for_real: bool, delete_posts: bool) -> Res
 				payload: Set(Some(undo_activity)),
 			};
 
-			tracing::debug!("deleting {}", object.id);
+			tracing::info!("deleting {}", object.id);
 
 			if for_real {
 				upub::model::job::Entity::insert(job).exec(ctx.db()).await?;
