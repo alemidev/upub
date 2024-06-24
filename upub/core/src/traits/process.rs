@@ -304,6 +304,7 @@ pub async fn update(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 				.await?
 				.ok_or(ProcessorError::Incomplete)?;
 			let mut object_model = crate::AP::object_q(&object_node, Some(internal_oid))?;
+			object_model.context = NotSet; // TODO dont overwrite context when updating!!
 			object_model.updated = Set(chrono::Utc::now());
 			object_model.update(tx).await?;
 		},
