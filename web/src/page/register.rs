@@ -8,6 +8,12 @@ macro_rules! get_ref {
 	}
 }
 
+macro_rules! reset_ref {
+	($r:ident) => {
+		$r.get().map(|x| x.set_value(""))
+	}
+}
+
 // TODO this should get moved in a common crate so its not duplicated across FE/BE
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct RegisterForm {
@@ -34,6 +40,7 @@ pub fn RegisterPage() -> impl IntoView {
 			<div class="border ma-2 pa-1">
 				<form on:submit=move|ev| {
 					ev.prevent_default();
+					set_error.set(None);
 					let email = get_ref!(username_ref);
 					let password = get_ref!(password_ref);
 					let display_name = get_ref!(display_name_ref);
@@ -53,16 +60,29 @@ pub fn RegisterPage() -> impl IntoView {
 							password: password.unwrap_or_default(),
 							display_name, summary, avatar_url, banner_url
 						};
-						if let Err(e) = Http::request(Method::PUT, &format!("{URL_BASE}/auth"), Some(&payload), auth).await {
-							set_error.set(Some(
+						match Http::request(Method::PUT, &format!("{URL_BASE}/auth"), Some(&payload), auth).await {
+							Err(e) => set_error.set(Some(
 								view! { <blockquote>{e.to_string()}</blockquote> }
-							));
+							)),
+							Ok(res) => match res.error_for_status() {
+								Err(e) => set_error.set(Some(
+									view! { <blockquote>{e.to_string()}</blockquote> }
+								)),
+								Ok(_) => {
+									reset_ref!(username_ref);
+									reset_ref!(password_ref);
+									reset_ref!(display_name_ref);
+									reset_ref!(summary_ref);
+									reset_ref!(avatar_url_ref);
+									reset_ref!(banner_url_ref);
+								},
+							},
 						}
 					});
 				} >
 					<div class="col-side mb-0">username</div>
 					<div class="col-main">
-						<input class="w-100" type="email" node_ref=username_ref placeholder="doll" />
+						<input class="w-100" type="text" node_ref=username_ref placeholder="doll" />
 					</div>
 
 					<div class="col-side mb-0">password</div>
