@@ -45,20 +45,20 @@ pub async fn nuke(ctx: upub::Context, for_real: bool, delete_posts: bool) -> Res
 			continue;
 		};
 
-		let Some(oid) = activity.object
+		let Some(ref oid) = activity.object
 		else {
 			tracing::error!("can't undo activity without object");
 			continue;
 		};
 
 		let (target, undone) = if matches!(activity.activity_type, apb::ActivityType::Follow) {
-			(oid.clone(), activity.id.clone())
+			(oid.clone(), activity.clone().ap())
 		} else {
-			let follow_activity = upub::model::activity::Entity::find_by_ap_id(&oid)
+			let follow_activity = upub::model::activity::Entity::find_by_ap_id(oid)
 				.one(ctx.db())
 				.await?
 				.ok_or(sea_orm::DbErr::RecordNotFound(oid.clone()))?;
-			(follow_activity.object.unwrap_or_default(), follow_activity.id)
+			(follow_activity.clone().object.unwrap_or_default(), follow_activity.ap())
 		};
 
 		let aid = ctx.aid(&upub::Context::new_id());
@@ -66,7 +66,7 @@ pub async fn nuke(ctx: upub::Context, for_real: bool, delete_posts: bool) -> Res
 			.set_id(Some(&aid))
 			.set_activity_type(Some(apb::ActivityType::Undo))
 			.set_actor(apb::Node::link(activity.actor.clone()))
-			.set_object(apb::Node::link(undone))
+			.set_object(apb::Node::object(undone))
 			.set_to(apb::Node::links(vec![target]))
 			.set_published(Some(chrono::Utc::now()));
 
