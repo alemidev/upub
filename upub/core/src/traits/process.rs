@@ -318,7 +318,7 @@ pub async fn update(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 	Ok(())
 }
 
-pub async fn undo(_ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
+pub async fn undo(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 	// TODO in theory we could work with just object_id but right now only accept embedded
 	let undone_activity = activity.object()
 		.extract()
@@ -391,6 +391,10 @@ pub async fn undo(_ctx: &crate::Context, activity: impl apb::Activity, tx: &Data
 			}
 		},
 		_ => return Err(ProcessorError::Unprocessable(activity.id()?.to_string())),
+	}
+
+	if ctx.is_local(activity.id()?) {
+		ctx.insert_activity(activity, tx).await?;
 	}
 
 	Ok(())
