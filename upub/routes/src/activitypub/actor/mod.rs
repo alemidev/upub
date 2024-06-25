@@ -43,8 +43,8 @@ pub async fn view(
 			// TODO these two queries are fast because of indexes but still are 2 subqueries for each
 			// user GET, not even parallelized... should maybe add these as joins on the main query? so
 			// that it's one roundtrip only
-			let followed_by_me = model::relation::Entity::is_following(my_id, internal_uid).any(ctx.db()).await?;
-			let following_me = model::relation::Entity::is_following(internal_uid, my_id).any(ctx.db()).await?;
+			let followed_by_me = upub::Query::related(Some(my_id), Some(internal_uid), false).any(ctx.db()).await?;
+			let following_me = upub::Query::related(Some(internal_uid), Some(my_id), false).any(ctx.db()).await?;
 			(Some(followed_by_me), Some(following_me))
 		},
 	};

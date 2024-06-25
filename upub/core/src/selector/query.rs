@@ -70,4 +70,37 @@ impl Query {
 
 		select
 	}
+
+	pub fn related(from: Option<i64>, to: Option<i64>, pending: bool) -> Select<model::relation::Entity> {
+		let mut condition = Condition::all();
+
+		if let Some(from) = from {
+			condition = condition.add(model::relation::Column::Follower.eq(from));
+		}
+
+		if let Some(to) = to {
+			condition = condition.add(model::relation::Column::Following.eq(to));
+		}
+
+		if !pending {
+			condition = condition.add(model::relation::Column::Accept.is_not_null());
+		}
+
+		let mut select = model::relation::Entity::find()
+			.join(
+				sea_orm::JoinType::InnerJoin,
+				model::relation::Entity::belongs_to(model::actor::Entity)
+					.from(model::relation::Column::Follower)
+					.to(model::actor::Column::Internal)
+					.into()
+			)
+			.filter(condition)
+			.select_only();
+
+		for column in model::actor::Column::iter() {
+			select = select.select_column_as(column, format!("{}{}", model::actor::Entity.table_name(), column.to_string()));
+		}
+
+		select
+	}
 }

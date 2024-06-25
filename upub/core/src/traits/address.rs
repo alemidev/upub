@@ -1,5 +1,5 @@
 use apb::target::Addressed;
-use sea_orm::{ActiveValue::{NotSet, Set}, ConnectionTrait, DbErr, EntityTrait};
+use sea_orm::{ActiveValue::{NotSet, Set}, ConnectionTrait, DbErr, EntityTrait, QuerySelect, SelectColumns};
 
 use crate::traits::fetch::Fetcher;
 
@@ -126,9 +126,15 @@ async fn expand_addressing(targets: Vec<String>, tx: &impl ConnectionTrait) -> R
 		//      only used for groups anyway??
 		if target.ends_with("/followers") {
 			let target_id = target.replace("/followers", "");
-			let mut followers = crate::model::relation::Entity::followers(&target_id, tx)
+			let target_internal = crate::model::actor::Entity::ap_to_internal(&target_id, tx)
 				.await?
-				.unwrap_or_else(Vec::new);
+				.ok_or_else(|| DbErr::RecordNotFound(target_id.clone()))?;
+			let mut followers = crate::Query::related(None, Some(target_internal), false)
+				.select_only()
+				.select_column(crate::model::actor::Column::Id)
+				.into_tuple::<String>()
+				.all(tx)
+				.await?;
 			if followers.is_empty() { // stuff with zero addressing will never be seen again!!! TODO
 				followers.push(target_id);
 			}

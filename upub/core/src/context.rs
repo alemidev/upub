@@ -1,6 +1,6 @@
 use std::{collections::BTreeSet, sync::Arc};
 
-use sea_orm::{DatabaseConnection, DbErr};
+use sea_orm::{DatabaseConnection, DbErr, QuerySelect, SelectColumns};
 
 use crate::{config::Config, model};
 use uriproxy::UriClass;
@@ -52,8 +52,19 @@ impl Context {
 		// TODO maybe we could provide a more descriptive error...
 		let pkey = actor.private_key.as_deref().ok_or_else(|| DbErr::RecordNotFound("application private key".into()))?.to_string();
 
-		let relay_sinks = model::relation::Entity::followers(&actor.id, &db).await?.ok_or_else(|| DbErr::RecordNotFound(actor.id.clone()))?;
-		let relay_sources = model::relation::Entity::following(&actor.id, &db).await?.ok_or_else(|| DbErr::RecordNotFound(actor.id.clone()))?;
+		let relay_sinks = crate::Query::related(None, Some(actor.internal), false)
+			.select_only()
+			.select_column(crate::model::actor::Column::Id)
+			.into_tuple::<String>()
+			.all(&db)
+			.await?;
+
+		let relay_sources = crate::Query::related(Some(actor.internal), None, false)
+			.select_only()
+			.select_column(crate::model::actor::Column::Id)
+			.into_tuple::<String>()
+			.all(&db)
+			.await?;
 
 		let relay = Relays {
 			sources: BTreeSet::from_iter(relay_sources),
