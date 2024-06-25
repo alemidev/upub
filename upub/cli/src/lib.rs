@@ -40,14 +40,11 @@ pub enum CliCommand {
 		save: bool,
 	},
 
-	/// follow a remote relay
+	/// act on remote relay actors at instance level
 	Relay {
-		/// actor url, same as with pleroma
-		actor: String,
-
-		#[arg(long, default_value_t = false)]
-		/// instead of sending a follow request, send an accept
-		accept: bool
+		#[clap(subcommand)]
+		/// action to take against this relay
+		action: RelayCommand,
 	},
 
 	/// run db maintenance tasks
@@ -122,8 +119,8 @@ pub async fn run(ctx: upub::Context, command: CliCommand) -> Result<(), Box<dyn 
 			Ok(faker(ctx, count as i64).await?),
 		CliCommand::Fetch { uri, save } =>
 			Ok(fetch(ctx, uri, save).await?),
-		CliCommand::Relay { actor, accept } =>
-			Ok(relay(ctx, actor, accept).await?),
+		CliCommand::Relay { action } =>
+			Ok(relay(ctx, action).await?),
 		CliCommand::Fix { likes, shares, replies } =>
 			Ok(fix(ctx, likes, shares, replies).await?),
 		CliCommand::Update { days } =>
