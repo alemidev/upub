@@ -1,4 +1,4 @@
-use sea_orm::ConnectionTrait;
+use sea_orm::{ConnectionTrait, PaginatorTrait};
 
 
 #[async_trait::async_trait]
@@ -7,16 +7,19 @@ pub trait AnyQuery {
 }
 
 #[async_trait::async_trait]
-impl<T : sea_orm::EntityTrait> AnyQuery for sea_orm::Select<T> {
+impl<T : sea_orm::EntityTrait> AnyQuery for sea_orm::Select<T>
+where
+	T::Model : Sync,
+{
 	async fn any(self, db: &impl ConnectionTrait) -> Result<bool, sea_orm::DbErr> {
-		Ok(self.one(db).await?.is_some())
+		Ok(self.count(db).await? > 0)
 	}
 }
 
 #[async_trait::async_trait]
-impl<T : sea_orm::SelectorTrait + Send> AnyQuery for sea_orm::Selector<T> {
+impl<T : sea_orm::SelectorTrait + Send + Sync> AnyQuery for sea_orm::Selector<T> {
 	async fn any(self, db: &impl ConnectionTrait) -> Result<bool, sea_orm::DbErr> {
-		Ok(self.one(db).await?.is_some())
+		Ok(self.count(db).await? > 0)
 	}
 }
 
