@@ -97,6 +97,10 @@ impl Query {
 			.filter(condition)
 			.select_only();
 
+		for column in model::relation::Column::iter() {
+			select = select.select_column_as(column, format!("{}{}", model::relation::Entity.table_name(), column.to_string()));
+		}
+
 		for column in model::actor::Column::iter() {
 			select = select.select_column_as(column, format!("{}{}", model::actor::Entity.table_name(), column.to_string()));
 		}
