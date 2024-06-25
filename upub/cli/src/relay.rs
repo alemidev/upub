@@ -1,5 +1,5 @@
 use apb::{ActivityMut, BaseMut, ObjectMut};
-use sea_orm::{ActiveValue::{NotSet, Set}, DbErr, EntityTrait};
+use sea_orm::{ActiveValue::{NotSet, Set}, DbErr, EntityTrait, QueryFilter, ColumnTrait};
 use upub::traits::fetch::PullError;
 
 #[derive(Debug, Clone, clap::Subcommand)]
@@ -87,8 +87,9 @@ pub async fn relay(ctx: upub::Context, action: RelayCommand) -> Result<(), PullE
 			let my_internal = upub::model::actor::Entity::ap_to_internal(ctx.base(), ctx.db())
 				.await?
 				.ok_or_else(|| DbErr::RecordNotFound(ctx.base().to_string()))?;
-			let relation = upub::Query::related(Some(their_internal), Some(my_internal), true)
-				.into_model::<upub::model::relation::Model>()
+			let relation = upub::model::relation::Entity::find()
+				.filter(upub::model::relation::Column::Follower.eq(their_internal))
+				.filter(upub::model::relation::Column::Following.eq(my_internal))
 				.one(ctx.db())
 				.await?
 				.ok_or_else(|| DbErr::RecordNotFound(format!("relation-{their_internal}-{my_internal}")))?;
