@@ -86,11 +86,20 @@ impl Query {
 			condition = condition.add(model::relation::Column::Accept.is_not_null());
 		}
 
+		let direction = match (from, to) {
+			// TODO its super arbitrary to pick "Following" as default direction!!!
+			(Some(_), Some(_)) => model::relation::Column::Following,
+			(None, None) => model::relation::Column::Following,
+			// TODO i should really probably change this function's api, maybe add another param??
+			(Some(_), None) => model::relation::Column::Following,
+			(None, Some(_)) => model::relation::Column::Follower,
+		};
+
 		let mut select = model::relation::Entity::find()
 			.join(
 				sea_orm::JoinType::InnerJoin,
 				model::relation::Entity::belongs_to(model::actor::Entity)
-					.from(model::relation::Column::Follower)
+					.from(direction)
 					.to(model::actor::Column::Internal)
 					.into()
 			)
