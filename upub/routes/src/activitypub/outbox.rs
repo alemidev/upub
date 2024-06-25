@@ -1,5 +1,5 @@
 use axum::{extract::{Query, State}, http::StatusCode, Json};
-use sea_orm::{sea_query::IntoCondition, ColumnTrait};
+use sea_orm::{ColumnTrait, Condition};
 use upub::Context;
 
 use crate::{activitypub::{CreationResult, Pagination}, AuthIdentity, builders::JsonLD};
@@ -15,7 +15,9 @@ pub async fn page(
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	crate::builders::paginate_activities(
 		upub::url!(ctx, "/outbox/page"),
-		upub::model::actor::Column::Domain.eq(ctx.domain().to_string()).into_condition(),
+		Condition::all()
+			.add(auth.filter_activities())
+			.add(upub::model::actor::Column::Domain.eq(ctx.domain().to_string())),
 		ctx.db(),
 		page,
 		auth.my_id(),
