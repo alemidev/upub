@@ -72,11 +72,9 @@ pub async fn create(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 		}
 	}
 	let object_model = ctx.insert_object(object_node, tx).await?;
-	// only likes mentioning local users are stored to generate notifications, everything else
-	// produces side effects but no activity, and thus no notification
-	if ctx.is_local(activity.actor().id()?) || activity.mentioning().iter().any(|x| ctx.is_local(x)) {
-		ctx.insert_activity(activity, tx).await?;
-	}
+
+	ctx.insert_activity(activity, tx).await?;
+
 	tracing::debug!("{} posted {}", object_model.attributed_to.as_deref().unwrap_or("<anonymous>"), object_model.id);
 	Ok(())
 }
@@ -105,9 +103,8 @@ pub async fn like(ctx: &crate::Context, activity: impl apb::Activity, tx: &Datab
 		.exec(tx)
 		.await?;
 
-	// only likes mentioning local users are stored to generate notifications, everything else
-	// produces side effects but no activity, and thus no notification
-	if ctx.is_local(&actor.id) || activity.mentioning().iter().any(|x| ctx.is_local(x)) {
+	// likes without addressing are "silent likes", process them but dont store activity
+	if !activity.addressed().is_empty() {
 		ctx.insert_activity(activity, tx).await?;
 	}
 
@@ -135,9 +132,8 @@ pub async fn dislike(ctx: &crate::Context, activity: impl apb::Activity, tx: &Da
 
 	crate::model::dislike::Entity::insert(dislike).exec(tx).await?;
 
-	// only dislikes mentioning local users are stored to generate notifications, everything else
-	// produces side effects but no activity, and thus no notification
-	if ctx.is_local(&actor.id) || activity.mentioning().iter().any(|x| ctx.is_local(x)) {
+	// dislikes without addressing are "silent dislikes", process them but dont store activity
+	if !activity.addressed().is_empty() {
 		ctx.insert_activity(activity, tx).await?;
 	}
 
@@ -270,10 +266,16 @@ pub async fn reject(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 	Ok(())
 }
 
-pub async fn delete(_ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
+pub async fn delete(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 	let oid = activity.object().id()?.to_string();
 	crate::model::actor::Entity::delete_by_ap_id(&oid).exec(tx).await.info_failed("failed deleting from users");
 	crate::model::object::Entity::delete_by_ap_id(&oid).exec(tx).await.info_failed("failed deleting from objects");
+	// we should store deletes to make local delete deliveries work
+	// except when they have empty addressing
+	// so that also remote "secret" deletes dont get stored
+	if !activity.addressed().is_empty() {
+		ctx.insert_activity(activity, tx).await?;
+	}
 	tracing::debug!("deleted '{oid}'");
 	Ok(())
 }
@@ -311,6 +313,8 @@ pub async fn update(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 		_ => return Err(ProcessorError::Unprocessable(activity.id()?.to_string())),
 	}
 
+	// updates can be silently discarded except if local. we dont really care about knowing when
+	// remote documents change, there's the "updated" field, just want the most recent version
 	if ctx.is_local(&actor_id) {
 		ctx.insert_activity(activity, tx).await?;
 	}
@@ -394,7 +398,10 @@ pub async fn undo(ctx: &crate::Context, activity: impl apb::Activity, tx: &Datab
 		_ => return Err(ProcessorError::Unprocessable(activity.id()?.to_string())),
 	}
 
-	if ctx.is_local(activity.id()?) {
+	// we should store undos to make local delete deliveries work and relations make sense
+	// except when they have empty addressing
+	// so that also remote "secret" undos dont get stored
+	if !activity.addressed().is_empty() {
 		ctx.insert_activity(activity, tx).await?;
 	}
 
