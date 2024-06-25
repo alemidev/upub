@@ -439,16 +439,6 @@ pub async fn announce(ctx: &crate::Context, activity: impl apb::Activity, tx: &D
 			// we only care about announces produced by "Person" actors, because there's intention
 			// anything shared by groups, services or applications is automated: fetch it and be done
 			if actor.actor_type == apb::ActorType::Person {
-				let share = crate::model::announce::ActiveModel {
-					internal: NotSet,
-					actor: Set(actor.internal),
-					object: Set(internal),
-					published: Set(activity.published().unwrap_or(chrono::Utc::now())),
-				};
-
-				crate::model::announce::Entity::insert(share)
-					.exec(tx).await?;
-
 				// if this user never "boosted" this object before, increase its counter
 				if !crate::model::announce::Entity::find_by_uid_oid(actor.internal, internal)
 					.any(tx)
@@ -460,6 +450,16 @@ pub async fn announce(ctx: &crate::Context, activity: impl apb::Activity, tx: &D
 						.exec(tx)
 						.await?;
 				}
+
+				let share = crate::model::announce::ActiveModel {
+					internal: NotSet,
+					actor: Set(actor.internal),
+					object: Set(internal),
+					published: Set(activity.published().unwrap_or(chrono::Utc::now())),
+				};
+
+				crate::model::announce::Entity::insert(share)
+					.exec(tx).await?;
 			}
 
 			// TODO we should probably insert an activity, otherwise this won't appear on timelines!!
