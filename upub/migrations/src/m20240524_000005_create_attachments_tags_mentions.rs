@@ -11,7 +11,6 @@ pub enum Attachments {
 	Object,
 	Name,
 	MediaType,
-	Published,
 }
 
 #[derive(DeriveIden)]
@@ -20,7 +19,6 @@ pub enum Mentions {
 	Internal,
 	Object,
 	Actor,
-	Published,
 }
 
 #[derive(DeriveIden)]
@@ -29,7 +27,6 @@ pub enum Hashtags {
 	Internal,
 	Object,
 	Name,
-	Published,
 }
 
 #[derive(DeriveMigrationName)]
@@ -63,7 +60,6 @@ impl MigrationTrait for Migration {
 					.col(ColumnDef::new(Attachments::DocumentType).string().not_null())
 					.col(ColumnDef::new(Attachments::Name).string().null())
 					.col(ColumnDef::new(Attachments::MediaType).string().not_null())
-					.col(ColumnDef::new(Attachments::Published).timestamp_with_time_zone().not_null().default(Expr::current_timestamp()))
 					.to_owned()
 			)
 			.await?;
@@ -116,14 +112,7 @@ impl MigrationTrait for Migration {
 			.await?;
 
 		manager
-			.create_index(
-				Index::create()
-					.name("index-mentions-actor-published")
-					.table(Mentions::Table)
-					.col(Mentions::Actor)
-					.col((Mentions::Published, IndexOrder::Desc))
-					.to_owned()
-			)
+			.create_index(Index::create().name("index-mentions-actor").table(Mentions::Table).col(Mentions::Actor).to_owned())
 			.await?;
 
 		manager
@@ -148,7 +137,6 @@ impl MigrationTrait for Migration {
 							.on_delete(ForeignKeyAction::Cascade)
 					)
 					.col(ColumnDef::new(Hashtags::Name).string().not_null())
-					.col(ColumnDef::new(Hashtags::Published).timestamp_with_time_zone().not_null().default(Expr::current_timestamp()))
 					.to_owned()
 			)
 			.await?;
@@ -158,14 +146,7 @@ impl MigrationTrait for Migration {
 			.await?;
 
 		manager
-			.create_index(
-				Index::create()
-					.name("index-hashtags-name-published")
-					.table(Hashtags::Table)
-					.col(Hashtags::Name)
-					.col((Hashtags::Published, IndexOrder::Desc))
-					.to_owned()
-			)
+			.create_index(Index::create().name("index-hashtags-name").table(Hashtags::Table).col(Hashtags::Name).to_owned())
 			.await?;
 
 		Ok(())

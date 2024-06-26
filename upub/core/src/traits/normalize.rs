@@ -25,7 +25,6 @@ pub trait Normalizer {
 impl Normalizer for crate::Context {
 
 	async fn insert_object(&self, object: impl apb::Object, tx: &impl ConnectionTrait) -> Result<crate::model::object::Model, NormalizerError> {
-		let now = chrono::Utc::now();
 		let mut object_model = AP::object(&object)?;
 
 		// make sure content only contains a safe subset of html
@@ -87,7 +86,6 @@ impl Normalizer for crate::Context {
 					document_type: Set(apb::DocumentType::Page),
 					name: Set(l.name().str()),
 					media_type: Set(l.media_type().unwrap_or("link").to_string()),
-					published: Set(now),
 				},
 				Node::Object(o) =>
 					AP::attachment_q(o.as_document()?, object_model.internal, None)?,
@@ -133,7 +131,6 @@ impl Normalizer for crate::Context {
 							internal: NotSet,
 							object: Set(object_model.internal),
 							actor: Set(l.href().to_string()),
-							published: Set(now),
 						};
 						crate::model::mention::Entity::insert(model)
 							.exec(tx)
@@ -147,7 +144,6 @@ impl Normalizer for crate::Context {
 							internal: NotSet,
 							object: Set(object_model.internal),
 							name: Set(hashtag),
-							published: Set(now),
 						};
 						crate::model::hashtag::Entity::insert(model)
 							.exec(tx)
@@ -273,7 +269,6 @@ impl AP {
 			document_type: document.as_document().map_or(apb::DocumentType::Document, |x| x.document_type().unwrap_or(apb::DocumentType::Page)),
 			name: document.name().str(),
 			media_type: document.media_type().unwrap_or("link").to_string(),
-			published: document.published().unwrap_or_else(|_| chrono::Utc::now()),
 		})
 	}
 

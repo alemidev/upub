@@ -7,7 +7,6 @@ pub struct Model {
 	pub internal: i64,
 	pub object: i64,
 	pub name: String,
-	pub published: ChronoDateTimeUtc,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
