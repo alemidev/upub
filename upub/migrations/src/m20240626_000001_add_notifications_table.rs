@@ -56,6 +56,10 @@ impl MigrationTrait for Migration {
 			.await?;
 
 		manager
+			.create_index(Index::create().name("index-notifications-activity").table(Notifications::Table).col(Notifications::Activity).to_owned())
+			.await?;
+
+		manager
 			.create_index(
 				Index::create()
 					.name("index-notifications-actor-published")
