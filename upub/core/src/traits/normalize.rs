@@ -166,40 +166,16 @@ impl Normalizer for crate::Context {
 		//      since ActivityPub is a mess most software doesnt' really respect addressing, or care
 		//      about inserting it correctly.
 		//
-		//   *  we can assume that Follow activities should *at least* be
+		//   *  we can assume that Follow and Accept activities should *at least* be
 		//      addressed to their target, since how would anyone be able to accept it otherwise???
-		//
-		//   *  announces are messy because everything is in the `to` field. we should probably move
-		//      followers to `cc` and keep just as#Public and the original poster in `to`, so that they
-		//      get notified but everyone else sees the object again
-		//
-		//   *  misskey sends us mentions without including us in the `to` field! basically the Create
-		//      will have a `tag` mention but it will not include the mentioned user in the `to` field
 
 		match activity_model.activity_type {
-			apb::ActivityType::Follow => {
+			apb::ActivityType::Follow
+			| apb::ActivityType::Accept(apb::AcceptType::Accept)
+			=> {
 				if let Some(ref target) = activity_model.object {
 					if !activity_model.to.0.contains(target) {
 						activity_model.to.0.push(target.clone());
-					}
-				}
-			},
-			apb::ActivityType::Announce => {
-				for target in activity_model.to.0.iter() {
-					if target.ends_with("followers") {
-						activity_model.cc.0.push(target.clone());
-					}
-				}
-				activity_model.to.0.retain(|x| !x.ends_with("followers"));
-			},
-			apb::ActivityType::Create => {
-				if let Some(object) = activity.object().get() {
-					for tag in object.tag().flat() {
-						if let Node::Link(l) = tag {
-							if matches!(l.link_type(), Ok(apb::LinkType::Mention)) {
-								activity_model.to.0.push(l.href().to_string());
-							}
-						}
 					}
 				}
 			},
