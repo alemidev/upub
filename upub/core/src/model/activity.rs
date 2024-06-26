@@ -33,6 +33,8 @@ pub enum Relation {
 	Actors,
 	#[sea_orm(has_many = "super::addressing::Entity")]
 	Addressing,
+	#[sea_orm(has_many = "super::notification::Entity")]
+	Notifications,
 	#[sea_orm(
 		belongs_to = "super::object::Entity",
 		from = "Column::Object",
@@ -52,6 +54,12 @@ impl Related<super::actor::Entity> for Entity {
 impl Related<super::addressing::Entity> for Entity {
 	fn to() -> RelationDef {
 		Relation::Addressing.def()
+	}
+}
+
+impl Related<super::notification::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Notifications.def()
 	}
 }
 
