@@ -1,14 +1,42 @@
-use apb::{ActivityMut, LinkMut, ObjectMut};
+use apb::ActivityMut;
 use sea_orm::{DbErr, EntityName, FromQueryResult, Iden, QueryResult};
 
+pub struct RichMention {
+	pub mention: crate::model::mention::Model,
+	pub id: String,
+	pub fqn: String,
+}
+
+impl RichMention {
+	pub fn ap(self) -> serde_json::Value {
+		use apb::LinkMut;
+		apb::new()
+			.set_link_type(Some(apb::LinkType::Mention))
+			.set_href(&self.id)
+			.set_name(Some(&self.fqn))
+	}
+}
+
+pub struct RichHashtag {
+	pub hash: crate::model::hashtag::Model,
+}
+
+impl RichHashtag {
+	pub fn ap(self) -> serde_json::Value {
+		use apb::LinkMut;
+		apb::new()
+			.set_name(Some(&format!("#{}", self.hash.name)))
+			.set_link_type(Some(apb::LinkType::Hashtag))
+	}
+}
 
 pub struct RichActivity {
 	pub activity: crate::model::activity::Model,
 	pub object: Option<crate::model::object::Model>,
 	pub liked: Option<i64>,
 	pub attachments: Option<Vec<crate::model::attachment::Model>>,
-	pub hashtags: Option<Vec<crate::model::hashtag::Model>>,
-	pub mentions: Option<Vec<crate::model::mention::Model>>,
+	pub hashtags: Option<Vec<RichHashtag>>,
+	pub mentions: Option<Vec<RichMention>>,
 }
 
 impl FromQueryResult for RichActivity {
@@ -24,6 +52,7 @@ impl FromQueryResult for RichActivity {
 
 impl RichActivity {
 	pub fn ap(self) -> serde_json::Value {
+		use apb::ObjectMut;
 		let object = match self.object {
 			None => apb::Node::maybe_link(self.activity.object.clone()),
 			Some(o) => {
@@ -31,23 +60,12 @@ impl RichActivity {
 				let mut tags = Vec::new();
 				if let Some(mentions) = self.mentions {
 					for mention in mentions {
-						tags.push(
-							apb::new()
-								.set_link_type(Some(apb::LinkType::Mention))
-								.set_href(&mention.actor)
-								// TODO do i need to set name? i could join while batch loading or put the @name in
-								// each mention object...
-						);
+						tags.push(mention.ap());
 					}
 				}
 				if let Some(hashtags) = self.hashtags {
 					for hash in hashtags {
-						tags.push(
-							// TODO ewwww set_name clash and cant use builder, wtf is this
-							LinkMut::set_name(apb::new(), Some(&format!("#{}", hash.name)))
-								.set_link_type(Some(apb::LinkType::Hashtag))
-								// TODO do we need to set href too? we can't access context here, quite an issue!
-						);
+						tags.push(hash.ap());
 					}
 				}
 				apb::Node::object(
@@ -71,8 +89,8 @@ pub struct RichObject {
 	pub object: crate::model::object::Model,
 	pub liked: Option<i64>,
 	pub attachments: Option<Vec<crate::model::attachment::Model>>,
-	pub hashtags: Option<Vec<crate::model::hashtag::Model>>,
-	pub mentions: Option<Vec<crate::model::mention::Model>>,
+	pub hashtags: Option<Vec<RichHashtag>>,
+	pub mentions: Option<Vec<RichMention>>,
 }
 
 impl FromQueryResult for RichObject {
@@ -87,27 +105,17 @@ impl FromQueryResult for RichObject {
 
 impl RichObject {
 	pub fn ap(self) -> serde_json::Value {
+		use apb::ObjectMut;
 		// TODO can we avoid repeating this tags code?
 		let mut tags = Vec::new();
 		if let Some(mentions) = self.mentions {
 			for mention in mentions {
-				tags.push(
-					apb::new()
-						.set_link_type(Some(apb::LinkType::Mention))
-						.set_href(&mention.actor)
-						// TODO do i need to set name? i could join while batch loading or put the @name in
-						// each mention object...
-				);
+				tags.push(mention.ap());
 			}
 		}
 		if let Some(hashtags) = self.hashtags {
 			for hash in hashtags {
-				tags.push(
-					// TODO ewwww set_name clash and cant use builder, wtf is this
-					LinkMut::set_name(apb::new(), Some(&format!("#{}", hash.name)))
-						.set_link_type(Some(apb::LinkType::Hashtag))
-						// TODO do we need to set href too? we can't access context here, quite an issue!
-				);
+				tags.push(hash.ap());
 			}
 		}
 		self.object.ap()

@@ -127,14 +127,16 @@ impl Normalizer for crate::Context {
 				Node::Empty | Node::Object(_) | Node::Array(_) => {},
 				Node::Link(l) => match l.link_type() {
 					Ok(apb::LinkType::Mention) => {
-						let model = crate::model::mention::ActiveModel {
-							internal: NotSet,
-							object: Set(object_model.internal),
-							actor: Set(l.href().to_string()),
-						};
-						crate::model::mention::Entity::insert(model)
-							.exec(tx)
-							.await?;
+						if let Some(internal) = crate::model::actor::Entity::ap_to_internal(l.href(), tx).await? {
+							let model = crate::model::mention::ActiveModel {
+								internal: NotSet,
+								object: Set(object_model.internal),
+								actor: Set(internal),
+							};
+							crate::model::mention::Entity::insert(model)
+								.exec(tx)
+								.await?;
+						}
 					},
 					Ok(apb::LinkType::Hashtag) => {
 						let hashtag = l.name()

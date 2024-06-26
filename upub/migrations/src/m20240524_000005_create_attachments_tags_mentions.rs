@@ -1,5 +1,7 @@
 use sea_orm_migration::prelude::*;
 
+use crate::m20240524_000001_create_actor_activity_object_tables::Actors;
+
 use super::m20240524_000001_create_actor_activity_object_tables::Objects;
 
 #[derive(DeriveIden)]
@@ -93,16 +95,15 @@ impl MigrationTrait for Migration {
 							.on_update(ForeignKeyAction::Cascade)
 							.on_delete(ForeignKeyAction::Cascade)
 					)
-					.col(ColumnDef::new(Mentions::Actor).string().not_null())
-					// .foreign_key(
-					// 	ForeignKey::create()
-					// 		.name("fkey-mentions-actor")
-					// 		.from(Mentions::Table, Mentions::Actor)
-					// 		.to(Actors::Table, Actors::Internal)
-					// 		.on_update(ForeignKeyAction::Cascade)
-					// 		.on_delete(ForeignKeyAction::Cascade)
-					// )
-					.col(ColumnDef::new(Mentions::Published).timestamp_with_time_zone().not_null().default(Expr::current_timestamp()))
+					.col(ColumnDef::new(Mentions::Actor).big_integer().not_null())
+					.foreign_key(
+						ForeignKey::create()
+							.name("fkey-mentions-actor")
+							.from(Mentions::Table, Mentions::Actor)
+							.to(Actors::Table, Actors::Internal)
+							.on_update(ForeignKeyAction::Cascade)
+							.on_delete(ForeignKeyAction::Cascade)
+					)
 					.to_owned()
 			)
 			.await?;
