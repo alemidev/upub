@@ -1,4 +1,4 @@
-use sea_orm::{sea_query::{IntoColumnRef, IntoCondition}, ColumnTrait, Condition, EntityName, EntityTrait, Iden, Iterable, Order, QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, SelectColumns};
+use sea_orm::{sea_query::{IntoColumnRef, IntoCondition}, ActiveValue::{NotSet, Set}, ColumnTrait, Condition, EntityName, EntityTrait, Iden, Insert, Iterable, Order, QueryFilter, QueryOrder, QuerySelect, RelationTrait, Select, SelectColumns};
 use crate::model;
 
 pub struct Query;
@@ -111,5 +111,17 @@ impl Query {
 		}
 
 		select
+	}
+
+	pub fn notify(activity: i64, actor: i64) -> Insert<model::notification::ActiveModel> {
+		model::notification::Entity::insert(
+			model::notification::ActiveModel {
+				internal: NotSet,
+				activity: Set(activity),
+				actor: Set(actor),
+				seen: Set(false),
+				published: Set(chrono::Utc::now()),
+			}
+		)
 	}
 }
