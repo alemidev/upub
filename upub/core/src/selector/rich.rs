@@ -37,12 +37,14 @@ pub struct RichActivity {
 	pub attachments: Option<Vec<crate::model::attachment::Model>>,
 	pub hashtags: Option<Vec<RichHashtag>>,
 	pub mentions: Option<Vec<RichMention>>,
+	pub discovered: chrono::DateTime<chrono::Utc>,
 }
 
 impl FromQueryResult for RichActivity {
 	fn from_query_result(res: &QueryResult, _pre: &str) -> Result<Self, DbErr> {
 		Ok(RichActivity {
 			attachments: None, hashtags: None, mentions: None,
+			discovered: res.try_get(crate::model::addressing::Entity.table_name(), &crate::model::addressing::Column::Published.to_string())?,
 			liked: res.try_get(crate::model::like::Entity.table_name(), &crate::model::like::Column::Actor.to_string()).ok(),
 			object: crate::model::object::Model::from_query_result(res, crate::model::object::Entity.table_name()).ok(),
 			activity: crate::model::activity::Model::from_query_result(res, crate::model::activity::Entity.table_name()).ok(),
@@ -50,7 +52,6 @@ impl FromQueryResult for RichActivity {
 	}
 }
 
-// TODO avoid repeating the tags code twice
 impl RichActivity {
 	pub fn ap(self) -> serde_json::Value {
 		use apb::ObjectMut;
@@ -62,7 +63,47 @@ impl RichActivity {
 				activity.ap().set_object(obj)
 			},
 
-			(None, Some(object)) => {
+			(maybe_activity, Some(object)) => {
+				let mut tags = Vec::new();
+				if let Some(mentions) = self.mentions {
+					for mention in mentions {
+						tags.push(mention.ap());
+					}
+				}
+				if let Some(hashtags) = self.hashtags {
+					for hash in hashtags {
+						tags.push(hash.ap());
+					}
+				}
+
+				let activity = match maybe_activity {
+					Some(activity) => activity.ap(),
+					None => apb::new()
+						.set_activity_type(Some(apb::ActivityType::View))
+						.set_published(Some(self.discovered))
+				};
+
+				activity
+					.set_object(apb::Node::object(
+						object.ap()
+							.set_liked_by_me(if self.liked.is_some() { Some(true) } else { None })
+							.set_tag(apb::Node::maybe_array(tags))
+							.set_attachment(match self.attachments {
+								None => apb::Node::Empty,
+								Some(vec) => apb::Node::array(
+									vec.into_iter().map(|x| x.ap()).collect()
+								),
+							})
+					))
+			},
+		}
+	}
+
+	// TODO ughhh cant make it a trait because there's this different one!!!
+	pub fn object_ap(self) -> serde_json::Value {
+		use apb::ObjectMut;
+		match self.object {
+			Some(object) => {
 				let mut tags = Vec::new();
 				if let Some(mentions) = self.mentions {
 					for mention in mentions {
@@ -84,34 +125,7 @@ impl RichActivity {
 						),
 					})
 			},
-
-			(Some(activity), Some(object)) => {
-				let mut tags = Vec::new();
-				if let Some(mentions) = self.mentions {
-					for mention in mentions {
-						tags.push(mention.ap());
-					}
-				}
-				if let Some(hashtags) = self.hashtags {
-					for hash in hashtags {
-						tags.push(hash.ap());
-					}
-				}
-				activity.ap()
-					.set_object(
-				apb::Node::object(
-							object.ap()
-								.set_liked_by_me(if self.liked.is_some() { Some(true) } else { None })
-								.set_tag(apb::Node::maybe_array(tags))
-								.set_attachment(match self.attachments {
-									None => apb::Node::Empty,
-									Some(vec) => apb::Node::array(
-										vec.into_iter().map(|x| x.ap()).collect()
-									),
-								})
-					)
-				)
-			},
+			None => serde_json::Value::Null,
 		}
 	}
 }

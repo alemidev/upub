@@ -41,7 +41,6 @@ pub async fn view(
 		.with_batched::<upub::model::hashtag::Entity>(ctx.db())
 		.await?;
 
-
 	let mut replies = apb::Node::Empty;
 	
 	if ctx.cfg().security.show_reply_ids {
@@ -65,7 +64,7 @@ pub async fn view(
 	}
 	
 	Ok(JsonLD(
-		item.ap()
+		item.object_ap()
 			.set_replies(replies)
 			.ld_context()
 	))
