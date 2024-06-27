@@ -1,11 +1,11 @@
 use apb::{BaseMut, CollectionMut, CollectionPageMut, LD};
 use sea_orm::{Condition, ConnectionTrait, QueryFilter, QuerySelect, RelationTrait};
 use axum::response::{IntoResponse, Response};
-use upub::selector::{BatchFillable, RichActivity, RichObject};
+use upub::selector::{BatchFillable, RichActivity};
 
 use crate::activitypub::Pagination;
 
-pub async fn paginate_activities(
+pub async fn paginate_feed(
 	id: String,
 	filter: Condition,
 	db: &impl ConnectionTrait,
@@ -16,7 +16,7 @@ pub async fn paginate_activities(
 	let limit = page.batch.unwrap_or(20).min(50);
 	let offset = page.offset.unwrap_or(0);
 
-	let mut select = upub::Query::activities(my_id);
+	let mut select = upub::Query::feed(my_id);
 
 	if with_users {
 		select = select
@@ -29,52 +29,6 @@ pub async fn paginate_activities(
 		.limit(limit)
 		.offset(offset)
 		.into_model::<RichActivity>()
-		.all(db)
-		.await?
-		.with_batched::<upub::model::attachment::Entity>(db)
-		.await?
-		.with_batched::<upub::model::mention::Entity>(db)
-		.await?
-		.with_batched::<upub::model::hashtag::Entity>(db)
-		.await?;
-
-	let items : Vec<serde_json::Value> = items
-		.into_iter()
-		.map(|item| item.ap())
-		.collect();
-
-	collection_page(&id, offset, limit, items)
-}
-
-// TODO can we merge these two??? there are basically only three differences
-
-pub async fn paginate_objects(
-	id: String,
-	filter: Condition,
-	db: &impl ConnectionTrait,
-	page: Pagination,
-	my_id: Option<i64>,
-	with_users: bool, // TODO ewww too many arguments for this weird function...
-) -> crate::ApiResult<JsonLD<serde_json::Value>> {
-	let limit = page.batch.unwrap_or(20).min(50);
-	let offset = page.offset.unwrap_or(0);
-
-	let mut select = upub::Query::objects(my_id); // <--- difference one
-
-	if with_users {
-		select = select
-			.join(
-				sea_orm::JoinType::InnerJoin,
-				upub::model::object::Relation::Actors.def() // <--- difference two
-			);
-	}
-
-	let items = select
-		.filter(filter)
-		// TODO also limit to only local activities
-		.limit(limit)
-		.offset(offset)
-		.into_model::<RichObject>() // <--- difference three
 		.all(db)
 		.await?
 		.with_batched::<upub::model::attachment::Entity>(db)

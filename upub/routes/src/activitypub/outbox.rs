@@ -13,7 +13,7 @@ pub async fn page(
 	Query(page): Query<Pagination>,
 	AuthIdentity(auth): AuthIdentity,
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
-	crate::builders::paginate_activities(
+	crate::builders::paginate_feed(
 		upub::url!(ctx, "/outbox/page"),
 		Condition::all()
 			.add(auth.filter_activities())

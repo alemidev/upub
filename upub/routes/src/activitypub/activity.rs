@@ -23,7 +23,7 @@ pub async fn view(
 		}
 	}
 
-	let row = upub::Query::activities(auth.my_id())
+	let row = upub::Query::feed(auth.my_id())
 		.filter(model::activity::Column::Id.eq(&aid))
 		.filter(auth.filter_activities())
 		.into_model::<RichActivity>()

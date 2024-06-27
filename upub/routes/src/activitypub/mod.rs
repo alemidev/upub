@@ -1,7 +1,6 @@
 pub mod actor;
 pub mod inbox;
 pub mod outbox;
-pub mod feed;
 pub mod object;
 pub mod activity;
 pub mod application;
@@ -32,8 +31,6 @@ impl ActivityPubRouter for Router<upub::Context> {
 			.route("/outbox", post(ap::outbox::post))
 			.route("/outbox", get(ap::outbox::get))
 			.route("/outbox/page", get(ap::outbox::page))
-			.route("/feed", get(ap::feed::get))
-			.route("/feed/page", get(ap::feed::page))
 			// AUTH routes
 			.route("/auth", put(ap::auth::register))
 			.route("/auth", post(ap::auth::login))
@@ -52,10 +49,6 @@ impl ActivityPubRouter for Router<upub::Context> {
 			.route("/actors/:id/outbox", post(ap::actor::outbox::post))
 			.route("/actors/:id/outbox", get(ap::actor::outbox::get))
 			.route("/actors/:id/outbox/page", get(ap::actor::outbox::page))
-			.route("/actors/:id/streams", get(ap::actor::streams::get))
-			.route("/actors/:id/streams/page", get(ap::actor::streams::page))
-			.route("/actors/:id/feed", get(ap::actor::feed::get))
-			.route("/actors/:id/feed/page", get(ap::actor::feed::page))
 			.route("/actors/:id/followers", get(ap::actor::following::get::<false>))
 			.route("/actors/:id/followers/page", get(ap::actor::following::page::<false>))
 			.route("/actors/:id/following", get(ap::actor::following::get::<true>))

@@ -31,7 +31,7 @@ impl RichHashtag {
 }
 
 pub struct RichActivity {
-	pub activity: crate::model::activity::Model,
+	pub activity: Option<crate::model::activity::Model>,
 	pub object: Option<crate::model::object::Model>,
 	pub liked: Option<i64>,
 	pub attachments: Option<Vec<crate::model::attachment::Model>>,
@@ -42,21 +42,27 @@ pub struct RichActivity {
 impl FromQueryResult for RichActivity {
 	fn from_query_result(res: &QueryResult, _pre: &str) -> Result<Self, DbErr> {
 		Ok(RichActivity {
-			activity: crate::model::activity::Model::from_query_result(res, crate::model::activity::Entity.table_name())?,
-			object: crate::model::object::Model::from_query_result(res, crate::model::object::Entity.table_name()).ok(),
-			liked: res.try_get(crate::model::like::Entity.table_name(), &crate::model::like::Column::Actor.to_string()).ok(),
 			attachments: None, hashtags: None, mentions: None,
+			liked: res.try_get(crate::model::like::Entity.table_name(), &crate::model::like::Column::Actor.to_string()).ok(),
+			object: crate::model::object::Model::from_query_result(res, crate::model::object::Entity.table_name()).ok(),
+			activity: crate::model::activity::Model::from_query_result(res, crate::model::activity::Entity.table_name()).ok(),
 		})
 	}
 }
 
+// TODO avoid repeating the tags code twice
 impl RichActivity {
 	pub fn ap(self) -> serde_json::Value {
 		use apb::ObjectMut;
-		let object = match self.object {
-			None => apb::Node::maybe_link(self.activity.object.clone()),
-			Some(o) => {
-				// TODO can we avoid repeating this tags code?
+		match (self.activity, self.object) {
+			(None, None) => serde_json::Value::Null,
+
+			(Some(activity), None) => {
+				let obj = apb::Node::maybe_link(activity.object.clone());
+				activity.ap().set_object(obj)
+			},
+
+			(None, Some(object)) => {
 				let mut tags = Vec::new();
 				if let Some(mentions) = self.mentions {
 					for mention in mentions {
@@ -68,64 +74,44 @@ impl RichActivity {
 						tags.push(hash.ap());
 					}
 				}
+				object.ap()
+					.set_liked_by_me(if self.liked.is_some() { Some(true) } else { None })
+					.set_tag(apb::Node::maybe_array(tags))
+					.set_attachment(match self.attachments {
+						None => apb::Node::Empty,
+						Some(vec) => apb::Node::array(
+							vec.into_iter().map(|x| x.ap()).collect()
+						),
+					})
+			},
+
+			(Some(activity), Some(object)) => {
+				let mut tags = Vec::new();
+				if let Some(mentions) = self.mentions {
+					for mention in mentions {
+						tags.push(mention.ap());
+					}
+				}
+				if let Some(hashtags) = self.hashtags {
+					for hash in hashtags {
+						tags.push(hash.ap());
+					}
+				}
+				activity.ap()
+					.set_object(
 				apb::Node::object(
-					o.ap()
-						.set_liked_by_me(if self.liked.is_some() { Some(true) } else { None })
-						.set_tag(apb::Node::array(tags))
-						.set_attachment(match self.attachments {
-							None => apb::Node::Empty,
-							Some(vec) => apb::Node::array(
-								vec.into_iter().map(|x| x.ap()).collect()
-							),
-						})
+							object.ap()
+								.set_liked_by_me(if self.liked.is_some() { Some(true) } else { None })
+								.set_tag(apb::Node::maybe_array(tags))
+								.set_attachment(match self.attachments {
+									None => apb::Node::Empty,
+									Some(vec) => apb::Node::array(
+										vec.into_iter().map(|x| x.ap()).collect()
+									),
+								})
+					)
 				)
 			},
-		};
-		self.activity.ap().set_object(object)
-	}
-}
-
-pub struct RichObject {
-	pub object: crate::model::object::Model,
-	pub liked: Option<i64>,
-	pub attachments: Option<Vec<crate::model::attachment::Model>>,
-	pub hashtags: Option<Vec<RichHashtag>>,
-	pub mentions: Option<Vec<RichMention>>,
-}
-
-impl FromQueryResult for RichObject {
-	fn from_query_result(res: &QueryResult, _pre: &str) -> Result<Self, DbErr> {
-		Ok(RichObject {
-			object: crate::model::object::Model::from_query_result(res, crate::model::object::Entity.table_name())?,
-			liked: res.try_get(crate::model::like::Entity.table_name(), &crate::model::like::Column::Actor.to_string()).ok(),
-			attachments: None, hashtags: None, mentions: None,
-		})
-	}
-}
-
-impl RichObject {
-	pub fn ap(self) -> serde_json::Value {
-		use apb::ObjectMut;
-		// TODO can we avoid repeating this tags code?
-		let mut tags = Vec::new();
-		if let Some(mentions) = self.mentions {
-			for mention in mentions {
-				tags.push(mention.ap());
-			}
 		}
-		if let Some(hashtags) = self.hashtags {
-			for hash in hashtags {
-				tags.push(hash.ap());
-			}
-		}
-		self.object.ap()
-			.set_liked_by_me(if self.liked.is_some() { Some(true) } else { None })
-			.set_tag(apb::Node::array(tags))
-			.set_attachment(match self.attachments {
-				None => apb::Node::Empty,
-				Some(vec) => apb::Node::array(
-					vec.into_iter().map(|x| x.ap()).collect()
-				)
-			})
 	}
 }

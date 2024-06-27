@@ -15,7 +15,7 @@ pub async fn get(
 	// 	ctx.fetch_thread(&oid).await?;
 	// }
 
-	let replies_ids = upub::Query::objects(auth.my_id())
+	let replies_ids = upub::Query::feed(auth.my_id())
 		.filter(model::object::Column::InReplyTo.eq(ctx.oid(&id)))
 		.filter(auth.filter_objects())
 		.select_only()
@@ -44,7 +44,7 @@ pub async fn page(
 	let page_id = upub::url!(ctx, "/objects/{id}/replies/page");
 	let oid = ctx.oid(&id);
 
-	crate::builders::paginate_objects(
+	crate::builders::paginate_feed(
 		page_id,
 		Condition::all()
 			.add(auth.filter_objects())
