@@ -1,6 +1,7 @@
 pub mod inbox;
 pub mod outbox;
 pub mod following;
+pub mod notifications;
 
 use axum::extract::{Path, Query, State};
 
@@ -68,7 +69,7 @@ pub async fn view(
 				));
 
 			if auth.is(&uid) {
-				user = user.set_feed(Node::link(upub::url!(ctx, "/actors/{id}/feed")));
+				user = user.set_notifications(Node::link(upub::url!(ctx, "/actors/{id}/notifications")));
 			}
 
 			if !auth.is(&uid) && !cfg.show_followers_count {

@@ -85,6 +85,26 @@ impl Query {
 		select
 	}
 
+	pub fn notifications(user: i64, show_seen: bool) -> Select<model::notification::Entity> {
+		let mut select =
+			model::notification::Entity::find()
+				.join(sea_orm::JoinType::InnerJoin, model::notification::Relation::Activities.def())
+				.order_by_desc(model::notification::Column::Published)
+				.filter(model::notification::Column::Actor.eq(user));
+
+		if !show_seen {
+			select = select.filter(model::notification::Column::Seen.eq(false));
+		}
+
+		select = select.select_only();
+
+		for column in model::activity::Column::iter() {
+			select = select.select_column(column);
+		}
+
+		select
+	}
+
 	pub fn notify(activity: i64, actor: i64) -> Insert<model::notification::ActiveModel> {
 		model::notification::Entity::insert(
 			model::notification::ActiveModel {

@@ -169,6 +169,14 @@ impl Node<serde_json::Value> {
 		)
 	}
 
+	pub fn maybe_array(values: Vec<serde_json::Value>) -> Self {
+		if values.is_empty() {
+			Node::Empty
+		} else {
+			Node::array(values)
+		}
+	}
+
 	#[cfg(feature = "fetch")]
 	pub async fn fetch(&mut self) -> reqwest::Result<&mut Self> {
 		if let Node::Link(link) = self {
