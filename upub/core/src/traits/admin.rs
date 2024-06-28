@@ -75,6 +75,7 @@ impl Administrable for crate::Context {
 			actor: Set(ap_id),
 			login: Set(username),
 			password: Set(sha256::digest(password)),
+			active: Set(!self.cfg().security.require_user_approval),
 		};
 
 		crate::model::credential::Entity::insert(credentials_model)

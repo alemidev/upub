@@ -35,6 +35,7 @@ pub async fn login(
 		.filter(Condition::all()
 			.add(upub::model::credential::Column::Login.eq(login.email))
 			.add(upub::model::credential::Column::Password.eq(sha256::digest(login.password)))
+			.add(upub::model::credential::Column::Active.eq(true))
 		)
 		.one(ctx.db())
 		.await?

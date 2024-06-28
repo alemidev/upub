@@ -21,6 +21,7 @@ pub enum Credentials {
 	Actor,
 	Login,
 	Password,
+	Active, // ADDED
 }
 
 #[derive(DeriveIden)]

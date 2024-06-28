@@ -65,6 +65,9 @@ pub struct SecurityConfig {
 	#[serde(default)]
 	pub allow_registration: bool,
 
+	#[serde(default)] // TODO i don't like the name of this
+	pub require_user_approval: bool,
+
 	#[serde(default)]
 	pub allow_public_debugger: bool,
 

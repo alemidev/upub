@@ -9,6 +9,7 @@ pub struct Model {
 	pub actor: String,
 	pub login: String,
 	pub password: String,
+	pub active: bool,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

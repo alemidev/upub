@@ -13,6 +13,7 @@ mod m20240609_000001_add_instance_field_to_relations;
 mod m20240623_000001_add_dislikes_table;
 mod m20240626_000001_add_notifications_table;
 mod m20240628_000001_add_followers_following_indexes;
+mod m20240628_000002_add_credentials_activated;
 
 pub struct Migrator;
 
@@ -33,6 +34,7 @@ impl MigratorTrait for Migrator {
 			Box::new(m20240623_000001_add_dislikes_table::Migration),
 			Box::new(m20240626_000001_add_notifications_table::Migration),
 			Box::new(m20240628_000001_add_followers_following_indexes::Migration),
+			Box::new(m20240628_000002_add_credentials_activated::Migration),
 		]
 	}
 }

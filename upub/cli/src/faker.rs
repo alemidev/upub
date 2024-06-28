@@ -51,6 +51,7 @@ pub async fn faker(ctx: upub::Context, count: i64) -> Result<(), sea_orm::DbErr>
 		actor: Set(test_user.id.clone()),
 		login: Set("mail@example.net".to_string()),
 		password: Set(sha256::digest("very-strong-password")),
+		active: Set(true),
 	}).exec(db).await?;
 
 	let context = uuid::Uuid::new_v4().to_string();
