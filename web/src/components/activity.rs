@@ -19,20 +19,22 @@ pub fn ActivityLine(activity: crate::Object) -> impl IntoView {
 		_ => Uri::web(U::Object, &object_id),
 	};
 	view! {
-		<div>
-			<span class="ml-1-l">
-				<ActorStrip object=actor />
-			</span>
-			<span style="float:right">
-				<code class="color moreinfo" title={activity.published().ok().map(|x| x.to_rfc2822())} >
-					<a class="upub-title clean" title={object_id} href={href} >
-						{kind.as_ref().to_string()}
-					</a>
-					{activity_url}
-					<PrivacyMarker addressed=activity.addressed() />
-				</code>
-			</span>
-		</div>
+		<table class="align w-100">
+			<tr>
+				<td class="ml-1-r">
+					<ActorStrip object=actor />
+				</td>
+				<td class="rev">
+					<code class="color moreinfo" title={activity.published().ok().map(|x| x.to_rfc2822())} >
+						<a class="upub-title clean" title={object_id} href={href} >
+							{kind.as_ref().to_string()}
+						</a>
+						{activity_url}
+						<PrivacyMarker addressed=activity.addressed() />
+					</code>
+				</td>
+			</tr>
+		</table>
 	}
 }
 

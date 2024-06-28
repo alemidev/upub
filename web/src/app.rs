@@ -7,12 +7,9 @@ use leptos_use::{signal_debounced, storage::use_local_storage, use_cookie, use_e
 
 #[derive(Clone, Copy)]
 pub struct Feeds {
-	// object feeds
 	pub home: Timeline,
 	pub global: Timeline,
-	// notification feeds
-	pub private: Timeline,
-	pub public: Timeline,
+	pub notifications: Timeline,
 	// exploration feeds
 	pub user: Timeline,
 	pub server: Timeline,
@@ -22,10 +19,9 @@ pub struct Feeds {
 impl Feeds {
 	pub fn new(username: &str) -> Self {
 		Feeds {
-			home: Timeline::new(format!("{URL_BASE}/actors/{username}/feed/page")),
-			global: Timeline::new(format!("{URL_BASE}/feed/page")),
-			private: Timeline::new(format!("{URL_BASE}/actors/{username}/inbox/page")),
-			public: Timeline::new(format!("{URL_BASE}/inbox/page")),
+			home: Timeline::new(format!("{URL_BASE}/actors/{username}/inbox/page")),
+			notifications: Timeline::new(format!("{URL_BASE}/actors/{username}/notifications/page")),
+			global: Timeline::new(format!("{URL_BASE}/inbox/page")),
 			user: Timeline::new(format!("{URL_BASE}/actors/{username}/outbox/page")),
 			server: Timeline::new(format!("{URL_BASE}/outbox/page")),
 			context: Timeline::new(format!("{URL_BASE}/outbox/page")), // TODO ehhh
@@ -34,9 +30,8 @@ impl Feeds {
 
 	pub fn reset(&self) {
 		self.home.reset(None);
+		self.notifications.reset(None);
 		self.global.reset(None);
-		self.private.reset(None);
-		self.public.reset(None);
 		self.user.reset(None);
 		self.server.reset(None);
 		self.context.reset(None);
@@ -122,9 +117,9 @@ pub fn App() -> impl IntoView {
 											}
 										/>
 										<Route path="home" view=move || view! { <Feed tl=feeds.home /> } />
-										<Route path="server" view=move || view! { <Feed tl=feeds.global /> } />
+										<Route path="global" view=move || view! { <Feed tl=feeds.global /> } />
 										<Route path="local" view=move || view! { <Feed tl=feeds.server /> } />
-										<Route path="inbox" view=move || view! { <Feed tl=feeds.private /> } />
+										<Route path="notifications" view=move || view! { <Feed tl=feeds.notifications /> } />
 
 										<Route path="about" view=AboutPage />
 										<Route path="config" view=move || view! { <ConfigPage setter=set_config /> } />
@@ -134,7 +129,6 @@ pub fn App() -> impl IntoView {
 											<Route path="" view=ActorPosts />
 											<Route path="following" view=move || view! { <FollowList outgoing=true /> } />
 											<Route path="followers" view=move || view! { <FollowList outgoing=false /> } />
-											<Route path="activity" view=ActorActivity />
 										</Route>
 
 										<Route path="objects/:id" view=ObjectView />
@@ -165,12 +159,12 @@ fn Scrollable() -> impl IntoView {
 		let path = location.pathname.get();
 		if path.contains("/web/home") {
 			Some(feeds.home)
-		} else if path.contains("/web/server") {
+		} else if path.contains("/web/global") {
 			Some(feeds.global)
-		} else if path.starts_with("/web/local") {
+		} else if path.contains("/web/local") {
 			Some(feeds.server)
-		} else if path.starts_with("/web/inbox") {
-			Some(feeds.private)
+		} else if path.starts_with("/web/notifications") {
+			Some(feeds.notifications)
 		} else if path.starts_with("/web/actors") {
 			Some(feeds.user)
 		} else if path.starts_with("/web/objects") {

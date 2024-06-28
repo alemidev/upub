@@ -18,7 +18,7 @@ pub fn LoginBox(
 					token_tx.set(None);
 					feeds.reset();
 					feeds.global.spawn_more(auth);
-					feeds.public.spawn_more(auth);
+					feeds.server.spawn_more(auth);
 				} />
 			</div>
 			<div class:hidden=move || auth.present() >
@@ -44,14 +44,14 @@ pub fn LoginBox(
 						userid_tx.set(Some(auth_response.user));
 						token_tx.set(Some(auth_response.token));
 						// reset home feed and point it to our user's inbox
-						feeds.home.reset(Some(format!("{URL_BASE}/actors/{username}/feed/page")));
+						feeds.home.reset(Some(format!("{URL_BASE}/actors/{username}/inbox/page")));
 						feeds.home.spawn_more(auth);
-						feeds.private.reset(Some(format!("{URL_BASE}/actors/{username}/inbox/page")));
-						feeds.private.spawn_more(auth);
+						feeds.notifications.reset(Some(format!("{URL_BASE}/actors/{username}/notifications/page")));
+						feeds.notifications.spawn_more(auth);
 						// reset server feed: there may be more content now that we're authed
-						feeds.global.reset(Some(format!("{URL_BASE}/feed/page")));
+						feeds.global.reset(Some(format!("{URL_BASE}/inbox/page")));
 						feeds.global.spawn_more(auth);
-						feeds.server.reset(Some(format!("{URL_BASE}/inbox/page")));
+						feeds.server.reset(Some(format!("{URL_BASE}/outbox/page")));
 						feeds.server.spawn_more(auth);
 					});
 				} >

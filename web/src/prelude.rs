@@ -9,7 +9,6 @@ pub use crate::{
 		header::ActorHeader,
 		follow::FollowList,
 		posts::ActorPosts,
-		activity::ActorActivity,
 	},
 	timeline::{
 		Timeline,
