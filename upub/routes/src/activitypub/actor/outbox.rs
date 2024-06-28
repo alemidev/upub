@@ -23,7 +23,10 @@ pub async fn page(
 		upub::url!(ctx, "/actors/{id}/outbox/page"),
 		Condition::all()
 			.add(auth.filter_activities())
-			.add(model::activity::Column::Actor.eq(&uid)),
+			.add(Condition::any()
+				.add(model::activity::Column::Actor.eq(&uid))
+				.add(model::object::Column::AttributedTo.eq(&uid))
+			),
 		ctx.db(),
 		page,
 		auth.my_id(),
