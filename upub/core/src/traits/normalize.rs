@@ -1,8 +1,6 @@
 use apb::{field::OptionalString, Collection, Document, Endpoints, Node, Object, PublicKey};
 use sea_orm::{sea_query::Expr, ActiveModelTrait, ActiveValue::{Unchanged, NotSet, Set}, ColumnTrait, ConnectionTrait, DbErr, EntityTrait, IntoActiveModel, QueryFilter};
 
-use super::Addresser;
-
 #[derive(Debug, thiserror::Error)]
 pub enum NormalizerError {
 	#[error("normalized document misses required field: {0:?}")]
@@ -52,8 +50,6 @@ impl Normalizer for crate::Context {
 		object_model.internal = crate::model::object::Entity::ap_to_internal(&object_model.id, tx)
 			.await?
 			.ok_or_else(|| DbErr::RecordNotFound(object_model.id.clone()))?;
-
-		self.address_object(&object_model, tx).await?;
 
 		// update replies counter
 		if let Some(ref in_reply_to) = object_model.in_reply_to {
@@ -192,8 +188,6 @@ impl Normalizer for crate::Context {
 			.await?
 			.ok_or_else(|| DbErr::RecordNotFound(activity_model.id.clone()))?;
 		activity_model.internal = internal;
-
-		self.address_activity(&activity_model, tx).await?;
 
 		Ok(activity_model)
 	}

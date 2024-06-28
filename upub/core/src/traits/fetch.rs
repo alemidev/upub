@@ -6,7 +6,7 @@ use sea_orm::{ConnectionTrait, DbErr, EntityTrait, IntoActiveModel, NotSet};
 
 use crate::traits::normalize::AP;
 
-use super::Normalizer;
+use super::{Addresser, Normalizer};
 use httpsign::HttpSignature;
 
 #[derive(Debug, Clone)]
@@ -357,6 +357,7 @@ impl Fetcher for crate::Context {
 		}
 
 		let activity_model = self.insert_activity(activity, tx).await?;
+		self.address((Some(&activity_model), None), tx).await?;
 
 		Ok(activity_model)
 	}
@@ -412,6 +413,7 @@ async fn resolve_object_r(ctx: &crate::Context, object: serde_json::Value, depth
 	}
 
 	let object_model = ctx.insert_object(object, tx).await?;
+	ctx.address((None, Some(&object_model)), tx).await?;
 
 	Ok(object_model)
 }

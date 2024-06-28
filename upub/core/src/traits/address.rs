@@ -1,3 +1,5 @@
+use std::collections::BTreeSet;
+
 use apb::target::Addressed;
 use sea_orm::{ActiveValue::{NotSet, Set}, ConnectionTrait, DbErr, EntityTrait, QuerySelect, SelectColumns};
 
@@ -6,8 +8,7 @@ use crate::traits::fetch::Fetcher;
 #[async_trait::async_trait]
 pub trait Addresser {
 	async fn deliver(&self, to: Vec<String>, aid: &str, from: &str, tx: &impl ConnectionTrait) -> Result<(), DbErr>;
-	async fn address_object(&self, object: &crate::model::object::Model, tx: &impl ConnectionTrait) -> Result<(), DbErr>;
-	async fn address_activity(&self, activity: &crate::model::activity::Model, tx: &impl ConnectionTrait) -> Result<(), DbErr>;
+	async fn address(&self, (activity, object): (Option<&crate::model::activity::Model>, Option<&crate::model::object::Model>), tx: &impl ConnectionTrait) -> Result<(), DbErr>;
 }
 
 #[async_trait::async_trait]
@@ -54,14 +55,29 @@ impl Addresser for crate::Context {
 		Ok(())
 	}
 
-	async fn address_object(&self, object: &crate::model::object::Model, tx: &impl ConnectionTrait) -> Result<(), DbErr> {
-		let to = expand_addressing(object.addressed(), tx).await?;
-		address_to(self, to, None, Some(object.internal), self.is_local(&object.id), tx).await
-	}
-
-	async fn address_activity(&self, activity: &crate::model::activity::Model, tx: &impl ConnectionTrait) -> Result<(), DbErr> {
-		let to = expand_addressing(activity.addressed(), tx).await?;
-		address_to(self, to, Some(activity.internal), None, self.is_local(&activity.id), tx).await
+	async fn address(&self, (activity, object): (Option<&crate::model::activity::Model>, Option<&crate::model::object::Model>), tx: &impl ConnectionTrait) -> Result<(), DbErr> {
+		match (activity, object) {
+			(None, None) => Ok(()),
+			(Some(activity), None) => {
+				let to = expand_addressing(activity.addressed(), tx).await?;
+				address_to(self, to, Some(activity.internal), None, self.is_local(&activity.id), tx).await
+			},
+			(None, Some(object)) => {
+				let to = expand_addressing(object.addressed(), tx).await?;
+				address_to(self, to, None, Some(object.internal), self.is_local(&object.id), tx).await
+			},
+			(Some(activity), Some(object)) => {
+				let to_activity = BTreeSet::from_iter(expand_addressing(activity.addressed(), tx).await?);
+				let to_object = BTreeSet::from_iter(expand_addressing(object.addressed(), tx).await?);
+				let to_common = to_activity.intersection(&to_object).cloned().collect();
+				address_to(self, to_common, Some(activity.internal), Some(object.internal), self.is_local(&activity.id), tx).await?;
+				let to_only_activity = (&to_activity - &to_object).into_iter().collect();
+				address_to(self, to_only_activity, Some(activity.internal), None, self.is_local(&activity.id), tx).await?;
+				let to_only_object = (&to_object - &to_activity).into_iter().collect();
+				address_to(self, to_only_object, None, Some(object.internal), self.is_local(&activity.id), tx).await?;
+				Ok(())
+			},
+		}
 	}
 }
 

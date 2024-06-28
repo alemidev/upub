@@ -1,5 +1,5 @@
 use sea_orm::{EntityTrait, TransactionTrait};
-use upub::traits::{fetch::{Fetchable, PullError}, Normalizer};
+use upub::traits::{fetch::{Fetchable, PullError}, Addresser, Normalizer};
 
 pub async fn fetch(ctx: upub::Context, uri: String, save: bool) -> Result<(), PullError> {
 	use apb::Base;
@@ -16,15 +16,17 @@ pub async fn fetch(ctx: upub::Context, uri: String, save: bool) -> Result<(), Pu
 		let tx = ctx.db().begin().await?;
 		match obj.base_type() {
 			Ok(apb::BaseType::Object(apb::ObjectType::Actor(_))) => {
-				upub::model::actor::Entity::insert(
-					upub::AP::actor_q(&obj, None).unwrap()
-				).exec(&tx).await.unwrap();
+				upub::model::actor::Entity::insert(upub::AP::actor_q(&obj, None)?)
+					.exec(&tx)
+					.await?;
 			},
 			Ok(apb::BaseType::Object(apb::ObjectType::Activity(_))) => {
-				ctx.insert_activity(obj, &tx).await.unwrap();
+				let act = ctx.insert_activity(obj, &tx).await?;
+				ctx.address((Some(&act), None), &tx).await?;
 			},
 			Ok(apb::BaseType::Object(apb::ObjectType::Note)) => {
-				ctx.insert_object(obj, &tx).await.unwrap();
+				let obj = ctx.insert_object(obj, &tx).await?;
+				ctx.address((None, Some(&obj)), &tx).await?;
 			},
 			Ok(apb::BaseType::Object(t)) => tracing::warn!("not implemented: {:?}", t),
 			Ok(apb::BaseType::Link(_)) => tracing::error!("fetched another link?"),

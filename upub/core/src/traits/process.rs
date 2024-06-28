@@ -1,6 +1,6 @@
 use apb::{target::Addressed, Activity, Base, Object};
 use sea_orm::{sea_query::Expr, ActiveModelTrait, ActiveValue::{NotSet, Set}, ColumnTrait, Condition, DatabaseTransaction, EntityTrait, QueryFilter, QuerySelect, SelectColumns};
-use crate::{ext::{AnyQuery, LoggableError}, model, traits::{fetch::Pull, Fetcher, Normalizer}};
+use crate::{ext::{AnyQuery, LoggableError}, model, traits::{fetch::Pull, Addresser, Fetcher, Normalizer}};
 
 #[derive(Debug, thiserror::Error)]
 pub enum ProcessorError {
@@ -79,8 +79,8 @@ pub async fn create(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 		.collect::<Vec<String>>();
 
 	let object_model = ctx.insert_object(object_node, tx).await?;
-
 	let activity_model = ctx.insert_activity(activity, tx).await?;
+	ctx.address((Some(&activity_model), Some(&object_model)), tx).await?;
 
 	for uid in notified {
 		if !ctx.is_local(&uid) { continue }
@@ -122,6 +122,7 @@ pub async fn like(ctx: &crate::Context, activity: impl apb::Activity, tx: &Datab
 	// likes without addressing are "silent likes", process them but dont store activity or notify
 	if !activity.addressed().is_empty() {
 		let activity_model = ctx.insert_activity(activity, tx).await?;
+		ctx.address((Some(&activity_model), None), tx).await?;
 
 		// TODO check that object author is in this like addressing!!! otherwise skip notification
 		if let Some(ref attributed_to) = obj.attributed_to {
@@ -162,6 +163,7 @@ pub async fn dislike(ctx: &crate::Context, activity: impl apb::Activity, tx: &Da
 	// dislikes without addressing are "silent dislikes", process them but dont store activity
 	if !activity.addressed().is_empty() {
 		let activity_model = ctx.insert_activity(activity, tx).await?;
+		ctx.address((Some(&activity_model), None), tx).await?;
 
 		// TODO check that object author is in this like addressing!!! otherwise skip notification
 		if let Some(ref attributed_to) = obj.attributed_to {
@@ -186,6 +188,7 @@ pub async fn follow(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 		.ok_or(ProcessorError::Incomplete)?;
 	let target_actor = ctx.fetch_user(activity.object().id()?, tx).await?;
 	let activity_model = ctx.insert_activity(activity, tx).await?;
+	ctx.address((Some(&activity_model), None), tx).await?;
 
 	if ctx.is_local(&target_actor.id) {
 		crate::Query::notify(activity_model.internal, target_actor.internal)
@@ -249,6 +252,7 @@ pub async fn accept(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 	}
 
 	let activity_model = ctx.insert_activity(activity, tx).await?;
+	ctx.address((Some(&activity_model), None), tx).await?;
 
 	if ctx.is_local(&follow_activity.actor) {
 		if let Some(actor_internal) = crate::model::actor::Entity::ap_to_internal(&follow_activity.actor, tx).await? {
@@ -307,6 +311,7 @@ pub async fn reject(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 	}
 
 	let activity_model = ctx.insert_activity(activity, tx).await?;
+	ctx.address((Some(&activity_model), None), tx).await?;
 
 	// TODO most software doesn't show this, but i think instead we should?? if someone rejects it's
 	// better to know it clearly rather than not knowing if it got lost and maybe retry (being more
@@ -337,7 +342,8 @@ pub async fn delete(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 	// except when they have empty addressing
 	// so that also remote "secret" deletes dont get stored
 	if !activity.addressed().is_empty() {
-		ctx.insert_activity(activity, tx).await?;
+		let activity_model = ctx.insert_activity(activity, tx).await?;
+		ctx.address((Some(&activity_model), None), tx).await?;
 	}
 	// TODO we should delete notifications from CREATEs related to objects we deleted
 	tracing::debug!("deleted '{oid}'");
@@ -380,7 +386,8 @@ pub async fn update(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 	// updates can be silently discarded except if local. we dont really care about knowing when
 	// remote documents change, there's the "updated" field, just want the most recent version
 	if ctx.is_local(&actor_id) {
-		ctx.insert_activity(activity, tx).await?;
+		let activity_model = ctx.insert_activity(activity, tx).await?;
+		ctx.address((Some(&activity_model), None), tx).await?;
 	}
 
 	tracing::debug!("{} updated {}", actor_id, oid);
@@ -466,7 +473,8 @@ pub async fn undo(ctx: &crate::Context, activity: impl apb::Activity, tx: &Datab
 	// except when they have empty addressing
 	// so that also remote "secret" undos dont get stored
 	if !activity.addressed().is_empty() {
-		ctx.insert_activity(activity, tx).await?;
+		let activity_model = ctx.insert_activity(activity, tx).await?;
+		ctx.address((Some(&activity_model), None), tx).await?;
 	}
 
 	if let Some(internal) = crate::model::activity::Entity::ap_to_internal(undone_activity.id()?, tx).await? {
@@ -542,6 +550,7 @@ pub async fn announce(ctx: &crate::Context, activity: impl apb::Activity, tx: &D
 	//      idk!!!!
 	if actor.actor_type == apb::ActorType::Person || ctx.is_local(&actor.id) {
 		let activity_model = ctx.insert_activity(activity, tx).await?;
+		ctx.address((Some(&activity_model), None), tx).await?;
 
 		if let Some(ref attributed_to) = object.attributed_to {
 			if ctx.is_local(attributed_to) {
