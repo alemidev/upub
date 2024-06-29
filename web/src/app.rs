@@ -66,7 +66,7 @@ pub fn App() -> impl IntoView {
 	let (menu, set_menu) = create_signal(screen_width < 768);
 	let (advanced, set_advanced) = create_signal(false);
 
-	let title_target = move || if auth.present() { "/web/home" } else { "/web/server" };
+	let title_target = move || if auth.present() { "/web/home" } else { "/web/global" };
 
 	// refresh token immediately and  every hour
 	let refresh = move || spawn_local(async move { Auth::refresh(auth.token, set_token, set_userid).await; });
@@ -76,7 +76,7 @@ pub fn App() -> impl IntoView {
 	view! {
 		<nav class="w-100 mt-1 mb-1 pb-s">
 			<code class="color ml-3" ><a class="upub-title" href=title_target >μpub</a></code>
-			<small class="ml-1 mr-1 hidden-on-tiny" ><a class="clean" href="/web/server" >micro social network, federated</a></small>
+			<small class="ml-1 mr-1 hidden-on-tiny" ><a class="clean" href="/web/global" >micro social network, federated</a></small>
 			/* TODO kinda jank with the float but whatever, will do for now */
 			<input type="submit" class="mr-2 rev" on:click=move |_| set_menu.set(!menu.get()) value="menu" style="float: right" />
 		</nav>
