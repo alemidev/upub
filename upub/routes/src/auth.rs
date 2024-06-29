@@ -116,6 +116,7 @@ where
 			.get("Signature")
 			.map(|v| v.to_str().unwrap_or(""))
 		{
+			tracing::debug!("validating http signature '{sig}'");
 			let mut http_signature = HttpSignature::parse(sig);
 
 			// TODO assert payload's digest is equal to signature's
@@ -132,9 +133,9 @@ where
 				Err(PullError::Database(x)) => return Err(PullError::Database(x).into()),
 				Err(e) => tracing::debug!("could not fetch {user_id} to verify signature: {e}"),
 				Ok(user) => {
-					let valid = http_signature
-						.build_from_parts(parts)
-						.verify(&user.public_key)?;
+					let signature = http_signature.build_from_parts(parts);
+					tracing::debug!("constructed http signature {signature:?}");
+					let valid = signature.verify(&user.public_key)?;
 
 					if !valid {
 						tracing::warn!("refusing mismatching http signature");
