@@ -43,6 +43,7 @@ pub fn Item(
 	item: crate::Object,
 	#[prop(optional)] sep: bool,
 	#[prop(optional)] replies: bool,
+	#[prop(optional)] slim: bool,
 ) -> impl IntoView {
 	let config = use_context::<Signal<crate::Config>>().expect("missing config context");
 	let id = item.id().unwrap_or_default().to_string();
@@ -75,7 +76,7 @@ pub fn Item(
 					_ => None,
 				};
 				Some(view! {
-					<ActivityLine activity=item.clone() />
+					{if !slim { Some(view! { <ActivityLine activity=item.clone() /> }) } else { None }}
 					{object}
 					{sep.clone()}
 				}.into_view())
