@@ -3,6 +3,8 @@ use jrd::{JsonResourceDescriptor, JsonResourceDescriptorLink};
 use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter};
 use upub::{model, Context};
 
+use crate::ApiError;
+
 #[derive(serde::Serialize)]
 pub struct NodeInfoDiscovery {
 	pub links: Vec<NodeInfoDiscoveryRel>,
@@ -99,45 +101,59 @@ pub async fn webfinger(
 	State(ctx): State<Context>,
 	Query(query): Query<WebfingerQuery>
 ) -> crate::ApiResult<JsonRD<JsonResourceDescriptor>> {
-	if let Some((user, domain)) = query
-		.resource
-		.replace("acct:", "")
-		.split_once('@')
-	{
-		let usr = model::actor::Entity::find()
-			.filter(model::actor::Column::PreferredUsername.eq(user))
-			.filter(model::actor::Column::Domain.eq(domain))
-			.one(ctx.db())
-			.await?
-			.ok_or_else(crate::ApiError::not_found)?;
+	let user =
+		if query.resource.starts_with("acct:") {
+			if let Some((user, domain)) = query
+				.resource
+				.replace("acct:", "")
+				.split_once('@')
+			{
+				model::actor::Entity::find()
+					.filter(model::actor::Column::PreferredUsername.eq(user))
+					.filter(model::actor::Column::Domain.eq(domain))
+					.one(ctx.db())
+					.await?
+					.ok_or_else(crate::ApiError::not_found)?
 
-		let expires = if domain == ctx.domain() {
-			// TODO configurable webfinger TTL, also 30 days may be too much???
-			Some(chrono::Utc::now() + chrono::Duration::days(30))
+			} else {
+				return Err(StatusCode::UNPROCESSABLE_ENTITY.into());
+			}
+		} else if query.resource.starts_with("http") {
+			match model::actor::Entity::find_by_ap_id(&query.resource)
+				.one(ctx.db())
+				.await?
+			{
+				Some(usr) => usr,
+				None => return Err(ApiError::not_found()),
+			}
 		} else {
-			// we are no authority on local users, this info should be considered already outdated,
-			// but can still be relevant, for example for our frontend
-			Some(chrono::Utc::now())
+			return Err(StatusCode::UNPROCESSABLE_ENTITY.into());
 		};
-		
-		Ok(JsonRD(JsonResourceDescriptor {
-			subject: format!("acct:{user}@{domain}"),
-			aliases: vec![usr.id.clone()],
-			links: vec![
-				JsonResourceDescriptorLink {
-					rel: "self".to_string(),
-					link_type: Some("application/ld+json".to_string()),
-					href: Some(usr.id),
-					properties: jrd::Map::default(),
-					titles: jrd::Map::default(),
-				},
-			],
-			properties: jrd::Map::default(),
-			expires,
-		}))
+
+	let expires = if user.domain == ctx.domain() {
+		// TODO configurable webfinger TTL, also 30 days may be too much???
+		Some(chrono::Utc::now() + chrono::Duration::days(30))
 	} else {
-		Err(StatusCode::UNPROCESSABLE_ENTITY.into())
-	}
+		// we are no authority on local users, this info should be considered already outdated,
+		// but can still be relevant, for example for our frontend
+		Some(chrono::Utc::now())
+	};
+	
+	Ok(JsonRD(JsonResourceDescriptor {
+		subject: format!("acct:{}@{}", user.preferred_username, user.domain),
+		aliases: vec![user.id.clone()],
+		links: vec![
+			JsonResourceDescriptorLink {
+				rel: "self".to_string(),
+				link_type: Some("application/ld+json".to_string()),
+				href: Some(user.id),
+				properties: jrd::Map::default(),
+				titles: jrd::Map::default(),
+			},
+		],
+		properties: jrd::Map::default(),
+		expires,
+	}))
 }
 
 // i don't even want to bother with XML, im just returning a formatted xml string
