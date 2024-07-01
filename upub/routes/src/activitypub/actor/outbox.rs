@@ -26,7 +26,7 @@ pub async fn page(
 				.add(model::object::Column::AttributedTo.eq(&uid))
 		);
 	if !auth.is(&uid) {
-		filter = filter.add(auth.filter_activities());
+		filter = filter.add(auth.filter());
 	}
 	crate::builders::paginate_feed(
 		upub::url!(ctx, "/actors/{id}/outbox/page"),

@@ -21,7 +21,7 @@ pub async fn page(
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	crate::builders::paginate_feed(
 		upub::url!(ctx, "/inbox/page"),
-		auth.filter_activities(),
+		auth.filter(),
 		ctx.db(),
 		page,
 		auth.my_id(),
