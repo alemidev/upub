@@ -19,14 +19,18 @@ pub async fn page(
 	AuthIdentity(auth): AuthIdentity,
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let uid = ctx.uid(&id);
-	crate::builders::paginate_feed(
-		upub::url!(ctx, "/actors/{id}/outbox/page"),
-		Condition::all()
-			.add(auth.filter_activities())
-			.add(Condition::any()
+	let mut filter = Condition::all()
+		.add(
+			Condition::any()
 				.add(model::activity::Column::Actor.eq(&uid))
 				.add(model::object::Column::AttributedTo.eq(&uid))
-			),
+		);
+	if !auth.is(&uid) {
+		filter = filter.add(auth.filter_activities());
+	}
+	crate::builders::paginate_feed(
+		upub::url!(ctx, "/actors/{id}/outbox/page"),
+		filter,
 		ctx.db(),
 		page,
 		auth.my_id(),
