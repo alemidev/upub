@@ -2,6 +2,7 @@ pub mod inbox;
 pub mod outbox;
 pub mod following;
 pub mod notifications;
+pub mod audience;
 
 use axum::extract::{Path, Query, State};
 
