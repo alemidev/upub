@@ -12,7 +12,7 @@ pub async fn get(
 	let context = ctx.oid(&id);
 
 	let count = upub::Query::feed(auth.my_id())
-		.filter(auth.filter_objects())
+		.filter(auth.filter())
 		.filter(model::object::Column::Context.eq(&context))
 		.count(ctx.db())
 		.await?;
@@ -31,7 +31,7 @@ pub async fn page(
 	crate::builders::paginate_feed(
 		upub::url!(ctx, "/objects/{id}/context/page"),
 		Condition::all()
-			.add(auth.filter_objects())
+			.add(auth.filter())
 			.add(model::object::Column::Context.eq(context)),
 		ctx.db(),
 		page,
