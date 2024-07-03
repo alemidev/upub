@@ -67,7 +67,7 @@ pub fn FollowRequestButtons(activity_id: String, actor_id: String) -> impl IntoV
 	// TODO lmao what is going on with this double move / triple clone ???????????
 	let _activity_id = activity_id.clone();
 	let _actor_id = actor_id.clone();
-	let from_actor = CACHE.get(&activity_id).map(|x| x.actor().id().str().unwrap_or_default()).unwrap_or_default();
+	let from_actor = cache::OBJECTS.get(&activity_id).map(|x| x.actor().id().str().unwrap_or_default()).unwrap_or_default();
 	let _from_actor = from_actor.clone();
 	if actor_id == auth.user_id() {
 		Some(view! {

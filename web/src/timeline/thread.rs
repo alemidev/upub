@@ -35,11 +35,11 @@ fn FeedRecursive(tl: Timeline, root: String) -> impl IntoView {
 		.get()
 		.into_iter()
 		.filter_map(|x| {
-			let document = CACHE.get(&x)?;
+			let document = cache::OBJECTS.get(&x)?;
 			let (oid, reply) = match document.object_type().ok()? {
 				// if it's a create, get and check created object: does it reply to root?
 				apb::ObjectType::Activity(apb::ActivityType::Create) => {
-					let object = CACHE.get(document.object().id().ok()?)?;
+					let object = cache::OBJECTS.get(document.object().id().ok()?)?;
 					(object.id().str()?, object.in_reply_to().id().str()?)
 				},
 

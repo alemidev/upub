@@ -61,7 +61,7 @@ impl FiltersConfig {
 		let mut reply_filter = true;
 
 		if let Ok(obj_id) = item.object().id() {
-			if let Some(obj) = crate::CACHE.get(obj_id) {
+			if let Some(obj) = crate::cache::OBJECTS.get(obj_id) {
 				if obj.in_reply_to().id().is_ok() {
 					reply_filter = self.replies;
 				}

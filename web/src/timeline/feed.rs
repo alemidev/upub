@@ -19,7 +19,7 @@ pub fn Feed(tl: Timeline) -> impl IntoView {
 				key=|k| k.to_string()
 				let:id
 			>
-				{match CACHE.get(&id) {
+				{match cache::OBJECTS.get(&id) {
 					Some(i) => view! {
 						<Item item=i sep=true />
 					}.into_view(),

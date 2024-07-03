@@ -19,7 +19,7 @@ pub fn ConfigPage(setter: WriteSignal<crate::Config>) -> impl IntoView {
 	let avatar_url_ref: NodeRef<html::Input> = create_node_ref();
 	let banner_url_ref: NodeRef<html::Input> = create_node_ref();
 
-	let myself = CACHE.get(&auth.userid.get_untracked().unwrap_or_default());
+	let myself = cache::OBJECTS.get(&auth.userid.get_untracked().unwrap_or_default());
 	let curr_display_name = myself.as_ref().and_then(|x| Some(x.name().ok()?.to_string())).unwrap_or_default();
 	let curr_summary = myself.as_ref().and_then(|x| Some(x.summary().ok()?.to_string())).unwrap_or_default();
 	let curr_icon = myself.as_ref().and_then(|x| Some(x.icon().get()?.url().id().ok()?.to_string())).unwrap_or_default();
@@ -158,7 +158,7 @@ pub fn ConfigPage(setter: WriteSignal<crate::Config>) -> impl IntoView {
 							);
 						
 						let id = auth.userid.get_untracked().unwrap_or_default();
-						let Some(me) = CACHE.get(&id) else {
+						let Some(me) = cache::OBJECTS.get(&id) else {
 							tracing::error!("self user not in cache! can't update");
 							return;
 						};

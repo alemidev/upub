@@ -23,7 +23,7 @@ pub fn DebugPage() -> impl IntoView {
 			set_error.set(false);
 			if query.is_empty() { return serde_json::Value::Null };
 			if cached {
-				match CACHE.get(&query) {
+				match cache::OBJECTS.get(&query) {
 					Some(x) => (*x).clone(),
 					None => {
 						set_error.set(true);

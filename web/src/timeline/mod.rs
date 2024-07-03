@@ -115,7 +115,7 @@ async fn process_activities(activities: Vec<serde_json::Value>, auth: Auth) -> V
 				actors_seen.insert(attributed_to);
 			}
 			if let Ok(object_uri) = object.id() {
-				CACHE.put(object_uri.to_string(), Arc::new(object.clone()));
+				cache::OBJECTS.put(object_uri.to_string(), Arc::new(object.clone()));
 			} else {
 				tracing::warn!("embedded object without id: {object:?}");
 			}
@@ -136,7 +136,7 @@ async fn process_activities(activities: Vec<serde_json::Value>, auth: Auth) -> V
 		let object_id = activity.object().id().str();
 		if let Some(activity_id) = activity.id().str() {
 			out.push(activity_id.to_string());
-			CACHE.put(
+			cache::OBJECTS.put(
 				activity_id.to_string(),
 				Arc::new(activity.clone().set_object(apb::Node::maybe_link(object_id)))
 			);
@@ -145,14 +145,14 @@ async fn process_activities(activities: Vec<serde_json::Value>, auth: Auth) -> V
 		}
 
 		if let Some(uid) = activity.attributed_to().id().str() {
-			if CACHE.get(&uid).is_none() && !gonna_fetch.contains(&uid) {
+			if cache::OBJECTS.get(&uid).is_none() && !gonna_fetch.contains(&uid) {
 				gonna_fetch.insert(uid.clone());
 				sub_tasks.push(Box::pin(fetch_and_update(U::Actor, uid, auth)));
 			}
 		}
 	
 		if let Some(uid) = activity.actor().id().str() {
-			if CACHE.get(&uid).is_none() && !gonna_fetch.contains(&uid) {
+			if cache::OBJECTS.get(&uid).is_none() && !gonna_fetch.contains(&uid) {
 				gonna_fetch.insert(uid.clone());
 				sub_tasks.push(Box::pin(fetch_and_update(U::Actor, uid, auth)));
 			}
@@ -170,14 +170,14 @@ async fn process_activities(activities: Vec<serde_json::Value>, auth: Auth) -> V
 
 async fn fetch_and_update(kind: U, id: String, auth: Auth) {
 	match Http::fetch(&Uri::api(kind, &id, false), auth).await {
-		Ok(data) => CACHE.put(id, Arc::new(data)),
+		Ok(data) => cache::OBJECTS.put(id, Arc::new(data)),
 		Err(e) => console_warn(&format!("could not fetch '{id}': {e}")),
 	}
 }
 
 async fn fetch_and_update_with_user(kind: U, id: String, auth: Auth) {
 	fetch_and_update(kind, id.clone(), auth).await;
-	if let Some(obj) = CACHE.get(&id) {
+	if let Some(obj) = cache::OBJECTS.get(&id) {
 		if let Some(actor_id) = match kind {
 			U::Object => obj.attributed_to().id().str(),
 			U::Activity => obj.actor().id().str(),

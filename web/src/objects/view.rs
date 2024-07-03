@@ -14,7 +14,7 @@ pub fn ObjectView() -> impl IntoView {
 	let object = create_local_resource(
 		move || params.get().get("id").cloned().unwrap_or_default(),
 		move |oid| async move {
-			let obj = match CACHE.get(&Uri::full(U::Object, &oid)) {
+			let obj = match cache::OBJECTS.get(&Uri::full(U::Object, &oid)) {
 				Some(x) => x.clone(),
 				None => {
 					let obj = match Http::fetch::<serde_json::Value>(&Uri::api(U::Object, &oid, true), auth).await {
@@ -28,10 +28,10 @@ pub fn ObjectView() -> impl IntoView {
 						if let Ok(user) = Http::fetch::<serde_json::Value>(
 							&Uri::api(U::Actor, author, true), auth
 						).await {
-							CACHE.put(Uri::full(U::Actor, author), Arc::new(user));
+							cache::OBJECTS.put(Uri::full(U::Actor, author), Arc::new(user));
 						}
 					}
-					CACHE.put(Uri::full(U::Object, &oid), obj.clone());
+					cache::OBJECTS.put(Uri::full(U::Object, &oid), obj.clone());
 					obj
 				}
 			};

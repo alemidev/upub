@@ -1,7 +1,7 @@
 use apb::{field::OptionalString, ActivityMut, Base, BaseMut, Object, ObjectMut};
 
 use leptos::*;
-use crate::{prelude::*, WEBFINGER};
+use crate::prelude::*;
 
 #[derive(Debug, Clone, Copy, Default)]
 pub struct ReplyControls {
@@ -11,7 +11,7 @@ pub struct ReplyControls {
 
 impl ReplyControls {
 	pub fn reply(&self, oid: &str) {
-		if let Some(obj) = CACHE.get(oid) {
+		if let Some(obj) = cache::OBJECTS.get(oid) {
 			self.context.set(obj.context().id().str());
 			self.reply_to.set(obj.id().ok().map(|x| x.to_string()));
 		}
@@ -24,8 +24,8 @@ impl ReplyControls {
 }
 
 fn post_author(post_id: &str) -> Option<crate::Object> {
-	let usr = CACHE.get(post_id)?.attributed_to().id().str()?;
-	CACHE.get(&usr)
+	let usr = cache::OBJECTS.get(post_id)?.attributed_to().id().str()?;
+	cache::OBJECTS.get(&usr)
 }
 
 #[component]
@@ -51,7 +51,7 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 				if let Some((user, domain)) = stripped.split_once('@') {
 					if let Some(tld) = domain.split('.').last() {
 						if tld::exist(tld) {
-							if let Some(uid) = WEBFINGER.blocking_resolve(user, domain).await {
+							if let Some(uid) = cache::WEBFINGER.blocking_resolve(user, domain).await {
 								out.push(uid);
 							}
 						}
@@ -84,7 +84,7 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 			}
 			{move ||
 				mentions.get()
-					.map(|x| x.into_iter().map(|u| match CACHE.get(&u) {
+					.map(|x| x.into_iter().map(|u| match cache::OBJECTS.get(&u) {
 						Some(u) => view! { <span class="nowrap"><span class="emoji mr-s ml-s">"📨"</span><ActorStrip object=u /></span> }.into_view(),
 						None => view! { <span class="nowrap"><span class="emoji mr-s ml-s">"📨"</span><a href={Uri::web(U::Actor, &u)}>{u}</a></span> }.into_view(),
 					})

@@ -37,7 +37,7 @@ pub fn FollowList(outgoing: bool) -> impl IntoView {
 						each=move || arr.clone()
 						key=|id| id.clone()
 						children=move |id| {
-							let actor = match CACHE.get(&id) {
+							let actor = match cache::OBJECTS.get(&id) {
 								Some(x) => x,
 								None => Arc::new(serde_json::Value::String(id)),
 							};

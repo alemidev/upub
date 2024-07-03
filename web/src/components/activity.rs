@@ -11,7 +11,7 @@ pub fn ActivityLine(activity: crate::Object) -> impl IntoView {
 		<sup><small><a class="clean ml-s" href={x.to_string()} target="_blank">"↗"</a></small></sup>
 	});
 	let actor_id = activity.actor().id().str().unwrap_or_default();
-	let actor = CACHE.get_or(&actor_id, serde_json::Value::String(actor_id.clone()).into());
+	let actor = cache::OBJECTS.get_or(&actor_id, serde_json::Value::String(actor_id.clone()).into());
 	let kind = activity.activity_type().unwrap_or(apb::ActivityType::Activity);
 	let href = match kind {
 		apb::ActivityType::Follow => Uri::web(U::Actor, &object_id),
@@ -61,11 +61,11 @@ pub fn Item(
 				let object_id = item.object().id().str().unwrap_or_default();
 				let object = match t {
 					apb::ActivityType::Create | apb::ActivityType::Announce => 
-						CACHE.get(&object_id).map(|obj| {
+						cache::OBJECTS.get(&object_id).map(|obj| {
 							view! { <Object object=obj /> }
 						}.into_view()),
 					apb::ActivityType::Follow =>
-						CACHE.get(&object_id).map(|obj| {
+						cache::OBJECTS.get(&object_id).map(|obj| {
 							view! {
 								<div class="ml-1">
 									<ActorBanner object=obj />

@@ -110,7 +110,7 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 	let oid = object.id().unwrap_or_default().to_string();
 	let content = mdhtml::safe_html(object.content().unwrap_or_default());
 	let author_id = object.attributed_to().id().str().unwrap_or_default();
-	let author = CACHE.get_or(&author_id, serde_json::Value::String(author_id.clone()).into());
+	let author = cache::OBJECTS.get_or(&author_id, serde_json::Value::String(author_id.clone()).into());
 	let sensitive = object.sensitive().unwrap_or_default();
 	let addressed = object.addressed();
 	let public = addressed.iter().any(|x| x.as_str() == apb::target::PUBLIC);
@@ -265,14 +265,14 @@ pub fn LikeButton(
 						Ok(()) => {
 							set_clicked.set(false);
 							set_count.set(count.get() + 1);
-							if let Some(cached) = CACHE.get(&target) {
+							if let Some(cached) = cache::OBJECTS.get(&target) {
 								let mut new = (*cached).clone().set_liked_by_me(Some(true));
 								if let Some(likes) = new.likes().get() {
 									if let Ok(count) = likes.total_items() {
 										new = new.set_likes(apb::Node::object(likes.clone().set_total_items(Some(count + 1))));
 									}
 								}
-								CACHE.put(target, Arc::new(new));
+								cache::OBJECTS.put(target, Arc::new(new));
 							}
 						},
 						Err(e) => tracing::error!("failed sending like: {e}"),

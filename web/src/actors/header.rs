@@ -12,14 +12,14 @@ pub fn ActorHeader() -> impl IntoView {
 		move || params.get().ok().and_then(|x| x.id).unwrap_or_default(),
 		move |id| {
 			async move {
-				match CACHE.get(&Uri::full(U::Actor, &id)) {
+				match cache::OBJECTS.get(&Uri::full(U::Actor, &id)) {
 					Some(x) => Ok::<_, String>(x.clone()),
 					None => {
 						let user : serde_json::Value = Http::fetch(&Uri::api(U::Actor, &id, true), auth)
 							.await
 							.map_err(|e| e.to_string())?;
 						let user = std::sync::Arc::new(user);
-						CACHE.put(Uri::full(U::Actor, &id), user.clone());
+						cache::OBJECTS.put(Uri::full(U::Actor, &id), user.clone());
 						Ok(user)
 					},
 				}

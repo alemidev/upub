@@ -26,11 +26,15 @@ pub const DEFAULT_COLOR: &str = "#BF616A";
 use std::sync::Arc;
 use uriproxy::UriClass;
 
+pub mod cache {
+	use super::{ObjectCache, WebfingerCache};
+	lazy_static::lazy_static! {
+		pub static ref OBJECTS: ObjectCache = ObjectCache::default();
+		pub static ref WEBFINGER: WebfingerCache = WebfingerCache::default();
+	}
+}
 
 
-lazy_static::lazy_static! {
-	pub static ref CACHE: ObjectCache = ObjectCache::default();
-	pub static ref WEBFINGER: WebfingerCache = WebfingerCache::default();
 }
 
 pub type Object = Arc<serde_json::Value>;

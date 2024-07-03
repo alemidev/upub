@@ -1,6 +1,7 @@
 pub use crate::{
+	URL_BASE,
 	Http, Uri,
-	CACHE, URL_BASE,
+	cache,
 	app::{Feeds, Loader},
 	auth::Auth,
 	page::*,
