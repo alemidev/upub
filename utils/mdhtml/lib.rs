@@ -56,6 +56,7 @@ impl TokenSink for Sink {
 								match attr.name.local.as_ref() {
 									"href" => self.buffer.push_str(&format!(" href=\"{}\"", attr.value.as_ref())),
 									"title" => self.buffer.push_str(&format!(" title=\"{}\"", attr.value.as_ref())),
+									"class" => if attr.value.as_ref() == "u-url mention" { self.buffer.push_str(" class=\"u-url mention\"") },
 									_ => {},
 								}
 							}
