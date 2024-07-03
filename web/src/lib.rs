@@ -206,7 +206,7 @@ impl Uri {
 
 	pub fn pretty(url: &str) -> String {
 		let bare = url.replace("https://", "");
-		if url.len() < 50 {
+		if bare.len() < 50 {
 			bare
 		} else {
 			format!("{}..", bare.get(..50).unwrap_or_default())
