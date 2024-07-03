@@ -113,7 +113,7 @@ pub fn App() -> impl IntoView {
 											if auth.present() {
 												view! { <Redirect path="home" /> }
 											} else {
-												view! { <Redirect path="server" /> }
+												view! { <Redirect path="global" /> }
 											}
 										/>
 										<Route path="home" view=move || view! { <Feed tl=feeds.home /> } />
