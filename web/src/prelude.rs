@@ -1,7 +1,7 @@
 pub use crate::{
 	URL_BASE,
 	Http, Uri,
-	cache,
+	Cache, cache, // TODO move Cache under cache
 	app::{Feeds, Loader},
 	auth::Auth,
 	page::*,

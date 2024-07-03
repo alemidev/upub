@@ -23,38 +23,73 @@ pub const DEFAULT_AVATAR_URL: &str = "https://cdn.alemi.dev/social/gradient.png"
 pub const NAME: &str = "μ";
 pub const DEFAULT_COLOR: &str = "#BF616A";
 
-use std::sync::Arc;
+use std::{ops::Deref, sync::Arc};
 use uriproxy::UriClass;
-
-pub mod cache {
-	use super::{ObjectCache, WebfingerCache};
-	lazy_static::lazy_static! {
-		pub static ref OBJECTS: ObjectCache = ObjectCache::default();
-		pub static ref WEBFINGER: WebfingerCache = WebfingerCache::default();
-	}
-}
-
-
-}
 
 pub type Object = Arc<serde_json::Value>;
 
-#[derive(Debug, Clone, Default)]
-pub struct ObjectCache(Arc<dashmap::DashMap<String, Object>>);
+pub mod cache {
+	use super::DashmapCache;
+	lazy_static::lazy_static! {
+		pub static ref OBJECTS: DashmapCache<super::Object> = DashmapCache::default();
+		pub static ref WEBFINGER: DashmapCache<String> = DashmapCache::default();
+	}
+}
 
-impl ObjectCache {
-	pub fn get(&self, k: &str) -> Option<Object> {
-		self.0.get(k).map(|x| x.clone())
+#[derive(Debug)]
+pub enum LookupStatus<T> {
+	Resolving,
+	Found(T),
+	NotFound,
+}
+
+impl<T> LookupStatus<T> {
+	fn inner(&self) -> Option<&T> {
+		if let Self::Found(x) = self {
+			return Some(x);
+		}
+		None
+	}
+}
+
+pub trait Cache {
+	type Item;
+
+	fn lookup(&self, key: &str) -> Option<impl Deref<Target = LookupStatus<Self::Item>>>;
+	fn store(&self, key: &str, value: Self::Item) -> Option<Self::Item>;
+
+	fn get(&self, key: &str) -> Option<Self::Item> where Self::Item : Clone {
+		Some(self.lookup(key)?.deref().inner()?.clone())
 	}
 
-	pub fn get_or(&self, k: &str, or: Object) -> Object {
-		self.get(k).unwrap_or(or)
+	fn get_or(&self, key: &str, or: Self::Item) -> Self::Item where Self::Item : Clone {
+		self.get(key).unwrap_or(or)
 	}
 
-	pub fn put(&self, k: String, v: Object) {
-		self.0.insert(k, v);
+	fn get_or_default(&self, key: &str) -> Self::Item where Self::Item : Clone + Default {
+		self.get(key).unwrap_or_default()
+	}
+}
+
+#[derive(Default, Clone)]
+pub struct DashmapCache<T>(Arc<dashmap::DashMap<String, LookupStatus<T>>>);
+
+impl<T> Cache for DashmapCache<T> {
+	type Item = T;
+
+	fn lookup(&self, key: &str) -> Option<impl Deref<Target = LookupStatus<Self::Item>>> {
+		self.0.get(key)
 	}
 
+	fn store(&self, key: &str, value: Self::Item) -> Option<Self::Item> {
+		self.0.insert(key.to_string(), LookupStatus::Found(value))
+			.and_then(|x| if let LookupStatus::Found(x) = x { Some(x) } else { None } )
+	}
+}
+
+// TODO would be cool unifying a bit the fetch code too
+
+impl DashmapCache<Object> {
 	pub async fn fetch(&self, k: &str, kind: UriClass) -> reqwest::Result<Object> {
 		match self.get(k) {
 			Some(x) => Ok(x),
@@ -63,43 +98,30 @@ impl ObjectCache {
 					.await?
 					.json::<serde_json::Value>()
 					.await?;
-				self.put(k.to_string(), Arc::new(obj));
+				self.store(k, Arc::new(obj));
 				Ok(self.get(k).expect("not found in cache after insertion"))
 			}
 		}
 	}
 }
 
-#[derive(Debug, Clone)]
-enum LookupStatus {
-	Resolving,
-	Found(String),
-	NotFound,
-}
-
-#[derive(Debug, Clone, Default)]
-pub struct WebfingerCache(Arc<dashmap::DashMap<String, LookupStatus>>);
-
-impl WebfingerCache {
+impl DashmapCache<String> {
 	pub async fn blocking_resolve(&self, user: &str, domain: &str) -> Option<String> {
-		if let Some(x) = self.get(user, domain) { return Some(x); }
+		if let Some(x) = self.resource(user, domain) { return Some(x); }
 		self.fetch(user, domain).await;
-		self.get(user, domain)
+		self.resource(user, domain)
 	}
 
 	pub fn resolve(&self, user: &str, domain: &str) -> Option<String> {
-		if let Some(x) = self.get(user, domain) { return Some(x); }
+		if let Some(x) = self.resource(user, domain) { return Some(x); }
 		let (_self, user, domain) = (self.clone(), user.to_string(), domain.to_string());
 		leptos::spawn_local(async move { _self.fetch(&user, &domain).await });
 		None
 	}
 
-	fn get(&self, user: &str, domain: &str) -> Option<String> {
+	fn resource(&self, user: &str, domain: &str) -> Option<String> {
 		let query = format!("{user}@{domain}");
-		match self.0.get(&query).map(|x| (*x).clone())? {
-			LookupStatus::Resolving | LookupStatus::NotFound => None,
-			LookupStatus::Found(x) => Some(x),
-		}
+		self.get(&query)
 	}
 
 	async fn fetch(&self, user: &str, domain: &str) {

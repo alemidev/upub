@@ -115,7 +115,7 @@ async fn process_activities(activities: Vec<serde_json::Value>, auth: Auth) -> V
 				actors_seen.insert(attributed_to);
 			}
 			if let Ok(object_uri) = object.id() {
-				cache::OBJECTS.put(object_uri.to_string(), Arc::new(object.clone()));
+				cache::OBJECTS.store(object_uri, Arc::new(object.clone()));
 			} else {
 				tracing::warn!("embedded object without id: {object:?}");
 			}
@@ -136,8 +136,8 @@ async fn process_activities(activities: Vec<serde_json::Value>, auth: Auth) -> V
 		let object_id = activity.object().id().str();
 		if let Some(activity_id) = activity.id().str() {
 			out.push(activity_id.to_string());
-			cache::OBJECTS.put(
-				activity_id.to_string(),
+			cache::OBJECTS.store(
+				&activity_id,
 				Arc::new(activity.clone().set_object(apb::Node::maybe_link(object_id)))
 			);
 		} else if let Some(object_id) = activity.object().id().str() {
@@ -170,7 +170,7 @@ async fn process_activities(activities: Vec<serde_json::Value>, auth: Auth) -> V
 
 async fn fetch_and_update(kind: U, id: String, auth: Auth) {
 	match Http::fetch(&Uri::api(kind, &id, false), auth).await {
-		Ok(data) => cache::OBJECTS.put(id, Arc::new(data)),
+		Ok(data) => { cache::OBJECTS.store(&id, Arc::new(data)); },
 		Err(e) => console_warn(&format!("could not fetch '{id}': {e}")),
 	}
 }

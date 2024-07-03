@@ -46,6 +46,7 @@ pub struct FiltersConfig {
 impl FiltersConfig {
 	pub fn visible(&self, item: &crate::Object) -> bool {
 		use apb::{Object, Activity};
+		use crate::Cache;
 
 		let type_filter = match item.object_type().unwrap_or(apb::ObjectType::Object) {
 			apb::ObjectType::Note | apb::ObjectType::Document(_) => self.orphans,

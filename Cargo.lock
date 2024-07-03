@@ -4892,6 +4892,7 @@ name = "upub-web"
 version = "0.1.0"
 dependencies = [
  "apb",
+ "async-trait",
  "chrono",
  "console_error_panic_hook",
  "dashmap",

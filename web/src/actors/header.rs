@@ -19,7 +19,7 @@ pub fn ActorHeader() -> impl IntoView {
 							.await
 							.map_err(|e| e.to_string())?;
 						let user = std::sync::Arc::new(user);
-						cache::OBJECTS.put(Uri::full(U::Actor, &id), user.clone());
+						cache::OBJECTS.store(&Uri::full(U::Actor, &id), user.clone());
 						Ok(user)
 					},
 				}

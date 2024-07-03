@@ -272,7 +272,7 @@ pub fn LikeButton(
 										new = new.set_likes(apb::Node::object(likes.clone().set_total_items(Some(count + 1))));
 									}
 								}
-								cache::OBJECTS.put(target, Arc::new(new));
+								cache::OBJECTS.store(&target, Arc::new(new));
 							}
 						},
 						Err(e) => tracing::error!("failed sending like: {e}"),

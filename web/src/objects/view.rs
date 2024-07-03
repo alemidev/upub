@@ -28,10 +28,10 @@ pub fn ObjectView() -> impl IntoView {
 						if let Ok(user) = Http::fetch::<serde_json::Value>(
 							&Uri::api(U::Actor, author, true), auth
 						).await {
-							cache::OBJECTS.put(Uri::full(U::Actor, author), Arc::new(user));
+							cache::OBJECTS.store(&Uri::full(U::Actor, author), Arc::new(user));
 						}
 					}
-					cache::OBJECTS.put(Uri::full(U::Object, &oid), obj.clone());
+					cache::OBJECTS.store(&Uri::full(U::Object, &oid), obj.clone());
 					obj
 				}
 			};
