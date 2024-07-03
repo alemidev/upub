@@ -203,6 +203,16 @@
 			min-width: 2em;
 			max-width: 2em;
 		}
+		div.flex-pic-container {
+			flex: 1;
+			border: solid 3px #bf616a;
+			margin-right: .5em;
+		}
+		div.flex-pic {
+			background-size: cover;
+			margin: 5px;
+			height: calc(100% - 10px); /* TODO can we avoid this calc() without having this overflow??? */
+		}
 		.box {
 			border: 3px solid var(--accent);
 		}
@@ -215,7 +225,6 @@
 		img.attachment {
 			cursor: pointer;
 			height: 10em;
-			width: 100%;
 			border: 3px solid var(--accent);
 			padding: 5px;
 			object-fit: cover;

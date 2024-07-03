@@ -38,7 +38,7 @@ pub fn Attachment(
 			view! {
 				<p class="center">
 					<img
-						class="attachment"
+						class="w-100 attachment"
 						class:expand=expand
 						src={move || if sensitive && !expand.get() {
 							URL_SENSITIVE.to_string()
@@ -78,18 +78,11 @@ pub fn Attachment(
 
 		"link" =>
 			view! {
-				<ul> // TODO kind of wasteful to make 1-item list, can we just add the same style to a div?
-					<li>
-						<a href={href.clone()} title={href.clone()} rel="noreferrer nofollow" target="_blank">
-							{Uri::pretty(&href)}
-						</a>
-					</li>
-				</ul>
-				{object.name().map(|name| {
-					view! {
-						<p class="center mt-0"><small>{name.to_string()}</small></p>
-					}
-				})}
+				<p class="center mt-s mb-s">
+					<a href={href.clone()} title={href.clone()} rel="noreferrer nofollow" target="_blank">
+						<input type="submit" class="w-100" value={Uri::pretty(&href)} title={object.name().unwrap_or_default().to_string()} />
+					</a>
+				</p>
 			}.into_view(),
 
 		_ => 
@@ -149,6 +142,15 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 			</a>
 		});
 
+	let post_image = object.image().get().and_then(|x| x.url().id().str()).map(|x| view! {
+		<div class="flex-pic-container">
+			<a href={x.clone()} target="_blank">
+				<div class="flex-pic" style={format!("background-image: url('{x}')")}>
+				</div>
+			</a>
+		</div>
+	});
+
 	let post_inner = view! {
 		<Summary summary=object.summary().ok().map(|x| x.to_string()) >
 			<p inner_html={content}></p>
@@ -163,11 +165,14 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 		}.into_view(),
 		// lemmy with Page, peertube with Video
 		Ok(apb::ObjectType::Document(t)) => view! {
-			<article class="ml-1 mr-1">
-				<h4 class="mt-s mb-1" title={t.as_ref().to_string()}>
-					<b>{object.name().unwrap_or_default().to_string()}</b>
-				</h4>
-				{post_inner}
+			<article class="ml-1 mr-1" style="display: flex">
+				{post_image}
+				<div style="flex: 3">
+					<h4 class="mt-s mb-1" title={t.as_ref().to_string()}>
+						<b>{object.name().unwrap_or_default().to_string()}</b>
+					</h4>
+					{post_inner}
+				</div>
 			</article>
 		}.into_view(),
 		// wordpress, ... ?
