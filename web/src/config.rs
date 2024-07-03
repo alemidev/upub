@@ -33,6 +33,9 @@ pub struct FiltersConfig {
 	#[serde_inline_default(true)]
 	pub announces: bool,
 
+	#[serde_inline_default(false)]
+	pub deletes: bool,
+
 	#[serde_inline_default(true)]
 	pub follows: bool,
 
@@ -54,6 +57,7 @@ impl FiltersConfig {
 			apb::ObjectType::Activity(apb::ActivityType::Create) => self.creates,
 			apb::ObjectType::Activity(apb::ActivityType::Announce) => self.announces,
 			apb::ObjectType::Activity(apb::ActivityType::Update) => self.updates,
+			apb::ObjectType::Activity(apb::ActivityType::Delete) => self.deletes,
 			apb::ObjectType::Activity(
 				apb::ActivityType::Follow | apb::ActivityType::Accept(_) | apb::ActivityType::Reject(_)
 			) => self.follows,

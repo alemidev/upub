@@ -101,9 +101,10 @@ pub fn ConfigPage(setter: WriteSignal<crate::Config>) -> impl IntoView {
 					<li><span title="like activities"><input type="checkbox" prop:checked=get_cfg!(filter likes) on:input=set_cfg!(filter likes) />" likes"</span></li>
 					<li><span title="create activities with object"><input type="checkbox" prop:checked=get_cfg!(filter creates) on:input=set_cfg!(filter creates)/>" creates"</span></li>
 					<li><span title="update activities, to objects or actors"><input type="checkbox" prop:checked=get_cfg!(filter updates) on:input=set_cfg!(filter updates)/>" updates"</span></li>
+					<li><span title="delete activities"><input type="checkbox" prop:checked=get_cfg!(filter deletes) on:input=set_cfg!(filter deletes)/>" deletes"</span></li>
 					<li><span title="announce activities with object"><input type="checkbox" prop:checked=get_cfg!(filter announces) on:input=set_cfg!(filter announces) />" announces"</span></li>
 					<li><span title="follow, accept and reject activities"><input type="checkbox" prop:checked=get_cfg!(filter follows) on:input=set_cfg!(filter follows) />" follows"</span></li>
-					<li><span title="objects without a related activity to display"><input type="checkbox" prop:checked=get_cfg!(filter orphans) on:input=set_cfg!(filter orphans) />" orphans"</span></li>
+					<li><span title="objects without a related activity to display"><input type="checkbox" prop:checked=get_cfg!(filter orphans) on:input=set_cfg!(filter orphans) />" fetched"</span></li>
 			</ul>
 			<hr />
 			<div class="border ma-2 pa-1">
