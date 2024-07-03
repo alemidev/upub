@@ -80,7 +80,7 @@ pub fn Attachment(
 			view! {
 				<p class="center mt-s mb-s">
 					<a href={href.clone()} title={href.clone()} rel="noreferrer nofollow" target="_blank">
-						<input type="submit" class="w-100" value={Uri::pretty(&href)} title={object.name().unwrap_or_default().to_string()} />
+						<input style="max-width: 100%" type="submit" class="w-100" value={Uri::pretty(&href, 20)} title={object.name().unwrap_or_else(|_| href.as_str()).to_string()} />
 					</a>
 				</p>
 			}.into_view(),
@@ -136,7 +136,7 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 				>
 					<code class="color">&</code>
 					<small>
-						{Uri::pretty(&x)}
+						{Uri::pretty(&x, 30)}
 					</small>
 				</span>
 			</a>

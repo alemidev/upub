@@ -204,12 +204,12 @@ impl Uri {
 		uriproxy::uri(URL_BASE, kind, id)
 	}
 
-	pub fn pretty(url: &str) -> String {
+	pub fn pretty(url: &str, len: usize) -> String {
 		let bare = url.replace("https://", "");
-		if bare.len() < 50 {
+		if bare.len() < len {
 			bare
 		} else {
-			format!("{}..", bare.get(..50).unwrap_or_default())
+			format!("{}..", bare.get(..len).unwrap_or_default())
 		}.replace('/', "\u{200B}/\u{200B}")
 	}
 

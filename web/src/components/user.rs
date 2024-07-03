@@ -20,7 +20,7 @@ pub fn ActorStrip(object: crate::Object) -> impl IntoView {
 pub fn ActorBanner(object: crate::Object) -> impl IntoView {
 	match object.as_ref() {
 		serde_json::Value::String(id) => view! {
-			<div><b>?</b>" "<a class="clean hover" href={Uri::web(U::Actor, id)}>{Uri::pretty(id)}</a></div>
+			<div><b>?</b>" "<a class="clean hover" href={Uri::web(U::Actor, id)}>{Uri::pretty(id, 50)}</a></div>
 		},
 		serde_json::Value::Object(_) => {
 			let uid = object.id().unwrap_or_default().to_string();
