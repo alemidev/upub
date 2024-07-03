@@ -15,6 +15,7 @@ mod m20240626_000001_add_notifications_table;
 mod m20240628_000001_add_followers_following_indexes;
 mod m20240628_000002_add_credentials_activated;
 mod m20240703_000001_add_audience_index;
+mod m20240703_000002_add_image_to_objects;
 
 pub struct Migrator;
 
@@ -37,6 +38,7 @@ impl MigratorTrait for Migrator {
 			Box::new(m20240628_000001_add_followers_following_indexes::Migration),
 			Box::new(m20240628_000002_add_credentials_activated::Migration),
 			Box::new(m20240703_000001_add_audience_index::Migration),
+			Box::new(m20240703_000002_add_image_to_objects::Migration),
 		]
 	}
 }

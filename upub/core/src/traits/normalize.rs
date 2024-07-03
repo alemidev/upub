@@ -90,33 +90,6 @@ impl Normalizer for crate::Context {
 				.exec(tx)
 				.await?;
 		}
-		// lemmy sends us an image field in posts, treat it like an attachment i'd say
-		if let Some(img) = object.image().get() {
-			// TODO lemmy doesnt tell us the media type but we use it to display the thing...
-			let img_url = img.url().id().str().unwrap_or_default();
-			let media_type = if img_url.ends_with("png") {
-				Some("image/png".to_string())
-			} else if img_url.ends_with("webp") {
-				Some("image/webp".to_string())
-			} else if img_url.ends_with("jpeg") || img_url.ends_with("jpg") {
-				Some("image/jpeg".to_string())
-			} else {
-				None
-			};
-
-			let mut attachment_model = AP::attachment_q(img, object_model.internal, None)?;
-
-			// ugly fix for lemmy
-			if let Some(m) = media_type {
-				if img.media_type().ok().is_none() {
-					attachment_model.media_type = Set(m);
-				}
-			}
-
-			crate::model::attachment::Entity::insert(attachment_model)
-				.exec(tx)
-				.await?;
-		}
 
 		for tag in object.tag().flat() {
 			match tag {
@@ -279,6 +252,7 @@ impl AP {
 			name: object.name().str(),
 			summary: object.summary().str(),
 			content: object.content().str(),
+			image: object.image().get().and_then(|x| x.url().id().str()),
 			context: object.context().id().str(),
 			in_reply_to: object.in_reply_to().id().str(),
 			published: object.published().unwrap_or_else(|_| chrono::Utc::now()),

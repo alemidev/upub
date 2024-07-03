@@ -52,6 +52,7 @@ pub enum Objects {
 	Name,
 	Summary,
 	Content,
+	Image, // added with migration m20240703_000002
 	Sensitive,
 	Url,
 	Likes,

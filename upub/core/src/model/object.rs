@@ -1,4 +1,4 @@
-use apb::{BaseMut, CollectionMut, ObjectMut, ObjectType};
+use apb::{BaseMut, CollectionMut, DocumentMut, ObjectMut, ObjectType};
 use sea_orm::{entity::prelude::*, QuerySelect, SelectColumns};
 
 use super::Audience;
@@ -15,6 +15,7 @@ pub struct Model {
 	pub name: Option<String>,
 	pub summary: Option<String>,
 	pub content: Option<String>,
+	pub image: Option<String>,
 	pub sensitive: bool,
 	pub in_reply_to: Option<String>,
 	pub url: Option<String>,
@@ -159,6 +160,11 @@ impl Model {
 			.set_name(self.name.as_deref())
 			.set_summary(self.summary.as_deref())
 			.set_content(self.content.as_deref())
+			.set_image(apb::Node::maybe_object(self.image.map(|x| 
+				apb::new()
+					.set_document_type(Some(apb::DocumentType::Image))
+					.set_url(apb::Node::link(x))
+			)))
 			.set_context(apb::Node::maybe_link(self.context.clone()))
 			.set_conversation(apb::Node::maybe_link(self.context.clone())) // duplicate context for mastodon
 			.set_in_reply_to(apb::Node::maybe_link(self.in_reply_to.clone()))
