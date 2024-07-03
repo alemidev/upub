@@ -32,22 +32,28 @@ pub fn FollowList(outgoing: bool) -> impl IntoView {
 			{move || match resource.get() {
 				None => view! { <Loader /> }.into_view(),
 				Some(Err(e)) => view! { <p class="center">could not load {follow___}: {e}</p> }.into_view(),
-				Some(Ok(arr)) => view! {
-					<For
-						each=move || arr.clone()
-						key=|id| id.clone()
-						children=move |id| {
-							let actor = match cache::OBJECTS.get(&id) {
-								Some(x) => x,
-								None => Arc::new(serde_json::Value::String(id)),
-							};
-							view! {
-								<ActorBanner object=actor />
-								<hr />
-							}.into_view()
-						}
-					/ >
-				}.into_view(),
+				Some(Ok(mut arr)) => {
+					// TODO cheap fix: server gives us follows from oldest to newest
+					//      but it's way more convenient to have them other way around
+					//      so we reverse them just after loading them
+					arr.reverse();
+					view! {
+						<For
+							each=move || arr.clone()
+							key=|id| id.clone()
+							children=move |id| {
+								let actor = match cache::OBJECTS.get(&id) {
+									Some(x) => x,
+									None => Arc::new(serde_json::Value::String(id)),
+								};
+								view! {
+									<ActorBanner object=actor />
+									<hr />
+								}.into_view()
+							}
+						/ >
+					}.into_view()
+				},
 			}}
 		</div>
 	}
