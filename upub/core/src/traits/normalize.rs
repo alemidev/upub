@@ -25,10 +25,10 @@ impl Normalizer for crate::Context {
 	async fn insert_object(&self, object: impl apb::Object, tx: &impl ConnectionTrait) -> Result<crate::model::object::Model, NormalizerError> {
 		let mut object_model = AP::object(&object)?;
 
-		// make sure content only contains a safe subset of html
-		if let Some(content) = object_model.content {
-			object_model.content = Some(mdhtml::safe_html(&content));
-		}
+		// TOO should we make sure content only contains a safe subset of html ? frontend does it too
+		// if let Some(content) = object_model.content {
+		//	object_model.content = Some(mdhtml::safe_html(&content));
+		// }
 
 		// fix context for remote posts
 		// > if any link is broken or we get rate limited, the whole insertion fails which is
