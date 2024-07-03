@@ -52,6 +52,7 @@ pub fn RegisterPage() -> impl IntoView {
 						set_error.set(Some(
 							view! { <blockquote>no credentials provided</blockquote> }
 						));
+						return;
 					}
 
 					spawn_local(async move {
@@ -75,6 +76,9 @@ pub fn RegisterPage() -> impl IntoView {
 									reset_ref!(summary_ref);
 									reset_ref!(avatar_url_ref);
 									reset_ref!(banner_url_ref);
+									set_error.set(Some(
+										view! { <blockquote>registration successful! your user may need to be approved by an administrator before you can login</blockquote> }
+									));
 								},
 							},
 						}
