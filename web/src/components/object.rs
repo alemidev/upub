@@ -76,7 +76,7 @@ pub fn Attachment(
 				</p>
 			}.into_view(),
 
-		"link" =>
+		"link" | "text" =>
 			view! {
 				<p class="center mt-s mb-s">
 					<a href={href.clone()} title={href.clone()} rel="noreferrer nofollow" target="_blank">
