@@ -78,11 +78,13 @@ pub fn Attachment(
 
 		"link" =>
 			view! {
-				<code class="cw color center mt-1 mb-1 mr-s ml-s">
-					<a href={href.clone()} title={href.clone()} rel="noreferrer nofollow" target="_blank">
-						{Uri::pretty(&href)}
-					</a>
-				</code>
+				<ul> // TODO kind of wasteful to make 1-item list, can we just add the same style to a div?
+					<li>
+						<a href={href.clone()} title={href.clone()} rel="noreferrer nofollow" target="_blank">
+							{Uri::pretty(&href)}
+						</a>
+					</li>
+				</ul>
 				{object.name().map(|name| {
 					view! {
 						<p class="center mt-0"><small>{name.to_string()}</small></p>
@@ -161,10 +163,10 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 		}.into_view(),
 		// lemmy with Page, peertube with Video
 		Ok(apb::ObjectType::Document(t)) => view! {
-			<article>
-				<div class="border center pr-1 pl-1 pt-s pb-s ma-1" title={t.as_ref().to_string()}>
+			<article class="ml-1 mr-1">
+				<h4 class="mt-s mb-1" title={t.as_ref().to_string()}>
 					<b>{object.name().unwrap_or_default().to_string()}</b>
-				</div>
+				</h4>
 				{post_inner}
 			</article>
 		}.into_view(),
