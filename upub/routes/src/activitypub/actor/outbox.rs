@@ -24,6 +24,7 @@ pub async fn page(
 			Condition::any()
 				.add(model::activity::Column::Actor.eq(&uid))
 				.add(model::object::Column::AttributedTo.eq(&uid))
+				.add(model::object::Column::Audience.eq(&uid))
 		);
 	if !auth.is(&uid) {
 		filter = filter.add(auth.filter());

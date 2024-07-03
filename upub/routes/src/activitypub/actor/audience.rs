@@ -3,7 +3,7 @@ use sea_orm::{Condition, ColumnTrait};
 
 use upub::Context;
 
-use crate::{activitypub::Pagination, builders::JsonLD, AuthIdentity, Identity};
+use crate::{activitypub::Pagination, builders::JsonLD, AuthIdentity};
 
 pub async fn get(
 	State(ctx): State<Context>,
