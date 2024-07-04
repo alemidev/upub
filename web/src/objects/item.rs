@@ -1,109 +1,22 @@
 use std::sync::Arc;
 
+use cache::WEBFINGER;
 use leptos::*;
-use crate::{prelude::*, URL_SENSITIVE};
+use regex::Regex;
+use crate::prelude::*;
 
 use apb::{field::OptionalString, target::Addressed, ActivityMut, Base, Collection, CollectionMut, Document, Object, ObjectMut};
 
-#[component]
-pub fn Attachment(
-	object: serde_json::Value,
-	#[prop(optional)]
-	sensitive: bool
-) -> impl IntoView {
-	let config = use_context::<Signal<crate::Config>>().expect("missing config context");
-	let (expand, set_expand) = create_signal(false);
-	let href = object.url().id().str().unwrap_or_default();
-	let media_type = object.media_type()
-		.unwrap_or("link") // TODO make it an Option rather than defaulting to link everywhere
-		.to_string();
-	let mut kind = media_type
-		.split('/')
-		.next()
-		.unwrap_or("link")
-		.to_string();
-
-	// TODO in theory we should match on document_type, but mastodon and misskey send all attachments
-	// as "Documents" regardless of type, so we're forced to ignore the actual AP type and just match
-	// using media_type, uffff
-	//
-	// those who correctly send Image type objects without a media type get shown as links here, this
-	// is a dirty fix to properly display as images
-	if kind == "link" && matches!(object.document_type(), Ok(apb::DocumentType::Image)) {
-		kind = "image".to_string();
-	}
-
-	match kind.as_str() {
-		"image" =>
-			view! {
-				<p class="center">
-					<img
-						class="w-100 attachment"
-						class:expand=expand
-						src={move || if sensitive && !expand.get() {
-							URL_SENSITIVE.to_string()
-						} else {
-							href.clone()
-						}}
-						title={object.name().unwrap_or_default().to_string()}
-						on:click=move |_| set_expand.set(!expand.get())
-					/>
-				</p>
-			}.into_view(),
-
-		"video" => {
-			let _href = href.clone();
-			view! {
-				<div class="center cursor box ml-1"
-					on:click=move |_| set_expand.set(!expand.get())
-					title={object.name().unwrap_or_default().to_string()}
-				>
-					<video controls class="attachment" class:expand=expand prop:loop=move || config.get().loop_videos  >
-						{move || if sensitive && !expand.get() { None } else { Some(view! { <source src={_href.clone()} type={media_type.clone()} /> }) }}
-						<a href={href.clone()} target="_blank">video clip</a>
-					</video>
-				</div>
-			}.into_view()
-		},
-
-		"audio" =>
-			view! {
-				<p class="center">
-					<audio controls class="w-100" prop:loop=move || config.get().loop_videos >
-						<source src={href.clone()} type={media_type} />
-						<a href={href} target="_blank">audio clip</a>
-					</audio>
-				</p>
-			}.into_view(),
-
-		"link" | "text" =>
-			view! {
-				<p class="center mt-s mb-s">
-					<a href={href.clone()} title={href.clone()} rel="noreferrer nofollow" target="_blank">
-						<input style="max-width: 100%" type="submit" class="w-100" value={Uri::pretty(&href, 20)} title={object.name().unwrap_or_else(|_| href.as_str()).to_string()} />
-					</a>
-				</p>
-			}.into_view(),
-
-		_ => 
-			view! {
-				<p class="center box">
-					<code class="cw color center">
-						<a href={href} target="_blank">{media_type}</a>
-					</code>
-					{object.name().map(|name| {
-						view! { <p class="tiny-text"><small>{name.to_string()}</small></p> }
-					})}
-				</p>
-			}.into_view(),
-	}
+lazy_static::lazy_static! {
+	static ref REGEX: Regex = regex::Regex::new("<a href=\"(.+)\" class=\"u-url mention\">@(\\w+)(@\\w+|)</a>").expect("failed compiling @ regex");
 }
 
-
 #[component]
-pub fn Object(object: crate::Object) -> impl IntoView {
+pub fn Object(
+	object: crate::Object,
+	#[prop(optional)] reply: bool,
+) -> impl IntoView {
 	let oid = object.id().unwrap_or_default().to_string();
-	let content = mdhtml::safe_html(object.content().unwrap_or_default());
 	let author_id = object.attributed_to().id().str().unwrap_or_default();
 	let author = cache::OBJECTS.get_or(&author_id, serde_json::Value::String(author_id.clone()).into());
 	let sensitive = object.sensitive().unwrap_or_default();
@@ -127,6 +40,26 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 		Some(view! { <div class="pb-1"></div> })
 	};
 
+	let mut content = mdhtml::safe_html(object.content().unwrap_or_default());
+
+	let mut results = vec![];
+	for (matched, [id, username, _domain]) in REGEX.captures_iter(&content).map(|c| c.extract()) {
+		// TODO what the fuck mastodon........... why are you putting the fancy url in the A HREF????????
+		let id = id.replace('@', "users/");
+		// TODO ughh ugly on-the-fly html editing, can this be avoided?
+		let to_replace = format!(
+			"<a class=\"clean dim\" href=\"{}\" title=\"{}\"><span class=\"border-button mr-s\"><code class=\"color mr-s\">@</code>{}</span></a>",
+			Uri::web(U::Actor, &id), id, username
+		);
+		results.push((matched.to_string(), to_replace));
+	}
+
+	for (from, to) in results {
+		content = content.replace(&from, &to);
+	}
+
+
+
 	let audience_badge = object.audience().id().str()
 		.map(|x| view! {
 			<a class="clean dim" href={Uri::web(U::Actor, &x)} rel="nofollow noreferrer">
@@ -134,7 +67,7 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 					class="border-button"
 					title="this is a group: all interactions will be broadcasted to group members!"
 				>
-					<code class="color">&</code>
+					<code class="color mr-s">&</code>
 					<small>
 						{Uri::pretty(&x, 30)}
 					</small>
@@ -142,13 +75,11 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 			</a>
 		});
 
-	let post_image = object.image().get().and_then(|x| x.url().id().str()).map(|x| view! {
-		<div class="flex-pic-container">
-			<a href={x.clone()} target="_blank">
-				<div class="flex-pic" style={format!("background-image: url('{x}')")}>
-				</div>
-			</a>
-		</div>
+	let post_image = object.image().get().and_then(|x| x.url().id().str()).map(|x| {
+		let (expand, set_expand) = create_signal(false);
+		view! {
+			<img src={x} class="flex-pic box cursor" class:flex-pic-expand=expand on:click=move|_| set_expand.set(!expand.get()) />
+		}
 	});
 
 	let post_inner = view! {
@@ -165,9 +96,9 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 		}.into_view(),
 		// lemmy with Page, peertube with Video
 		Ok(apb::ObjectType::Document(t)) => view! {
-			<article class="ml-1 mr-1" style="display: flex">
+			<article class="float-container ml-1 mr-1" >
 				{post_image}
-				<div style="flex: 3">
+				<div>
 					<h4 class="mt-s mb-1" title={t.as_ref().to_string()}>
 						<b>{object.name().unwrap_or_default().to_string()}</b>
 					</h4>
@@ -209,7 +140,7 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 		</table>
 		{post}
 		<div class="mt-s ml-1 rev">
-			{audience_badge}
+			{if !reply { audience_badge } else { None }}
 			<ReplyButton n=comments target=oid.clone() />
 			<LikeButton n=likes liked=already_liked target=oid.clone() author=author_id private=!public />
 			<RepostButton n=shares target=oid />

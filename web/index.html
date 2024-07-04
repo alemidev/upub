@@ -94,6 +94,9 @@
 		article p {
 			margin: 0 0 0 .5em;
 		}
+		article.float-container {
+			overflow-y: hidden;
+		}
 		b.displayname {
 			overflow-wrap: break-word;
 		}
@@ -132,14 +135,15 @@
 			position: sticky;
 			background-color: var(--background);
 		}
-		div.border {
-			border: 1px dashed var(--accent);
-		}
 		span.border-button {
 			border: 1px solid var(--background-dim);
 		}
 		span.border-button:hover {
 			background-color: var(--background-dim);
+		}
+		div.border,
+		span.border {
+			border: 1px dashed var(--accent);
 		}
 		div.inline {
 			display: inline;
@@ -203,18 +207,25 @@
 			min-width: 2em;
 			max-width: 2em;
 		}
-		div.flex-pic-container {
-			flex: 1;
-			border: solid 3px #bf616a;
-			margin-right: .5em;
+		img.flex-pic {
+			float: left;
+			width: 10em;
+			height: 10em;
+			object-fit: cover;
+			margin-right: 1em;
+			margin-top: .5em;
+			margin-bottom: .5em;
+			margin-left: .5em;
 		}
-		div.flex-pic {
-			background-size: cover;
-			margin: 5px;
-			height: calc(100% - 10px); /* TODO can we avoid this calc() without having this overflow??? */
+		img.flex-pic-expand {
+			width: unset;
+			height: unset;
+			max-width: calc(100% - 1.5em);
+			max-height: 55vh;
 		}
 		.box {
 			border: 3px solid var(--accent);
+			box-sizing: border-box;
 		}
 		.cursor {
 			cursor: pointer;

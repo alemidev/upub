@@ -3,11 +3,13 @@ mod app;
 mod components;
 mod page;
 mod config;
-mod objects;
 
 mod actors;
-mod getters;
+mod activities;
+mod objects;
 mod timeline;
+
+mod getters;
 
 pub use app::App;
 pub use config::Config;

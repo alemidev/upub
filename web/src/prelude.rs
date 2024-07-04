@@ -11,14 +11,19 @@ pub use crate::{
 		follow::FollowList,
 		posts::ActorPosts,
 	},
+	activities::{
+		item::Item,
+	},
+	objects::{
+		view::ObjectView,
+		attachment::Attachment,
+		item::{Object, Summary, LikeButton, RepostButton, ReplyButton},
+	},
 	timeline::{
 		Timeline,
 		feed::Feed,
 		thread::Thread,
 	},
-	objects::{
-		view::ObjectView,
-	}
 };
 
 pub use uriproxy::UriClass as U;

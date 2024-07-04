@@ -55,14 +55,14 @@ pub fn Item(
 		match item.object_type().unwrap_or(apb::ObjectType::Object) {
 			// special case for placeholder activities
 			apb::ObjectType::Note | apb::ObjectType::Document(_) =>
-				Some(view! { <Object object=item.clone() />{sep.clone()} }.into_view()),
+				Some(view! { <Object object=item.clone() reply=replies />{sep.clone()} }.into_view()),
 			// everything else
 			apb::ObjectType::Activity(t) => {
 				let object_id = item.object().id().str().unwrap_or_default();
 				let object = match t {
 					apb::ActivityType::Create | apb::ActivityType::Announce => 
 						cache::OBJECTS.get(&object_id).map(|obj| {
-							view! { <Object object=obj /> }
+							view! { <Object object=obj reply=replies /> }
 						}.into_view()),
 					apb::ActivityType::Follow =>
 						cache::OBJECTS.get(&object_id).map(|obj| {
