@@ -1,11 +1,10 @@
 use std::sync::Arc;
 
-use cache::WEBFINGER;
 use leptos::*;
 use regex::Regex;
 use crate::prelude::*;
 
-use apb::{field::OptionalString, target::Addressed, ActivityMut, Base, Collection, CollectionMut, Document, Object, ObjectMut};
+use apb::{field::OptionalString, target::Addressed, ActivityMut, Base, Collection, CollectionMut, Object, ObjectMut};
 
 lazy_static::lazy_static! {
 	static ref REGEX: Regex = regex::Regex::new("<a href=\"(.+)\" class=\"u-url mention\">@(\\w+)(@\\w+|)</a>").expect("failed compiling @ regex");

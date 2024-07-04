@@ -1,7 +1,7 @@
 use leptos::*;
 use crate::{prelude::*, URL_SENSITIVE};
 
-use apb::{field::OptionalString, target::Addressed, ActivityMut, Base, Collection, CollectionMut, Document, Object, ObjectMut};
+use apb::{field::OptionalString, Document, Object};
 
 #[component]
 pub fn Attachment(
