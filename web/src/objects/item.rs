@@ -58,22 +58,36 @@ pub fn Object(
 		content = content.replace(&from, &to);
 	}
 
-
-
 	let audience_badge = object.audience().id().str()
 		.map(|x| view! {
-			<a class="clean dim" href={Uri::web(U::Actor, &x)} rel="nofollow noreferrer">
-				<span
-					class="border-button"
-					title="this is a group: all interactions will be broadcasted to group members!"
-				>
+			<a class="clean dim" href={Uri::web(U::Actor, &x)}>
+				<span class="border-button ml-1" title={x.clone()}>
 					<code class="color mr-s">&</code>
-					<small>
+					<small class="mr-s">
 						{Uri::pretty(&x, 30)}
 					</small>
 				</span>
 			</a>
 		});
+
+	let hashtag_badges = object.tag().filter_map(|x| {
+		if let Ok(apb::LinkType::Hashtag) = apb::Link::link_type(&x) {
+			let name = apb::Link::name(&x).unwrap_or_default().replace('#', "");
+			let href = Uri::web(U::Hashtag, &name);
+			Some(view! {
+				<a class="clean dim" href={href}>
+					<span class="border-button ml-1">
+						<code class="color mr-s">#</code>
+						<small class="mr-s">
+							{name}
+						</small>
+					</span>
+				</a>
+			})
+		} else {
+			None
+		}
+	}).collect_view();
 
 	let post_image = object.image().get().and_then(|x| x.url().id().str()).map(|x| {
 		let (expand, set_expand) = create_signal(false);
@@ -140,6 +154,7 @@ pub fn Object(
 		</table>
 		{post}
 		<div class="mt-s ml-1 rev">
+			{if !reply { Some(hashtag_badges) } else { None }}
 			{if !reply { audience_badge } else { None }}
 			<ReplyButton n=comments target=oid.clone() />
 			<LikeButton n=likes liked=already_liked target=oid.clone() author=author_id private=!public />
