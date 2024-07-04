@@ -1,7 +1,7 @@
 # μpub
 > [micro social network, federated](https://join.upub.social)
 
-![screenshot of upub simple frontend](https://cdn.alemi.dev/proj/upub/fe/20240514.png)
+![screenshot of upub simple frontend](https://cdn.alemi.dev/proj/upub/fe/20240704.png)
 
 μpub aims to be a private, lightweight, modular and **secure** [ActivityPub](https://www.w3.org/TR/activitypub/) server
 
@@ -65,8 +65,8 @@ don't hesitate to get in touch, i'd be thrilled to showcase the project to you!
  - [x] optimize `addressing` database schema
  - [x] mentions, notifications
  - [x] hashtags
- - [ ] better editing via web frontend
  - [ ] remote media proxy
+ - [ ] better editing via web frontend
  - [ ] upload media
  - [ ] public vs unlisted for discovery
  - [ ] mastodon-like search bar
