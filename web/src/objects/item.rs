@@ -7,7 +7,7 @@ use crate::prelude::*;
 use apb::{field::OptionalString, target::Addressed, ActivityMut, Base, Collection, CollectionMut, Object, ObjectMut};
 
 lazy_static::lazy_static! {
-	static ref REGEX: Regex = regex::Regex::new("<a href=\"(.+)\" class=\"u-url mention\">@(\\w+)(@\\w+|)</a>").expect("failed compiling @ regex");
+	static ref REGEX: Regex = regex::Regex::new("<a href=\"([-a-zA-Z0-9()@:%_\\+.~#?&\\/=]+)\" class=\"u-url mention\">@(\\w+)(@\\w+|)</a>").expect("failed compiling @ regex");
 }
 
 #[component]
