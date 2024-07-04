@@ -90,6 +90,21 @@ impl Query {
 		select
 	}
 
+	// TODO this double join is probably not the best way to query for this...
+	pub fn hashtags() -> Select<model::hashtag::Entity> {
+		let mut select =
+			model::hashtag::Entity::find()
+				.join(sea_orm::JoinType::InnerJoin, model::hashtag::Relation::Objects.def())
+				.join(sea_orm::JoinType::InnerJoin, model::object::Relation::Addressing.def())
+				.select_only();
+
+		for col in model::object::Column::iter() {
+			select = select.select_column_as(col, format!("{}{}", model::object::Entity.table_name(), col.to_string()));
+		}
+
+		select
+	}
+
 	pub fn notifications(user: i64, show_seen: bool) -> Select<model::notification::Entity> {
 		let mut select =
 			model::notification::Entity::find()

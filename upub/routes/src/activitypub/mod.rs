@@ -5,6 +5,7 @@ pub mod object;
 pub mod activity;
 pub mod application;
 pub mod auth;
+pub mod tags;
 pub mod well_known;
 
 use axum::{http::StatusCode, response::IntoResponse, routing::{get, patch, post, put}, Router};
@@ -59,6 +60,9 @@ impl ActivityPubRouter for Router<upub::Context> {
 			// .route("/actors/:id/audience/page", get(ap::actor::audience::page))
 			// activities
 			.route("/activities/:id", get(ap::activity::view))
+			// hashtags
+			.route("/tags/:id", get(ap::tags::get))
+			.route("/tags/:id/page", get(ap::tags::page))
 			// specific object routes
 			.route("/objects/:id", get(ap::object::view))
 			.route("/objects/:id/replies", get(ap::object::replies::get))
