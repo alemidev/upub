@@ -3,6 +3,10 @@ use crate::{prelude::*, DEFAULT_AVATAR_URL};
 
 use apb::{field::OptionalString, Activity, ActivityMut, Actor, Base, Object, ObjectMut};
 
+lazy_static::lazy_static! {
+	static ref REGEX: regex::Regex = regex::Regex::new(r":\w+:").expect("failed compiling custom emoji regex");
+}
+
 #[component]
 pub fn ActorStrip(object: crate::Object) -> impl IntoView {
 	let actor_id = object.id().unwrap_or_default().to_string();
@@ -51,8 +55,7 @@ pub fn ActorBanner(object: crate::Object) -> impl IntoView {
 
 #[component]
 fn DisplayName(mut name: String) -> impl IntoView {
-	let custom_emoji_regex = regex::Regex::new(r":\w+:").expect("failed compiling regex pattern");
-	for m in custom_emoji_regex.find_iter(&name.clone()) {
+	for m in REGEX.find_iter(&name.clone()) {
 		// TODO this is a clear unmitigated unsanitized html injection ahahahahaha but accounts 
 		//      with many custom emojis in their names mess with my frontend and i dont want to 
 		//      deal with it rn
