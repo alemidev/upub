@@ -182,6 +182,7 @@ async fn fetch_and_update_with_user(kind: U, id: String, auth: Auth) {
 			U::Object => obj.attributed_to().id().str(),
 			U::Activity => obj.actor().id().str(),
 			U::Actor => None,
+			U::Hashtag => None,
 		} {
 			fetch_and_update(U::Actor, actor_id, auth).await;
 		}
