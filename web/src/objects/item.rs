@@ -172,7 +172,7 @@ pub fn Summary(summary: Option<String>, children: Children) -> impl IntoView {
 		Some(summary) => view! {
 			<details class="pa-s" prop:open=move || !config.get().collapse_content_warnings>
 				<summary>
-					<code class="cw center color ml-s w-100">{summary}</code>
+					<code class="cw center color ml-s w-100 bb">{summary}</code>
 				</summary>
 				{children()}
 			</details>
