@@ -102,6 +102,11 @@ impl Query {
 			select = select.select_column_as(col, format!("{}{}", model::object::Entity.table_name(), col.to_string()));
 		}
 
+		select = select.select_column_as(
+			model::addressing::Column::Published,
+			format!("{}{}", model::addressing::Entity.table_name(), model::addressing::Column::Published.to_string())
+		);
+
 		select
 	}
 
