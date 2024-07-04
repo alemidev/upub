@@ -217,7 +217,8 @@ impl Uri {
 			bare
 		} else {
 			format!("{}..", bare.get(..len).unwrap_or_default())
-		}.replace('/', "\u{200B}/\u{200B}")
+		}
+			//.replace('/', "\u{200B}/\u{200B}")
 	}
 
 	pub fn short(url: &str) -> String {

@@ -60,7 +60,7 @@ pub fn Object(
 	let audience_badge = object.audience().id().str()
 		.map(|x| view! {
 			<a class="clean dim" href={Uri::web(U::Actor, &x)}>
-				<span class="border-button ml-1" title={x.clone()}>
+				<span class="border-button ml-s" title={x.clone()}>
 					<code class="color mr-s">&</code>
 					<small class="mr-s">
 						{Uri::pretty(&x, 30)}
@@ -75,13 +75,13 @@ pub fn Object(
 			let href = Uri::web(U::Hashtag, &name);
 			Some(view! {
 				<a class="clean dim" href={href}>
-					<span class="border-button ml-1">
+					<span class="border-button ml-s">
 						<code class="color mr-s">#</code>
 						<small class="mr-s">
 							{name}
 						</small>
 					</span>
-				</a>
+				</a>" "
 			})
 		} else {
 			None
@@ -155,9 +155,11 @@ pub fn Object(
 		<div class="mt-s ml-1 rev">
 			{if !reply { Some(hashtag_badges) } else { None }}
 			{if !reply { audience_badge } else { None }}
-			<ReplyButton n=comments target=oid.clone() />
-			<LikeButton n=likes liked=already_liked target=oid.clone() author=author_id private=!public />
-			<RepostButton n=shares target=oid />
+			<span style="white-space:nowrap">
+				<ReplyButton n=comments target=oid.clone() />
+				<LikeButton n=likes liked=already_liked target=oid.clone() author=author_id private=!public />
+				<RepostButton n=shares target=oid />
+			</span>
 		</div>
 	}
 }
