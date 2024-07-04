@@ -14,6 +14,7 @@ pub struct Feeds {
 	pub user: Timeline,
 	pub server: Timeline,
 	pub context: Timeline,
+	pub tag: Timeline,
 }
 
 impl Feeds {
@@ -24,6 +25,7 @@ impl Feeds {
 			global: Timeline::new(format!("{URL_BASE}/inbox/page")),
 			user: Timeline::new(format!("{URL_BASE}/actors/{username}/outbox/page")),
 			server: Timeline::new(format!("{URL_BASE}/outbox/page")),
+			tag: Timeline::new(format!("{URL_BASE}/tags/upub/page")),
 			context: Timeline::new(format!("{URL_BASE}/outbox/page")), // TODO ehhh
 		}
 	}
@@ -35,6 +37,7 @@ impl Feeds {
 		self.user.reset(None);
 		self.server.reset(None);
 		self.context.reset(None);
+		self.tag.reset(None);
 	}
 }
 
@@ -131,6 +134,8 @@ pub fn App() -> impl IntoView {
 											<Route path="followers" view=move || view! { <FollowList outgoing=false /> } />
 										</Route>
 
+										<Route path="tags/:id" view=move || view! { <HashtagFeed tl=feeds.tag /> } />
+
 										<Route path="objects/:id" view=ObjectView />
 										// <Route path="/web/activities/:id" view=move || view! { <ActivityPage tl=context_tl /> } />
 
@@ -194,6 +199,7 @@ fn Scrollable() -> impl IntoView {
 					out
 				},
 			},
+			Some("tags") => format!("tags :: {}", path_iter.next().unwrap_or_default()),
 			Some(p) => p.to_string(),
 			None => "?".to_string(),
 		}

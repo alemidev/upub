@@ -10,7 +10,7 @@ use apb::Collection;
 pub fn FollowList(outgoing: bool) -> impl IntoView {
 	let follow___ = if outgoing { "following" } else { "followers" };
 	let symbol = if outgoing { "👥" } else { "📢" };
-	let params = use_params::<super::IdParam>();
+	let params = use_params::<IdParam>();
 	let auth = use_context::<Auth>().expect("missing auth context");
 	let resource = create_local_resource(
 		move || params.get().ok().and_then(|x| x.id).unwrap_or_default(),

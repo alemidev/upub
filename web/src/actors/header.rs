@@ -6,7 +6,7 @@ use apb::{field::OptionalString, ActivityMut, Actor, Base, Object, ObjectMut};
 
 #[component]
 pub fn ActorHeader() -> impl IntoView {
-	let params = use_params::<super::IdParam>();
+	let params = use_params::<IdParam>();
 	let auth = use_context::<Auth>().expect("missing auth context");
 	let actor = create_local_resource(
 		move || params.get().ok().and_then(|x| x.id).unwrap_or_default(),

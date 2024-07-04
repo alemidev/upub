@@ -5,7 +5,7 @@ use crate::prelude::*;
 #[component]
 pub fn ActorPosts() -> impl IntoView {
 	let feeds = use_context::<Feeds>().expect("missing feeds context");
-	let params = use_params::<super::IdParam>();
+	let params = use_params::<IdParam>();
 	Signal::derive(move || {
 		let id = params.get_untracked().ok().and_then(|x| x.id).unwrap_or_default();
 		let tl_url = format!("{}/outbox/page", Uri::api(U::Actor, &id, false));

@@ -1,4 +1,5 @@
 use leptos::*;
+use leptos_router::use_params;
 use crate::prelude::*;
 use super::Timeline;
 
@@ -32,4 +33,25 @@ pub fn Feed(tl: Timeline) -> impl IntoView {
 		</div>
 		{move || if tl.loading.get() { Some(view! { <Loader /> }) } else { None }}
 	}
+}
+
+#[component]
+pub fn HashtagFeed(tl: Timeline) -> impl IntoView {
+	let params = use_params::<IdParam>();
+	Signal::derive(move || {
+		let current_tag = tl.next.get_untracked()
+			.split('/')
+			.last()
+			.unwrap_or_default()
+			.split('?')
+			.next()
+			.unwrap_or_default()
+			.to_string();
+		let new_tag = params.get().ok().and_then(|x| x.id).unwrap_or_default();
+		if new_tag != current_tag {
+			tl.reset(Some(Uri::api(U::Hashtag, &new_tag, false)));
+		}
+	}).track();
+	
+	view! { <Feed tl=tl /> }
 }

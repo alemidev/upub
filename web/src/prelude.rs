@@ -1,6 +1,7 @@
 pub use crate::{
 	URL_BASE,
 	Http, Uri,
+	IdParam,
 	Cache, cache, // TODO move Cache under cache
 	app::{Feeds, Loader},
 	auth::Auth,
@@ -21,7 +22,7 @@ pub use crate::{
 	},
 	timeline::{
 		Timeline,
-		feed::Feed,
+		feed::{Feed, HashtagFeed},
 		thread::Thread,
 	},
 };

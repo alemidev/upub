@@ -157,6 +157,11 @@ impl DashmapCache<String> {
 	}
 }
 
+use leptos_router::Params; // TODO can i remove this?
+#[derive(Clone, leptos::Params, PartialEq)]
+pub struct IdParam {
+	id: Option<String>,
+}
 
 pub struct Http;
 
