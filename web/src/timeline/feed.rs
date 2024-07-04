@@ -49,7 +49,7 @@ pub fn HashtagFeed(tl: Timeline) -> impl IntoView {
 			.to_string();
 		let new_tag = params.get().ok().and_then(|x| x.id).unwrap_or_default();
 		if new_tag != current_tag {
-			tl.reset(Some(Uri::api(U::Hashtag, &new_tag, false)));
+			tl.reset(Some(Uri::api(U::Hashtag, &format!("{new_tag}/page"), false)));
 		}
 	}).track();
 	
