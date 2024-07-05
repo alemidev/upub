@@ -28,13 +28,17 @@ pub async fn page(
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let context = ctx.oid(&id);
 
-	let mut filter = Condition::all()
-		.add(auth.filter())
-		.add(model::object::Column::Context.eq(context));
+	let mut filter = Condition::any()
+		.add(auth.filter());
 
 	if let Identity::Local { ref id, .. } = auth {
 		filter = filter.add(model::object::Column::AttributedTo.eq(id));
 	}
+
+	filter = Condition::all()
+		.add(model::object::Column::Context.eq(context))
+		.add(filter);
+
 
 	crate::builders::paginate_feed(
 		upub::url!(ctx, "/objects/{id}/context/page"),
