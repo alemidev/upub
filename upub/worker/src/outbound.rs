@@ -1,5 +1,5 @@
-use apb::{target::Addressed, Activity, ActivityMut, BaseMut, Object, ObjectMut};
-use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QuerySelect, SelectColumns, TransactionTrait};
+use apb::{field::OptionalString, target::Addressed, Activity, ActivityMut, Base, BaseMut, Object, ObjectMut};
+use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect, SelectColumns, TransactionTrait};
 use upub::{model, traits::{Addresser, Processor}, Context};
 
 
@@ -25,6 +25,24 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 		.set_id(Some(&job.activity))
 		.set_actor(apb::Node::link(job.actor.clone()))
 		.set_published(Some(now));
+
+	if matches!(t, apb::ObjectType::Activity(apb::ActivityType::Undo)) {
+		let mut undone = activity.object().extract().ok_or(crate::JobError::MissingPayload)?;
+		if undone.id().is_err() {
+			let undone_target = undone.object().id().str().ok_or(crate::JobError::MissingPayload)?;
+			let undone_type = undone.activity_type().map_err(|_| crate::JobError::MissingPayload)?;
+			let undone_model = model::activity::Entity::find()
+				.filter(model::activity::Column::Object.eq(&undone_target))
+				.filter(model::activity::Column::Actor.eq(&job.actor))
+				.filter(model::activity::Column::ActivityType.eq(undone_type))
+				.order_by_desc(model::activity::Column::Published)
+				.one(&tx)
+				.await?
+				.ok_or_else(|| sea_orm::DbErr::RecordNotFound(format!("actor={},type={},object={}",job.actor, undone_type, undone_target)))?;
+			undone = undone.set_id(Some(&undone_model.id));
+		}
+		activity = activity.set_object(apb::Node::object(undone));
+	}
 
 	if matches!(t, apb::ObjectType::Activity(apb::ActivityType::Create)) {
 		let raw_oid = Context::new_id();
