@@ -19,7 +19,11 @@ pub fn ActorHeader() -> impl IntoView {
 							.await
 							.map_err(|e| e.to_string())?;
 						let user = std::sync::Arc::new(user);
-						cache::OBJECTS.store(&Uri::full(U::Actor, &id), user.clone());
+						let uid = Uri::full(U::Actor, &id);
+						cache::OBJECTS.store(&uid, user.clone());
+						if let Some(url) = user.url().id().str() {
+							cache::WEBFINGER.store(&url, uid);
+						}
 						Ok(user)
 					},
 				}

@@ -3,7 +3,7 @@ pub mod thread;
 
 use std::{collections::BTreeSet, pin::Pin, sync::Arc};
 
-use apb::{field::OptionalString, Activity, ActivityMut, Base, Object};
+use apb::{field::OptionalString, Activity, ActivityMut, Actor, Base, Object};
 use leptos::*;
 use crate::prelude::*;
 
@@ -169,9 +169,16 @@ async fn process_activities(activities: Vec<serde_json::Value>, auth: Auth) -> V
 }
 
 async fn fetch_and_update(kind: U, id: String, auth: Auth) {
-	match Http::fetch(&Uri::api(kind, &id, false), auth).await {
-		Ok(data) => { cache::OBJECTS.store(&id, Arc::new(data)); },
+	match Http::fetch::<serde_json::Value>(&Uri::api(kind, &id, false), auth).await {
 		Err(e) => console_warn(&format!("could not fetch '{id}': {e}")),
+		Ok(data) => {
+			if data.actor_type().is_ok() {
+				if let Some(url) = data.url().id().str() {
+					cache::WEBFINGER.store(&id, url);
+				}
+			}
+			cache::OBJECTS.store(&id, Arc::new(data));
+		},
 	}
 }
 
