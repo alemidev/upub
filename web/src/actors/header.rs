@@ -85,15 +85,18 @@ pub fn ActorHeader() -> impl IntoView {
 							</tr>
 						</table>
 						<div class="rev mr-1" class:hidden=move || !auth.present() || auth.user_id() == uid>
-							{if followed_by_me {
-								view! { <code class="color">following</code> }.into_view()
-							} else {
-								view! { <input type="submit" value="follow" on:click=move |_| send_follow_request(_uid.clone()) /> }.into_view()
-							}}
 							{if following_me {
-								Some(view! { <code class="ml-1 color">follows you</code> })
+								Some(view! { <code class="mr-1 color">follows you</code> })
 							} else {
 								None
+							}}
+							{if followed_by_me {
+								view! {
+									<code class="color">"following"</code>
+									<input type="submit" value="x" on:click=move |_| unfollow(_uid.clone()) />
+								}.into_view()
+							} else {
+								view! { <input type="submit" value="follow" on:click=move |_| send_follow_request(_uid.clone()) /> }.into_view()
 							}}
 						</div>
 					</div>
@@ -123,6 +126,23 @@ fn send_follow_request(target: String) {
 			.set_activity_type(Some(apb::ActivityType::Follow))
 			.set_object(apb::Node::link(target.clone()))
 			.set_to(apb::Node::links(vec![target]));
+		if let Err(e) = Http::post(&auth.outbox(), &payload, auth).await {
+			tracing::error!("failed sending follow request: {e}");
+		}
+	})
+}
+
+fn unfollow(target: String) {
+	let auth = use_context::<Auth>().expect("missing auth context");
+	spawn_local(async move {
+		let payload = apb::new() 
+			.set_activity_type(Some(apb::ActivityType::Undo))
+			.set_to(apb::Node::links(vec![target.clone()]))
+			.set_object(apb::Node::object(
+				apb::new()
+					.set_activity_type(Some(apb::ActivityType::Follow))
+					.set_object(apb::Node::link(target))
+			));
 		if let Err(e) = Http::post(&auth.outbox(), &payload, auth).await {
 			tracing::error!("failed sending follow request: {e}");
 		}
