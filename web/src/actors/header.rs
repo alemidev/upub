@@ -97,7 +97,7 @@ pub fn ActorHeader() -> impl IntoView {
 							}}
 						</div>
 					</div>
-					<p class="mb-2 mt-0 center" inner_html={mdhtml::safe_html(actor.summary().unwrap_or_default())}></p>
+					<p class="mb-2 mt-0 center bio" inner_html={mdhtml::safe_html(actor.summary().unwrap_or_default())}></p>
 				</div>
 				<Outlet />
 			}.into_view()
