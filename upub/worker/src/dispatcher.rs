@@ -146,6 +146,15 @@ impl JobDispatcher for Context {
 					Err(JobError::ProcessorError(ProcessorError::PullError(PullError::Malformed(f)))) => 
 						tracing::warn!("dropping job because requested resource could not be verified (fetch is invalid AP object: {f})"),
 					Err(e) => {
+						if let JobError::ProcessorError(ProcessorError::PullError(PullError::Fetch(status, ref e))) = e {
+							// TODO maybe convert this in generic .is_client_error() check, but excluding 401s
+							//      and 400s because we want to retry those. also maybe 406s? idk theres a lot i
+							//      just want to drop lemmy.cafe jobs
+							if status.as_u16() == 447 {
+								tracing::warn!("dropping job with non-standard error {status} because requested resource is not available: {e}");
+								return;
+							}
+						}
 						tracing::error!("failed processing job '{}': {e}", job.activity);
 						let active = job.clone().repeat();
 						let mut count = 0;
@@ -162,7 +171,6 @@ impl JobDispatcher for Context {
 							tokio::time::sleep(std::time::Duration::from_secs(poll_interval)).await;
 						}
 					}
-
 				}
 			});
 
