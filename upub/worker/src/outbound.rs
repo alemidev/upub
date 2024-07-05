@@ -39,7 +39,9 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 				.one(&tx)
 				.await?
 				.ok_or_else(|| sea_orm::DbErr::RecordNotFound(format!("actor={},type={},object={}",job.actor, undone_type, undone_target)))?;
-			undone = undone.set_id(Some(&undone_model.id));
+			undone = undone
+				.set_id(Some(&undone_model.id))
+				.set_actor(apb::Node::link(job.actor.clone()));
 		}
 		activity = activity.set_object(apb::Node::object(undone));
 	}
