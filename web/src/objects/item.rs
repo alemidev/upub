@@ -166,7 +166,7 @@ pub fn Object(
 			</tr>
 		</table>
 		{post}
-		<div class="mb-s ml-1 rev">
+		<div class="mb-s mt-s ml-1 rev">
 			{tag_badges}
 			{audience_badge}
 			<span style="white-space:nowrap">
