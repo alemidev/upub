@@ -38,7 +38,7 @@ pub fn Feed(tl: Timeline) -> impl IntoView {
 #[component]
 pub fn HashtagFeed(tl: Timeline) -> impl IntoView {
 	let params = use_params::<IdParam>();
-	Signal::derive(move || {
+	create_effect(move |_| {
 		let current_tag = tl.next.get_untracked()
 			.split('/')
 			.last()
@@ -51,7 +51,7 @@ pub fn HashtagFeed(tl: Timeline) -> impl IntoView {
 		if new_tag != current_tag {
 			tl.reset(Some(Uri::api(U::Hashtag, &format!("{new_tag}/page"), false)));
 		}
-	}).track();
+	});
 	
 	view! { <Feed tl=tl /> }
 }
