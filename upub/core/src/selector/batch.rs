@@ -36,8 +36,10 @@ impl BatchFillable for Vec<RichActivity> {
 		}
 		for element in self.iter_mut() {
 			if let Some(ref object) = element.object {
-				if let Some(v) = map.remove(&object.internal) {
-					element.accept(v, tx).await?;
+				if let Some(v) = map.get(&object.internal) {
+					// TODO wasteful because we clone every time, but we cant do remove otherwise multiple
+					//      identical objects wont get filled (for example, a post boosted twice)
+					element.accept(v.clone(), tx).await?;
 				}
 			}
 		}
