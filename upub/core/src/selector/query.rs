@@ -94,8 +94,14 @@ impl Query {
 	pub fn hashtags() -> Select<model::hashtag::Entity> {
 		let mut select =
 			model::hashtag::Entity::find()
+				.distinct_on([
+					(model::addressing::Entity, model::addressing::Column::Published).into_column_ref(),
+					(model::object::Entity, model::object::Column::Internal).into_column_ref(),
+				])
 				.join(sea_orm::JoinType::InnerJoin, model::hashtag::Relation::Objects.def())
 				.join(sea_orm::JoinType::InnerJoin, model::object::Relation::Addressing.def())
+				.order_by(model::addressing::Column::Published, Order::Desc)
+				.order_by(model::object::Column::Internal, Order::Desc)
 				.select_only();
 
 		for col in model::object::Column::iter() {
