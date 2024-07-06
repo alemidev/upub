@@ -427,11 +427,13 @@ pub trait Fetchable : Sync + Send {
 impl Fetchable for apb::Node<serde_json::Value> {
 	async fn fetch(&mut self, ctx: &crate::Context) -> Result<&mut Self, PullError> {
 		if let apb::Node::Link(uri) = self {
-			*self = crate::Context::request(Method::GET, uri.href(), None, ctx.base(), ctx.pkey(), ctx.domain())
-				.await?
-				.json::<serde_json::Value>()
-				.await?
-				.into();
+			if let Ok(href) = uri.href() {
+				*self = crate::Context::request(Method::GET, href, None, ctx.base(), ctx.pkey(), ctx.domain())
+					.await?
+					.json::<serde_json::Value>()
+					.await?
+					.into();
+			}
 		}
 
 		Ok(self)

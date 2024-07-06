@@ -12,7 +12,7 @@ impl RichMention {
 		use apb::LinkMut;
 		apb::new()
 			.set_link_type(Some(apb::LinkType::Mention))
-			.set_href(&self.id)
+			.set_href(Some(&self.id))
 			.set_name(Some(&self.fqn))
 	}
 }

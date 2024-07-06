@@ -102,7 +102,7 @@ impl<T : super::Base> Node<T> {
 	pub fn id(&self) -> crate::Field<&str> {
 		match self {
 			Node::Empty => Err(crate::FieldErr("id")),
-			Node::Link(uri) => Ok(uri.href()),
+			Node::Link(uri) => uri.href(),
 			Node::Object(obj) => obj.id(),
 			Node::Array(arr) => arr.front().map(|x| x.id()).ok_or(crate::FieldErr("id"))?,
 		}
@@ -111,7 +111,7 @@ impl<T : super::Base> Node<T> {
 	pub fn all_ids(&self) -> Vec<String> {
 		match self {
 			Node::Empty => vec![],
-			Node::Link(uri) => vec![uri.href().to_string()],
+			Node::Link(uri) => uri.href().map(|x| vec![x.to_string()]).unwrap_or_default(),
 			Node::Object(x) => x.id().map_or(vec![], |x| vec![x.to_string()]),
 			Node::Array(x) => x.iter().filter_map(|x| Some(x.id().ok()?.to_string())).collect()
 		}
@@ -236,7 +236,7 @@ impl From<Node<serde_json::Value>> for serde_json::Value {
 	fn from(value: Node<serde_json::Value>) -> Self {
 		match value {
 			Node::Empty => serde_json::Value::Null,
-			Node::Link(l) => serde_json::Value::String(l.href().to_string()), // TODO there could be more
+			Node::Link(l) => serde_json::Value::String(l.href().unwrap_or_default().to_string()), // TODO there could be more
 			Node::Object(o) => *o,
 			Node::Array(arr) =>
 				serde_json::Value::Array(arr.into_iter().map(|x| x.into()).collect()),

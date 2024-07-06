@@ -19,7 +19,7 @@ crate::strenum! {
 
 pub trait Link : crate::Base {
 	fn link_type(&self) -> Field<LinkType> { Err(FieldErr("type")) }
-	fn href(&self) -> &str;
+	fn href(&self) -> Field<&str>;
 	fn rel(&self) -> Field<&str> { Err(FieldErr("rel")) }
 	fn media_type(&self) -> Field<&str> { Err(FieldErr("mediaType")) } // also in obj
 	fn name(&self) -> Field<&str> { Err(FieldErr("name")) }       // also in obj
@@ -31,7 +31,7 @@ pub trait Link : crate::Base {
 
 pub trait LinkMut : crate::BaseMut {
 	fn set_link_type(self, val: Option<LinkType>) -> Self;
-	fn set_href(self, href: &str) -> Self;
+	fn set_href(self, href: Option<&str>) -> Self;
 	fn set_rel(self, val: Option<&str>) -> Self;
 	fn set_media_type(self, val: Option<&str>) -> Self; // also in obj
 	fn set_name(self, val: Option<&str>) -> Self;       // also in obj
@@ -42,19 +42,19 @@ pub trait LinkMut : crate::BaseMut {
 }
 
 impl Link for String {
-	fn href(&self) -> &str {
-		self
+	fn href(&self) -> Field<&str> {
+		Ok(self)
 	}
 }
 
 #[cfg(feature = "unstructured")]
 impl Link for serde_json::Value {
 	// TODO this can fail, but it should never do!
-	fn href(&self) -> &str {
+	fn href(&self) -> Field<&str> {
 		if self.is_string() {
-			self.as_str().unwrap_or("")
+			self.as_str().ok_or(FieldErr("href"))
 		} else {
-			self.get("href").map(|x| x.as_str().unwrap_or("")).unwrap_or("")
+			self.get("href").and_then(|x| x.as_str()).ok_or(FieldErr("href"))
 		}
 	}
 
@@ -70,15 +70,18 @@ impl Link for serde_json::Value {
 
 #[cfg(feature = "unstructured")]
 impl LinkMut for serde_json::Value {
-	fn set_href(mut self, href: &str) -> Self {
+	fn set_href(mut self, href: Option<&str>) -> Self {
 		match &mut self {
 			serde_json::Value::Object(map) => {
-				map.insert(
-					"href".to_string(),
-					serde_json::Value::String(href.to_string())
-				);
+				match href {
+					Some(href) => map.insert(
+						"href".to_string(),
+						serde_json::Value::String(href.to_string())
+					),
+					None => map.remove("href"),
+				};
 			},
-			x => *x = serde_json::Value::String(href.to_string()),
+			x => *x = serde_json::Value::String(href.unwrap_or_default().to_string()),
 		}
 		self
 	}

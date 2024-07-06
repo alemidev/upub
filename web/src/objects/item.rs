@@ -72,7 +72,7 @@ pub fn Object(
 					})
 				},
 				Ok(apb::LinkType::Mention) => {
-					let uid = apb::Link::href(link.as_ref());
+					let uid = apb::Link::href(link.as_ref()).unwrap_or_default();
 					let mention = apb::Link::name(link.as_ref()).unwrap_or_default().replacen('@', "", 1);
 					let (username, domain) = if let Some((username, server)) = mention.split_once('@') {
 						(username.to_string(), server.to_string())

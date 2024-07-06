@@ -77,7 +77,7 @@ impl Normalizer for crate::Context {
 				},
 				Node::Link(l) => crate::model::attachment::ActiveModel {
 					internal: sea_orm::ActiveValue::NotSet,
-					url: Set(l.href().to_string()),
+					url: Set(l.href().unwrap_or_default().to_string()),
 					object: Set(object_model.internal),
 					document_type: Set(apb::DocumentType::Page),
 					name: Set(l.name().str()),
@@ -96,20 +96,22 @@ impl Normalizer for crate::Context {
 				Node::Empty | Node::Object(_) | Node::Array(_) => {},
 				Node::Link(l) => match l.link_type() {
 					Ok(apb::LinkType::Mention) => {
-						if let Some(internal) = crate::model::actor::Entity::ap_to_internal(l.href(), tx).await? {
-							let model = crate::model::mention::ActiveModel {
-								internal: NotSet,
-								object: Set(object_model.internal),
-								actor: Set(internal),
-							};
-							crate::model::mention::Entity::insert(model)
-								.exec(tx)
-								.await?;
+						if let Ok(href) = l.href() {
+							if let Some(internal) = crate::model::actor::Entity::ap_to_internal(href, tx).await? {
+								let model = crate::model::mention::ActiveModel {
+									internal: NotSet,
+									object: Set(object_model.internal),
+									actor: Set(internal),
+								};
+								crate::model::mention::Entity::insert(model)
+									.exec(tx)
+									.await?;
+							}
 						}
 					},
 					Ok(apb::LinkType::Hashtag) => {
 						let hashtag = l.name()
-							.unwrap_or_else(|_| l.href().split('/').last().unwrap_or_default())
+							.unwrap_or_else(|_| l.href().unwrap_or_default().split('/').last().unwrap_or_default()) // TODO maybe just fail?
 							.replace('#', "");
 						let model = crate::model::hashtag::ActiveModel {
 							internal: NotSet,

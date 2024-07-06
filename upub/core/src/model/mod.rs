@@ -31,7 +31,7 @@ impl<T: apb::Base> From<apb::Node<T>> for Audience {
 		Audience(
 			match value {
 				apb::Node::Empty => vec![],
-				apb::Node::Link(l) => vec![l.href().to_string()],
+				apb::Node::Link(l) => l.href().map(|x| vec![x.to_string()]).unwrap_or_default(),
 				apb::Node::Object(o) => if let Ok(id) = o.id() { vec![id.to_string()] } else { vec![] },
 				apb::Node::Array(arr) => arr.into_iter().filter_map(|l| l.id().str()).collect(),
 			}
