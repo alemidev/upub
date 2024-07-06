@@ -64,7 +64,7 @@ fn FeedRecursive(tl: Timeline, root: String) -> impl IntoView {
 			children=move |(id, obj)|
 				view! {
 					<div class="context depth-r">
-						<Item item=obj replies=true slim=true sep=true />
+						<Item item=obj replies=true slim=true />
 						<div class="depth-r">
 							<FeedRecursive tl=tl root=id />
 						</div>
