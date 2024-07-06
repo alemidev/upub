@@ -113,6 +113,18 @@ impl Normalizer for crate::Context {
 						let hashtag = l.name()
 							.unwrap_or_else(|_| l.href().unwrap_or_default().split('/').last().unwrap_or_default()) // TODO maybe just fail?
 							.replace('#', "");
+						// TODO lemmy added a "fix" to make its communities kind of work with mastodon:
+						//      basically they include the community name as hashtag. ughhhh, since we handle
+						//      hashtags and audience it means our hashtags gets clogged with posts from lemmy
+						//      communities. it kind of make sense to include them since they fit the hashtag
+						//      theme, but nonetheless it's annoying and i'd rather not have the two things
+						//      mixed. maybe it's just me and this should go instead? maybe this has other
+						//      issues and it's just not worth fixing this tiny lemmy kink? idkk
+						if let Some(ref audience) = object_model.audience {
+							if audience.ends_with(&hashtag) {
+								continue;
+							}
+						}
 						let model = crate::model::hashtag::ActiveModel {
 							internal: NotSet,
 							object: Set(object_model.internal),
