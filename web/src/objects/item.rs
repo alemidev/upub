@@ -6,10 +6,6 @@ use crate::prelude::*;
 
 use apb::{field::OptionalString, target::Addressed, ActivityMut, Base, Collection, CollectionMut, Object, ObjectMut};
 
-lazy_static::lazy_static! {
-	static ref REGEX: Regex = regex::Regex::new("<a href=\"([-a-zA-Z0-9()@:%_\\+.~#?&\\/=]+)\" class=\"u-url mention\">@(\\w+)(@\\w+|)</a>").expect("failed compiling @ regex");
-}
-
 #[component]
 pub fn Object(
 	object: crate::Object,
@@ -39,23 +35,7 @@ pub fn Object(
 		Some(view! { <div class="pb-1"></div> })
 	};
 
-	let mut content = mdhtml::safe_html(object.content().unwrap_or_default());
-
-	let mut results = vec![];
-	for (matched, [id, username, _domain]) in REGEX.captures_iter(&content).map(|c| c.extract()) {
-		// TODO what the fuck mastodon........... why are you putting the fancy url in the A HREF????????
-		let id = id.replace('@', "users/");
-		// TODO ughh ugly on-the-fly html editing, can this be avoided?
-		let to_replace = format!(
-			"<a class=\"clean dim\" href=\"{}\" title=\"{}\"><span class=\"border-button mr-s\"><code class=\"color mr-s\">@</code>{}</span></a>",
-			Uri::web(U::Actor, &id), id, username
-		);
-		results.push((matched.to_string(), to_replace));
-	}
-
-	for (from, to) in results {
-		content = content.replace(&from, &to);
-	}
+	let content = mdhtml::safe_html(object.content().unwrap_or_default());
 
 	let audience_badge = object.audience().id().str()
 		.map(|x| view! {
@@ -70,21 +50,45 @@ pub fn Object(
 		});
 
 	let hashtag_badges = object.tag().filter_map(|x| {
-		if let Ok(apb::LinkType::Hashtag) = apb::Link::link_type(&x) {
-			let name = apb::Link::name(&x).unwrap_or_default().replace('#', "");
-			let href = Uri::web(U::Hashtag, &name);
-			Some(view! {
-				<a class="clean dim" href={href}>
-					<span class="border-button ml-s">
-						<code class="color mr-s">#</code>
-						<small class="mr-s">
-							{name}
-						</small>
-					</span>
-				</a>" "
-			})
-		} else {
-			None
+		match apb::Link::link_type(&x) {
+			Ok(apb::LinkType::Hashtag) => {
+				let name = apb::Link::name(&x).unwrap_or_default().replace('#', "");
+				let href = Uri::web(U::Hashtag, &name);
+				Some(view! {
+					<a class="clean dim" href={href}>
+						<span class="border-button ml-s" >
+							<code class="color mr-s">#</code>
+							<small class="mr-s">
+								{name}
+							</small>
+						</span>
+					</a>" "
+				})
+			},
+			Ok(apb::LinkType::Mention) => {
+				let uid = apb::Link::href(&x);
+				let mention = apb::Link::name(&x).unwrap_or_default().replacen('@', "", 1);
+				let (username, domain) = if let Some((username, server)) = mention.split_once('@') {
+					(username.to_string(), server.to_string())
+				} else {
+					(
+						mention.to_string(),
+						uid.replace("https://", "").replace("http://", "").split('/').next().unwrap_or_default().to_string(),
+					)
+				};
+				let href = Uri::web(U::Actor, uid);
+				Some(view! {
+					<a class="clean dim" href={href}>
+						<span class="border-button ml-s" title={format!("@{username}@{domain}")} >
+							<code class="color mr-s">@</code>
+							<small class="mr-s">
+								{username}
+							</small>
+						</span>
+					</a>" "
+				})
+			},
+			_ => None,
 		}
 	}).collect_view();
 

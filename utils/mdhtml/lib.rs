@@ -51,13 +51,12 @@ impl TokenSink for Sink {
 							}
 						},
 						"a" => {
-							let mut any_attr = !tag.attrs.is_empty();
+							let any_attr = !tag.attrs.is_empty();
 							for attr in tag.attrs {
 								match attr.name.local.as_ref() {
 									"href" => self.buffer.push_str(&format!(" href=\"{}\"", attr.value.as_ref())),
 									"title" => self.buffer.push_str(&format!(" title=\"{}\"", attr.value.as_ref())),
 									"class" => if attr.value.as_ref() == "u-url mention" {
-										any_attr = false;
 										self.buffer.push_str(" class=\"u-url mention\"")
 									},
 									_ => {},
