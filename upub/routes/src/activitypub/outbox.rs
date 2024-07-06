@@ -16,7 +16,7 @@ pub async fn page(
 	crate::builders::paginate_feed(
 		upub::url!(ctx, "/outbox/page"),
 		Condition::all()
-			.add(auth.filter())
+			.add(upub::model::addressing::Column::Actor.is_null())
 			.add(upub::model::actor::Column::Domain.eq(ctx.domain().to_string())),
 		ctx.db(),
 		page,

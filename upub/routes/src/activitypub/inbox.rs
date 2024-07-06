@@ -1,6 +1,6 @@
 use apb::{Activity, ActivityType, Base};
 use axum::{extract::{Query, State}, http::StatusCode, Json};
-use sea_orm::{ActiveValue::{NotSet, Set}, EntityTrait};
+use sea_orm::{sea_query::IntoCondition, ActiveValue::{NotSet, Set}, ColumnTrait, EntityTrait};
 use upub::{model::job::JobType, Context};
 
 use crate::{AuthIdentity, Identity, builders::JsonLD};
@@ -21,7 +21,7 @@ pub async fn page(
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	crate::builders::paginate_feed(
 		upub::url!(ctx, "/inbox/page"),
-		auth.filter(),
+		upub::model::addressing::Column::Actor.is_null().into_condition(),
 		ctx.db(),
 		page,
 		auth.my_id(),
