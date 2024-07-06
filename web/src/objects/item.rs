@@ -1,7 +1,6 @@
 use std::sync::Arc;
 
 use leptos::*;
-use regex::Regex;
 use crate::prelude::*;
 
 use apb::{field::OptionalString, target::Addressed, ActivityMut, Base, Collection, CollectionMut, Object, ObjectMut};
@@ -49,48 +48,55 @@ pub fn Object(
 			</a>
 		});
 
-	let hashtag_badges = object.tag().filter_map(|x| {
-		match apb::Link::link_type(&x) {
-			Ok(apb::LinkType::Hashtag) => {
-				let name = apb::Link::name(&x).unwrap_or_default().replace('#', "");
-				let href = Uri::web(U::Hashtag, &name);
-				Some(view! {
-					<a class="clean dim" href={href}>
-						<span class="border-button ml-s" >
-							<code class="color mr-s">#</code>
-							<small class="mr-s">
-								{name}
-							</small>
-						</span>
-					</a>" "
-				})
-			},
-			Ok(apb::LinkType::Mention) => {
-				let uid = apb::Link::href(&x);
-				let mention = apb::Link::name(&x).unwrap_or_default().replacen('@', "", 1);
-				let (username, domain) = if let Some((username, server)) = mention.split_once('@') {
-					(username.to_string(), server.to_string())
-				} else {
-					(
-						mention.to_string(),
-						uid.replace("https://", "").replace("http://", "").split('/').next().unwrap_or_default().to_string(),
-					)
-				};
-				let href = Uri::web(U::Actor, uid);
-				Some(view! {
-					<a class="clean dim" href={href}>
-						<span class="border-button ml-s" title={format!("@{username}@{domain}")} >
-							<code class="color mr-s">@</code>
-							<small class="mr-s">
-								{username}
-							</small>
-						</span>
-					</a>" "
-				})
-			},
+	let tag_badges = object.tag()
+		.flat()
+		.into_iter()
+		.filter_map(|node| match node {
+			apb::Node::Link(x) => Some(x),
 			_ => None,
-		}
-	}).collect_view();
+		})
+		.map(|link| {
+			match apb::Link::link_type(link.as_ref()) {
+				Ok(apb::LinkType::Hashtag) => {
+					let name = apb::Link::name(link.as_ref()).unwrap_or_default().replace('#', "");
+					let href = Uri::web(U::Hashtag, &name);
+					Some(view! {
+						<a class="clean dim" href={href}>
+							<span class="border-button ml-s" >
+								<code class="color mr-s">#</code>
+								<small class="mr-s">
+									{name}
+								</small>
+							</span>
+						</a>" "
+					})
+				},
+				Ok(apb::LinkType::Mention) => {
+					let uid = apb::Link::href(link.as_ref());
+					let mention = apb::Link::name(link.as_ref()).unwrap_or_default().replacen('@', "", 1);
+					let (username, domain) = if let Some((username, server)) = mention.split_once('@') {
+						(username.to_string(), server.to_string())
+					} else {
+						(
+							mention.to_string(),
+							uid.replace("https://", "").replace("http://", "").split('/').next().unwrap_or_default().to_string(),
+						)
+					};
+					let href = Uri::web(U::Actor, uid);
+					Some(view! {
+						<a class="clean dim" href={href}>
+							<span class="border-button ml-s" title={format!("@{username}@{domain}")} >
+								<code class="color mr-s">@</code>
+								<small class="mr-s">
+									{username}
+								</small>
+							</span>
+						</a>" "
+					})
+				},
+				_ => None,
+			}
+		}).collect_view();
 
 	let post_image = object.image().get().and_then(|x| x.url().id().str()).map(|x| {
 		let (expand, set_expand) = create_signal(false);
@@ -157,7 +163,7 @@ pub fn Object(
 		</table>
 		{post}
 		<div class="mt-s ml-1 rev">
-			{hashtag_badges}
+			{tag_badges}
 			{audience_badge}
 			<span style="white-space:nowrap">
 				<ReplyButton n=comments target=oid.clone() />
