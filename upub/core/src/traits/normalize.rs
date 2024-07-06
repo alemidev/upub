@@ -1,6 +1,8 @@
 use apb::{field::OptionalString, Collection, Document, Endpoints, Node, Object, PublicKey};
 use sea_orm::{sea_query::Expr, ActiveModelTrait, ActiveValue::{Unchanged, NotSet, Set}, ColumnTrait, ConnectionTrait, DbErr, EntityTrait, IntoActiveModel, QueryFilter};
 
+use super::Fetcher;
+
 #[derive(Debug, thiserror::Error)]
 pub enum NormalizerError {
 	#[error("normalized document misses required field: {0:?}")]
@@ -97,11 +99,16 @@ impl Normalizer for crate::Context {
 				Node::Link(l) => match l.link_type() {
 					Ok(apb::LinkType::Mention) => {
 						if let Ok(href) = l.href() {
-							if let Some(internal) = crate::model::actor::Entity::ap_to_internal(href, tx).await? {
+							// TODO here we do a silent fetch, in theory normalizer trait should not use fetcher
+							//      trait because fetcher uses normalizer (and it becomes cyclic), however here
+							//      we should try to resolve remote users mentioned, otherwise most mentions will
+							//      be lost. also we shouldn't fail inserting the whole post if the mention fails
+							//      resolving.
+							if let Ok(user) = self.fetch_user(href, tx).await {
 								let model = crate::model::mention::ActiveModel {
 									internal: NotSet,
 									object: Set(object_model.internal),
-									actor: Set(internal),
+									actor: Set(user.internal),
 								};
 								crate::model::mention::Entity::insert(model)
 									.exec(tx)
