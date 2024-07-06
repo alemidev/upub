@@ -37,15 +37,19 @@ pub fn Object(
 	let content = mdhtml::safe_html(object.content().unwrap_or_default());
 
 	let audience_badge = object.audience().id().str()
-		.map(|x| view! {
-			<a class="clean dim" href={Uri::web(U::Actor, &x)}>
-				<span class="border-button ml-s" title={x.clone()}>
-					<code class="color mr-s">&</code>
-					<small class="mr-s">
-						{Uri::pretty(&x, 30)}
-					</small>
-				</span>
-			</a>
+		.map(|x| {
+			// TODO this isn't guaranteed to work every time...
+			let name = x.split('/').last().unwrap_or_default().to_string();
+			view! {
+				<a class="clean dim" href={Uri::web(U::Actor, &x)}>
+					<span class="border-button ml-s" title={x}>
+						<code class="color mr-s">&</code>
+						<small class="mr-s">
+							{name}
+						</small>
+					</span>
+				</a>
+			}
 		});
 
 	let tag_badges = object.tag()
