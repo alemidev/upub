@@ -1,4 +1,3 @@
-use sea_orm::EntityTrait;
 use reqwest::Method;
 
 use apb::{LD, ActivityMut};
@@ -59,16 +58,11 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 		return Ok(());
 	};
 
-	if let Err(e) = Context::request(
+	Context::request(
 		Method::POST, job.target.as_deref().unwrap_or(""),
 		Some(&serde_json::to_string(&payload.ld_context()).unwrap()),
 		&job.actor, &key, ctx.domain()
-	).await {
-		tracing::warn!("failed delivery of {} to {:?} : {e}", job.activity, job.target);
-		model::job::Entity::insert(job.clone().repeat(Some(e.to_string())))
-			.exec(ctx.db())
-			.await?;
-	}
+	).await?;
 
 	Ok(())
 }

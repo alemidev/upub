@@ -17,11 +17,11 @@ pub enum JobError {
 	#[error("malformed job: missing payload")]
 	MissingPayload,
 
-	#[error("no available implementation to process job")]
-	Unprocessable,
-
 	#[error("error processing activity: {0:?}")]
 	ProcessorError(#[from] upub::traits::process::ProcessorError),
+
+	#[error("error delivering activity: {0}")]
+	DeliveryError(#[from] upub::traits::fetch::RequestError),
 }
 
 pub type JobResult<T> = Result<T, JobError>;
