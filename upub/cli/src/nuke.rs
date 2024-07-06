@@ -81,6 +81,7 @@ pub async fn nuke(ctx: upub::Context, for_real: bool, delete_posts: bool) -> Res
 			not_before: Set(chrono::Utc::now()),
 			attempt: Set(0),
 			payload: Set(Some(undo_activity)),
+			error: Set(None),
 		};
 
 		tracing::info!("undoing {}", activity.id);
@@ -121,6 +122,7 @@ pub async fn nuke(ctx: upub::Context, for_real: bool, delete_posts: bool) -> Res
 				not_before: Set(chrono::Utc::now()),
 				attempt: Set(0),
 				payload: Set(Some(undo_activity)),
+				error: Set(None),
 			};
 
 			tracing::info!("deleting {}", object.id);

@@ -14,6 +14,7 @@ pub enum Jobs {
 	Published,
 	NotBefore,
 	Attempt,
+	Error, // added after
 }
 
 

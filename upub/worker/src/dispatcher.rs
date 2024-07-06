@@ -156,7 +156,7 @@ impl JobDispatcher for Context {
 							}
 						}
 						tracing::error!("failed processing job '{}': {e}", job.activity);
-						let active = job.clone().repeat();
+						let active = job.clone().repeat(Some(e.to_string()));
 						let mut count = 0;
 						loop {
 							match model::job::Entity::insert(active.clone()).exec(_ctx.db()).await {

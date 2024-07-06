@@ -67,6 +67,7 @@ pub async fn post(
 				not_before: Set(chrono::Utc::now()),
 				attempt: Set(0),
 				payload: Set(Some(activity)),
+				error: Set(None),
 			};
 
 			model::job::Entity::insert(job).exec(ctx.db()).await?;

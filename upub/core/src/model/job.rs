@@ -21,6 +21,7 @@ pub struct Model {
 	pub published: ChronoDateTimeUtc,
 	pub not_before: ChronoDateTimeUtc,
 	pub attempt: i16,
+	pub error: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -41,7 +42,7 @@ impl Model {
 		}
 	}
 
-	pub fn repeat(self) -> ActiveModel {
+	pub fn repeat(self, error: Option<String>) -> ActiveModel {
 		ActiveModel {
 			internal: sea_orm::ActiveValue::NotSet,
 			job_type: sea_orm::ActiveValue::Set(self.job_type),
@@ -52,6 +53,7 @@ impl Model {
 			activity: sea_orm::ActiveValue::Set(self.activity),
 			published: sea_orm::ActiveValue::Set(self.published),
 			attempt: sea_orm::ActiveValue::Set(self.attempt + 1),
+			error: sea_orm::ActiveValue::Set(error),
 		}
 	}
 }

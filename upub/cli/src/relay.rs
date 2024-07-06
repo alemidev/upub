@@ -84,6 +84,7 @@ pub async fn relay(ctx: upub::Context, action: RelayCommand) -> Result<(), PullE
 				attempt: Set(0),
 				published: Set(chrono::Utc::now()),
 				not_before: Set(chrono::Utc::now()),
+				error: Set(None),
 			};
 			tracing::info!("following relay {actor}");
 			upub::model::job::Entity::insert(job).exec(ctx.db()).await?;
@@ -119,6 +120,7 @@ pub async fn relay(ctx: upub::Context, action: RelayCommand) -> Result<(), PullE
 				attempt: Set(0),
 				published: Set(chrono::Utc::now()),
 				not_before: Set(chrono::Utc::now()),
+				error: Set(None),
 			};
 			tracing::info!("accepting relay {actor}");
 			upub::model::job::Entity::insert(job).exec(ctx.db()).await?;
@@ -155,6 +157,7 @@ pub async fn relay(ctx: upub::Context, action: RelayCommand) -> Result<(), PullE
 				attempt: Set(0),
 				published: Set(chrono::Utc::now()),
 				not_before: Set(chrono::Utc::now()),
+				error: Set(None),
 			};
 			tracing::info!("unfollowing relay {actor}");
 			upub::model::job::Entity::insert(job).exec(ctx.db()).await?;
@@ -190,6 +193,7 @@ pub async fn relay(ctx: upub::Context, action: RelayCommand) -> Result<(), PullE
 				attempt: Set(0),
 				published: Set(chrono::Utc::now()),
 				not_before: Set(chrono::Utc::now()),
+				error: Set(None),
 			};
 			tracing::info!("unfollowing relay {actor}");
 			upub::model::job::Entity::insert(job).exec(ctx.db()).await?;

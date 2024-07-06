@@ -65,7 +65,7 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 		&job.actor, &key, ctx.domain()
 	).await {
 		tracing::warn!("failed delivery of {} to {:?} : {e}", job.activity, job.target);
-		model::job::Entity::insert(job.clone().repeat())
+		model::job::Entity::insert(job.clone().repeat(Some(e.to_string())))
 			.exec(ctx.db())
 			.await?;
 	}
