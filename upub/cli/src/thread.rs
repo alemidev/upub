@@ -1,7 +1,7 @@
 use sea_orm::{ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter};
-use upub::traits::{fetch::PullError, Fetcher};
+use upub::traits::{fetch::RequestError, Fetcher};
 
-pub async fn thread(ctx: upub::Context) -> Result<(), PullError> {
+pub async fn thread(ctx: upub::Context) -> Result<(), RequestError> {
 	use futures::TryStreamExt;
 	let db = ctx.db();
 

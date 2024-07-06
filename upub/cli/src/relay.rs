@@ -1,6 +1,6 @@
 use apb::{ActivityMut, BaseMut, ObjectMut};
 use sea_orm::{ActiveValue::{NotSet, Set}, DbErr, EntityTrait, QueryFilter, ColumnTrait};
-use upub::traits::{fetch::PullError, Fetcher};
+use upub::traits::{fetch::RequestError, Fetcher};
 
 #[derive(Debug, Clone, clap::Subcommand)]
 /// available actions to take on relays
@@ -29,7 +29,7 @@ pub enum RelayCommand {
 	},
 }
 
-pub async fn relay(ctx: upub::Context, action: RelayCommand) -> Result<(), PullError> {
+pub async fn relay(ctx: upub::Context, action: RelayCommand) -> Result<(), RequestError> {
 	let my_internal = upub::model::actor::Entity::ap_to_internal(ctx.base(), ctx.db())
 		.await?
 		.ok_or_else(|| DbErr::RecordNotFound(ctx.base().to_string()))?;

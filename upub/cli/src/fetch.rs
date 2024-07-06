@@ -1,7 +1,7 @@
 use sea_orm::{EntityTrait, TransactionTrait};
-use upub::traits::{fetch::{Fetchable, PullError}, Addresser, Normalizer};
+use upub::traits::{fetch::{Fetchable, RequestError}, Addresser, Normalizer};
 
-pub async fn fetch(ctx: upub::Context, uri: String, save: bool) -> Result<(), PullError> {
+pub async fn fetch(ctx: upub::Context, uri: String, save: bool) -> Result<(), RequestError> {
 	use apb::Base;
 
 	let mut node = apb::Node::link(uri.to_string());

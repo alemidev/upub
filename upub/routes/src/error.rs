@@ -17,7 +17,7 @@ pub enum ApiError {
 	// TODO this is quite ugly because its basically a reqwest::Error but with extra string... buuut
 	// helps with debugging!
 	#[error("fetch error: {0:?}")]
-	FetchError(#[from] upub::traits::fetch::PullError),
+	FetchError(#[from] upub::traits::fetch::RequestError),
 
 	// wrapper error to return arbitraty status codes
 	#[error("{0}")]

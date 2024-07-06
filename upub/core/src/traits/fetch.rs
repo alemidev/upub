@@ -17,7 +17,7 @@ pub enum Pull<T> {
 }
 
 #[derive(Debug, thiserror::Error)]
-pub enum PullError {
+pub enum RequestError {
 	#[error("dereferenced resource ({0:?}) doesn't match requested type ({1:?})")]
 	Mismatch(apb::ObjectType, apb::ObjectType),
 
@@ -46,33 +46,33 @@ pub enum PullError {
 	HttpSignature(#[from] httpsign::HttpSignatureError),
 }
 
-impl PullError {
+impl RequestError {
 	fn mismatch(expected: apb::ObjectType, found: apb::ObjectType) -> Self {
-		PullError::Mismatch(expected, found)
+		RequestError::Mismatch(expected, found)
 	}
 }
 
 impl Pull<serde_json::Value> {
-	pub fn actor(self) -> Result<serde_json::Value, PullError> {
+	pub fn actor(self) -> Result<serde_json::Value, RequestError> {
 		match self {
 			Self::Actor(x) => Ok(x),
-			Self::Activity(x) => Err(PullError::mismatch(apb::ObjectType::Actor(apb::ActorType::Person), x.object_type().unwrap_or(apb::ObjectType::Activity(apb::ActivityType::Activity)))),
-			Self::Object(x) => Err(PullError::mismatch(apb::ObjectType::Actor(apb::ActorType::Person), x.object_type().unwrap_or(apb::ObjectType::Object))),
+			Self::Activity(x) => Err(RequestError::mismatch(apb::ObjectType::Actor(apb::ActorType::Person), x.object_type().unwrap_or(apb::ObjectType::Activity(apb::ActivityType::Activity)))),
+			Self::Object(x) => Err(RequestError::mismatch(apb::ObjectType::Actor(apb::ActorType::Person), x.object_type().unwrap_or(apb::ObjectType::Object))),
 		}
 	}
 
-	pub fn activity(self) -> Result<serde_json::Value, PullError> {
+	pub fn activity(self) -> Result<serde_json::Value, RequestError> {
 		match self {
-			Self::Actor(x) => Err(PullError::mismatch(apb::ObjectType::Activity(apb::ActivityType::Activity), x.object_type().unwrap_or(apb::ObjectType::Actor(apb::ActorType::Person)))),
+			Self::Actor(x) => Err(RequestError::mismatch(apb::ObjectType::Activity(apb::ActivityType::Activity), x.object_type().unwrap_or(apb::ObjectType::Actor(apb::ActorType::Person)))),
 			Self::Activity(x) => Ok(x),
-			Self::Object(x) => Err(PullError::mismatch(apb::ObjectType::Activity(apb::ActivityType::Activity), x.object_type().unwrap_or(apb::ObjectType::Object))),
+			Self::Object(x) => Err(RequestError::mismatch(apb::ObjectType::Activity(apb::ActivityType::Activity), x.object_type().unwrap_or(apb::ObjectType::Object))),
 		}
 	}
 
-	pub fn object(self) -> Result<serde_json::Value, PullError> {
+	pub fn object(self) -> Result<serde_json::Value, RequestError> {
 		match self {
-			Self::Actor(x) => Err(PullError::mismatch(apb::ObjectType::Object, x.object_type().unwrap_or(apb::ObjectType::Actor(apb::ActorType::Person)))),
-			Self::Activity(x) => Err(PullError::mismatch(apb::ObjectType::Object, x.object_type().unwrap_or(apb::ObjectType::Activity(apb::ActivityType::Activity)))),
+			Self::Actor(x) => Err(RequestError::mismatch(apb::ObjectType::Object, x.object_type().unwrap_or(apb::ObjectType::Actor(apb::ActorType::Person)))),
+			Self::Activity(x) => Err(RequestError::mismatch(apb::ObjectType::Object, x.object_type().unwrap_or(apb::ObjectType::Activity(apb::ActivityType::Activity)))),
 			Self::Object(x) => Ok(x),
 		}
 	}
@@ -80,24 +80,24 @@ impl Pull<serde_json::Value> {
 
 #[async_trait::async_trait]
 pub trait Fetcher {
-	async fn pull(&self, id: &str) -> Result<Pull<serde_json::Value>, PullError> { self.pull_r(id, 0).await }
-	async fn pull_r(&self, id: &str, depth: u32) -> Result<Pull<serde_json::Value>, PullError>;
+	async fn pull(&self, id: &str) -> Result<Pull<serde_json::Value>, RequestError> { self.pull_r(id, 0).await }
+	async fn pull_r(&self, id: &str, depth: u32) -> Result<Pull<serde_json::Value>, RequestError>;
 
 
-	async fn webfinger(&self, user: &str, host: &str) -> Result<Option<String>, PullError>;
+	async fn webfinger(&self, user: &str, host: &str) -> Result<Option<String>, RequestError>;
 
-	async fn fetch_domain(&self, domain: &str, tx: &impl ConnectionTrait) -> Result<crate::model::instance::Model, PullError>;
+	async fn fetch_domain(&self, domain: &str, tx: &impl ConnectionTrait) -> Result<crate::model::instance::Model, RequestError>;
 
-	async fn fetch_user(&self, id: &str, tx: &impl ConnectionTrait) -> Result<crate::model::actor::Model, PullError>;
-	async fn resolve_user(&self, actor: serde_json::Value, tx: &impl ConnectionTrait) -> Result<crate::model::actor::Model, PullError>;
+	async fn fetch_user(&self, id: &str, tx: &impl ConnectionTrait) -> Result<crate::model::actor::Model, RequestError>;
+	async fn resolve_user(&self, actor: serde_json::Value, tx: &impl ConnectionTrait) -> Result<crate::model::actor::Model, RequestError>;
 
-	async fn fetch_activity(&self, id: &str, tx: &impl ConnectionTrait) -> Result<crate::model::activity::Model, PullError>;
-	async fn resolve_activity(&self, activity: serde_json::Value, tx: &impl ConnectionTrait) -> Result<crate::model::activity::Model, PullError>;
+	async fn fetch_activity(&self, id: &str, tx: &impl ConnectionTrait) -> Result<crate::model::activity::Model, RequestError>;
+	async fn resolve_activity(&self, activity: serde_json::Value, tx: &impl ConnectionTrait) -> Result<crate::model::activity::Model, RequestError>;
 
-	async fn fetch_object(&self, id: &str, tx: &impl ConnectionTrait) -> Result<crate::model::object::Model, PullError>;
-	async fn resolve_object(&self, object: serde_json::Value, tx: &impl ConnectionTrait) -> Result<crate::model::object::Model, PullError>;
+	async fn fetch_object(&self, id: &str, tx: &impl ConnectionTrait) -> Result<crate::model::object::Model, RequestError>;
+	async fn resolve_object(&self, object: serde_json::Value, tx: &impl ConnectionTrait) -> Result<crate::model::object::Model, RequestError>;
 
-	async fn fetch_thread(&self, id: &str, tx: &impl ConnectionTrait) -> Result<(), PullError>;
+	async fn fetch_thread(&self, id: &str, tx: &impl ConnectionTrait) -> Result<(), RequestError>;
 
 	async fn request(
 		method: reqwest::Method,
@@ -106,7 +106,7 @@ pub trait Fetcher {
 		from: &str,
 		key: &str,
 		domain: &str,
-	) -> Result<Response, PullError> {
+	) -> Result<Response, RequestError> {
 		let host = crate::Context::server(url);
 		let date = chrono::Utc::now().format("%a, %d %b %Y %H:%M:%S GMT").to_string(); // lmao @ "GMT"
 		let path = url.replace("https://", "").replace("http://", "").replace(&host, "");
@@ -147,7 +147,7 @@ pub trait Fetcher {
 		match response.error_for_status_ref() {
 			Ok(_) => Ok(response),
 			Err(e) =>
-				Err(PullError::Fetch(
+				Err(RequestError::Fetch(
 					e.status().unwrap_or_default(),
 					response.text().await?,
 				)),
@@ -158,7 +158,7 @@ pub trait Fetcher {
 
 #[async_trait::async_trait]
 impl Fetcher for crate::Context {
-	async fn pull_r(&self, id: &str, depth: u32) -> Result<Pull<serde_json::Value>, PullError> {
+	async fn pull_r(&self, id: &str, depth: u32) -> Result<Pull<serde_json::Value>, RequestError> {
 		tracing::debug!("fetching {id}");
 		// let _domain = self.fetch_domain(&crate::Context::server(id)).await?;
 
@@ -173,14 +173,14 @@ impl Fetcher for crate::Context {
 		let doc_id = document.id()?;
 		if id != doc_id {
 			if depth >= self.cfg().security.max_id_redirects {
-				return Err(PullError::TooManyRedirects);
+				return Err(RequestError::TooManyRedirects);
 			}
 			return self.pull(doc_id).await;
 		}
 
 		match document.object_type()? {
-			apb::ObjectType::Collection(x) => Err(PullError::mismatch(apb::ObjectType::Object, apb::ObjectType::Collection(x))),
-			apb::ObjectType::Tombstone => Err(PullError::Tombstone),
+			apb::ObjectType::Collection(x) => Err(RequestError::mismatch(apb::ObjectType::Object, apb::ObjectType::Collection(x))),
+			apb::ObjectType::Tombstone => Err(RequestError::Tombstone),
 			apb::ObjectType::Activity(_) => Ok(Pull::Activity(document)),
 			apb::ObjectType::Actor(_) => Ok(Pull::Actor(document)),
 			_ => Ok(Pull::Object(document)),
@@ -188,7 +188,7 @@ impl Fetcher for crate::Context {
 	}
 
 
-	async fn webfinger(&self, user: &str, host: &str) -> Result<Option<String>, PullError> {
+	async fn webfinger(&self, user: &str, host: &str) -> Result<Option<String>, RequestError> {
 		let subject = format!("acct:{user}@{host}");
 		let webfinger_uri = format!("https://{host}/.well-known/webfinger?resource={subject}");
 		let resource = reqwest::Client::new()
@@ -220,7 +220,7 @@ impl Fetcher for crate::Context {
 		Ok(None)
 	}
 
-	async fn fetch_domain(&self, domain: &str, tx: &impl ConnectionTrait) -> Result<crate::model::instance::Model, PullError> {
+	async fn fetch_domain(&self, domain: &str, tx: &impl ConnectionTrait) -> Result<crate::model::instance::Model, RequestError> {
 		if let Some(x) = crate::model::instance::Entity::find_by_domain(domain).one(tx).await? {
 			return Ok(x); // already in db, easy
 		}
@@ -271,7 +271,7 @@ impl Fetcher for crate::Context {
 		Ok(instance_model)
 	}
 
-	async fn resolve_user(&self, mut document: serde_json::Value, tx: &impl ConnectionTrait) -> Result<crate::model::actor::Model, PullError> {
+	async fn resolve_user(&self, mut document: serde_json::Value, tx: &impl ConnectionTrait) -> Result<crate::model::actor::Model, RequestError> {
 		let id = document.id()?.to_string();
 
 		let _domain = self.fetch_domain(&crate::Context::server(&id), tx).await?;
@@ -321,7 +321,7 @@ impl Fetcher for crate::Context {
 		)
 	}
 
-	async fn fetch_user(&self, id: &str, tx: &impl ConnectionTrait) -> Result<crate::model::actor::Model, PullError> {
+	async fn fetch_user(&self, id: &str, tx: &impl ConnectionTrait) -> Result<crate::model::actor::Model, RequestError> {
 		if let Some(x) = crate::model::actor::Entity::find_by_ap_id(id).one(tx).await? {
 			return Ok(x); // already in db, easy
 		}
@@ -331,7 +331,7 @@ impl Fetcher for crate::Context {
 		self.resolve_user(document, tx).await
 	}
 
-	async fn fetch_activity(&self, id: &str, tx: &impl ConnectionTrait) -> Result<crate::model::activity::Model, PullError> {
+	async fn fetch_activity(&self, id: &str, tx: &impl ConnectionTrait) -> Result<crate::model::activity::Model, RequestError> {
 		if let Some(x) = crate::model::activity::Entity::find_by_ap_id(id).one(tx).await? {
 			return Ok(x); // already in db, easy
 		}
@@ -341,7 +341,7 @@ impl Fetcher for crate::Context {
 		self.resolve_activity(activity, tx).await
 	}
 
-	async fn resolve_activity(&self, activity: serde_json::Value, tx: &impl ConnectionTrait) -> Result<crate::model::activity::Model, PullError> {
+	async fn resolve_activity(&self, activity: serde_json::Value, tx: &impl ConnectionTrait) -> Result<crate::model::activity::Model, RequestError> {
 		let _domain = self.fetch_domain(&crate::Context::server(activity.id()?), tx).await?;
 
 		if let Ok(activity_actor) = activity.actor().id() {
@@ -362,22 +362,22 @@ impl Fetcher for crate::Context {
 		Ok(activity_model)
 	}
 
-	async fn fetch_thread(&self, _id: &str, _tx: &impl ConnectionTrait) -> Result<(), PullError> {
+	async fn fetch_thread(&self, _id: &str, _tx: &impl ConnectionTrait) -> Result<(), RequestError> {
 		// crawl_replies(self, id, 0).await
 		todo!()
 	}
 
-	async fn fetch_object(&self, id: &str, tx: &impl ConnectionTrait) -> Result<crate::model::object::Model, PullError> {
+	async fn fetch_object(&self, id: &str, tx: &impl ConnectionTrait) -> Result<crate::model::object::Model, RequestError> {
 		fetch_object_r(self, id, 0, tx).await
 	}
 
-	async fn resolve_object(&self, object: serde_json::Value, tx: &impl ConnectionTrait) -> Result<crate::model::object::Model, PullError> {
+	async fn resolve_object(&self, object: serde_json::Value, tx: &impl ConnectionTrait) -> Result<crate::model::object::Model, RequestError> {
 		resolve_object_r(self, object, 0, tx).await
 	}
 }
 
 #[async_recursion::async_recursion]
-async fn fetch_object_r(ctx: &crate::Context, id: &str, depth: u32, tx: &impl ConnectionTrait) -> Result<crate::model::object::Model, PullError> {
+async fn fetch_object_r(ctx: &crate::Context, id: &str, depth: u32, tx: &impl ConnectionTrait) -> Result<crate::model::object::Model, RequestError> {
 	if let Some(x) = crate::model::object::Entity::find_by_ap_id(id).one(tx).await? {
 		return Ok(x); // already in db, easy
 	}
@@ -387,7 +387,7 @@ async fn fetch_object_r(ctx: &crate::Context, id: &str, depth: u32, tx: &impl Co
 	resolve_object_r(ctx, object, depth, tx).await
 }
 
-async fn resolve_object_r(ctx: &crate::Context, object: serde_json::Value, depth: u32, tx: &impl ConnectionTrait) -> Result<crate::model::object::Model, PullError> {
+async fn resolve_object_r(ctx: &crate::Context, object: serde_json::Value, depth: u32, tx: &impl ConnectionTrait) -> Result<crate::model::object::Model, RequestError> {
 	let id = object.id()?.to_string();
 
 	if let Ok(oid) = object.id() {
@@ -420,12 +420,12 @@ async fn resolve_object_r(ctx: &crate::Context, object: serde_json::Value, depth
 
 #[async_trait::async_trait]
 pub trait Fetchable : Sync + Send {
-	async fn fetch(&mut self, ctx: &crate::Context) -> Result<&mut Self, PullError>;
+	async fn fetch(&mut self, ctx: &crate::Context) -> Result<&mut Self, RequestError>;
 }
 
 #[async_trait::async_trait]
 impl Fetchable for apb::Node<serde_json::Value> {
-	async fn fetch(&mut self, ctx: &crate::Context) -> Result<&mut Self, PullError> {
+	async fn fetch(&mut self, ctx: &crate::Context) -> Result<&mut Self, RequestError> {
 		if let apb::Node::Link(uri) = self {
 			if let Ok(href) = uri.href() {
 				*self = crate::Context::request(Method::GET, href, None, ctx.base(), ctx.pkey(), ctx.domain())

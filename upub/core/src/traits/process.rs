@@ -26,7 +26,7 @@ pub enum ProcessorError {
 	NormalizerError(#[from] crate::traits::normalize::NormalizerError),
 
 	#[error("failed fetching resource: {0:?}")]
-	PullError(#[from] crate::traits::fetch::PullError),
+	PullError(#[from] crate::traits::fetch::RequestError),
 }
 
 #[async_trait::async_trait]

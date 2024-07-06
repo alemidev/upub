@@ -1,7 +1,7 @@
 use axum::{extract::{FromRef, FromRequestParts}, http::{header, request::Parts}};
 use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter};
 use httpsign::HttpSignature;
-use upub::traits::{fetch::PullError, Fetcher};
+use upub::traits::{fetch::RequestError, Fetcher};
 
 use crate::ApiError;
 
@@ -118,7 +118,7 @@ where
 				.to_string();
 
 			match ctx.fetch_user(&user_id, ctx.db()).await {
-				Err(PullError::Database(x)) => return Err(PullError::Database(x).into()),
+				Err(RequestError::Database(x)) => return Err(RequestError::Database(x).into()),
 				Err(e) => tracing::debug!("could not fetch {user_id} to verify signature: {e}"),
 				Ok(user) => {
 					let signature = http_signature.build_from_parts(parts);

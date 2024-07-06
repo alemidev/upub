@@ -1,7 +1,7 @@
 use reqwest::StatusCode;
 use sea_orm::{ColumnTrait, EntityTrait, Order, QueryFilter, QueryOrder};
 
-use upub::{model, traits::{fetch::PullError, process::ProcessorError}, Context};
+use upub::{model, traits::{fetch::RequestError, process::ProcessorError}, Context};
 
 #[derive(Debug, thiserror::Error)]
 pub enum JobError {
@@ -137,16 +137,16 @@ impl JobDispatcher for Context {
 						tracing::error!("dropping job with malformed activity (missing field {f})"),
 					Err(JobError::ProcessorError(ProcessorError::AlreadyProcessed)) =>
 						tracing::info!("dropping job already processed: {}", job.activity),
-					Err(JobError::ProcessorError(ProcessorError::PullError(PullError::Fetch(StatusCode::FORBIDDEN, e)))) => 
+					Err(JobError::ProcessorError(ProcessorError::PullError(RequestError::Fetch(StatusCode::FORBIDDEN, e)))) => 
 						tracing::warn!("dropping job because requested resource is not accessible: {e}"),
-					Err(JobError::ProcessorError(ProcessorError::PullError(PullError::Fetch(StatusCode::NOT_FOUND, e)))) => 
+					Err(JobError::ProcessorError(ProcessorError::PullError(RequestError::Fetch(StatusCode::NOT_FOUND, e)))) => 
 						tracing::warn!("dropping job because requested resource is not available: {e}"),
-					Err(JobError::ProcessorError(ProcessorError::PullError(PullError::Fetch(StatusCode::GONE, e)))) => 
+					Err(JobError::ProcessorError(ProcessorError::PullError(RequestError::Fetch(StatusCode::GONE, e)))) => 
 						tracing::warn!("dropping job because requested resource is no longer available: {e}"),
-					Err(JobError::ProcessorError(ProcessorError::PullError(PullError::Malformed(f)))) => 
+					Err(JobError::ProcessorError(ProcessorError::PullError(RequestError::Malformed(f)))) => 
 						tracing::warn!("dropping job because requested resource could not be verified (fetch is invalid AP object: {f})"),
 					Err(e) => {
-						if let JobError::ProcessorError(ProcessorError::PullError(PullError::Fetch(status, ref e))) = e {
+						if let JobError::ProcessorError(ProcessorError::PullError(RequestError::Fetch(status, ref e))) = e {
 							// TODO maybe convert this in generic .is_client_error() check, but excluding 401s
 							//      and 400s because we want to retry those. also maybe 406s? idk theres a lot i
 							//      just want to drop lemmy.cafe jobs
