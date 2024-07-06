@@ -157,8 +157,8 @@ pub fn Object(
 		</table>
 		{post}
 		<div class="mt-s ml-1 rev">
-			{if !reply { Some(hashtag_badges) } else { None }}
-			{if !reply { audience_badge } else { None }}
+			{hashtag_badges}
+			{audience_badge}
 			<span style="white-space:nowrap">
 				<ReplyButton n=comments target=oid.clone() />
 				<LikeButton n=likes liked=already_liked target=oid.clone() author=author_id private=!public />
