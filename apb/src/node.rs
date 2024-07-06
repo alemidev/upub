@@ -213,6 +213,7 @@ impl From<&str> for Node<serde_json::Value> {
 #[cfg(feature = "unstructured")]
 impl From<serde_json::Value> for Node<serde_json::Value> {
 	fn from(value: serde_json::Value) -> Self {
+		use crate::Link;
 		match value {
 			serde_json::Value::String(uri) => Node::Link(Box::new(uri)),
 			serde_json::Value::Array(arr) => Node::Array(
@@ -221,9 +222,9 @@ impl From<serde_json::Value> for Node<serde_json::Value> {
 						.map(Node::from)
 				)
 			),
-			serde_json::Value::Object(_) => match value.get("href") {
-				None => Node::Object(Box::new(value)),
-				Some(_) => Node::Link(Box::new(value)),
+			serde_json::Value::Object(_) => match value.link_type() {
+				Ok(_) => Node::Link(Box::new(value)),
+				Err(_) => Node::Object(Box::new(value)),
 			},
 			_ => Node::Empty,
 		}
