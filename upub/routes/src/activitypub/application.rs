@@ -33,7 +33,7 @@ pub async fn view(
 			.set_url(apb::Node::link(upub::url!(ctx, "/")))
 			.set_public_key(apb::Node::object(
 				apb::new()
-					.set_id(Some(&upub::url!(ctx, "/#main-key")))
+					.set_id(Some(&upub::url!(ctx, "#main-key")))
 					.set_owner(Some(&upub::url!(ctx, "")))
 					.set_public_key_pem(&ctx.actor().public_key)
 			))

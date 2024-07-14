@@ -164,7 +164,7 @@ impl Fetcher for crate::Context {
 
 		let document = Self::request(
 			Method::GET, id, None,
-			&format!("https://{}/", self.domain()), self.pkey(), self.domain(),
+			self.base(), self.pkey(), self.domain(),
 		)
 			.await?
 			.json::<serde_json::Value>()
@@ -241,7 +241,7 @@ impl Fetcher for crate::Context {
 
 		if let Ok(res) = Self::request(
 			Method::GET, &format!("https://{domain}"), None,
-			&format!("https://{}/", self.domain()), self.pkey(), self.domain(),
+			self.base(), self.pkey(), self.domain(),
 		).await {
 			if let Ok(actor) = res.json::<serde_json::Value>().await {
 				if let Ok(name) = actor.name() {
@@ -280,7 +280,7 @@ impl Fetcher for crate::Context {
 		if let Ok(followers_url) = document.followers().id() {
 			let req = Self::request(
 				Method::GET, followers_url, None,
-				&format!("https://{}/", self.domain()), self.pkey(), self.domain(),
+				self.base(), self.pkey(), self.domain(),
 			).await;
 			if let Ok(res) = req {
 				if let Ok(user_followers) = res.json::<serde_json::Value>().await {
@@ -294,7 +294,7 @@ impl Fetcher for crate::Context {
 		if let Ok(following_url) = document.following().id() {
 			let req = Self::request(
 				Method::GET, following_url, None,
-				&format!("https://{}/", self.domain()), self.pkey(), self.domain(),
+				self.base(), self.pkey(), self.domain(),
 			).await;
 			if let Ok(res) = req {
 				if let Ok(user_following) = res.json::<serde_json::Value>().await {
