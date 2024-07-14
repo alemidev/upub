@@ -60,6 +60,7 @@ pub enum Objects {
 	Replies,
 	Context,
 	InReplyTo,
+	Quote, // added with migration m20240715_000001
 	Cc,
 	Bcc,
 	To,

@@ -78,6 +78,7 @@ pub async fn faker(ctx: upub::Context, count: i64) -> Result<(), sea_orm::DbErr>
 			summary: Set(None),
 			context: Set(Some(context.clone())),
 			in_reply_to: Set(None),
+			quote: Set(None),
 			content: Set(Some(format!("[{i}] Tic(k). Quasiparticle of intensive multiplicity. Tics (or ticks) are intrinsically several components of autonomously numbering anorganic populations, propagating by contagion between segmentary divisions in the order of nature. Ticks - as nonqualitative differentially-decomposable counting marks - each designate a multitude comprehended as a singular variation in tic(k)-density."))),
 			image: Set(None),
 			published: Set(chrono::Utc::now() - std::time::Duration::from_secs(60*i as u64)),

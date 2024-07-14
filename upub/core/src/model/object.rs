@@ -16,6 +16,7 @@ pub struct Model {
 	pub summary: Option<String>,
 	pub content: Option<String>,
 	pub image: Option<String>,
+	pub quote: Option<String>,
 	pub sensitive: bool,
 	pub in_reply_to: Option<String>,
 	pub url: Option<String>,
@@ -63,10 +64,18 @@ pub enum Relation {
 		belongs_to = "Entity",
 		from = "Column::InReplyTo",
 		to = "Column::Id",
-		on_update = "Cascade",
+		on_update = "NoAction",
 		on_delete = "NoAction"
 	)]
-	Objects,
+	ObjectsReply,
+	#[sea_orm(
+		belongs_to = "Entity",
+		from = "Column::Quote",
+		to = "Column::Id",
+		on_update = "NoAction",
+		on_delete = "NoAction"
+	)]
+	ObjectsQuote,
 }
 
 impl Related<super::activity::Entity> for Entity {
@@ -125,7 +134,7 @@ impl Related<super::mention::Entity> for Entity {
 
 impl Related<Entity> for Entity {
 	fn to() -> RelationDef {
-		Relation::Objects.def()
+		Relation::ObjectsReply.def()
 	}
 }
 
@@ -168,6 +177,7 @@ impl Model {
 			.set_context(apb::Node::maybe_link(self.context.clone()))
 			.set_conversation(apb::Node::maybe_link(self.context.clone())) // duplicate context for mastodon
 			.set_in_reply_to(apb::Node::maybe_link(self.in_reply_to.clone()))
+			.set_quote_url(apb::Node::maybe_link(self.quote.clone()))
 			.set_published(Some(self.published))
 			.set_updated(if self.updated != self.published { Some(self.updated) } else { None })
 			.set_audience(apb::Node::maybe_link(self.audience))

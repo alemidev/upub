@@ -276,6 +276,7 @@ impl AP {
 			image: object.image().get().and_then(|x| x.url().id().str()),
 			context: object.context().id().str(),
 			in_reply_to: object.in_reply_to().id().str(),
+			quote: object.quote_url().id().str(),
 			published: object.published().unwrap_or_else(|_| chrono::Utc::now()),
 			updated: object.updated().unwrap_or_else(|_| chrono::Utc::now()),
 			url: object.url().id().str(),
