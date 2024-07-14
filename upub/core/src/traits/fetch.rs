@@ -328,6 +328,12 @@ impl Fetcher for crate::Context {
 
 		let document = self.pull(id).await?.actor()?;
 
+		if document.id()? != id {
+			if let Some(x) = crate::model::actor::Entity::find_by_ap_id(document.id()?).one(tx).await? {
+				return Ok(x); // already in db but we had to follow the "pretty" url, mehh
+			}
+		}
+
 		self.resolve_user(document, tx).await
 	}
 
@@ -383,6 +389,12 @@ async fn fetch_object_r(ctx: &crate::Context, id: &str, depth: u32, tx: &impl Co
 	}
 
 	let object = ctx.pull(id).await?.object()?;
+
+	if object.id()? != id {
+		if let Some(x) = crate::model::object::Entity::find_by_ap_id(object.id()?).one(tx).await? {
+			return Ok(x); // already in db but we had to follow the "pretty" url, mehh
+		}
+	}
 
 	resolve_object_r(ctx, object, depth, tx).await
 }
