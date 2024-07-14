@@ -52,6 +52,23 @@ pub fn Object(
 			}
 		});
 
+	let quote_badge = object.quote_url()
+		.id()
+		.ok()
+		.map(|x| {
+			let href = Uri::web(U::Object, x);
+			view! {
+				<a class="clean dim" href={href}>
+					<span class="border-button ml-s" >
+						<code class="color mr-s">">"</code>
+						<small class="mr-s">
+							RE
+						</small>
+					</span>
+				</a>" "
+			}
+		});
+
 	let tag_badges = object.tag()
 		.flat()
 		.into_iter()
@@ -167,6 +184,7 @@ pub fn Object(
 		</table>
 		{post}
 		<div class="mb-s mt-s ml-1 rev">
+			{quote_badgge}
 			{tag_badges}
 			{audience_badge}
 			<span style="white-space:nowrap">
