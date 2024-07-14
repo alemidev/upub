@@ -61,31 +61,30 @@ impl Addresser for crate::Context {
 			(None, None) => Ok(()),
 			(Some(activity), None) => {
 				let to = expand_addressing(activity.addressed(), tx).await?;
-				address_to(self, to, Some(activity.internal), None, self.is_local(&activity.id), tx).await
+				address_to(self, to, Some(activity.internal), None, self.is_local(&activity.id), activity.published, tx).await
 			},
 			(None, Some(object)) => {
 				let to = expand_addressing(object.addressed(), tx).await?;
-				address_to(self, to, None, Some(object.internal), self.is_local(&object.id), tx).await
+				address_to(self, to, None, Some(object.internal), self.is_local(&object.id), object.published, tx).await
 			},
 			(Some(activity), Some(object)) => {
 				let to_activity = BTreeSet::from_iter(expand_addressing(activity.addressed(), tx).await?);
 				let to_object = BTreeSet::from_iter(expand_addressing(object.addressed(), tx).await?);
 				let to_common = to_activity.intersection(&to_object).cloned().collect();
-				address_to(self, to_common, Some(activity.internal), Some(object.internal), self.is_local(&activity.id), tx).await?;
+				address_to(self, to_common, Some(activity.internal), Some(object.internal), self.is_local(&activity.id), activity.published, tx).await?;
 				let to_only_activity = (&to_activity - &to_object).into_iter().collect();
-				address_to(self, to_only_activity, Some(activity.internal), None, self.is_local(&activity.id), tx).await?;
+				address_to(self, to_only_activity, Some(activity.internal), None, self.is_local(&activity.id), activity.published, tx).await?;
 				let to_only_object = (&to_object - &to_activity).into_iter().collect();
-				address_to(self, to_only_object, None, Some(object.internal), self.is_local(&activity.id), tx).await?;
+				address_to(self, to_only_object, None, Some(object.internal), self.is_local(&activity.id), object.published, tx).await?;
 				Ok(())
 			},
 		}
 	}
 }
 
-async fn address_to(ctx: &crate::Context, to: Vec<String>, aid: Option<i64>, oid: Option<i64>, local: bool, tx: &impl ConnectionTrait) -> Result<(), DbErr> {
+async fn address_to(ctx: &crate::Context, to: Vec<String>, aid: Option<i64>, oid: Option<i64>, local: bool, when: chrono::DateTime<chrono::Utc>, tx: &impl ConnectionTrait) -> Result<(), DbErr> {
 	// TODO address_to became kind of expensive, with these two selects right away and then another
 	//      select for each target we're addressing to... can this be improved??
-	let now = chrono::Utc::now();
 	let mut addressing = Vec::new();
 	for target in to.into_iter()
 		.filter(|to| !to.is_empty())
@@ -109,7 +108,7 @@ async fn address_to(ctx: &crate::Context, to: Vec<String>, aid: Option<i64>, oid
 				actor: Set(actor),
 				activity: Set(aid),
 				object: Set(oid),
-				published: Set(now),
+				published: Set(when),
 			}
 		);
 	}
