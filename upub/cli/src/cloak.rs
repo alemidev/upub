@@ -1,12 +1,12 @@
 use futures::TryStreamExt;
-use sea_orm::{ActiveModelTrait, ActiveValue::{Set, Unchanged}, ColumnTrait, Condition, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect, SelectColumns, TransactionTrait};
+use sea_orm::{ActiveModelTrait, ActiveValue::{NotSet, Set, Unchanged}, ColumnTrait, Condition, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect, SelectColumns};
 use upub::traits::{fetch::RequestError, Cloaker};
 
 pub async fn cloak(ctx: upub::Context, post_contents: bool, actors: bool) -> Result<(), RequestError> {
-	let local_base = format!("{}%", ctx.base()));
+	let local_base = format!("{}%", ctx.base());
 	{
 		let mut stream = upub::model::attachment::Entity::find()
-			.filter(upub::model::attachment::Column::Url.not_like(&local_base)
+			.filter(upub::model::attachment::Column::Url.not_like(&local_base))
 			.stream(ctx.db())
 			.await?;
 
@@ -60,13 +60,22 @@ pub async fn cloak(ctx: upub::Context, post_contents: bool, actors: bool) -> Res
 
 		while let Some((internal, image, icon)) = stream.try_next().await? {
 			if image.is_none() && icon.is_none() { continue }
-			let image = if let Some(img) = image && !img.starts_with(ctx.base()) {
-				Set(ctx.cloaked(&img))
+			// TODO can this if/else/else be made nicer??
+			let image = if let Some(img) = image {
+				if !img.starts_with(ctx.base()) {
+					Set(Some(ctx.cloaked(&img)))
+				} else {
+					NotSet
+				}
 			} else {
 				NotSet
 			};
-			let icon = if let Some(icn) = icon && !icn.starts_with(ctx.base()) {
-				Set(ctx.cloaked(&icn))
+			let icon = if let Some(icn) = icon {
+				if !icn.starts_with(ctx.base()) {
+					Set(Some(ctx.cloaked(&icn)))
+				} else {
+					NotSet
+				}
 			} else {
 				NotSet
 			};

@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use apb::{Activity, Actor, ActorMut, Base, Collection, Object};
 use reqwest::{header::{ACCEPT, CONTENT_TYPE, USER_AGENT}, Method, Response};
-use sea_orm::{ConnectionTrait, DbErr, EntityTrait, IntoActiveModel, NotSet, ActiveValue::{Set, NotSet, Unchanged}};
+use sea_orm::{ConnectionTrait, DbErr, EntityTrait, IntoActiveModel, NotSet, ActiveValue::Set};
 
 use crate::traits::normalize::AP;
 
