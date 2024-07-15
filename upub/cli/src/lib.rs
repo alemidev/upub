@@ -22,6 +22,9 @@ pub use nuke::*;
 mod thread;
 pub use thread::*;
 
+mod cloak;
+pub use cloak::*;
+
 #[derive(Debug, Clone, clap::Subcommand)]
 pub enum CliCommand {
 	/// generate fake user, note and activity
@@ -109,7 +112,14 @@ pub enum CliCommand {
 	/// attempt to fix broken threads and completely gather their context
 	Thread {
 		
-	}
+	},
+
+	/// replaces all attachment urls with proxied local versions (only useful for old instances)
+	Cloak {
+		/// also replace urls inside post contents
+		#[arg(long, default_value_t = false)]
+		post_contents: bool,
+	},
 }
 
 pub async fn run(ctx: upub::Context, command: CliCommand) -> Result<(), Box<dyn std::error::Error>> {
@@ -131,5 +141,7 @@ pub async fn run(ctx: upub::Context, command: CliCommand) -> Result<(), Box<dyn 
 			Ok(nuke(ctx, for_real, delete_objects).await?),
 		CliCommand::Thread { } =>
 			Ok(thread(ctx).await?),
+		CliCommand::Cloak { post_contents } =>
+			Ok(cloak(ctx, post_contents).await?),
 	}
 }
