@@ -1,7 +1,13 @@
 use leptos::*;
 use crate::{prelude::*, URL_SENSITIVE};
 
+use base64::prelude::*;
 use apb::{field::OptionalString, Document, Object};
+
+fn uncloak(txt: Option<&str>) -> Option<String> {
+	let decoded = BASE64_URL_SAFE.decode(txt?).ok()?;
+	Some(std::str::from_utf8(&decoded).ok()?.to_string())
+}
 
 #[component]
 pub fn Attachment(
@@ -12,6 +18,7 @@ pub fn Attachment(
 	let config = use_context::<Signal<crate::Config>>().expect("missing config context");
 	let (expand, set_expand) = create_signal(false);
 	let href = object.url().id().str().unwrap_or_default();
+	let uncloaked = uncloak(href.split('/').last()).unwrap_or_default();
 	let media_type = object.media_type()
 		.unwrap_or("link") // TODO make it an Option rather than defaulting to link everywhere
 		.to_string();
@@ -78,7 +85,7 @@ pub fn Attachment(
 			view! {
 				<p class="mt-s mb-s">
 					<a title={href.clone()} href={href.clone()} rel="noreferrer nofollow" target="_blank">
-						{Uri::pretty(&href, 50)}
+						{Uri::pretty(&uncloaked, 50)}
 					</a>
 				</p>
 			}.into_view(),

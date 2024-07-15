@@ -4876,6 +4876,7 @@ name = "upub-web"
 version = "0.1.0"
 dependencies = [
  "apb",
+ "base64 0.22.1",
  "chrono",
  "console_error_panic_hook",
  "cookie",
