@@ -1,6 +1,6 @@
 use apb::{target::Addressed, Activity, Base, Object};
 use sea_orm::{sea_query::Expr, ActiveModelTrait, ActiveValue::{NotSet, Set}, ColumnTrait, Condition, DatabaseTransaction, EntityTrait, QueryFilter, QuerySelect, SelectColumns};
-use crate::{ext::{AnyQuery, LoggableError}, model, traits::{fetch::Pull, Addresser, Fetcher, Normalizer}};
+use crate::{ext::{AnyQuery, LoggableError}, model, traits::{fetch::Pull, Addresser, Cloaker, Fetcher, Normalizer}};
 
 #[derive(Debug, thiserror::Error)]
 pub enum ProcessorError {
@@ -368,6 +368,17 @@ pub async fn update(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 				.await?
 				.ok_or(ProcessorError::Incomplete)?;
 			let mut actor_model = crate::AP::actor_q(object_node.as_actor()?, Some(internal_uid))?;
+			if let Set(Some(ref image)) = actor_model.image {
+				if !image.starts_with(ctx.base()) {
+					actor_model.image = Set(Some(ctx.cloaked(image)));
+				}
+			}
+
+			if let Set(Some(ref icon)) = actor_model.icon {
+				if !icon.starts_with(ctx.base()) {
+					actor_model.icon = Set(Some(ctx.cloaked(icon)));
+				}
+			}
 			actor_model.updated = Set(chrono::Utc::now());
 			actor_model.update(tx).await?;
 		},
@@ -376,6 +387,9 @@ pub async fn update(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 				.await?
 				.ok_or(ProcessorError::Incomplete)?;
 			let mut object_model = crate::AP::object_q(&object_node, Some(internal_oid))?;
+			if let Set(Some(ref content)) = object_model.content {
+				object_model.content = Set(Some(ctx.sanitize(content)));
+			}
 			object_model.context = NotSet; // TODO dont overwrite context when updating!!
 			object_model.updated = Set(chrono::Utc::now());
 			object_model.update(tx).await?;
