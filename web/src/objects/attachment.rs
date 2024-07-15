@@ -84,7 +84,7 @@ pub fn Attachment(
 		"link" | "text" =>
 			view! {
 				<p class="mt-s mb-s">
-					<a title={href.clone()} href={href.clone()} rel="noreferrer nofollow" target="_blank">
+					<a title={uncloaked.clone()} href={uncloaked.clone()} rel="noreferrer nofollow" target="_blank">
 						{Uri::pretty(&uncloaked, 50)}
 					</a>
 				</p>
