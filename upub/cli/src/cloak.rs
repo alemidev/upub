@@ -1,11 +1,12 @@
 use futures::TryStreamExt;
-use sea_orm::{ActiveModelTrait, ActiveValue::{Set, Unchanged}, ColumnTrait, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect, SelectColumns, TransactionTrait};
+use sea_orm::{ActiveModelTrait, ActiveValue::{Set, Unchanged}, ColumnTrait, Condition, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect, SelectColumns, TransactionTrait};
 use upub::traits::{fetch::RequestError, Cloaker};
 
-pub async fn cloak(ctx: upub::Context, post_contents: bool) -> Result<(), RequestError> {
+pub async fn cloak(ctx: upub::Context, post_contents: bool, actors: bool) -> Result<(), RequestError> {
+	let local_base = format!("{}%", ctx.base()));
 	{
 		let mut stream = upub::model::attachment::Entity::find()
-			.filter(upub::model::attachment::Column::Url.not_like(format!("{}%", ctx.base())))
+			.filter(upub::model::attachment::Column::Url.not_like(&local_base)
 			.stream(ctx.db())
 			.await?;
 
@@ -39,6 +40,42 @@ pub async fn cloak(ctx: upub::Context, post_contents: bool) -> Result<(), Reques
 				};
 				model.update(ctx.db()).await?;
 			}
+		}
+	}
+
+	if actors {
+		let mut stream = upub::model::actor::Entity::find()
+			.filter(
+				Condition::any()
+					.add(upub::model::actor::Column::Image.not_like(&local_base))
+					.add(upub::model::actor::Column::Icon.not_like(&local_base))
+			)
+			.select_only()
+			.select_column(upub::model::actor::Column::Internal)
+			.select_column(upub::model::actor::Column::Image)
+			.select_column(upub::model::actor::Column::Icon)
+			.into_tuple::<(i64, Option<String>, Option<String>)>()
+			.stream(ctx.db())
+			.await?;
+
+		while let Some((internal, image, icon)) = stream.try_next().await? {
+			if image.is_none() && icon.is_none() { continue }
+			let image = if let Some(img) = image && !img.starts_with(ctx.base()) {
+				Set(ctx.cloaked(&img))
+			} else {
+				NotSet
+			};
+			let icon = if let Some(icn) = icon && !icn.starts_with(ctx.base()) {
+				Set(ctx.cloaked(&icn))
+			} else {
+				NotSet
+			};
+			let model = upub::model::actor::ActiveModel {
+				internal: Unchanged(internal),
+				image, icon,
+				..Default::default()
+			};
+			model.update(ctx.db()).await?;
 		}
 	}
 

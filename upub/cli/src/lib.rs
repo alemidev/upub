@@ -119,6 +119,10 @@ pub enum CliCommand {
 		/// also replace urls inside post contents
 		#[arg(long, default_value_t = false)]
 		post_contents: bool,
+
+		/// also cloak actor images
+		#[arg(long, default_value_t = false)]
+		actors: bool,
 	},
 }
 
@@ -141,7 +145,7 @@ pub async fn run(ctx: upub::Context, command: CliCommand) -> Result<(), Box<dyn 
 			Ok(nuke(ctx, for_real, delete_objects).await?),
 		CliCommand::Thread { } =>
 			Ok(thread(ctx).await?),
-		CliCommand::Cloak { post_contents } =>
-			Ok(cloak(ctx, post_contents).await?),
+		CliCommand::Cloak { post_contents, actors } =>
+			Ok(cloak(ctx, post_contents, actors).await?),
 	}
 }
