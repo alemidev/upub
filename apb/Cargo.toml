@@ -32,6 +32,7 @@ activitypub-fe = [] # https://ns.alemi.dev/as/fe/#
 ostatus = [] # https://ostatus.org#  , but it redirects and 403??? just need this for conversation
 toot = [] # http://joinmastodon.org/ns#  , mastodon is weird tho??
 litepub = [] # incomplete, https://litepub.social/
+did-core = [] # incomplete, may be cool to support all of this: https://www.w3.org/TR/did-core/
 # full jsonld utilities
 jsonld = []
 # builtin utils

@@ -39,6 +39,9 @@ pub trait Actor : Object {
 	#[cfg(feature = "activitypub-miscellaneous-terms")]
 	fn manually_approves_followers(&self) -> Field<bool> { Err(FieldErr("manuallyApprovesFollowers")) }
 
+	#[cfg(feature = "did-core")]
+	fn also_known_as(&self) -> Node<Self::Actor> { Node::Empty }
+
 	#[cfg(feature = "activitypub-fe")]
 	fn following_me(&self) -> Field<bool> { Err(FieldErr("followingMe")) }
 	#[cfg(feature = "activitypub-fe")]
@@ -93,6 +96,9 @@ pub trait ActorMut : ObjectMut {
 	fn set_moved_to(self, val: Node<Self::Actor>) -> Self;
 	#[cfg(feature = "activitypub-miscellaneous-terms")]
 	fn set_manually_approves_followers(self, val: Option<bool>) -> Self;
+
+	#[cfg(feature = "did-core")]
+	fn set_also_known_as(self, val: Node<Self::Actor>) -> Self;
 
 	#[cfg(feature = "activitypub-fe")]
 	fn set_following_me(self, val: Option<bool>) -> Self;
@@ -150,6 +156,9 @@ impl Actor for serde_json::Value {
 	#[cfg(feature = "activitypub-miscellaneous-terms")]
 	crate::getter! { manuallyApprovesFollowers -> bool }
 
+	#[cfg(feature = "did-core")]
+	crate::getter! { alsoKnownAs -> node Self::Actor }
+
 	#[cfg(feature = "activitypub-fe")]
 	crate::getter! { followingMe -> bool }
 	#[cfg(feature = "activitypub-fe")]
@@ -200,6 +209,10 @@ impl ActorMut for serde_json::Value {
 	crate::setter! { movedTo -> node Self::Actor }
 	#[cfg(feature = "activitypub-miscellaneous-terms")]
 	crate::setter! { manuallyApprovesFollowers -> bool }
+
+
+	#[cfg(feature = "did-core")]
+	crate::setter! { alsoKnownAs -> node Self::Actor }
 
 	#[cfg(feature = "activitypub-fe")]
 	crate::setter! { followingMe -> bool }
