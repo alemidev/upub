@@ -1,15 +1,51 @@
-use html5ever::tendril::*;
-use html5ever::tokenizer::{BufferQueue, TagKind, Token, TokenSink, TokenSinkResult, Tokenizer};
+use html5ever::{tendril::SliceExt, tokenizer::{BufferQueue, TagKind, Token, TokenSink, TokenSinkResult, Tokenizer}};
 use comrak::{markdown_to_html, Options};
 
-/// In our case, our sink only contains a tokens vector
-#[derive(Debug, Clone, Default)]
-struct Sink {
-	pub media_proxy: Option<String>,
+pub type Cloaker = Box<dyn Fn(&str) -> String>;
+
+#[derive(Default)]
+pub struct Sanitizer {
+	pub cloaker: Option<Cloaker>,
 	pub buffer: String,
 }
 
-impl TokenSink for Sink {
+pub fn safe_html(text: &str) -> String {
+	Sanitizer::default().html(text)
+}
+
+pub fn safe_markdown(text: &str) -> String {
+	Sanitizer::default().markdown(text)
+}
+
+impl Sanitizer {
+	pub fn new(cloak: Cloaker) -> Self {
+		Self {
+			buffer: String::default(),
+			cloaker: Some(cloak),
+		}
+	}
+
+	pub fn markdown(self, text: &str) -> String {
+		self.html(&markdown_to_html(text, &Options::default()))
+	}
+	
+	pub fn html(self, text: &str) -> String {
+		let mut input = BufferQueue::default();
+		input.push_back(text.to_tendril().try_reinterpret().unwrap());
+	
+		let mut tok = Tokenizer::new(self, Default::default());
+		let _ = tok.feed(&mut input);
+	
+		if !input.is_empty() {
+			tracing::warn!("buffer input not empty after processing html");
+		}
+		tok.end();
+	
+		tok.sink.buffer
+	}
+}
+
+impl TokenSink for Sanitizer {
 	type Handle = ();
 
 	/// Each processed token will be handled by this method
@@ -38,8 +74,8 @@ impl TokenSink for Sink {
 						"img" => for attr in tag.attrs {
 							match attr.name.local.as_ref() {
 								"src" => {
-									let src = if let Some(ref proxy) = self.media_proxy {
-										format!("{proxy}{}", attr.value.as_ref())
+									let src = if let Some(ref cloak) = self.cloaker {
+										cloak(attr.value.as_ref())
 									} else {
 										attr.value.to_string()
 									};
@@ -85,25 +121,4 @@ impl TokenSink for Sink {
 		}
 		TokenSinkResult::Continue
 	}
-}
-
-pub fn safe_markdown(text: &str) -> String {
-	safe_html(&markdown_to_html(text, &Options::default()))
-}
-
-pub fn safe_html(text: &str) -> String {
-	let mut input = BufferQueue::default();
-	input.push_back(text.to_tendril().try_reinterpret().unwrap());
-
-	let sink = Sink::default();
-
-	let mut tok = Tokenizer::new(sink, Default::default());
-	let _ = tok.feed(&mut input);
-
-	if !input.is_empty() {
-		tracing::warn!("buffer input not empty after processing html");
-	}
-	tok.end();
-
-	tok.sink.buffer
 }
