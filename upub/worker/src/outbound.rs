@@ -1,6 +1,6 @@
-use apb::{field::OptionalString, target::Addressed, Activity, ActivityMut, Base, BaseMut, Object, ObjectMut};
+use apb::{field::OptionalString, target::Addressed, Activity, ActivityMut, Actor, Base, BaseMut, Object, ObjectMut};
 use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect, SelectColumns, TransactionTrait};
-use upub::{model, traits::{Addresser, Processor}, Context};
+use upub::{model::{self, actor::Field}, traits::{Addresser, Processor}, Context};
 
 
 pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<()> {
@@ -44,6 +44,42 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 				.set_actor(apb::Node::link(job.actor.clone()));
 		}
 		activity = activity.set_object(apb::Node::object(undone));
+	}
+
+	if matches!(t, apb::ObjectType::Activity(apb::ActivityType::Update)) {
+		let mut updated = activity.object().extract().ok_or(crate::JobError::MissingPayload)?;
+		if updated.actor_type().is_ok() {
+			let mut prev = model::actor::Entity::find_by_ap_id(updated.id()?)
+				.one(&tx)
+				.await?
+				.ok_or_else(|| crate::JobError::MissingPayload)?;
+			if prev.id != job.actor {
+				return Err(crate::JobError::Forbidden);
+			}
+			if let Some(name) = updated.name().str() {
+				prev.name = Some(name);
+			}
+			if let Some(summary) = updated.summary().str() {
+				prev.summary = Some(summary);
+			}
+			if let Some(icon) = updated.icon().get().and_then(|x| x.url().id().str()) {
+				prev.icon = Some(icon);
+			}
+			if let Some(image) = updated.image().get().and_then(|x| x.url().id().str()) {
+				prev.image = Some(image);
+			}
+			if !updated.attachment().is_empty() {
+				prev.fields = updated.attachment()
+					.flat()
+					.into_iter()
+					.filter_map(|x| x.extract())
+					.map(Field::from)
+					.collect::<Vec<Field>>()
+					.into();
+			}
+			updated = prev.ap();
+		}
+		activity = activity.set_object(apb::Node::object(updated));
 	}
 
 	if matches!(t, apb::ObjectType::Activity(apb::ActivityType::Create)) {

@@ -22,6 +22,9 @@ pub enum JobError {
 
 	#[error("error delivering activity: {0}")]
 	DeliveryError(#[from] upub::traits::fetch::RequestError),
+
+	#[error("creator is not authorized to carry out this job")]
+	Forbidden,
 }
 
 pub type JobResult<T> = Result<T, JobError>;
