@@ -3,8 +3,6 @@ use sea_orm::{ActiveModelTrait, ActiveValue::{Set, Unchanged}, ColumnTrait, Enti
 use upub::traits::{fetch::RequestError, Cloaker};
 
 pub async fn cloak(ctx: upub::Context, post_contents: bool) -> Result<(), RequestError> {
-	let tx = ctx.db().begin().await?;
-
 	{
 		let mut stream = upub::model::attachment::Entity::find()
 			.filter(upub::model::attachment::Column::Url.not_like(format!("{}%", ctx.base())))
@@ -16,7 +14,7 @@ pub async fn cloak(ctx: upub::Context, post_contents: bool) -> Result<(), Reques
 			let (sig, url) = ctx.cloak(&attachment.url);
 			let mut model = attachment.into_active_model();
 			model.url = Set(upub::url!(ctx, "/proxy/{sig}/{url}"));
-			model.update(&tx).await?;
+			model.update(ctx.db()).await?;
 		}
 	}
 
@@ -39,7 +37,7 @@ pub async fn cloak(ctx: upub::Context, post_contents: bool) -> Result<(), Reques
 					content: Set(Some(sanitized)),
 					..Default::default()
 				};
-				model.update(&tx).await?;
+				model.update(ctx.db()).await?;
 			}
 		}
 	}
