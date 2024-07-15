@@ -13,8 +13,8 @@ impl MigrationTrait for Migration {
 				Table::alter()
 					.table(Actors::Table)
 					.add_column(ColumnDef::new(Actors::MovedTo).string().null())
-					.add_column(ColumnDef::new(Actors::AlsoKnownAs).json_binary().not_null().default::<Vec<String>>(vec![]))
-					.add_column(ColumnDef::new(Actors::Fields).json_binary().not_null().default::<Vec<String>>(vec![]))
+					.add_column(ColumnDef::new(Actors::AlsoKnownAs).json_binary().null())
+					.add_column(ColumnDef::new(Actors::Fields).json_binary().null())
 					.to_owned()
 			)
 			.await?;
