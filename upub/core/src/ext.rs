@@ -64,7 +64,30 @@ impl<T> Default for JsonVec<T> {
 	}
 }
 
-impl<T: serde::de::DeserializeOwned> sea_orm::TryGetableFromJson for JsonVec<T> {}
+// TODO we need this dummy to access the default implementation, which needs to be wrapped to catch
+//      nulls. is there a way to directly call super::try_get_from_json ?? i think this gets
+//      compiled into a lot of variants...
+#[derive(serde::Deserialize)]
+struct DummyVec<T>(pub Vec<T>);
+impl<T: serde::de::DeserializeOwned> sea_orm::TryGetableFromJson for DummyVec<T> {}
+
+impl<T: serde::de::DeserializeOwned> sea_orm::TryGetableFromJson for JsonVec<T> {
+	fn try_get_from_json<I: sea_orm::ColIdx>(res: &sea_orm::QueryResult, idx: I) -> Result<Self, sea_orm::TryGetError> {
+		match DummyVec::try_get_from_json(res, idx) {
+			Ok(DummyVec(x)) => Ok(Self(x)),
+			Err(sea_orm::TryGetError::Null(_)) => Ok(Self::default()),
+			Err(e) => Err(e),
+		}
+	}
+
+	fn from_json_vec(value: serde_json::Value) -> Result<Vec<Self>, sea_orm::TryGetError> {
+		match DummyVec::from_json_vec(value) {
+			Ok(x) => Ok(x.into_iter().map(|x| JsonVec(x.0)).collect()),
+			Err(sea_orm::TryGetError::Null(_)) => Ok(vec![]),
+			Err(e) => Err(e),
+		}
+	}
+}
 
 impl<T: serde::ser::Serialize> std::convert::From<JsonVec<T>> for sea_orm::Value {
 	fn from(source: JsonVec<T>) -> Self {
