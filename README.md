@@ -34,6 +34,32 @@ most instances will have "authorized fetch" which kind of makes the issue less b
 
 note that followers get expanded: addressing to example.net/actor/followers will address to anyone following actor that the server knows of, at that time
 
+## media caching
+μpub doesn't download remote media to both minimize local resources requirement and avoid storing media that remotes want gone. to prevent leaking local user ip addresses, all media links are cloaked and proxied.
+
+while this just works for small instances, larger servers should set up aggressive caching on `/proxy/...` path
+
+for example, on `nginx`:
+```nginx
+proxy_cache_path /tmp/upub/cache levels=1:2 keys_zone=upub_cache:100m max_size=50g inactive=168h use_temp_path=off;
+
+server {
+	location /proxy/ {
+		# use our configured cache
+		slice              1m;
+		proxy_set_header   Range $slice_range;
+		chunked_transfer_encoding on;
+		proxy_buffering    on;
+		proxy_cache        upub_cache;
+		proxy_cache_key    $host$uri$is_args$args$slice_range;
+		proxy_cache_valid  200 206 301 304 1h;
+		proxy_cache_lock   on;
+		proxy_pass         http://127.0.0.1/;
+	}
+}
+
+```
+
 ## contributing
 
 all help is extremely welcome! development mostly happens on [moonlit.technology](https://moonlit.technology/alemi/upub.git), but there's a [github mirror](https://github.com/alemidev/upub) available too
