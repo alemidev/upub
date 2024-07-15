@@ -73,8 +73,7 @@ pub async fn proxy_form(
 pub async fn proxy_cloak(
 	State(ctx): State<Context>,
 	AuthIdentity(auth): AuthIdentity,
-	Path(hmac): Path<String>,
-	Path(uri): Path<String>,
+	Path((hmac, uri)): Path<(String, String)>,
 ) -> crate::ApiResult<impl IntoResponse> {
 	let uri = ctx.uncloak(&hmac, &uri)
 		.ok_or_else(ApiError::unauthorized)?;
