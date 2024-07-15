@@ -127,6 +127,9 @@ pub trait Object : Base {
 	fn as_actor(&self) -> Result<&Self::Actor, FieldErr> { Err(FieldErr("type")) }
 	fn as_collection(&self) -> Result<&Self::Collection, FieldErr> { Err(FieldErr("type")) }
 	fn as_document(&self) -> Result<&Self::Document, FieldErr> { Err(FieldErr("type")) }
+
+	#[cfg(feature = "did-core")] // TODO this isn't from did-core actually!?!?!?!?!
+	fn value(&self) -> Field<&str> { Err(FieldErr("value")) }
 }
 
 pub trait ObjectMut : BaseMut {
@@ -176,6 +179,9 @@ pub trait ObjectMut : BaseMut {
 
 	#[cfg(feature = "ostatus")]
 	fn set_conversation(self, val: Node<Self::Object>) -> Self;
+
+	#[cfg(feature = "did-core")] // TODO this isn't from did-core actually!?!?!?!?!
+	fn set_value(self, val: Option<&str>) -> Self;
 }
 
 #[cfg(feature = "unstructured")]
@@ -227,6 +233,9 @@ impl Object for serde_json::Value {
 
 	#[cfg(feature = "ostatus")]
 	crate::getter! { conversation -> node <Self as Object>::Object }
+
+	#[cfg(feature = "did-core")] // TODO this isn't from did-core actually!?!?!?!?!
+	crate::getter! { value -> &str }
 
 	fn as_activity(&self) -> Result<&Self::Activity, FieldErr> {
 		match self.object_type()? {
@@ -305,4 +314,7 @@ impl ObjectMut for serde_json::Value {
 
 	#[cfg(feature = "ostatus")]
 	crate::setter! { conversation -> node <Self as Object>::Object }
+
+	#[cfg(feature = "did-core")] // TODO this isn't from did-core actually!?!?!?!?!
+	crate::setter! { value -> &str }
 }
