@@ -1,9 +1,13 @@
 /// ActivityPub object node, representing either nothing, something, a link to something or
 /// multiple things
 pub enum Node<T : super::Base> {
+	/// this document node holds multiple objects
 	Array(std::collections::VecDeque<Node<T>>), // TODO would be cool to make it Box<[T]> so that Node is just a ptr
+	/// this document node holds one object
 	Object(Box<T>),
+	/// this document node holds a reference to an object
 	Link(Box<dyn crate::Link + Sync + Send>), // TODO feature flag to toggle these maybe?
+	/// this document node is not present
 	Empty,
 }
 
