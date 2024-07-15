@@ -3,7 +3,7 @@ use leptos_router::*;
 use crate::prelude::*;
 use crate::CONTACT;
 
-use leptos_use::{signal_debounced, storage::use_local_storage, use_cookie, use_element_size, use_window_scroll, utils::{FromToStringCodec, JsonCodec}, UseElementSizeReturn};
+use leptos_use::{signal_debounced, storage::use_local_storage, use_cookie_with_options, use_element_size, use_window_scroll, UseCookieOptions, utils::{FromToStringCodec, JsonCodec}, UseElementSizeReturn};
 
 #[derive(Clone, Copy)]
 pub struct Feeds {
@@ -44,8 +44,20 @@ impl Feeds {
 
 #[component]
 pub fn App() -> impl IntoView {
-	let (token, set_token) = use_cookie::<String, FromToStringCodec>("token");
-	let (userid, set_userid) = use_cookie::<String, FromToStringCodec>("user_id");
+	let (token, set_token) = use_cookie_with_options::<String, FromToStringCodec>(
+		"token",
+		UseCookieOptions::default()
+			.same_site(cookie::SameSite::Strict)
+			// .secure(true)
+			.path("/")
+	);
+	let (userid, set_userid) = use_cookie_with_options::<String, FromToStringCodec>(
+		"user_id",
+		UseCookieOptions::default()
+			.same_site(cookie::SameSite::Strict)
+			// .secure(true)
+			.path("/")
+	);
 	let (config, set_config, _) = use_local_storage::<crate::Config, JsonCodec>("config");
 
 	let auth = Auth { token, userid };

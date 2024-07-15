@@ -1900,15 +1900,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "jsonvec"
-version = "0.1.0"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.71",
-]
-
-[[package]]
 name = "lazy_static"
 version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4791,7 +4782,6 @@ dependencies = [
  "hmac",
  "httpsign",
  "jrd",
- "jsonvec",
  "nodeinfo",
  "openssl",
  "reqwest",
@@ -4887,6 +4877,7 @@ dependencies = [
  "apb",
  "chrono",
  "console_error_panic_hook",
+ "cookie",
  "dashmap",
  "futures",
  "jrd",
