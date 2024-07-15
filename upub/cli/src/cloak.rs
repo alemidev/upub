@@ -12,6 +12,7 @@ pub async fn cloak(ctx: upub::Context, post_contents: bool) -> Result<(), Reques
 			.await?;
 
 		while let Some(attachment) = stream.try_next().await? {
+			tracing::info!("cloaking {}", attachment.url);
 			let (sig, url) = ctx.cloak(&attachment.url);
 			let mut model = attachment.into_active_model();
 			model.url = Set(upub::url!(ctx, "/proxy/{sig}/{url}"));
@@ -21,7 +22,7 @@ pub async fn cloak(ctx: upub::Context, post_contents: bool) -> Result<(), Reques
 
 	if post_contents {
 		let mut stream = upub::model::object::Entity::find()
-			.filter(upub::model::object::Column::Content.like("<img"))
+			.filter(upub::model::object::Column::Content.like("%<img%"))
 			.select_only()
 			.select_column(upub::model::object::Column::Internal)
 			.select_column(upub::model::object::Column::Content)
@@ -32,6 +33,7 @@ pub async fn cloak(ctx: upub::Context, post_contents: bool) -> Result<(), Reques
 		while let Some((internal, content)) = stream.try_next().await? {
 			let sanitized = ctx.sanitize(&content);
 			if sanitized != content {
+				tracing::info!("sanitizing object #{internal}");
 				let model = upub::model::object::ActiveModel {
 					internal: Unchanged(internal),
 					content: Set(Some(sanitized)),
