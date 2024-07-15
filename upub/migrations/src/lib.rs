@@ -18,6 +18,7 @@ mod m20240703_000001_add_audience_index;
 mod m20240703_000002_add_image_to_objects;
 mod m20240706_000001_add_error_to_jobs;
 mod m20240715_000001_add_quote_uri_to_objects;
+mod m20240715_000002_add_actors_fields_and_aliases;
 
 pub struct Migrator;
 
@@ -43,6 +44,7 @@ impl MigratorTrait for Migrator {
 			Box::new(m20240703_000002_add_image_to_objects::Migration),
 			Box::new(m20240706_000001_add_error_to_jobs::Migration),
 			Box::new(m20240715_000001_add_quote_uri_to_objects::Migration),
+			Box::new(m20240715_000002_add_actors_fields_and_aliases::Migration),
 		]
 	}
 }

@@ -1,6 +1,27 @@
 use sea_orm::{entity::prelude::*, QuerySelect, SelectColumns};
 
-use apb::{ActorMut, ActorType, BaseMut, DocumentMut, EndpointsMut, ObjectMut, PublicKeyMut};
+use apb::{field::OptionalString, ActorMut, ActorType, BaseMut, DocumentMut, EndpointsMut, ObjectMut, PublicKeyMut};
+
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, sea_orm::FromJsonQueryResult)]
+pub struct Field {
+	pub name: String,
+	pub content: String,
+	pub verified_at: Option<ChronoDateTimeUtc>,
+
+	#[serde(rename = "type")]
+	pub field_type: String,
+}
+
+impl<T: apb::Object> From<T> for Field {
+	fn from(value: T) -> Self {
+		Field {
+			name: value.name().str().unwrap_or_default(),
+			content: value.content().str().unwrap_or_default(),
+			field_type: "PropertyValue".to_string(), // TODO can we try parsing this instead??
+			verified_at: None, // TODO where does verified_at come from? extend apb maybe
+		}
+	}
+}
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "actors")]
@@ -16,6 +37,7 @@ pub struct Model {
 	pub image: Option<String>,
 	pub icon: Option<String>,
 	pub preferred_username: String,
+	pub fields: Vec<Field>,
 	pub inbox: Option<String>,
 	pub shared_inbox: Option<String>,
 	pub outbox: Option<String>,
@@ -28,6 +50,8 @@ pub struct Model {
 	pub private_key: Option<String>,
 	pub published: ChronoDateTimeUtc,
 	pub updated: ChronoDateTimeUtc,
+	pub also_known_as: Vec<String>,
+	pub moved_to: Option<String>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -183,6 +207,12 @@ impl Model {
 					.set_document_type(Some(apb::DocumentType::Image))
 					.set_url(apb::Node::link(i.clone()))
 			)))
+			.set_attachment(apb::Node::array(
+				self.fields
+					.into_iter()
+					.filter_map(|x| serde_json::to_value(&x).ok())
+					.collect()
+			))
 			.set_published(Some(self.published))
 			.set_updated(if self.updated != self.published { Some(self.updated) } else { None })
 			.set_preferred_username(Some(&self.preferred_username))
@@ -203,6 +233,8 @@ impl Model {
 				apb::new()
 					.set_shared_inbox(self.shared_inbox.as_deref())
 			))
+			.set_also_known_as(apb::Node::links(self.also_known_as))
+			.set_moved_to(apb::Node::maybe_link(self.moved_to))
 			.set_discoverable(Some(true))
 	}
 }

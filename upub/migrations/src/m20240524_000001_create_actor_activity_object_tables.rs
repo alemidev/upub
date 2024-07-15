@@ -12,6 +12,7 @@ pub enum Actors {
 	Image,
 	Icon,
 	PreferredUsername,
+	Fields, // added with migration m20240715_000002
 	Inbox,
 	SharedInbox,
 	Outbox,
@@ -22,6 +23,8 @@ pub enum Actors {
 	StatusesCount,
 	PublicKey,
 	PrivateKey,
+	AlsoKnownAs, // added with migration m20240715_000002
+	MovedTo, // added with migration m20240715_000002
 	Published,
 	Updated,
 }
