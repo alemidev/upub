@@ -210,7 +210,7 @@ impl Model {
 			.set_attachment(apb::Node::array(
 				self.fields
 					.into_iter()
-					.filter_map(|x| serde_json::to_value(&x).ok())
+					.filter_map(|x| serde_json::to_value(x).ok())
 					.collect()
 			))
 			.set_published(Some(self.published))

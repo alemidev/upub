@@ -34,6 +34,9 @@ pub async fn application(
 					domain: Set(domain.clone()),
 					preferred_username: Set(domain.clone()),
 					actor_type: Set(apb::ActorType::Application),
+					also_known_as: Set(vec![]),
+					moved_to: Set(None),
+					fields: Set(vec![]), // TODO we could put some useful things here actually
 					private_key: Set(Some(privk)),
 					public_key: Set(pubk),
 					following: Set(None),

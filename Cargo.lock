@@ -140,7 +140,7 @@ checksum = "d301b3b94cb4b2f23d7917810addbbaff90738e0ca2be692bd027e70d7e0330c"
 
 [[package]]
 name = "apb"
-version = "0.2.1"
+version = "0.2.2"
 dependencies = [
  "async-trait",
  "chrono",
@@ -4793,6 +4793,7 @@ dependencies = [
  "async-trait",
  "base64 0.22.1",
  "chrono",
+ "hmac",
  "httpsign",
  "jrd",
  "nodeinfo",
@@ -4804,6 +4805,7 @@ dependencies = [
  "serde-inline-default",
  "serde_default",
  "serde_json",
+ "sha2",
  "sha256",
  "thiserror",
  "tokio",
@@ -4841,6 +4843,7 @@ dependencies = [
  "chrono",
  "clap",
  "futures",
+ "mdhtml",
  "openssl",
  "sea-orm",
  "serde_json",
