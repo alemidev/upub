@@ -1,6 +1,6 @@
 use sea_orm::{entity::prelude::*, QuerySelect, SelectColumns};
 
-use apb::{ActorMut, ActorType, BaseMut, DocumentMut, EndpointsMut, ObjectMut, PublicKeyMut};
+use apb::{field::OptionalString, ActorMut, ActorType, BaseMut, DocumentMut, EndpointsMut, ObjectMut, PublicKeyMut};
 
 use crate::ext::{JsonVec, TypeName};
 
@@ -22,11 +22,11 @@ impl TypeName for Field {
 	}
 }
 
-impl From<serde_json::Value> for Field {
-	fn from(value: serde_json::Value) -> Self {
+impl<T: apb::Object> From<T> for Field {
+	fn from(value: T) -> Self {
 		Field {
-			name: value.get("name").and_then(|x| x.as_str()).unwrap_or_default().to_string(),
-			value: value.get("value").and_then(|x| x.as_str()).unwrap_or_default().to_string(),
+			name: value.name().str().unwrap_or_default(),
+			value: value.value().str().unwrap_or_default(),
 			field_type: "PropertyValue".to_string(), // TODO can we try parsing this instead??
 			verified_at: None, // TODO where does verified_at come from? extend apb maybe
 		}
