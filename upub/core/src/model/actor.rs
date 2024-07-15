@@ -8,6 +8,8 @@ use crate::ext::{JsonVec, TypeName};
 pub struct Field {
 	pub name: String,
 	pub value: String,
+
+	#[serde(skip_serializing_if = "Option::is_none")]
 	pub verified_at: Option<ChronoDateTimeUtc>,
 
 	#[serde(rename = "type")]
