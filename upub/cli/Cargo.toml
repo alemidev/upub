@@ -20,6 +20,6 @@ uuid = { version = "1.8", features = ["v4"] }
 chrono = { version = "0.4", features = ["serde"] }
 openssl = "0.10" # TODO handle pubkeys with a smaller crate
 clap = { version = "4.5", features = ["derive"] }
-sea-orm = { version = "0.12", features = ["macros", "sqlx-sqlite", "runtime-tokio-rustls"] }
+sea-orm = "0.12"
 futures = "0.3"
 mdhtml = { path = "../../utils/mdhtml/" }

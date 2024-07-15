@@ -21,7 +21,6 @@ openssl = "0.10" # TODO handle pubkeys with a smaller crate
 base64 = "0.22"
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1.8", features = ["v4"] }
-regex = "1.10"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_default = "0.1"
@@ -29,10 +28,10 @@ serde-inline-default = "0.2"
 toml = "0.8"
 uriproxy = { path = "../../utils/uriproxy" }
 httpsign = { path = "../../utils/httpsign/" }
+jsonvec = { path = "../../utils/jsonvec/" }
 jrd = "0.1"
 tracing = "0.1"
-tokio = { version = "1.35", features = ["full"] } # TODO slim this down
-sea-orm = { version = "0.12", features = ["macros", "sqlx-sqlite", "sqlx-postgres", "runtime-tokio-rustls"] }
+sea-orm = { version = "0.12", features = ["macros"] }
 reqwest = { version = "0.12", features = ["json"] }
 apb = { path = "../../apb", features = ["unstructured", "orm", "did-core", "activitypub-miscellaneous-terms", "activitypub-fe", "activitypub-counters", "litepub", "ostatus", "toot"] }
 # nodeinfo = "0.0.2" # the version on crates.io doesn't re-export necessary types to build the struct!!!
