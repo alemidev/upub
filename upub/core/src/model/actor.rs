@@ -1,18 +1,18 @@
 use sea_orm::{entity::prelude::*, QuerySelect, SelectColumns};
 
-use apb::{field::OptionalString, ActorMut, ActorType, BaseMut, DocumentMut, EndpointsMut, ObjectMut, PublicKeyMut};
+use apb::{ActorMut, ActorType, BaseMut, DocumentMut, EndpointsMut, ObjectMut, PublicKeyMut};
 
 use crate::ext::{JsonVec, TypeName};
 
 #[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Field {
+	#[serde(default)]
 	pub name: String,
+	#[serde(default)]
 	pub value: String,
-
-	#[serde(skip_serializing_if = "Option::is_none")]
+	#[serde(default, skip_serializing_if = "Option::is_none")]
 	pub verified_at: Option<ChronoDateTimeUtc>,
-
-	#[serde(rename = "type")]
+	#[serde(default, rename = "type")]
 	pub field_type: String,
 }
 
@@ -22,11 +22,11 @@ impl TypeName for Field {
 	}
 }
 
-impl<T: apb::Object> From<T> for Field {
-	fn from(value: T) -> Self {
+impl From<serde_json::Value> for Field {
+	fn from(value: serde_json::Value) -> Self {
 		Field {
-			name: value.name().str().unwrap_or_default(),
-			value: value.content().str().unwrap_or_default(),
+			name: value.get("name").and_then(|x| x.as_str()).unwrap_or_default().to_string(),
+			value: value.get("value").and_then(|x| x.as_str()).unwrap_or_default().to_string(),
 			field_type: "PropertyValue".to_string(), // TODO can we try parsing this instead??
 			verified_at: None, // TODO where does verified_at come from? extend apb maybe
 		}
