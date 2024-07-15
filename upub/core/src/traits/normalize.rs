@@ -203,10 +203,10 @@ impl AP {
 			object: activity.object().id().str(),
 			target: activity.target().id().str(),
 			published: activity.published().unwrap_or(chrono::Utc::now()),
-			to: activity.to().into(),
-			bto: activity.bto().into(),
-			cc: activity.cc().into(),
-			bcc: activity.bcc().into(),
+			to: activity.to().all_ids().into(),
+			bto: activity.bto().all_ids().into(),
+			cc: activity.cc().all_ids().into(),
+			bcc: activity.bcc().all_ids().into(),
 		})
 	}
 
@@ -287,10 +287,10 @@ impl AP {
 			announces: object.shares().get()
 				.map_or(0, |x| x.total_items().unwrap_or(0)) as i32,
 			audience: object.audience().id().str(),
-			to: object.to().into(),
-			bto: object.bto().into(),
-			cc: object.cc().into(),
-			bcc: object.bcc().into(),
+			to: object.to().all_ids().into(),
+			bto: object.bto().all_ids().into(),
+			cc: object.cc().all_ids().into(),
+			bcc: object.bcc().all_ids().into(),
 
 			sensitive: object.sensitive().unwrap_or(false),
 		})
@@ -333,13 +333,12 @@ impl AP {
 			summary: actor.summary().str(),
 			icon: actor.icon().get().and_then(|x| x.url().id().str()),
 			image: actor.image().get().and_then(|x| x.url().id().str()),
-			fields: actor.attachment().flat().into_iter().filter_map(|x| Some(crate::model::actor::Field::from(x.extract()?))).collect(),
 			inbox: actor.inbox().id().str(),
 			outbox: actor.outbox().id().str(),
 			shared_inbox: actor.endpoints().get().and_then(|x| x.shared_inbox().str()),
 			followers: actor.followers().id().str(),
 			following: actor.following().id().str(),
-			also_known_as: actor.also_known_as().flat().into_iter().filter_map(|x| x.id().str()).collect(),
+			also_known_as: actor.also_known_as().flat().into_iter().filter_map(|x| x.id().str()).collect::<Vec<String>>().into(),
 			moved_to: actor.moved_to().id().str(),
 			published: actor.published().unwrap_or(chrono::Utc::now()),
 			updated: chrono::Utc::now(),
@@ -348,6 +347,12 @@ impl AP {
 			statuses_count: actor.statuses_count().unwrap_or(0) as i32,
 			public_key: actor.public_key().get().ok_or(apb::FieldErr("publicKey"))?.public_key_pem().to_string(),
 			private_key: None, // there's no way to transport privkey over AP json, must come from DB
+			fields: actor.attachment()
+				.flat()
+				.into_iter()
+				.filter_map(|x| Some(crate::model::actor::Field::from(x.extract()?)))
+				.collect::<Vec<crate::model::actor::Field>>()
+				.into(),
 		})
 	}
 

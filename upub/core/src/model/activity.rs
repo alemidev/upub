@@ -1,7 +1,7 @@
 use apb::{ActivityMut, ActivityType, BaseMut, ObjectMut};
 use sea_orm::{entity::prelude::*, QuerySelect, SelectColumns};
 
-use crate::model::Audience;
+use crate::ext::JsonVec;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
 #[sea_orm(table_name = "activities")]
@@ -14,10 +14,10 @@ pub struct Model {
 	pub actor: String,
 	pub object: Option<String>,
 	pub target: Option<String>,
-	pub to: Audience,
-	pub bto: Audience,
-	pub cc: Audience,
-	pub bcc: Audience,
+	pub to: JsonVec<String>,
+	pub bto: JsonVec<String>,
+	pub cc: JsonVec<String>,
+	pub bcc: JsonVec<String>,
 	pub published: ChronoDateTimeUtc,
 }
 

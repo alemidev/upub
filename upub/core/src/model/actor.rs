@@ -2,7 +2,9 @@ use sea_orm::{entity::prelude::*, QuerySelect, SelectColumns};
 
 use apb::{field::OptionalString, ActorMut, ActorType, BaseMut, DocumentMut, EndpointsMut, ObjectMut, PublicKeyMut};
 
-#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize, sea_orm::FromJsonQueryResult)]
+use crate::ext::{JsonVec, TypeName};
+
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct Field {
 	pub name: String,
 	pub content: String,
@@ -10,6 +12,12 @@ pub struct Field {
 
 	#[serde(rename = "type")]
 	pub field_type: String,
+}
+
+impl TypeName for Field {
+	fn type_name() -> String {
+		"Field".to_string()
+	}
 }
 
 impl<T: apb::Object> From<T> for Field {
@@ -37,7 +45,7 @@ pub struct Model {
 	pub image: Option<String>,
 	pub icon: Option<String>,
 	pub preferred_username: String,
-	pub fields: Vec<Field>,
+	pub fields: JsonVec<Field>,
 	pub inbox: Option<String>,
 	pub shared_inbox: Option<String>,
 	pub outbox: Option<String>,
@@ -50,7 +58,7 @@ pub struct Model {
 	pub private_key: Option<String>,
 	pub published: ChronoDateTimeUtc,
 	pub updated: ChronoDateTimeUtc,
-	pub also_known_as: Vec<String>,
+	pub also_known_as: JsonVec<String>,
 	pub moved_to: Option<String>,
 }
 
@@ -208,7 +216,7 @@ impl Model {
 					.set_url(apb::Node::link(i.clone()))
 			)))
 			.set_attachment(apb::Node::array(
-				self.fields
+				self.fields.0
 					.into_iter()
 					.filter_map(|x| serde_json::to_value(x).ok())
 					.collect()
@@ -233,7 +241,7 @@ impl Model {
 				apb::new()
 					.set_shared_inbox(self.shared_inbox.as_deref())
 			))
-			.set_also_known_as(apb::Node::links(self.also_known_as))
+			.set_also_known_as(apb::Node::links(self.also_known_as.0))
 			.set_moved_to(apb::Node::maybe_link(self.moved_to))
 			.set_discoverable(Some(true))
 	}

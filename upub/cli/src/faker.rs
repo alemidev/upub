@@ -1,4 +1,4 @@
-use upub::model::{addressing, config, credential, activity, object, actor, Audience};
+use upub::{ext::JsonVec, model::{activity, actor, addressing, config, credential, object}};
 use openssl::rsa::Rsa;
 use sea_orm::{ActiveValue::NotSet, IntoActiveModel};
 
@@ -21,8 +21,8 @@ pub async fn faker(ctx: upub::Context, count: i64) -> Result<(), sea_orm::DbErr>
 		followers: None,
 		followers_count: 0,
 		statuses_count: count as i32,
-		fields: vec![],
-		also_known_as: vec![],
+		fields: JsonVec::default(),
+		also_known_as: JsonVec::default(),
 		moved_to: None,
 		icon: Some("https://cdn.alemi.dev/social/circle-square.png".to_string()),
 		image: Some("https://cdn.alemi.dev/social/someriver-xs.jpg".to_string()),
@@ -90,10 +90,10 @@ pub async fn faker(ctx: upub::Context, count: i64) -> Result<(), sea_orm::DbErr>
 			likes: Set(0),
 			announces: Set(0),
 			audience: Set(None),
-			to: Set(Audience(vec![apb::target::PUBLIC.to_string()])),
-			bto: Set(Audience::default()),
-			cc: Set(Audience(vec![])),
-			bcc: Set(Audience::default()),
+			to: Set(JsonVec(vec![apb::target::PUBLIC.to_string()])),
+			bto: Set(JsonVec::default()),
+			cc: Set(JsonVec(vec![])),
+			bcc: Set(JsonVec::default()),
 			url: Set(None),
 			sensitive: Set(false),
 		}).exec(db).await?;
@@ -106,10 +106,10 @@ pub async fn faker(ctx: upub::Context, count: i64) -> Result<(), sea_orm::DbErr>
 			object: Set(Some(format!("{domain}/objects/{oid}"))),
 			target: Set(None),
 			published: Set(chrono::Utc::now() - std::time::Duration::from_secs(60*i as u64)),
-			to: Set(Audience(vec![apb::target::PUBLIC.to_string()])),
-			bto: Set(Audience::default()),
-			cc: Set(Audience(vec![])),
-			bcc: Set(Audience::default()),
+			to: Set(JsonVec(vec![apb::target::PUBLIC.to_string()])),
+			bto: Set(JsonVec::default()),
+			cc: Set(JsonVec(vec![])),
+			bcc: Set(JsonVec::default()),
 		}).exec(db).await?;
 	}
 

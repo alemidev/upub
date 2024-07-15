@@ -1,7 +1,7 @@
 use openssl::rsa::Rsa;
 use sea_orm::{ActiveValue::{NotSet, Set}, DatabaseConnection, EntityTrait};
 
-use crate::model;
+use crate::{ext::JsonVec, model};
 
 #[derive(Debug, thiserror::Error)]
 pub enum InitError {
@@ -34,9 +34,9 @@ pub async fn application(
 					domain: Set(domain.clone()),
 					preferred_username: Set(domain.clone()),
 					actor_type: Set(apb::ActorType::Application),
-					also_known_as: Set(vec![]),
+					also_known_as: Set(JsonVec::default()),
 					moved_to: Set(None),
-					fields: Set(vec![]), // TODO we could put some useful things here actually
+					fields: Set(JsonVec::default()), // TODO we could put some useful things here actually
 					private_key: Set(Some(privk)),
 					public_key: Set(pubk),
 					following: Set(None),

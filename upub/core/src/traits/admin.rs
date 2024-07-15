@@ -1,5 +1,7 @@
 use sea_orm::{ActiveValue::{NotSet, Set}, DbErr, EntityTrait};
 
+use crate::ext::JsonVec;
+
 #[async_trait::async_trait]
 pub trait Administrable {
 	async fn register_user(
@@ -35,13 +37,13 @@ impl Administrable for crate::Context {
 			domain: Set(domain),
 			summary: Set(summary),
 			preferred_username: Set(username.clone()),
-			fields: Set(vec![]),
+			fields: Set(JsonVec::default()),
 			following: Set(None),
 			following_count: Set(0),
 			followers: Set(None),
 			followers_count: Set(0),
 			statuses_count: Set(0),
-			also_known_as: Set(vec![]),
+			also_known_as: Set(JsonVec::default()),
 			moved_to: Set(None),
 			icon: Set(avatar_url),
 			image: Set(banner_url),
