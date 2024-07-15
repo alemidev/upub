@@ -14,7 +14,9 @@ readme = "README.md"
 thiserror = "1"
 async-recursion = "1.1"
 async-trait = "0.1"
-sha256 = "1.5"
+sha256 = "1.5" # TODO get rid of this and use directly sha2!!
+sha2 = "0.10"
+hmac = "0.12"
 openssl = "0.10" # TODO handle pubkeys with a smaller crate
 base64 = "0.22"
 chrono = { version = "0.4", features = ["serde"] }
