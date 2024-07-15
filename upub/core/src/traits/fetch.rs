@@ -2,11 +2,11 @@ use std::collections::BTreeMap;
 
 use apb::{Activity, Actor, ActorMut, Base, Collection, Object};
 use reqwest::{header::{ACCEPT, CONTENT_TYPE, USER_AGENT}, Method, Response};
-use sea_orm::{ConnectionTrait, DbErr, EntityTrait, IntoActiveModel, NotSet};
+use sea_orm::{ConnectionTrait, DbErr, EntityTrait, IntoActiveModel, NotSet, ActiveValue::{Set, NotSet, Unchanged}};
 
 use crate::traits::normalize::AP;
 
-use super::{Addresser, Normalizer};
+use super::{Addresser, Cloaker, Normalizer};
 use httpsign::HttpSignature;
 
 #[derive(Debug, Clone)]
@@ -305,7 +305,20 @@ impl Fetcher for crate::Context {
 			}
 		}
 
-		let user_model = AP::actor_q(&document, None)?;
+		let mut user_model = AP::actor_q(&document, None)?;
+
+		// cloak remote images
+		if let Set(Some(ref image)) = user_model.image {
+			if !image.starts_with(self.base()) {
+				user_model.image = Set(Some(self.cloaked(image)));
+			}
+		}
+
+		if let Set(Some(ref icon)) = user_model.icon {
+			if !icon.starts_with(self.base()) {
+				user_model.icon = Set(Some(self.cloaked(icon)));
+			}
+		}
 
 		// TODO this may fail: while fetching, remote server may fetch our service actor.
 		//      if it does so with http signature, we will fetch that actor in background
