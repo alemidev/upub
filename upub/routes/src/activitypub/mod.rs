@@ -25,7 +25,7 @@ impl ActivityPubRouter for Router<upub::Context> {
 			.route("/proxy", post(ap::application::proxy_form))
 			.route("/proxy", get(ap::application::proxy_get))
 			.route("/proxy/:uri", get(ap::application::proxy_path))
-			.route("/proxy/:hmac/:uri", get(ap::application::proxy_hmac))
+			.route("/proxy/:hmac/:uri", get(ap::application::proxy_cloak))
 			.route("/inbox", post(ap::inbox::post))
 			.route("/inbox", get(ap::inbox::get))
 			.route("/inbox/page", get(ap::inbox::page))
