@@ -31,6 +31,10 @@ impl Normalizer for crate::Context {
 			object_model.content = Some(self.sanitize(&content));
 		}
 
+		if let Some(image) = object_model.image {
+			object_model.image = Some(self.cloaked(&image));
+		}
+
 		// fix context for remote posts
 		// > if any link is broken or we get rate limited, the whole insertion fails which is
 		// > kind of dumb. there should be a job system so this can be done in waves. or maybe there's

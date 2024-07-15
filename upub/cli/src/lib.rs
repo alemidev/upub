@@ -116,13 +116,17 @@ pub enum CliCommand {
 
 	/// replaces all attachment urls with proxied local versions (only useful for old instances)
 	Cloak {
-		/// also replace urls inside post contents
+		/// also cloak objects image urls
 		#[arg(long, default_value_t = false)]
-		post_contents: bool,
+		objects: bool,
 
 		/// also cloak actor images
 		#[arg(long, default_value_t = false)]
 		actors: bool,
+
+		/// also replace urls inside post contents
+		#[arg(long, default_value_t = false)]
+		contents: bool,
 	},
 }
 
@@ -145,7 +149,7 @@ pub async fn run(ctx: upub::Context, command: CliCommand) -> Result<(), Box<dyn 
 			Ok(nuke(ctx, for_real, delete_objects).await?),
 		CliCommand::Thread { } =>
 			Ok(thread(ctx).await?),
-		CliCommand::Cloak { post_contents, actors } =>
-			Ok(cloak(ctx, post_contents, actors).await?),
+		CliCommand::Cloak { objects, actors, contents } =>
+			Ok(cloak(ctx, contents, objects, actors).await?),
 	}
 }
