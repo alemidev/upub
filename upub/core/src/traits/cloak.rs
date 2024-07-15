@@ -28,10 +28,34 @@ pub trait Cloaker {
 
 		Some(url)
 	}
+
+	fn cloaked(&self, url: &str) -> String;
 }
 
 impl Cloaker for crate::Context {
 	fn secret(&self) -> &str {
 		&self.cfg().security.proxy_secret
+	}
+
+	fn cloaked(&self, url: &str) -> String {
+		let (sig, url) = self.cloak(url);
+		crate::url!(self, "/proxy/{sig}/{url}")
+	}
+}
+
+// TODO this shouldnt sit in bare context.rs but also having it here is weird!!
+impl crate::Context {
+	pub fn sanitize(&self, text: &str) -> String {
+		let _ctx = self.clone();
+		mdhtml::Sanitizer::new(
+			Box::new(move |txt| {
+				if _ctx.is_local(txt) {
+					txt.to_string()
+				} else {
+					_ctx.cloaked(txt)
+				}
+			})
+		)
+			.html(text)
 	}
 }

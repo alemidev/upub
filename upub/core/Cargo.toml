@@ -28,6 +28,7 @@ serde-inline-default = "0.2"
 toml = "0.8"
 uriproxy = { path = "../../utils/uriproxy" }
 httpsign = { path = "../../utils/httpsign/" }
+mdhtml = { path = "../../utils/mdhtml/" }
 jrd = "0.1"
 tracing = "0.1"
 sea-orm = { version = "0.12", features = ["macros"] }

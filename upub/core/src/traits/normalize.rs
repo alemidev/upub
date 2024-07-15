@@ -1,7 +1,7 @@
 use apb::{field::OptionalString, Collection, Document, Endpoints, Node, Object, PublicKey};
 use sea_orm::{sea_query::Expr, ActiveModelTrait, ActiveValue::{Unchanged, NotSet, Set}, ColumnTrait, ConnectionTrait, DbErr, EntityTrait, IntoActiveModel, QueryFilter};
 
-use super::Fetcher;
+use super::{Cloaker, Fetcher};
 
 #[derive(Debug, thiserror::Error)]
 pub enum NormalizerError {
@@ -27,10 +27,9 @@ impl Normalizer for crate::Context {
 	async fn insert_object(&self, object: impl apb::Object, tx: &impl ConnectionTrait) -> Result<crate::model::object::Model, NormalizerError> {
 		let mut object_model = AP::object(&object)?;
 
-		// TOO should we make sure content only contains a safe subset of html ? frontend does it too
-		// if let Some(content) = object_model.content {
-		//	object_model.content = Some(mdhtml::safe_html(&content));
-		// }
+		if let Some(content) = object_model.content {
+			object_model.content = Some(self.sanitize(&content));
+		}
 
 		// fix context for remote posts
 		// > if any link is broken or we get rate limited, the whole insertion fails which is
@@ -79,14 +78,19 @@ impl Normalizer for crate::Context {
 				},
 				Node::Link(l) => crate::model::attachment::ActiveModel {
 					internal: sea_orm::ActiveValue::NotSet,
-					url: Set(l.href().unwrap_or_default().to_string()),
+					url: Set(self.cloaked(l.href().unwrap_or_default())),
 					object: Set(object_model.internal),
 					document_type: Set(apb::DocumentType::Page),
 					name: Set(l.name().str()),
 					media_type: Set(l.media_type().unwrap_or("link").to_string()),
 				},
-				Node::Object(o) =>
-					AP::attachment_q(o.as_document()?, object_model.internal, None)?,
+				Node::Object(o) => {
+					let mut model = AP::attachment_q(o.as_document()?, object_model.internal, None)?;
+					if let Set(u) | Unchanged(u) = model.url {
+						model.url = Set(self.cloaked(&u));
+					}
+					model
+				},
 			};
 			crate::model::attachment::Entity::insert(attachment_model)
 				.exec(tx)
