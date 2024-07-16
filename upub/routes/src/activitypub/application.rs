@@ -1,5 +1,5 @@
 use apb::{LD, ActorMut, BaseMut, ObjectMut, PublicKeyMut};
-use axum::{extract::{Path, Query, State}, http::HeaderMap, response::{IntoResponse, Redirect, Response}, Form};
+use axum::{extract::{Path, Query, State}, http::HeaderMap, response::{IntoResponse, Redirect, Response}};
 use reqwest::Method;
 use upub::{traits::{Cloaker, Fetcher}, Context};
 
@@ -39,35 +39,17 @@ pub async fn view(
 	).into_response())
 }
 
-pub async fn proxy_path(
-	State(ctx): State<Context>,
-	AuthIdentity(auth): AuthIdentity,
-	Path(uri): Path<String>,
-) -> crate::ApiResult<impl IntoResponse> {
-	let query = uriproxy::expand(&uri)
-		.ok_or_else(crate::ApiError::bad_request)?;
-	proxy(ctx, query, auth).await
-}
-
 #[derive(Debug, serde::Deserialize)]
 pub struct ProxyQuery {
 	uri: String,
 }
 
-pub async fn proxy_get(
+pub async fn ap_fetch(
 	State(ctx): State<Context>,
 	AuthIdentity(auth): AuthIdentity,
 	Query(query): Query<ProxyQuery>,
 ) -> crate::ApiResult<impl IntoResponse> {
 	proxy(ctx, query.uri, auth).await
-}
-
-pub async fn proxy_form(
-	State(ctx): State<Context>,
-	AuthIdentity(auth): AuthIdentity,
-	Form(query): Form<String>,
-) -> crate::ApiResult<impl IntoResponse> {
-	proxy(ctx, query, auth).await
 }
 
 pub async fn proxy_cloak(

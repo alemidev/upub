@@ -66,7 +66,7 @@ pub async fn view(
 				.set_endpoints(Node::object(
 					apb::new()
 						.set_shared_inbox(Some(&upub::url!(ctx, "/inbox")))
-						.set_proxy_url(Some(&upub::url!(ctx, "/proxy")))
+						.set_proxy_url(Some(&upub::url!(ctx, "/fetch")))
 				));
 
 			if auth.is(&uid) {

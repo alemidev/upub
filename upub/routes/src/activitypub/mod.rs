@@ -22,9 +22,7 @@ impl ActivityPubRouter for Router<upub::Context> {
 			// core server inbox/outbox, maybe for feeds? TODO do we need these?
 			.route("/", get(ap::application::view))
 			// fetch route, to debug and retreive remote objects
-			.route("/proxy", post(ap::application::proxy_form))
-			.route("/proxy", get(ap::application::proxy_get))
-			.route("/proxy/:uri", get(ap::application::proxy_path))
+			.route("/fetch", get(ap::application::ap_fetch))
 			.route("/proxy/:hmac/:uri", get(ap::application::proxy_cloak))
 			.route("/inbox", post(ap::inbox::post))
 			.route("/inbox", get(ap::inbox::get))

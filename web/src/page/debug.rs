@@ -31,7 +31,7 @@ pub fn DebugPage() -> impl IntoView {
 					},
 				}
 			} else {
-				debug_fetch(&format!("{URL_BASE}/proxy?uri={query}"), auth, set_error).await
+				debug_fetch(&format!("{URL_BASE}/fetch?uri={query}"), auth, set_error).await
 			}
 		}
 	);

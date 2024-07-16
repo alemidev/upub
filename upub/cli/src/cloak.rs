@@ -19,7 +19,7 @@ pub async fn cloak(ctx: upub::Context, post_contents: bool, objects: bool, actor
 		}
 	}
 
-	if post_contents {
+	if objects {
 		let mut stream = upub::model::object::Entity::find()
 			.filter(upub::model::object::Column::Image.is_not_null())
 			.filter(upub::model::object::Column::Image.not_like(&local_base))
