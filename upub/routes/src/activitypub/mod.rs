@@ -23,7 +23,7 @@ impl ActivityPubRouter for Router<upub::Context> {
 			.route("/", get(ap::application::view))
 			// fetch route, to debug and retreive remote objects
 			.route("/fetch", get(ap::application::ap_fetch))
-			.route("/proxy/:hmac/:uri", get(ap::application::proxy_cloak))
+			.route("/proxy/:hmac/:uri", get(ap::application::cloak_proxy))
 			.route("/inbox", post(ap::inbox::post))
 			.route("/inbox", get(ap::inbox::get))
 			.route("/inbox/page", get(ap::inbox::page))

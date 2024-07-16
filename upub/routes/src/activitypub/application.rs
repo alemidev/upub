@@ -48,21 +48,7 @@ pub async fn ap_fetch(
 	State(ctx): State<Context>,
 	AuthIdentity(auth): AuthIdentity,
 	Query(query): Query<ProxyQuery>,
-) -> crate::ApiResult<impl IntoResponse> {
-	proxy(ctx, query.uri, auth).await
-}
-
-pub async fn proxy_cloak(
-	State(ctx): State<Context>,
-	AuthIdentity(auth): AuthIdentity,
-	Path((hmac, uri)): Path<(String, String)>,
-) -> crate::ApiResult<impl IntoResponse> {
-	let uri = ctx.uncloak(&hmac, &uri)
-		.ok_or_else(ApiError::unauthorized)?;
-	proxy(ctx, uri, auth).await
-}
-
-async fn proxy(ctx: Context, query: String, auth: Identity) -> crate::ApiResult<impl IntoResponse> {
+) -> crate::ApiResult<axum::Json<serde_json::Value>> {
 	// only local users can request fetches
 	if !ctx.cfg().security.allow_public_debugger && !auth.is_local() {
 		return Err(crate::ApiError::unauthorized());
@@ -70,7 +56,29 @@ async fn proxy(ctx: Context, query: String, auth: Identity) -> crate::ApiResult<
 
 	let resp = Context::request(
 			Method::GET,
-			&query,
+			&query.uri,
+			None,
+			ctx.base(),
+			ctx.pkey(),
+			&format!("{}+fetch", ctx.domain()),
+		)
+			.await?
+			.error_for_status()?;
+	
+	
+	Ok(axum::Json(resp.json().await?))
+}
+
+pub async fn cloak_proxy(
+	State(ctx): State<Context>,
+	Path((hmac, uri)): Path<(String, String)>,
+) -> crate::ApiResult<impl IntoResponse> {
+	let uri = ctx.uncloak(&hmac, &uri)
+		.ok_or_else(ApiError::unauthorized)?;
+
+	let resp = Context::request(
+			Method::GET,
+			&uri,
 			None,
 			ctx.base(),
 			ctx.pkey(),
