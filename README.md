@@ -49,6 +49,7 @@ server {
 		slice              1m;
 		proxy_set_header   Range $slice_range;
 		chunked_transfer_encoding on;
+		proxy_ignore_client_abort on;
 		proxy_buffering    on;
 		proxy_cache        upub_cache;
 		proxy_cache_key    $host$uri$is_args$args$slice_range;
@@ -91,13 +92,13 @@ don't hesitate to get in touch, i'd be thrilled to showcase the project to you!
  - [x] optimize `addressing` database schema
  - [x] mentions, notifications
  - [x] hashtags
- - [ ] remote media proxy
+ - [x] remote media proxy
+ - [x] user fields
  - [ ] better editing via web frontend
  - [ ] upload media
  - [ ] public vs unlisted for discovery
  - [ ] mastodon-like search bar
  - [ ] polls
- - [ ] user fields
  - [ ] lists
  - [ ] full mastodon api
  - [ ] get rid of internal ids from code
