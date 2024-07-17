@@ -167,21 +167,27 @@ async fn init(args: Args, config: upub::Config) {
 		return;
 	}
 
+
+	let ctx = upub::Context::new(db, domain, config.clone())
+		.await.expect("failed creating server context");
+
+	#[cfg(feature = "cli")]
+	if let Mode::Cli { command } = args.command {
+		cli::run(ctx, command)
+			.await.expect("failed running cli task");
+
+		return;
+	}
+
+
+	// register signal handler only for long-lasting modes, such as server or worker
 	let (tx, rx) = tokio::sync::watch::channel(false);
 	let signals = Signals::new([SIGTERM, SIGINT]).expect("failed registering signal handler");
 	let handle = signals.handle();
 	let signals_task = tokio::spawn(handle_signals(signals, tx));
 	let stop = CancellationToken(rx);
 
-	let ctx = upub::Context::new(db, domain, config.clone())
-		.await.expect("failed creating server context");
-
 	match args.command {
-		#[cfg(feature = "cli")]
-		Mode::Cli { command } =>
-			cli::run(ctx, command)
-				.await.expect("failed running cli task"),
-
 		#[cfg(feature = "serve")]
 		Mode::Serve { bind } =>
 			routes::serve(ctx, bind, stop)
@@ -203,6 +209,8 @@ async fn init(args: Args, config: upub::Config) {
 		Mode::Config => unreachable!(),
 		#[cfg(feature = "migrate")]
 		Mode::Migrate => unreachable!(),
+		#[cfg(feature = "cli")]
+		Mode::Cli { .. } => unreachable!(),
 	}
 
 	handle.close();
