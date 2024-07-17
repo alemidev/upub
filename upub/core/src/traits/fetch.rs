@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use apb::{Activity, Actor, ActorMut, Base, Collection, Object};
 use reqwest::{header::{ACCEPT, CONTENT_TYPE, USER_AGENT}, Method, Response};
-use sea_orm::{ConnectionTrait, DbErr, EntityTrait, IntoActiveModel, NotSet, ActiveValue::Set};
+use sea_orm::{ActiveValue::Set, ColumnTrait, ConnectionTrait, DbErr, EntityTrait, IntoActiveModel, NotSet, QueryFilter};
 
 use crate::traits::normalize::AP;
 
@@ -195,6 +195,17 @@ impl Fetcher for crate::Context {
 
 
 	async fn webfinger(&self, user: &str, host: &str) -> Result<Option<String>, RequestError> {
+		// TODO username:host is not guaranteed unique!!!! either return a Vec<String> or maybe specify
+		//      which kind of actor??
+		if let Some(usr) = crate::model::actor::Entity::find()
+			.filter(crate::model::actor::Column::PreferredUsername.eq(user))
+			.filter(crate::model::actor::Column::Domain.eq(host))
+			.one(self.db())
+			.await?
+		{
+			return Ok(Some(usr.id));
+		}
+
 		let subject = format!("acct:{user}@{host}");
 		let webfinger_uri = format!("https://{host}/.well-known/webfinger?resource={subject}");
 		let resource = reqwest::Client::new()
