@@ -65,11 +65,15 @@ pub enum CliCommand {
 		replies: bool,
 	},
 
-	/// update remote users
+	/// update remote actors
 	Update {
-		#[arg(long, short, default_value_t = 7)]
-		/// number of days after which users should get updated
+		#[arg(long, short, default_value_t = 10)]
+		/// number of days after which actors should get updated
 		days: i64,
+
+		#[arg(long)]
+		/// stop after updating this many actors
+		limit: Option<u64>,
 	},
 
 	/// register a new local user
@@ -141,8 +145,8 @@ pub async fn run(ctx: upub::Context, command: CliCommand) -> Result<(), Box<dyn 
 			Ok(relay(ctx, action).await?),
 		CliCommand::Fix { likes, shares, replies } =>
 			Ok(fix(ctx, likes, shares, replies).await?),
-		CliCommand::Update { days } =>
-			Ok(update_users(ctx, days).await?),
+		CliCommand::Update { days, limit } =>
+			Ok(update_users(ctx, days, limit).await?),
 		CliCommand::Register { username, password, display_name, summary, avatar_url, banner_url } =>
 			Ok(register(ctx, username, password, display_name, summary, avatar_url, banner_url).await?),
 		CliCommand::Nuke { for_real, delete_objects } =>
