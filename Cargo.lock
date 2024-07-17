@@ -4873,7 +4873,7 @@ dependencies = [
 
 [[package]]
 name = "upub-web"
-version = "0.1.0"
+version = "0.3.0"
 dependencies = [
  "apb",
  "base64 0.22.1",
