@@ -3,7 +3,7 @@ use axum::{extract::{Path, Query, State}, http::HeaderMap, response::{IntoRespon
 use reqwest::Method;
 use upub::{traits::{Cloaker, Fetcher}, Context};
 
-use crate::{builders::JsonLD, ApiError, ApiResult, AuthIdentity, Identity};
+use crate::{builders::JsonLD, ApiError, AuthIdentity};
 
 
 pub async fn view(
@@ -76,20 +76,18 @@ pub async fn cloak_proxy(
 	let uri = ctx.uncloak(&hmac, &uri)
 		.ok_or_else(ApiError::unauthorized)?;
 
-	let resp = Context::request(
-			Method::GET,
-			&uri,
-			None,
-			ctx.base(),
-			ctx.pkey(),
-			&format!("{}+proxy", ctx.domain()),
-		)
-			.await?
-			.error_for_status()?;
-	
+	let resp = Context::client(ctx.domain())
+		.get(uri)
+		.send()
+		.await?
+		.error_for_status()?;
+
 	let headers = resp.headers().clone();
+	// TODO can we stream the response body as it comes?
 	let body = resp.bytes().await?.to_vec();
 
+	// TODO not so great to just try parsing json, but this should be a cheap check as most things we
+	// proxy are not json (as in, dont start with '{')
 	if serde_json::from_slice::<serde_json::Value>(&body).is_ok() {
 		return Err(ApiError::forbidden());
 	}

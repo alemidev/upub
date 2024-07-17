@@ -99,6 +99,13 @@ pub trait Fetcher {
 
 	async fn fetch_thread(&self, id: &str, tx: &impl ConnectionTrait) -> Result<(), RequestError>;
 
+	fn client(domain: &str) -> reqwest::Client {
+		reqwest::Client::builder()
+			.user_agent(format!("upub+{} ({domain})", crate::VERSION))
+			.build()
+			.expect("failed building http client, check system tls or resolver")
+	}
+
 	async fn request(
 		method: reqwest::Method,
 		url: &str,
@@ -130,11 +137,10 @@ pub trait Fetcher {
 			.build_manually(&method.to_string().to_lowercase(), &path, headers_map)
 			.sign(key)?;
 
-		let response = reqwest::Client::new()
-			.request(method.clone(), url)
+		let response = Self::client(domain)
+			.request(method, url)
 			.header(ACCEPT, "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"")
 			.header(CONTENT_TYPE, "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"")
-			.header(USER_AGENT, format!("upub+{} ({domain})", crate::VERSION))
 			.header("Host", host.clone())
 			.header("Date", date.clone())
 			.header("Digest", digest)
