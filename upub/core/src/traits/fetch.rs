@@ -102,6 +102,9 @@ pub trait Fetcher {
 	fn client(domain: &str) -> reqwest::Client {
 		reqwest::Client::builder()
 			.user_agent(format!("upub+{} ({domain})", crate::VERSION))
+			.connect_timeout(std::time::Duration::from_secs(30)) // TODO may be cool to configure these
+			.read_timeout(std::time::Duration::from_secs(30)) // TODO may be cool to configure these
+			.timeout(std::time::Duration::from_secs(300)) // TODO may be cool to configure these
 			.build()
 			.expect("failed building http client, check system tls or resolver")
 	}
