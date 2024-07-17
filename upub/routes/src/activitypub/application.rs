@@ -3,7 +3,7 @@ use axum::{extract::{Path, Query, State}, http::HeaderMap, response::{IntoRespon
 use reqwest::Method;
 use upub::{traits::{Cloaker, Fetcher}, Context};
 
-use crate::{builders::JsonLD, ApiError, AuthIdentity, Identity};
+use crate::{builders::JsonLD, ApiError, ApiResult, AuthIdentity, Identity};
 
 
 pub async fn view(
@@ -86,9 +86,13 @@ pub async fn cloak_proxy(
 		)
 			.await?
 			.error_for_status()?;
+	
+	let headers = resp.headers().clone();
+	let body = resp.bytes().await?.to_vec();
 
-	Ok((
-		resp.headers().clone(),
-		resp.bytes().await?.to_vec(),
-	))
+	if serde_json::from_slice::<serde_json::Value>(&body).is_ok() {
+		return Err(ApiError::forbidden());
+	}
+
+	Ok((headers, body))
 }
