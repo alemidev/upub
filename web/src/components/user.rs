@@ -1,5 +1,5 @@
 use leptos::*;
-use crate::{prelude::*, DEFAULT_AVATAR_URL};
+use crate::{prelude::*, FALLBACK_IMAGE_URL};
 
 use apb::{field::OptionalString, Activity, ActivityMut, Actor, Base, Object, ObjectMut};
 
@@ -12,10 +12,10 @@ pub fn ActorStrip(object: crate::Object) -> impl IntoView {
 	let actor_id = object.id().unwrap_or_default().to_string();
 	let username = object.preferred_username().unwrap_or_default().to_string();
 	let domain = object.id().unwrap_or_default().replace("https://", "").split('/').next().unwrap_or_default().to_string();
-	let avatar = object.icon().get().map(|x| x.url().id().str().unwrap_or(DEFAULT_AVATAR_URL.into())).unwrap_or(DEFAULT_AVATAR_URL.into());
+	let avatar = object.icon().get().map(|x| x.url().id().str().unwrap_or(FALLBACK_IMAGE_URL.into())).unwrap_or(FALLBACK_IMAGE_URL.into());
 	view! {
 		<a href={Uri::web(U::Actor, &actor_id)} class="clean hover">
-			<img src={avatar} class="avatar inline mr-s" /><b>{username}</b><small>@{domain}</small>
+			<img src={avatar} class="avatar inline mr-s" onerror={format!("this.onerror=null; this.src='{FALLBACK_IMAGE_URL}';")} /><b>{username}</b><small>@{domain}</small>
 		</a>
 	}
 }
@@ -29,7 +29,7 @@ pub fn ActorBanner(object: crate::Object) -> impl IntoView {
 		serde_json::Value::Object(_) => {
 			let uid = object.id().unwrap_or_default().to_string();
 			let uri = Uri::web(U::Actor, &uid);
-			let avatar_url = object.icon().get().map(|x| x.url().id().str().unwrap_or(DEFAULT_AVATAR_URL.into())).unwrap_or(DEFAULT_AVATAR_URL.into());
+			let avatar_url = object.icon().get().map(|x| x.url().id().str().unwrap_or(FALLBACK_IMAGE_URL.into())).unwrap_or(FALLBACK_IMAGE_URL.into());
 			let username = object.preferred_username().unwrap_or_default().to_string();
 			let domain = object.id().unwrap_or_default().replace("https://", "").split('/').next().unwrap_or_default().to_string();
 			let display_name = object.name().unwrap_or_default().to_string();
@@ -37,7 +37,7 @@ pub fn ActorBanner(object: crate::Object) -> impl IntoView {
 				<div>
 					<table class="align" >
 					<tr>
-						<td rowspan="2" ><a href={uri.clone()} ><img class="avatar avatar-actor" src={avatar_url} /></a></td>
+						<td rowspan="2" ><a href={uri.clone()} ><img class="avatar avatar-actor" src={avatar_url} onerror={format!("this.onerror=null; this.src='{FALLBACK_IMAGE_URL}';")} /></a></td>
 						<td><b class="displayname"><DisplayName name=display_name /></b></td>
 					</tr>
 					<tr>

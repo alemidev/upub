@@ -1,6 +1,6 @@
 use leptos::*;
 use leptos_router::*;
-use crate::{getters::Getter, prelude::*, DEFAULT_AVATAR_URL};
+use crate::{getters::Getter, prelude::*, FALLBACK_IMAGE_URL};
 
 use apb::{field::OptionalString, ActivityMut, Actor, Base, Object, ObjectMut};
 
@@ -34,8 +34,8 @@ pub fn ActorHeader() -> impl IntoView {
 		None => view! { <Loader /> }.into_view(),
 		Some(Err(e)) => view! { <code class="center cw color">"could not resolve user: "{e}</code> }.into_view(),
 		Some(Ok(actor)) => {
-			let avatar_url = actor.icon().get().map(|x| x.url().id().str().unwrap_or(DEFAULT_AVATAR_URL.into())).unwrap_or(DEFAULT_AVATAR_URL.into());
-			let background_url = actor.image().get().map(|x| x.url().id().str().unwrap_or(DEFAULT_AVATAR_URL.into())).unwrap_or(DEFAULT_AVATAR_URL.into());
+			let avatar_url = actor.icon().get().map(|x| x.url().id().str().unwrap_or(FALLBACK_IMAGE_URL.into())).unwrap_or(FALLBACK_IMAGE_URL.into());
+			let background_url = actor.image().get().map(|x| x.url().id().str().unwrap_or(FALLBACK_IMAGE_URL.into())).unwrap_or(FALLBACK_IMAGE_URL.into());
 			let username = actor.preferred_username().unwrap_or_default().to_string();
 			let name = actor.name().str().unwrap_or(username.clone());
 			let created = actor.published().ok();
