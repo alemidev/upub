@@ -24,6 +24,7 @@ pub const URL_SENSITIVE: &str = "https://cdn.alemi.dev/social/nsfw.png";
 pub const DEFAULT_AVATAR_URL: &str = "https://cdn.alemi.dev/social/gradient.png";
 pub const NAME: &str = "μ";
 pub const DEFAULT_COLOR: &str = "#BF616A";
+pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 
 use std::{ops::Deref, sync::Arc};
 use uriproxy::UriClass;
