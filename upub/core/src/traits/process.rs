@@ -144,7 +144,7 @@ pub async fn like(ctx: &crate::Context, activity: impl apb::Activity, tx: &Datab
 pub async fn dislike(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 	let actor = ctx.fetch_user(activity.actor().id()?, tx).await?;
 	let obj = ctx.fetch_object(activity.object().id()?, tx).await?;
-	if crate::model::like::Entity::find_by_uid_oid(actor.internal, obj.internal)
+	if crate::model::dislike::Entity::find_by_uid_oid(actor.internal, obj.internal)
 		.any(tx)
 		.await?
 	{
@@ -351,6 +351,7 @@ pub async fn delete(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 }
 
 pub async fn update(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
+	// TODO when attachments get updated we do nothing!!!!!!!!!!
 	let Some(object_node) = activity.object().extract() else {
 		tracing::error!("refusing to process activity without embedded object");
 		return Err(ProcessorError::Unprocessable(activity.id()?.to_string()));
