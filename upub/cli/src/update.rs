@@ -1,5 +1,5 @@
 use futures::TryStreamExt;
-use sea_orm::{ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, QueryFilter};
+use sea_orm::{ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, QueryFilter, ModelTrait};
 use upub::traits::Fetcher;
 
 pub async fn update_users(ctx: upub::Context, days: i64, limit: Option<u64>) -> Result<(), sea_orm::DbErr> {
@@ -15,10 +15,22 @@ pub async fn update_users(ctx: upub::Context, days: i64, limit: Option<u64>) -> 
 		if let Some(limit) = limit {
 			if count >= limit { break }
 		}
-		match ctx.pull(&user.id).await.map(|x| x.actor()) {
-			Err(e) => tracing::warn!("could not update user {}: {e}", user.id),
-			Ok(Err(e)) => tracing::warn!("could not update user {}: {e}", user.id),
-			Ok(Ok(doc)) => match upub::AP::actor_q(&doc, Some(user.internal)) {
+		match ctx.pull(&user.id).await.and_then(|x| x.actor()) {
+			Err(upub::traits::fetch::RequestError::Fetch(status, msg)) => {
+				if status.as_u16() == 410 {
+					tracing::info!("user {} has been deleted", user.id);
+					user.delete(ctx.db()).await?;
+				}
+				else if status.as_u16() == 404 {
+					tracing::info!("user {} does not exist anymore", user.id);
+					user.delete(ctx.db()).await?;
+				}
+				else {
+					tracing::warn!("could not fetch user {}: failed with status {status} -- {msg}", user.id);
+				}
+			},
+			Err(e) => tracing::warn!("could not fetch user {}: {e}", user.id),
+			Ok(doc) => match upub::AP::actor_q(&doc, Some(user.internal)) {
 				Ok(mut u) => {
 					tracing::info!("updating user {}", user.id);
 					u.updated = Set(chrono::Utc::now());
