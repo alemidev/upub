@@ -46,6 +46,14 @@ pub fn ActorHeader() -> impl IntoView {
 			let actor_type_tag = if actor_type == apb::ActorType::Person { None } else {
 				Some(view! { <sup class="ml-s"><small>"["{actor_type.as_ref().to_lowercase()}"]"</small></sup> } )
 			};
+			let fields = actor.attachment()
+				.map(|x| view! {
+					<tr>
+						<td class="w-25"><b class="color">{x.name().str().unwrap_or_default()}</b></td>
+						<td class="w-75" inner_html={mdhtml::safe_html(x.value().unwrap_or_default())}></td>
+					</tr>
+				})
+				.collect_view();
 			let uid = actor.id().unwrap_or_default().to_string();
 			let web_path = Uri::web(U::Actor, &uid);
 			let _uid = uid.clone();
@@ -105,6 +113,9 @@ pub fn ActorHeader() -> impl IntoView {
 						</div>
 					</div>
 					<p class="mb-2 mt-0 center bio" inner_html={mdhtml::safe_html(actor.summary().unwrap_or_default())}></p>
+					<p class="center">
+						<table class="fields center w-100 pa-s" style="margin: auto; table-layout: fixed;">{fields}</table>
+					</p>
 				</div>
 				<Outlet />
 			}.into_view()
