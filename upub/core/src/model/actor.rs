@@ -26,7 +26,7 @@ impl<T: apb::Object> From<T> for Field {
 	fn from(value: T) -> Self {
 		Field {
 			name: value.name().str().unwrap_or_default(),
-			value: value.value().str().unwrap_or_default(),
+			value: mdhtml::safe_html(value.value().unwrap_or_default()),
 			field_type: "PropertyValue".to_string(), // TODO can we try parsing this instead??
 			verified_at: None, // TODO where does verified_at come from? extend apb maybe
 		}
