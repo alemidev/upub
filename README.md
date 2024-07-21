@@ -53,7 +53,7 @@ server {
 		proxy_buffering    on;
 		proxy_cache        upub_cache;
 		proxy_cache_key    $host$uri$is_args$args$slice_range;
-		proxy_cache_valid  200 206 301 304 1h;
+		proxy_cache_valid  200 206 301 304 168h;
 		proxy_cache_lock   on;
 		proxy_pass         http://127.0.0.1/;
 	}
