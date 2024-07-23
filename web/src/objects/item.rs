@@ -6,10 +6,7 @@ use crate::prelude::*;
 use apb::{field::OptionalString, target::Addressed, ActivityMut, Base, Collection, CollectionMut, Object, ObjectMut};
 
 #[component]
-pub fn Object(
-	object: crate::Object,
-	#[prop(optional)] reply: bool,
-) -> impl IntoView {
+pub fn Object(object: crate::Object) -> impl IntoView {
 	let oid = object.id().unwrap_or_default().to_string();
 	let author_id = object.attributed_to().id().str().unwrap_or_default();
 	let author = cache::OBJECTS.get_or(&author_id, serde_json::Value::String(author_id.clone()).into());

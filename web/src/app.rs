@@ -134,7 +134,7 @@ pub fn App() -> impl IntoView {
 										<Route path="home" view=move || view! { <Feed tl=feeds.home /> } />
 										<Route path="global" view=move || view! { <Feed tl=feeds.global /> } />
 										<Route path="local" view=move || view! { <Feed tl=feeds.server /> } />
-										<Route path="notifications" view=move || view! { <Feed tl=feeds.notifications /> } />
+										<Route path="notifications" view=move || view! { <Feed tl=feeds.notifications ignore_filters=true /> } />
 
 										<Route path="about" view=AboutPage />
 										<Route path="config" view=move || view! { <ConfigPage setter=set_config /> } />

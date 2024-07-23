@@ -42,27 +42,27 @@ pub fn ActivityLine(activity: crate::Object) -> impl IntoView {
 pub fn Item(
 	item: crate::Object,
 	#[prop(optional)] sep: bool,
-	#[prop(optional)] replies: bool,
 	#[prop(optional)] slim: bool,
+	#[prop(optional)] always: bool,
 ) -> impl IntoView {
 	let config = use_context::<Signal<crate::Config>>().expect("missing config context");
 	let id = item.id().unwrap_or_default().to_string();
 	let sep = if sep { Some(view! { <hr /> }) } else { None };
 	move || {
-		if !replies && !config.get().filters.visible(&item) {
+		if !always && !config.get().filters.visible(&item) {
 			return None;
 		}
 		match item.object_type().unwrap_or(apb::ObjectType::Object) {
 			// special case for placeholder activities
 			apb::ObjectType::Note | apb::ObjectType::Document(_) =>
-				Some(view! { <Object object=item.clone() reply=replies />{sep.clone()} }.into_view()),
+				Some(view! { <Object object=item.clone() />{sep.clone()} }.into_view()),
 			// everything else
 			apb::ObjectType::Activity(t) => {
 				let object_id = item.object().id().str().unwrap_or_default();
 				let object = match t {
 					apb::ActivityType::Create | apb::ActivityType::Announce => 
 						cache::OBJECTS.get(&object_id).map(|obj| {
-							view! { <Object object=obj reply=replies /> }
+							view! { <Object object=obj /> }
 						}.into_view()),
 					apb::ActivityType::Follow =>
 						cache::OBJECTS.get(&object_id).map(|obj| {

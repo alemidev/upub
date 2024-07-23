@@ -4,7 +4,11 @@ use crate::prelude::*;
 use super::Timeline;
 
 #[component]
-pub fn Feed(tl: Timeline) -> impl IntoView {
+pub fn Feed(
+	tl: Timeline,
+	#[prop(optional)]
+	ignore_filters: bool,
+) -> impl IntoView {
 	let auth = use_context::<Auth>().expect("missing auth context");
 	if let Some(auto_scroll) = use_context::<Signal<bool>>() {
 		let _ = leptos::watch(
@@ -22,7 +26,7 @@ pub fn Feed(tl: Timeline) -> impl IntoView {
 			>
 				{match cache::OBJECTS.get(&id) {
 					Some(i) => view! {
-						<Item item=i sep=true />
+						<Item item=i sep=true always=ignore_filters />
 					}.into_view(),
 					None => view! {
 						<p><code>{id}</code>" "[<a href={uri}>go</a>]</p>
