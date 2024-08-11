@@ -103,11 +103,7 @@ pub fn SearchPage() -> impl IntoView {
 								key=|id| id.clone()
 								children=move |item| {
 									cache::OBJECTS.get(&item)
-										.map(|x| view! {
-												<Item item=x />
-												<hr />
-											}.into_view()
-										)
+										.map(|x| view! { <Item item=x always=true /> }.into_view())
 								}
 							/ >
 						}.into_view())
