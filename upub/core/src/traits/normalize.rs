@@ -80,20 +80,34 @@ impl Normalizer for crate::Context {
 					tracing::warn!("ignoring array-in-array while processing attachments");
 					continue
 				},
-				Node::Link(l) => crate::model::attachment::ActiveModel {
-					internal: sea_orm::ActiveValue::NotSet,
-					url: Set(self.cloaked(l.href().unwrap_or_default())),
-					object: Set(object_model.internal),
-					document_type: Set(apb::DocumentType::Page),
-					name: Set(l.name().str()),
-					media_type: Set(l.media_type().unwrap_or("link").to_string()),
-				},
 				Node::Object(o) => {
 					let mut model = AP::attachment_q(o.as_document()?, object_model.internal, None)?;
 					if let Set(u) | Unchanged(u) = model.url {
 						model.url = Set(self.cloaked(&u));
 					}
 					model
+				},
+				Node::Link(l) => {
+					let url = l.href().unwrap_or_default();
+					let mut media_type = l.media_type().unwrap_or("link").to_string();
+					let mut document_type = apb::DocumentType::Page;
+					if self.cfg().compat.fix_attachment_images_media_type
+						&& [".jpg", ".jpeg", ".png", ".webp", ".bmp"] // TODO more image types???
+						.iter()
+						.any(|x| url.ends_with(x))
+					{ 
+						document_type = apb::DocumentType::Image;
+						media_type = format!("image/{}", url.split('.').last().unwrap_or_default());
+						
+					}
+					crate::model::attachment::ActiveModel {
+						internal: sea_orm::ActiveValue::NotSet,
+						url: Set(self.cloaked(url)),
+						object: Set(object_model.internal),
+						document_type: Set(document_type),
+						name: Set(l.name().str()),
+						media_type: Set(media_type),
+					}
 				},
 			};
 			crate::model::attachment::Entity::insert(attachment_model)

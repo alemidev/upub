@@ -12,6 +12,9 @@ pub struct Config {
 	#[serde(default)]
 	pub security: SecurityConfig,
 
+	#[serde(default)]
+	pub compat: CompatibilityConfig,
+
 	// TODO should i move app keys here?
 }
 
@@ -96,6 +99,13 @@ pub struct SecurityConfig {
 	pub reinsertion_attempt_limit: u32,
 }
 
+#[serde_inline_default::serde_inline_default]
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize, serde_default::DefaultFromSerde)]
+pub struct CompatibilityConfig {
+	#[serde(default)]
+	pub fix_attachment_images_media_type: bool,
+
+}
 
 impl Config {
 	pub fn load(path: Option<&std::path::PathBuf>) -> Self {
