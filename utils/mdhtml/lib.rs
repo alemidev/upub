@@ -55,7 +55,7 @@ impl TokenSink for Sanitizer {
 				if !matches!(
 					tag.name.as_ref(),
 					"h1" | "h2" | "h3" 
-					| "hr" | "br" | "p" | "b" | "i"
+					| "hr" | "br" | "p" | "b" | "i" | "s"
 					| "blockquote" | "pre" | "code"
 					| "ul" | "ol" | "li"
 					| "img" | "a"
