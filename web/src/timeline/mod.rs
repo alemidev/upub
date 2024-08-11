@@ -100,7 +100,8 @@ impl Timeline {
 	}
 }
 
-async fn process_activities(activities: Vec<serde_json::Value>, auth: Auth) -> Vec<String> {
+// TODO ughhh this shouldn't be here if its pub!!!
+pub async fn process_activities(activities: Vec<serde_json::Value>, auth: Auth) -> Vec<String> {
 	let mut sub_tasks : Vec<Pin<Box<dyn futures::Future<Output = ()>>>> = Vec::new();
 	let mut gonna_fetch = BTreeSet::new();
 	let mut actors_seen = BTreeSet::new();

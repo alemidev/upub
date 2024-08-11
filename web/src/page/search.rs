@@ -31,7 +31,10 @@ pub fn SearchPage() -> impl IntoView {
 		move || use_query_map().get().get("q").cloned().unwrap_or_default(),
 		move |q| {
 			let search = format!("{URL_BASE}/search?q={q}");
-			async move { Http::fetch::<serde_json::Value>(&search, auth).await.ok() }
+			async move {
+				let items = Http::fetch::<serde_json::Value>(&search, auth).await.ok()?;
+				Some(crate::timeline::process_activities(items.ordered_items().collect(), auth).await)
+			}
 		}
 	);
 
@@ -73,16 +76,17 @@ pub fn SearchPage() -> impl IntoView {
 			None => Some(view! { <p class="center"><small>searching...</small></p> }.into_view()),
 			Some(None) => None,
 			Some(Some(items)) => Some(view! {
-				// TODO this is jank af! i should do the same thing i do for timelines, aka first process
-				//      all items and store in cache and then pass a vec of strings here!!!
+				// TODO ughhh too many clones
 				<For
-					each=move || items.ordered_items()
-					key=|item| item.id().unwrap_or_default().to_string()
+					each=move || items.clone()
+					key=|id| id.clone()
 					children=move |item| {
-						view! {
-							<Item item=item.into() />
-							<hr />
-						}.into_view()
+						cache::OBJECTS.get(&item)
+							.map(|x| view! {
+									<Item item=x />
+									<hr />
+								}.into_view()
+							)
 					}
 				/ >
 			}.into_view())
