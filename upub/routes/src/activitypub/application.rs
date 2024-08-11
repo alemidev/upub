@@ -1,9 +1,12 @@
 use apb::{LD, ActorMut, BaseMut, ObjectMut, PublicKeyMut};
 use axum::{extract::{Path, Query, State}, http::HeaderMap, response::{IntoResponse, Redirect, Response}};
 use reqwest::Method;
+use sea_orm::{Condition, ColumnTrait};
 use upub::{traits::{Cloaker, Fetcher}, Context};
 
-use crate::{builders::JsonLD, ApiError, AuthIdentity};
+use crate::{builders::JsonLD, ApiError, AuthIdentity, Identity};
+
+use super::{PaginatedSearch, Pagination};
 
 
 pub async fn view(
@@ -37,6 +40,43 @@ pub async fn view(
 			))
 			.ld_context()
 	).into_response())
+}
+
+pub async fn search(
+	State(ctx): State<Context>,
+	AuthIdentity(auth): AuthIdentity,
+	Query(page): Query<PaginatedSearch>,
+) -> crate::ApiResult<JsonLD<serde_json::Value>> {
+	if !auth.is_local() && ctx.cfg().security.allow_public_search {
+		return Err(crate::ApiError::forbidden());
+	}
+
+	let mut filter = Condition::any()
+		.add(auth.filter());
+
+	if let Identity::Local { ref id, .. } = auth {
+		filter = filter.add(upub::model::object::Column::AttributedTo.eq(id));
+	}
+
+	filter = Condition::all()
+		.add(upub::model::object::Column::Content.like(page.q))
+		.add(filter);
+
+	// TODO lmao rethink this all
+	let page = Pagination {
+		offset: page.offset,
+		batch: page.batch,
+	};
+
+	crate::builders::paginate_feed(
+		upub::url!(ctx, "/search"),
+		filter,
+		ctx.db(),
+		page,
+		auth.my_id(),
+		false,
+	)
+		.await
 }
 
 #[derive(Debug, serde::Deserialize)]

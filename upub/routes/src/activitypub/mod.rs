@@ -22,6 +22,7 @@ impl ActivityPubRouter for Router<upub::Context> {
 			// core server inbox/outbox, maybe for feeds? TODO do we need these?
 			.route("/", get(ap::application::view))
 			// fetch route, to debug and retreive remote objects
+			.route("/search", get(ap::application::search))
 			.route("/fetch", get(ap::application::ap_fetch))
 			.route("/proxy/:hmac/:uri", get(ap::application::cloak_proxy))
 			.route("/inbox", post(ap::inbox::post))
@@ -86,6 +87,14 @@ pub struct TryFetch {
 #[derive(Debug, serde::Deserialize)]
 // TODO i don't really like how pleroma/mastodon do it actually, maybe change this?
 pub struct Pagination {
+	pub offset: Option<u64>,
+	pub batch: Option<u64>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+// TODO i don't really like how pleroma/mastodon do it actually, maybe change this?
+pub struct PaginatedSearch {
+	pub q: String,
 	pub offset: Option<u64>,
 	pub batch: Option<u64>,
 }

@@ -74,6 +74,9 @@ pub struct SecurityConfig {
 	#[serde(default)]
 	pub allow_public_debugger: bool,
 
+	#[serde(default)]
+	pub allow_public_search: bool,
+
 	#[serde_inline_default("changeme".to_string())]
 	pub proxy_secret: String,
 
@@ -87,16 +90,16 @@ pub struct SecurityConfig {
 	pub session_duration_hours: i64,
 
 	#[serde_inline_default(2)]
-	pub max_id_redirects: u32,
+	pub max_id_redirects: u32, // TODO not sure it fits here
 
 	#[serde_inline_default(20)]
-	pub thread_crawl_depth: u32,
+	pub thread_crawl_depth: u32, // TODO doesn't really fit here
 
 	#[serde_inline_default(30)]
-	pub job_expiration_days: u32,
+	pub job_expiration_days: u32, // TODO doesn't really fit here
 
 	#[serde_inline_default(100)]
-	pub reinsertion_attempt_limit: u32,
+	pub reinsertion_attempt_limit: u32, // TODO doesn't really fit here
 }
 
 #[serde_inline_default::serde_inline_default]
