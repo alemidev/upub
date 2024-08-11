@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use apb::target::Addressed;
-use sea_orm::{ActiveValue::{NotSet, Set}, ConnectionTrait, DbErr, EntityTrait, QuerySelect, SelectColumns};
+use sea_orm::{ActiveValue::{NotSet, Set}, ColumnTrait, ConnectionTrait, DbErr, EntityTrait, QueryFilter, QuerySelect, SelectColumns};
 
 use crate::traits::fetch::Fetcher;
 
@@ -14,7 +14,7 @@ pub trait Addresser {
 #[async_trait::async_trait]
 impl Addresser for crate::Context {
 	async fn deliver(&self, to: Vec<String>, aid: &str, from: &str, tx: &impl ConnectionTrait) -> Result<(), DbErr> {
-		let to = expand_addressing(to, tx).await?;
+		let to = expand_addressing(to, None, tx).await?;
 		let mut deliveries = Vec::new();
 		for target in to.into_iter()
 			.filter(|to| !to.is_empty())
@@ -60,16 +60,16 @@ impl Addresser for crate::Context {
 		match (activity, object) {
 			(None, None) => Ok(()),
 			(Some(activity), None) => {
-				let to = expand_addressing(activity.addressed(), tx).await?;
+				let to = expand_addressing(activity.addressed(), None, tx).await?;
 				address_to(self, to, Some(activity.internal), None, self.is_local(&activity.id), activity.published, tx).await
 			},
 			(None, Some(object)) => {
-				let to = expand_addressing(object.addressed(), tx).await?;
+				let to = expand_addressing(object.addressed(), object.audience.clone(), tx).await?;
 				address_to(self, to, None, Some(object.internal), self.is_local(&object.id), object.published, tx).await
 			},
 			(Some(activity), Some(object)) => {
-				let to_activity = BTreeSet::from_iter(expand_addressing(activity.addressed(), tx).await?);
-				let to_object = BTreeSet::from_iter(expand_addressing(object.addressed(), tx).await?);
+				let to_activity = BTreeSet::from_iter(expand_addressing(activity.addressed(), None, tx).await?);
+				let to_object = BTreeSet::from_iter(expand_addressing(object.addressed(), object.audience.clone(), tx).await?);
 				let to_common = to_activity.intersection(&to_object).cloned().collect();
 				address_to(self, to_common, Some(activity.internal), Some(object.internal), self.is_local(&activity.id), activity.published, tx).await?;
 				let to_only_activity = (&to_activity - &to_object).into_iter().collect();
@@ -122,36 +122,36 @@ async fn address_to(ctx: &crate::Context, to: Vec<String>, aid: Option<i64>, oid
 	Ok(())
 }
 
-async fn expand_addressing(targets: Vec<String>, tx: &impl ConnectionTrait) -> Result<Vec<String>, DbErr> {
+async fn expand_addressing(targets: Vec<String>, audience: Option<String>, tx: &impl ConnectionTrait) -> Result<Vec<String>, DbErr> {
 	let mut out = Vec::new();
-	for target in targets {
-		// TODO this is definitely NOT a reliable way to expand followers collections...
-		//      we should add an index on following field in users and try to search for that: no
-		//      guarantee that all followers collections end with 'followers'! once we get the actual
-		//      user we can resolve their followers with the relations table
-		//   !  NOTE THAT local users have followers set to NULL, either fill all local users followers
-		//      field or manually check if it's local and then do the .ends_with("/followers")
-		// TODO should also expand /following
-		// TODO should probably expand audience too but it's not reachable anymore from here, should we
-		//      count audience field too in the .addressed() trait? maybe pre-expand it because it's
-		//      only used for groups anyway??
-		if target.ends_with("/followers") {
-			let target_id = target.replace("/followers", "");
-			let target_internal = crate::model::actor::Entity::ap_to_internal(&target_id, tx)
-				.await?
-				.ok_or_else(|| DbErr::RecordNotFound(target_id.clone()))?;
-			let mut followers = crate::Query::related(None, Some(target_internal), false)
+	if let Some(audience) = audience {
+		if let Some(internal) = crate::model::actor::Entity::ap_to_internal(&audience, tx).await? {
+			let mut members = crate::Query::related(None, Some(internal), false)
 				.select_only()
 				.select_column(crate::model::actor::Column::Id)
 				.into_tuple::<String>()
 				.all(tx)
 				.await?;
-			if followers.is_empty() { // stuff with zero addressing will never be seen again!!! TODO
-				followers.push(target_id);
-			}
-			for follower in followers {
-				out.push(follower);
-			}
+			out.append(&mut members);
+		}
+	}
+
+	for target in targets {
+		if let Some(followers_of) = crate::model::actor::Entity::find()
+			.filter(crate::model::actor::Column::Followers.eq(&target))
+			.select_only()
+			.select_column(crate::model::actor::Column::Internal)
+			.into_tuple::<i64>()
+			.one(tx)
+			.await?
+		{
+			let mut followers = crate::Query::related(None, Some(followers_of), false)
+				.select_only()
+				.select_column(crate::model::actor::Column::Id)
+				.into_tuple::<String>()
+				.all(tx)
+				.await?;
+			out.append(&mut followers);
 		} else {
 			out.push(target);
 		}
