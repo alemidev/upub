@@ -105,6 +105,8 @@ pub struct CompatibilityConfig {
 	#[serde(default)]
 	pub fix_attachment_images_media_type: bool,
 
+	#[serde(default)]
+	pub add_explicit_target_to_likes_if_local: bool,
 }
 
 impl Config {

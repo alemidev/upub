@@ -98,6 +98,7 @@ pub async fn create(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 pub async fn like(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 	let actor = ctx.fetch_user(activity.actor().id()?, tx).await?;
 	let obj = ctx.fetch_object(activity.object().id()?, tx).await?;
+	let likes_local_object = obj.attributed_to.as_ref().map(|x| ctx.is_local(x)).unwrap_or_default();
 	if crate::model::like::Entity::find_by_uid_oid(actor.internal, obj.internal)
 		.any(tx)
 		.await?
@@ -120,8 +121,11 @@ pub async fn like(ctx: &crate::Context, activity: impl apb::Activity, tx: &Datab
 		.await?;
 
 	// likes without addressing are "silent likes", process them but dont store activity or notify
-	if !activity.addressed().is_empty() {
-		let activity_model = ctx.insert_activity(activity, tx).await?;
+	if likes_local_object || !activity.addressed().is_empty() {
+		let mut activity_model = ctx.insert_activity(activity, tx).await?;
+		if likes_local_object {
+			activity_model.to.0.push(obj.attributed_to.clone().unwrap_or_default());
+		}
 		ctx.address((Some(&activity_model), None), tx).await?;
 
 		// TODO check that object author is in this like addressing!!! otherwise skip notification
