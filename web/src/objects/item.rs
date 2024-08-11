@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use leptos::*;
-use crate::prelude::*;
+use crate::{prelude::*, URL_SENSITIVE};
 
 use apb::{field::OptionalString, target::Addressed, ActivityMut, Base, Collection, CollectionMut, Object, ObjectMut};
 
@@ -119,7 +119,16 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 	let post_image = object.image().get().and_then(|x| x.url().id().str()).map(|x| {
 		let (expand, set_expand) = create_signal(false);
 		view! {
-			<img src={x} class="flex-pic box cursor" class:flex-pic-expand=expand on:click=move|_| set_expand.set(!expand.get()) />
+			<img
+				class="flex-pic box cursor"
+				class:flex-pic-expand=expand
+				src={move || if sensitive && !expand.get() {
+					URL_SENSITIVE.to_string()
+				} else {
+					x.clone()
+				}}
+				on:click=move|_| set_expand.set(!expand.get())
+			/>
 		}
 	});
 
