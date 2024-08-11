@@ -73,6 +73,7 @@ impl Normalizer for crate::Context {
 				.await?;
 		}
 
+		let obj_image = object_model.image.clone().unwrap_or_default();
 		for attachment in object.attachment().flat() {
 			let attachment_model = match attachment {
 				Node::Empty => continue,
@@ -83,12 +84,14 @@ impl Normalizer for crate::Context {
 				Node::Object(o) => {
 					let mut model = AP::attachment_q(o.as_document()?, object_model.internal, None)?;
 					if let Set(u) | Unchanged(u) = model.url {
+						if u == obj_image { continue };
 						model.url = Set(self.cloaked(&u));
 					}
 					model
 				},
 				Node::Link(l) => {
 					let url = l.href().unwrap_or_default();
+					if url == obj_image { continue };
 					let mut media_type = l.media_type().unwrap_or("link").to_string();
 					let mut document_type = apb::DocumentType::Page;
 					if self.cfg().compat.fix_attachment_images_media_type
