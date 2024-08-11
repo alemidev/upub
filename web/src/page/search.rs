@@ -45,7 +45,7 @@ pub fn SearchPage() -> impl IntoView {
 		<blockquote class="mt-3 mb-3">
 			<details open>
 				<summary class="mb-2">
-					<code class="cw center color ml-s w-100">users</code>
+					<code class="cw center color ml-s w-100">actor</code>
 				</summary>
 				<div class="pb-1">
 				{move || match user.get() {
@@ -60,7 +60,7 @@ pub fn SearchPage() -> impl IntoView {
 		<blockquote class="mt-3 mb-3">
 			<details open>
 				<summary class="mb-2">
-					<code class="cw center color ml-s w-100">objects</code>
+					<code class="cw center color ml-s w-100">object</code>
 				</summary>
 				<div class="pb-1">
 				{move || match object.get() {
@@ -72,24 +72,33 @@ pub fn SearchPage() -> impl IntoView {
 			</details>
 		</blockquote>
 
-		{move || match text_search.get() {
-			None => Some(view! { <p class="center"><small>searching...</small></p> }.into_view()),
-			Some(None) => None,
-			Some(Some(items)) => Some(view! {
-				// TODO ughhh too many clones
-				<For
-					each=move || items.clone()
-					key=|id| id.clone()
-					children=move |item| {
-						cache::OBJECTS.get(&item)
-							.map(|x| view! {
-									<Item item=x />
-									<hr />
-								}.into_view()
-							)
-					}
-				/ >
-			}.into_view())
-		}}
+		<blockquote class="mt-3 mb-3">
+			<details open>
+				<summary class="mb-2">
+					<code class="cw center color ml-s w-100">full text</code>
+				</summary>
+				<div class="pb-1">
+					{move || match text_search.get() {
+						None => Some(view! { <p class="center"><small>searching...</small></p> }.into_view()),
+						Some(None) => None,
+						Some(Some(items)) => Some(view! {
+							// TODO ughhh too many clones
+							<For
+								each=move || items.clone()
+								key=|id| id.clone()
+								children=move |item| {
+									cache::OBJECTS.get(&item)
+										.map(|x| view! {
+												<Item item=x />
+												<hr />
+											}.into_view()
+										)
+								}
+							/ >
+						}.into_view())
+					}}
+				</div>
+			</details>
+		</blockquote>
 	}
 }
