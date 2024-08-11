@@ -97,7 +97,7 @@ macro_rules! strenum {
 				}
 			
 				fn column_type() -> sea_orm::sea_query::ColumnType {
-					sea_orm::sea_query::ColumnType::String(Some(24))
+					sea_orm::sea_query::ColumnType::String(sea_orm::sea_query::table::StringLen::N(24))
 				}
 			}
 			

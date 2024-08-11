@@ -12,7 +12,8 @@ where
 	T::Model : Sync,
 {
 	async fn any(self, db: &impl ConnectionTrait) -> Result<bool, sea_orm::DbErr> {
-		Ok(self.count(db).await? > 0)
+		// TODO ConnectionTrait became an iterator?? self.count(db) gives error now
+		Ok(PaginatorTrait::count(self, db).await? > 0)
 	}
 }
 

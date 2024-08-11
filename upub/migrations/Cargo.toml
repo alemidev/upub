@@ -11,4 +11,4 @@ readme = "README.md"
 [lib]
 
 [dependencies]
-sea-orm-migration = "0.12"
+sea-orm-migration = "1.0"
