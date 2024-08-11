@@ -14,7 +14,7 @@ impl MigrationTrait for Migration {
 					.name("index-objects-content")
 					.table(Objects::Table)
 					.col(Objects::Audience)
-					.full_text()
+					.full_text() // on postgres this may fail, run `CREATE EXTENSION btree_gin;` to fix
 					.to_owned()
 				)
 			.await?;
