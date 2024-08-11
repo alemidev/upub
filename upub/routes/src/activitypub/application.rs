@@ -47,7 +47,7 @@ pub async fn search(
 	AuthIdentity(auth): AuthIdentity,
 	Query(page): Query<PaginatedSearch>,
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
-	if !auth.is_local() && ctx.cfg().security.allow_public_search {
+	if !auth.is_local() && !ctx.cfg().security.allow_public_search {
 		return Err(crate::ApiError::forbidden());
 	}
 
