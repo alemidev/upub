@@ -110,6 +110,9 @@ pub struct CompatibilityConfig {
 
 	#[serde(default)]
 	pub add_explicit_target_to_likes_if_local: bool,
+
+	#[serde(default)]
+	pub skip_single_attachment_if_image_is_set: bool,
 }
 
 impl Config {
