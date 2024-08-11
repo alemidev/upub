@@ -40,7 +40,6 @@ pub fn SearchPage() -> impl IntoView {
 
 
 	view! {
-		<code class="center cw color"><a href={format!("/web/tags/{query}")}>#{query}</a></code>
 
 		<blockquote class="mt-3 mb-3">
 			<details open>
@@ -71,6 +70,20 @@ pub fn SearchPage() -> impl IntoView {
 				</div>
 			</details>
 		</blockquote>
+
+		<blockquote>
+			<details open>
+				<summary class="mb-2">
+					<code class="cw center color ml-s w-100">hashtags</code>
+				</summary>
+				<div class="pb-1">
+					<ul>
+						<li><a href={format!("/web/tags/{query}")}>#{query}</a></li>
+					</ul>
+				</div>
+			</details>
+		</blockquote>
+
 
 		<blockquote class="mt-3 mb-3">
 			<details open>
