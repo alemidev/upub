@@ -59,7 +59,7 @@ pub async fn search(
 	}
 
 	filter = Condition::all()
-		.add(upub::model::object::Column::Content.like(page.q))
+		.add(upub::model::object::Column::Content.like(format!("%{}%", page.q)))
 		.add(filter);
 
 	// TODO lmao rethink this all
