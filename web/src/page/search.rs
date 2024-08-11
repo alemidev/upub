@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use apb::{Base, Collection};
+use apb::Collection;
 use leptos::*;
 use leptos_router::*;
 use crate::prelude::*;
@@ -9,7 +9,9 @@ use crate::prelude::*;
 pub fn SearchPage() -> impl IntoView {
 	let auth = use_context::<Auth>().expect("missing auth context");
 
-	let query = use_query_map().get().get("q").cloned().unwrap_or_default();
+	let query = Signal::derive(||
+		use_query_map().with(|x| x.get("q").cloned().unwrap_or_default())
+	);
 
 	let user = create_local_resource(
 		move || use_query_map().get().get("q").cloned().unwrap_or_default(),
@@ -78,7 +80,7 @@ pub fn SearchPage() -> impl IntoView {
 				</summary>
 				<div class="pb-1">
 					<ul>
-						<li><a href={format!("/web/tags/{query}")}>#{query}</a></li>
+						<li><a href={format!("/web/tags/{}", query.get())}>#{query}</a></li>
 					</ul>
 				</div>
 			</details>
