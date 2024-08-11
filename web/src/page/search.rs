@@ -9,6 +9,8 @@ use crate::prelude::*;
 pub fn SearchPage() -> impl IntoView {
 	let auth = use_context::<Auth>().expect("missing auth context");
 
+	let query = use_query_map().get().get("q").cloned().unwrap_or_default();
+
 	let user = create_local_resource(
 		move || use_query_map().get().get("q").cloned().unwrap_or_default(),
 		move |q| {
@@ -33,7 +35,10 @@ pub fn SearchPage() -> impl IntoView {
 		}
 	);
 
+
 	view! {
+		<code class="center cw color"><a href={format!("/web/tags/{query}")}>#{query}</a></code>
+
 		<blockquote class="mt-3 mb-3">
 			<details open>
 				<summary class="mb-2">
