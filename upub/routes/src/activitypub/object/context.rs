@@ -11,7 +11,7 @@ pub async fn get(
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let context = ctx.oid(&id);
 
-	let count = upub::Query::feed(auth.my_id())
+	let count = upub::Query::feed(auth.my_id(), true)
 		.filter(auth.filter())
 		.filter(model::object::Column::Context.eq(&context))
 		.count(ctx.db())

@@ -4,11 +4,15 @@ use crate::model;
 pub struct Query;
 
 impl Query {
-	pub fn feed(my_id: Option<i64>) -> Select<model::addressing::Entity> {
+	pub fn feed(my_id: Option<i64>, by_object: bool) -> Select<model::addressing::Entity> {
 		let mut select = model::addressing::Entity::find()
 			.distinct_on([
 				(model::addressing::Entity, model::addressing::Column::Published).into_column_ref(),
-				(model::activity::Entity, model::activity::Column::Internal).into_column_ref(),
+				if by_object {
+					(model::object::Entity, model::object::Column::Internal).into_column_ref()
+				} else {
+					(model::activity::Entity, model::activity::Column::Internal).into_column_ref()
+				},
 			])
 			.join(sea_orm::JoinType::LeftJoin, model::addressing::Relation::Activities.def())
 			.join(sea_orm::JoinType::LeftJoin, model::addressing::Relation::Objects.def())
@@ -18,9 +22,13 @@ impl Query {
 					.add(model::activity::Column::Id.is_not_null())
 					.add(model::object::Column::Id.is_not_null())
 			)
-			.order_by(model::addressing::Column::Published, Order::Desc)
-			.order_by(model::activity::Column::Internal, Order::Desc)
-			.select_only();
+			.order_by(model::addressing::Column::Published, Order::Desc);
+
+		select = if by_object {
+			select.order_by(model::object::Column::Internal, Order::Desc).select_only()
+		} else {
+			select.order_by(model::activity::Column::Internal, Order::Desc).select_only()
+		};
 
 		for col in model::activity::Column::iter() {
 			select = select.select_column_as(col, format!("{}{}", model::activity::Entity.table_name(), col.to_string()));
