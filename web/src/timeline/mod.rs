@@ -40,7 +40,7 @@ impl Timeline {
 		}
 	}
 
-	pub fn refresh(&self) {
+	pub fn refresh(&self, auth: Auth) {
 		self.reset(
 			self.next
 				.get_untracked()
@@ -48,6 +48,7 @@ impl Timeline {
 				.next()
 				.map(|x| x.to_string())
 		);
+		self.spawn_more(auth);
 	}
 
 	pub fn spawn_more(&self, auth: Auth) {
