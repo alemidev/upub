@@ -1,6 +1,6 @@
 use axum::extract::{Path, Query, State};
-use sea_orm::{ColumnTrait, Condition, PaginatorTrait, QueryFilter};
-use upub::{model, Context};
+use sea_orm::{ColumnTrait, Condition, PaginatorTrait, QueryFilter, QuerySelect};
+use upub::{model, selector::{BatchFillable, RichActivity}, Context};
 
 use crate::{activitypub::Pagination, builders::JsonLD, AuthIdentity, Identity};
 
@@ -39,14 +39,29 @@ pub async fn page(
 		.add(model::object::Column::Context.eq(context))
 		.add(filter);
 
+	let limit = page.batch.unwrap_or(20).min(50);
+	let offset = page.offset.unwrap_or(0);
 
-	crate::builders::paginate_feed(
-		upub::url!(ctx, "/objects/{id}/context/page"),
-		filter,
-		ctx.db(),
-		page,
-		auth.my_id(),
-		false,
-	)
-		.await
+
+	let items = upub::Query::feed(auth.my_id(), true)
+		.filter(filter)
+		// TODO also limit to only local activities
+		.limit(limit)
+		.offset(offset)
+		.into_model::<RichActivity>()
+		.all(ctx.db())
+		.await?
+		.with_batched::<upub::model::attachment::Entity>(ctx.db())
+		.await?
+		.with_batched::<upub::model::mention::Entity>(ctx.db())
+		.await?
+		.with_batched::<upub::model::hashtag::Entity>(ctx.db())
+		.await?;
+
+	let items : Vec<serde_json::Value> = items
+		.into_iter()
+		.map(|item| item.ap())
+		.collect();
+
+	crate::builders::collection_page(&id, offset, limit, items)
 }
