@@ -44,10 +44,13 @@ impl FromQueryResult for RichActivity {
 	fn from_query_result(res: &QueryResult, _pre: &str) -> Result<Self, DbErr> {
 		Ok(RichActivity {
 			attachments: None, hashtags: None, mentions: None,
-			discovered: res.try_get(crate::model::addressing::Entity.table_name(), &crate::model::addressing::Column::Published.to_string())?,
 			liked: res.try_get(crate::model::like::Entity.table_name(), &crate::model::like::Column::Actor.to_string()).ok(),
 			object: crate::model::object::Model::from_query_result(res, crate::model::object::Entity.table_name()).ok(),
 			activity: crate::model::activity::Model::from_query_result(res, crate::model::activity::Entity.table_name()).ok(),
+			discovered: res.try_get(
+				crate::model::addressing::Entity.table_name(),
+				&crate::model::addressing::Column::Published.to_string()
+			).unwrap_or(chrono::Utc::now()),
 		})
 	}
 }
