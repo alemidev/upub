@@ -4,15 +4,11 @@ use crate::model;
 pub struct Query;
 
 impl Query {
-	pub fn feed(my_id: Option<i64>, by_object: bool) -> Select<model::addressing::Entity> {
+	pub fn feed(my_id: Option<i64>) -> Select<model::addressing::Entity> {
 		let mut select = model::addressing::Entity::find()
 			.distinct_on([
 				(model::addressing::Entity, model::addressing::Column::Published).into_column_ref(),
-				if by_object {
-					(model::object::Entity, model::object::Column::Internal).into_column_ref()
-				} else {
-					(model::activity::Entity, model::activity::Column::Internal).into_column_ref()
-				},
+				(model::activity::Entity, model::activity::Column::Internal).into_column_ref(),
 			])
 			.join(sea_orm::JoinType::LeftJoin, model::addressing::Relation::Activities.def())
 			.join(sea_orm::JoinType::LeftJoin, model::addressing::Relation::Objects.def())
@@ -22,13 +18,9 @@ impl Query {
 					.add(model::activity::Column::Id.is_not_null())
 					.add(model::object::Column::Id.is_not_null())
 			)
-			.order_by(model::addressing::Column::Published, Order::Desc);
-
-		select = if by_object {
-			select.order_by(model::object::Column::Internal, Order::Desc).select_only()
-		} else {
-			select.order_by(model::activity::Column::Internal, Order::Desc).select_only()
-		};
+			.order_by(model::addressing::Column::Published, Order::Desc)
+			.order_by(model::activity::Column::Internal, Order::Desc)
+			.select_only();
 
 		for col in model::activity::Column::iter() {
 			select = select.select_column_as(col, format!("{}{}", model::activity::Entity.table_name(), col.to_string()));
@@ -42,6 +34,30 @@ impl Query {
 			model::addressing::Column::Published,
 			format!("{}{}", model::addressing::Entity.table_name(), model::addressing::Column::Published.to_string())
 		);
+
+		if let Some(uid) = my_id {
+			select = select
+				.join(
+					sea_orm::JoinType::LeftJoin,
+					model::object::Relation::Likes.def()
+						.on_condition(move |_l, _r| model::like::Column::Actor.eq(uid).into_condition()),
+				)
+				.select_column_as(model::like::Column::Actor, format!("{}{}", model::like::Entity.table_name(), model::like::Column::Actor.to_string()));
+		}
+
+		select
+	}
+
+	pub fn objects(my_id: Option<i64>) -> Select<model::addressing::Entity> {
+		let mut select = model::addressing::Entity::find()
+			.distinct()
+			.join(sea_orm::JoinType::InnerJoin, model::addressing::Relation::Objects.def())
+			.order_by(model::object::Column::Published, Order::Desc)
+			.select_only();
+
+		for col in model::object::Column::iter() {
+			select = select.select_column_as(col, format!("{}{}", model::object::Entity.table_name(), col.to_string()));
+		}
 
 		if let Some(uid) = my_id {
 			select = select

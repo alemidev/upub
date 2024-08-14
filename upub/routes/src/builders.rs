@@ -5,7 +5,7 @@ use upub::selector::{BatchFillable, RichActivity};
 
 use crate::activitypub::Pagination;
 
-//#[deprecated = "just query directly maybe?"]
+//#[deprecated = "use upub::Query directly"]
 pub async fn paginate_feed(
 	id: String,
 	filter: Condition,
@@ -17,7 +17,7 @@ pub async fn paginate_feed(
 	let limit = page.batch.unwrap_or(20).min(50);
 	let offset = page.offset.unwrap_or(0);
 
-	let mut select = upub::Query::feed(my_id, false);
+	let mut select = upub::Query::feed(my_id);
 
 	if with_users {
 		select = select

@@ -27,7 +27,7 @@ pub async fn view(
 		}
 	}
 
-	let item = upub::Query::feed(auth.my_id(), true)
+	let item = upub::Query::objects(auth.my_id())
 		.filter(model::object::Column::Id.eq(&oid))
 		.filter(auth.filter())
 		.into_model::<RichActivity>()
@@ -44,7 +44,7 @@ pub async fn view(
 	let mut replies = apb::Node::Empty;
 	
 	if ctx.cfg().security.show_reply_ids {
-		let replies_ids = upub::Query::feed(auth.my_id(), true)
+		let replies_ids = upub::Query::objects(auth.my_id())
 			.filter(model::object::Column::InReplyTo.eq(oid))
 			.filter(auth.filter())
 			.select_only()

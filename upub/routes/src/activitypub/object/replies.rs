@@ -15,7 +15,7 @@ pub async fn get(
 	// 	ctx.fetch_thread(&oid).await?;
 	// }
 
-	let replies_ids = upub::Query::feed(auth.my_id(), true)
+	let replies_ids = upub::Query::objects(auth.my_id())
 		.filter(model::object::Column::InReplyTo.eq(ctx.oid(&id)))
 		.filter(auth.filter())
 		.select_only()

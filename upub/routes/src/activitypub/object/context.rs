@@ -11,7 +11,7 @@ pub async fn get(
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let context = ctx.oid(&id);
 
-	let count = upub::Query::feed(auth.my_id(), true)
+	let count = upub::Query::objects(auth.my_id())
 		.filter(auth.filter())
 		.filter(model::object::Column::Context.eq(&context))
 		.count(ctx.db())
@@ -43,7 +43,7 @@ pub async fn page(
 	let offset = page.offset.unwrap_or(0);
 
 
-	let items = upub::Query::feed(auth.my_id(), true)
+	let items = upub::Query::objects(auth.my_id())
 		.filter(filter)
 		// TODO also limit to only local activities
 		.limit(limit)
