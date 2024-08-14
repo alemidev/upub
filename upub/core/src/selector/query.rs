@@ -52,7 +52,6 @@ impl Query {
 		let mut select = model::addressing::Entity::find()
 			.distinct()
 			.join(sea_orm::JoinType::InnerJoin, model::addressing::Relation::Objects.def())
-			.order_by(model::object::Column::Published, Order::Desc)
 			.select_only();
 
 		for col in model::object::Column::iter() {

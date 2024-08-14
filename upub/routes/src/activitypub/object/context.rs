@@ -1,5 +1,5 @@
 use axum::extract::{Path, Query, State};
-use sea_orm::{ColumnTrait, Condition, PaginatorTrait, QueryFilter, QuerySelect};
+use sea_orm::{ColumnTrait, Condition, Order, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect};
 use upub::{model, selector::{BatchFillable, RichActivity}, Context};
 
 use crate::{activitypub::Pagination, builders::JsonLD, AuthIdentity, Identity};
@@ -45,7 +45,7 @@ pub async fn page(
 
 	let items = upub::Query::objects(auth.my_id())
 		.filter(filter)
-		// TODO also limit to only local activities
+		.order_by(model::object::Column::Published, Order::Desc)
 		.limit(limit)
 		.offset(offset)
 		.into_model::<RichActivity>()
