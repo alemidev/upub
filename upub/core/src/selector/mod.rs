@@ -5,7 +5,7 @@ mod query;
 pub use query::Query;
 
 mod rich;
-pub use rich::RichActivity;
+pub use rich::{RichActivity, RichNotification};
 
 
 

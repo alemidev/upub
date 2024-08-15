@@ -1,7 +1,7 @@
 use axum::extract::{Path, Query, State};
 use sea_orm::{PaginatorTrait, QuerySelect};
 
-use upub::Context;
+use upub::{selector::RichNotification, Context};
 
 use crate::{activitypub::Pagination, builders::JsonLD, AuthIdentity, Identity};
 
@@ -42,10 +42,10 @@ pub async fn page(
 	let limit = page.batch.unwrap_or(20).min(50);
 	let offset = page.offset.unwrap_or(0);
 
-	let activities = upub::Query::notifications(*internal, false)
+	let activities = upub::Query::notifications(*internal, true)
 		.limit(limit)
 		.offset(offset)
-		.into_model::<upub::model::activity::Model>()
+		.into_model::<RichNotification>()
 		.all(ctx.db())
 		.await?
 		.into_iter()

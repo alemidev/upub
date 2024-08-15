@@ -132,3 +132,28 @@ impl RichActivity {
 		}
 	}
 }
+
+pub struct RichNotification {
+	pub activity: crate::model::activity::Model,
+	pub seen: bool,
+}
+
+impl FromQueryResult for RichNotification {
+	fn from_query_result(res: &QueryResult, _pre: &str) -> Result<Self, DbErr> {
+		Ok(RichNotification {
+			activity: crate::model::activity::Model::from_query_result(res, crate::model::activity::Entity.table_name())?,
+			seen: res.try_get(
+				crate::model::notification::Entity.table_name(),
+				&crate::model::notification::Column::Seen.to_string()
+			).unwrap_or(false),
+		})
+	}
+}
+
+impl RichNotification {
+	pub fn ap(self) -> serde_json::Value {
+		let seen = self.seen;
+		self.activity.ap()
+			.set_seen(Some(seen))
+	}
+}
