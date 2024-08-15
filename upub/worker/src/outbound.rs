@@ -1,5 +1,5 @@
 use apb::{field::OptionalString, target::Addressed, Activity, ActivityMut, Actor, Base, BaseMut, Object, ObjectMut};
-use sea_orm::{ColumnTrait, DbErr, EntityTrait, QueryFilter, QueryOrder, QuerySelect, SelectColumns, TransactionTrait};
+use sea_orm::{prelude::Expr, ColumnTrait, DbErr, EntityTrait, QueryFilter, QueryOrder, QuerySelect, SelectColumns, TransactionTrait};
 use upub::{model::{self, actor::Field}, traits::{Addresser, Processor}, Context};
 
 
@@ -20,14 +20,11 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 		let activity = upub::model::activity::Entity::ap_to_internal(activity.object().id()?, &tx)
 			.await?
 			.ok_or_else(|| DbErr::RecordNotFound(activity.object().id().unwrap_or_default().to_string()))?;
-		let notif_model = upub::model::notification::ActiveModel {
-			internal: sea_orm::ActiveValue::NotSet,
-			activity: sea_orm::ActiveValue::Unchanged(activity),
-			actor: sea_orm::ActiveValue::Unchanged(actor),
-			seen: sea_orm::ActiveValue::Set(true),
-			published: sea_orm::ActiveValue::NotSet,
-		};
-		upub::model::notification::Entity::update(notif_model).exec(&tx).await?;
+		upub::model::notification::Entity::update_many()
+			.filter(upub::model::notification::Column::Activity.eq(activity))
+			.filter(upub::model::notification::Column::Actor.eq(actor))
+			.col_expr(upub::model::notification::Column::Seen, Expr::value(true))
+			.exec(&tx).await?;
 		tx.commit().await?;
 		return Ok(());
 	}
