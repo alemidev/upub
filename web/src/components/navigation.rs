@@ -18,7 +18,7 @@ pub fn Breadcrumb(
 }
 
 #[component]
-pub fn Navigator() -> impl IntoView {
+pub fn Navigator(notifications: ReadSignal<u64>) -> impl IntoView {
 	let auth = use_context::<Auth>().expect("missing auth context");
 	let (query, set_query) = create_signal("".to_string());
 	view! {
@@ -40,7 +40,7 @@ pub fn Navigator() -> impl IntoView {
 			<tr><td colspan="2"><a href="/web/home"><input class="w-100" type="submit" class:hidden=move || !auth.present() value="home timeline" /></a></td></tr>
 			<tr><td colspan="2"><a href="/web/global"><input class="w-100" type="submit" value="global timeline" /></a></td></tr>
 			<tr><td colspan="2"><a href="/web/local"><input class="w-100" type="submit" value="local timeline" /></a></td></tr>
-			<tr><td colspan="2"><a href="/web/notifications"><input class="w-100" type="submit" class:hidden=move || !auth.present() value="notifications" /></a></td></tr>
+			<tr><td colspan="2"><a href="/web/notifications"><input class="w-100" type="submit" class:hidden=move || !auth.present() value=move || format!("notifications [{}]", notifications.get()) /></a></td></tr>
 			<tr>
 				<td class="w-50"><a href="/web/about"><input class="w-100" type="submit" value="about" /></a></td>
 				<td class="w-50"><a href="/web/config"><input class="w-100" type="submit" value="config" /></a></td>

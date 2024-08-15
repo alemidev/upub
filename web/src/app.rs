@@ -1,3 +1,4 @@
+use apb::Collection;
 use leptos::*;
 use leptos_router::*;
 use crate::prelude::*;
@@ -84,9 +85,24 @@ pub fn App() -> impl IntoView {
 	let title_target = move || if auth.present() { "/web/home" } else { "/web/global" };
 
 	// refresh token immediately and  every hour
-	let refresh = move || spawn_local(async move { Auth::refresh(auth.token, set_token, set_userid).await; });
-	refresh();
-	set_interval(refresh, std::time::Duration::from_secs(3600));
+	let refresh_token = move || spawn_local(async move { Auth::refresh(auth.token, set_token, set_userid).await; });
+	refresh_token();
+	set_interval(refresh_token, std::time::Duration::from_secs(3600));
+
+	// refresh notifications
+	let (notifications, set_notifications) = create_signal(0);
+	let fetch_notifications = move || spawn_local(async move {
+		let actor_id = userid.get().unwrap_or_default();
+		let notif_url = format!("/actors/{actor_id}/notifications");
+		match Http::fetch::<serde_json::Value>(&notif_url, auth).await {
+			Err(e) => tracing::error!("failed fetching notifications: {e}"),
+			Ok(doc) => if let Ok(count) = doc.total_items() {
+				set_notifications.set(count);
+			},
+		} 
+	});
+	fetch_notifications();
+	set_interval(fetch_notifications, std::time::Duration::from_secs(60));
 
 	view! {
 		<nav class="w-100 mt-1 mb-1 pb-s">
@@ -99,7 +115,7 @@ pub fn App() -> impl IntoView {
 		<div class="container mt-2 pt-2" >
 			<div class="two-col" >
 				<div class="col-side sticky pb-s" class:hidden=menu >
-					<Navigator />
+					<Navigator notifications=notifications />
 					<hr class="mt-1 mb-1" />
 					<LoginBox
 						token_tx=set_token
