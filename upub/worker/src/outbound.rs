@@ -1,5 +1,5 @@
 use apb::{field::OptionalString, target::Addressed, Activity, ActivityMut, Actor, Base, BaseMut, Object, ObjectMut};
-use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect, SelectColumns, TransactionTrait};
+use sea_orm::{ColumnTrait, DbErr, EntityTrait, QueryFilter, QueryOrder, QuerySelect, SelectColumns, TransactionTrait};
 use upub::{model::{self, actor::Field}, traits::{Addresser, Processor}, Context};
 
 
@@ -9,6 +9,28 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 	let mut activity = job.payload.as_ref().cloned().ok_or(crate::JobError::MissingPayload)?;
 	let mut t = activity.object_type()?;
 	let tx = ctx.db().begin().await?;
+
+	// TODO this is a bit of a magic case: it just marks as viewed and returns. this because marking
+	//      notifications as seen is a very internal thing to do and should not be in .process()
+	//      probably. still this feels a bit dirty to do, is there a better place to do it?
+	if matches!(t, apb::ObjectType::Activity(apb::ActivityType::View)) {
+		let actor = upub::model::actor::Entity::ap_to_internal(activity.actor().id()?, &tx)
+			.await?
+			.ok_or_else(|| DbErr::RecordNotFound(activity.actor().id().unwrap_or_default().to_string()))?;
+		let activity = upub::model::activity::Entity::ap_to_internal(activity.object().id()?, &tx)
+			.await?
+			.ok_or_else(|| DbErr::RecordNotFound(activity.actor().id().unwrap_or_default().to_string()))?;
+		let notif_model = upub::model::notification::ActiveModel {
+			internal: sea_orm::ActiveValue::NotSet,
+			activity: sea_orm::ActiveValue::Unchanged(activity),
+			actor: sea_orm::ActiveValue::Unchanged(actor),
+			seen: sea_orm::ActiveValue::Set(true),
+			published: sea_orm::ActiveValue::NotSet,
+		};
+		upub::model::notification::Entity::update(notif_model).exec(&tx).await?;
+		tx.commit().await?;
+		return Ok(());
+	}
 
 	if matches!(t, apb::ObjectType::Note) {
 		activity = apb::new()
