@@ -17,9 +17,9 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 		let actor = upub::model::actor::Entity::ap_to_internal(&job.actor, &tx)
 			.await?
 			.ok_or_else(|| DbErr::RecordNotFound(job.actor.clone()))?;
-		let activity = upub::model::activity::Entity::ap_to_internal(&job.activity, &tx)
+		let activity = upub::model::activity::Entity::ap_to_internal(activity.object().id()?, &tx)
 			.await?
-			.ok_or_else(|| DbErr::RecordNotFound(job.activity.clone()))?;
+			.ok_or_else(|| DbErr::RecordNotFound(activity.object().id().unwrap_or_default().to_string()))?;
 		let notif_model = upub::model::notification::ActiveModel {
 			internal: sea_orm::ActiveValue::NotSet,
 			activity: sea_orm::ActiveValue::Unchanged(activity),
