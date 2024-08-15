@@ -128,10 +128,30 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 									cc_vec.push(apb::target::PUBLIC.to_string());
 									cc_vec.push(format!("{URL_BASE}/actors/{}/followers", auth.username()));
 								}
+								let mut mention_tags : Vec<serde_json::Value> = mentions.get()
+									.unwrap_or_default()
+									.into_iter()
+									.map(|x| {
+										use apb::LinkMut;
+										LinkMut::set_name(apb::new(), Some(&format!("@{}@{}", x.name, x.domain))) // TODO ewww but name clashes
+											.set_link_type(Some(apb::LinkType::Mention))
+											.set_href(Some(&x.href))
+									})
+									.collect();
+
 								if let Some(r) = reply.reply_to.get() {
 									if let Some(au) = post_author(&r) {
 										if let Ok(uid) = au.id() {
 											to_vec.push(uid.to_string());
+											if let Ok(name) = au.name() {
+												let domain = Uri::domain(uid);
+												mention_tags.push({
+													use apb::LinkMut;
+													LinkMut::set_name(apb::new(), Some(&format!("@{}@{}", name, domain))) // TODO ewww but name clashes
+														.set_link_type(Some(apb::LinkType::Mention))
+														.set_href(Some(uid))
+												});
+											}
 										}
 									}
 								}
@@ -146,18 +166,7 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 									.set_in_reply_to(apb::Node::maybe_link(reply.reply_to.get()))
 									.set_to(apb::Node::links(to_vec))
 									.set_cc(apb::Node::links(cc_vec))
-									.set_tag(apb::Node::array(
-										mentions.get()
-											.unwrap_or_default()
-											.into_iter()
-											.map(|x| {
-												use apb::LinkMut;
-												LinkMut::set_name(apb::new(), Some(&format!("@{}@{}", x.name, x.domain))) // TODO ewww but name clashes
-													.set_link_type(Some(apb::LinkType::Mention))
-													.set_href(Some(&x.href))
-											})
-											.collect()
-									));
+									.set_tag(apb::Node::array(mention_tags));
 								match Http::post(&auth.outbox(), &payload, auth).await {
 									Err(e) => set_error.set(Some(e.to_string())),
 									Ok(()) => {

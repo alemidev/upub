@@ -249,4 +249,14 @@ impl Uri {
 		let kind = kind.as_ref();
 		format!("{URL_BASE}/{kind}/{}{}", Self::short(url), if fetch { "?fetch=true" } else { "" })
 	}
+
+	pub fn domain(full: &str) -> String {
+		full
+			.replacen("https://", "", 1)
+			.replacen("http://", "", 1)
+			.split('/')
+			.next()
+			.unwrap_or_default()
+			.to_string()
+	}
 }
