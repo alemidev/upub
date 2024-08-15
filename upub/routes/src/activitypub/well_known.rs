@@ -156,6 +156,41 @@ pub async fn webfinger(
 	}))
 }
 
+pub async fn manifest(State(ctx): State<Context>) -> Json<ManifestResponse> {
+	axum::Json(ManifestResponse {
+		id: ctx.cfg().instance.domain.clone(),
+		name: ctx.cfg().instance.name.clone(),
+		short_name: ctx.cfg().instance.name.clone(),
+		description: ctx.cfg().instance.description.clone(),
+		start_url: "/web".to_string(),
+		scope: format!("https://{}/web", ctx.cfg().instance.domain),
+		display: "standalone".to_string(),
+		background_color: "#201f29".to_string(),
+		theme_color: "#bf616a".to_string(),
+		orientation: "portrait-primary".to_string(),
+		icons: vec![],
+		shortcuts: vec![],
+		categories: vec!["social".to_string()]
+	})
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+pub struct ManifestResponse {
+		background_color: String,
+		categories: Vec<String>,
+		description: String,
+		display: String, // "fullscreen", "standalone", "minima-ui", "browser"
+		icons: Vec<String>, // TODO Vec of objects: {stc: string, sizes: string, type: string? }
+		id: String,
+		name: String,
+		orientation: String, // "any", "natural", "landscape", "landscape-primary", "landscape-secondary", "portrait", "portrait-primary", "portrait-secondary"
+		scope: String,
+		short_name: String,
+		shortcuts: Vec<String>, // TODO Vec of objects: {name: string, url: string, description: string?}
+		start_url: String,
+		theme_color: String,
+}
+
 // i don't even want to bother with XML, im just returning a formatted xml string
 pub async fn host_meta(State(ctx): State<Context>) -> Response {
 	(

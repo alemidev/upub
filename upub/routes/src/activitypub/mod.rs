@@ -36,6 +36,7 @@ impl ActivityPubRouter for Router<upub::Context> {
 			.route("/auth", post(ap::auth::login))
 			.route("/auth", patch(ap::auth::refresh))
 			// .well-known and discovery
+			.route("/manifest.json", get(ap::well_known::manifest))
 			.route("/.well-known/webfinger", get(ap::well_known::webfinger))
 			.route("/.well-known/host-meta", get(ap::well_known::host_meta))
 			.route("/.well-known/nodeinfo", get(ap::well_known::nodeinfo_discovery))
