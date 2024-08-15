@@ -150,10 +150,17 @@ impl Query {
 			select = select.filter(model::notification::Column::Seen.eq(false));
 		}
 
-		select = select.select_only();
+		select = select.select_only()
+			.select_column_as(
+				model::notification::Column::Seen,
+				format!("{}{}", model::notification::Entity.table_name(), model::notification::Column::Seen.to_string())
+			);
 
 		for column in model::activity::Column::iter() {
-			select = select.select_column(column);
+			select = select.select_column_as(
+				column,
+				format!("{}{}", model::activity::Entity.table_name(), column.to_string())
+			);
 		}
 
 		select
