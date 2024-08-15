@@ -93,6 +93,9 @@ pub trait Activity : Object {
 	fn origin(&self) -> Node<Self::Object> { Node::Empty }
 	/// Identifies one or more objects used (or to be used) in the completion of an Activity.
 	fn instrument(&self) -> Node<Self::Object> { Node::Empty }
+
+	#[cfg(feature = "activitypub-fe")]
+	fn seen(&self) -> Field<bool> { Err(FieldErr("seen")) }
 }
 
 pub trait ActivityMut : ObjectMut {
@@ -103,6 +106,9 @@ pub trait ActivityMut : ObjectMut {
 	fn set_result(self, val: Node<Self::Object>) -> Self;
 	fn set_origin(self, val: Node<Self::Object>) -> Self;
 	fn set_instrument(self, val: Node<Self::Object>) -> Self;
+
+	#[cfg(feature = "activitypub-fe")]
+	fn set_seen(self, val: Option<bool>) -> Self;
 }
 
 #[cfg(feature = "unstructured")]
@@ -114,6 +120,9 @@ impl Activity for serde_json::Value {
 	crate::getter! { result -> node <Self as Object>::Object }
 	crate::getter! { origin -> node <Self as Object>::Object }
 	crate::getter! { instrument -> node <Self as Object>::Object }
+
+	#[cfg(feature = "activitypub-fe")]
+	crate::getter! { seen -> bool }
 }
 
 #[cfg(feature = "unstructured")]
@@ -125,4 +134,7 @@ impl ActivityMut for serde_json::Value {
 	crate::setter! { result -> node <Self as Object>::Object }
 	crate::setter! { origin -> node <Self as Object>::Object }
 	crate::setter! { instrument -> node <Self as Object>::Object }
+
+	#[cfg(feature = "activitypub-fe")]
+	crate::setter! { seen -> bool }
 }
