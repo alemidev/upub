@@ -1,11 +1,11 @@
 use leptos::*;
 use crate::prelude::*;
 
-use apb::{field::OptionalString, target::Addressed, Activity, Base, Object};
+use apb::{field::OptionalString, target::Addressed, Activity, ActivityMut, Base, Object};
 
 
 #[component]
-pub fn ActivityLine(activity: crate::Object) -> impl IntoView {
+pub fn ActivityLine(activity: crate::Object, children: Children) -> impl IntoView {
 	let object_id = activity.object().id().str().unwrap_or_default();
 	let activity_url = activity.id().map(|x| view! {
 		<sup><small><a class="clean ml-s" href={x.to_string()} target="_blank">"↗"</a></small></sup>
@@ -25,7 +25,8 @@ pub fn ActivityLine(activity: crate::Object) -> impl IntoView {
 					<ActorStrip object=actor />
 				</td>
 				<td class="rev">
-					<code class="color moreinfo" title={activity.published().ok().map(|x| x.to_rfc2822())} >
+					<code class="color" title={activity.published().ok().map(|x| x.to_rfc2822())} >
+						{children()}
 						<a class="upub-title clean" title={object_id} href={href} >
 							{kind.as_ref().to_string()}
 						</a>
@@ -48,6 +49,7 @@ pub fn Item(
 	let config = use_context::<Signal<crate::Config>>().expect("missing config context");
 	let id = item.id().unwrap_or_default().to_string();
 	let sep = if sep { Some(view! { <hr /> }) } else { None };
+	let seen = item.seen().unwrap_or(true);
 	move || {
 		if !always && !config.get().filters.visible(&item) {
 			return None;
@@ -75,14 +77,60 @@ pub fn Item(
 						}.into_view()),
 					_ => None,
 				};
-				Some(view! {
-					{if !slim { Some(view! { <ActivityLine activity=item.clone() /> }) } else { None }}
-					{object}
-					{sep.clone()}
-				}.into_view())
+				if !seen {
+					let (not_seen, not_seen_tx) = create_signal(!seen);
+					let id = id.clone();
+					Some(view! {
+						<div class:notification=not_seen>
+							{if !slim { Some(view! {
+								<ActivityLine activity=item.clone() >
+									{move || if not_seen.get() { Some(view! { <AckBtn id=id.clone() tx=not_seen_tx /> }) } else { None }}
+								</ActivityLine>
+							}) } else {
+								None
+							}}
+							{object}
+						</div>
+						{sep.clone()}
+					}.into_view())
+				} else {
+					Some(view! {
+						<div>
+							{if !slim { Some(view! { <ActivityLine activity=item.clone() >""</ActivityLine> }) } else { None }}
+							{object}
+						</div>
+						{sep.clone()}
+					}.into_view())
+				}
 			},
 			// should never happen
 			t => Some(view! { <p><code>type not implemented : {t.as_ref().to_string()}</code></p> }.into_view()),
 		}
+	}
+}
+
+#[component]
+fn AckBtn(id: String, tx: WriteSignal<bool>) -> impl IntoView {
+	let auth = use_context::<Auth>().expect("missing auth context");
+
+	view! {
+		<span
+			class="emoji emoji-btn cursor mr-1"
+			on:click=move |e| {
+				e.prevent_default();
+				let payload = apb::new()
+					.set_activity_type(Some(apb::ActivityType::View))
+					.set_object(apb::Node::link(id.clone()));
+				spawn_local(async move {
+					if let Err(e) = Http::post(&auth.outbox(), &payload, auth).await {
+						tracing::error!("failed marking notification as seen: {e}");
+					} else {
+						tx.set(false);
+					}
+				});
+			}
+		>
+			"✔️"
+		</span>
 	}
 }
