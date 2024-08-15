@@ -28,6 +28,13 @@ fn post_author(post_id: &str) -> Option<crate::Object> {
 	cache::OBJECTS.get(&usr)
 }
 
+#[derive(Clone)]
+struct MentionMatch {
+	href: String,
+	name: String,
+	domain: String,
+}
+
 #[component]
 pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 	let auth = use_context::<Auth>().expect("missing auth context");
@@ -48,11 +55,11 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 			for word in c.split(' ') {
 				if !word.starts_with('@') { break };
 				let stripped = word.replacen('@', "", 1);
-				if let Some((user, domain)) = stripped.split_once('@') {
+				if let Some((name, domain)) = stripped.split_once('@') {
 					if let Some(tld) = domain.split('.').last() {
 						if tld::exist(tld) {
-							if let Some(uid) = cache::WEBFINGER.blocking_resolve(user, domain).await {
-								out.push(uid);
+							if let Some(uid) = cache::WEBFINGER.blocking_resolve(name, domain).await {
+								out.push(MentionMatch { name: name.to_string(), domain: domain.to_string(), href: uid });
 							}
 						}
 					}
@@ -84,9 +91,9 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 			}
 			{move ||
 				mentions.get()
-					.map(|x| x.into_iter().map(|u| match cache::OBJECTS.get(&u) {
+					.map(|x| x.into_iter().map(|u| match cache::OBJECTS.get(&u.href) {
 						Some(u) => view! { <span class="nowrap"><span class="emoji mr-s ml-s">"📨"</span><ActorStrip object=u /></span> }.into_view(),
-						None => view! { <span class="nowrap"><span class="emoji mr-s ml-s">"📨"</span><a href={Uri::web(U::Actor, &u)}>{u}</a></span> }.into_view(),
+						None => view! { <span class="nowrap"><span class="emoji mr-s ml-s">"📨"</span><a href={Uri::web(U::Actor, &u.href)}>{u.href}</a></span> }.into_view(),
 					})
 					.collect_view())
 			}
@@ -129,7 +136,7 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 									}
 								}
 								for mention in mentions.get().as_deref().unwrap_or(&[]) {
-									to_vec.push(mention.to_string());
+									to_vec.push(mention.href.clone());
 								}
 								let payload = apb::new()
 									.set_object_type(Some(apb::ObjectType::Note))
@@ -138,7 +145,19 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 									.set_context(apb::Node::maybe_link(reply.context.get()))
 									.set_in_reply_to(apb::Node::maybe_link(reply.reply_to.get()))
 									.set_to(apb::Node::links(to_vec))
-									.set_cc(apb::Node::links(cc_vec));
+									.set_cc(apb::Node::links(cc_vec))
+									.set_tag(apb::Node::array(
+										mentions.get()
+											.unwrap_or_default()
+											.into_iter()
+											.map(|x| {
+												use apb::LinkMut;
+												LinkMut::set_name(apb::new(), Some(&format!("@{}@{}", x.name, x.domain))) // TODO ewww but name clashes
+													.set_link_type(Some(apb::LinkType::Mention))
+													.set_href(Some(&x.href))
+											})
+											.collect()
+									));
 								match Http::post(&auth.outbox(), &payload, auth).await {
 									Err(e) => set_error.set(Some(e.to_string())),
 									Ok(()) => {
