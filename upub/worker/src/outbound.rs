@@ -14,12 +14,12 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 	//      notifications as seen is a very internal thing to do and should not be in .process()
 	//      probably. still this feels a bit dirty to do, is there a better place to do it?
 	if matches!(t, apb::ObjectType::Activity(apb::ActivityType::View)) {
-		let actor = upub::model::actor::Entity::ap_to_internal(activity.actor().id()?, &tx)
+		let actor = upub::model::actor::Entity::ap_to_internal(&job.actor, &tx)
 			.await?
-			.ok_or_else(|| DbErr::RecordNotFound(activity.actor().id().unwrap_or_default().to_string()))?;
-		let activity = upub::model::activity::Entity::ap_to_internal(activity.object().id()?, &tx)
+			.ok_or_else(|| DbErr::RecordNotFound(job.actor.clone()))?;
+		let activity = upub::model::activity::Entity::ap_to_internal(&job.activity, &tx)
 			.await?
-			.ok_or_else(|| DbErr::RecordNotFound(activity.actor().id().unwrap_or_default().to_string()))?;
+			.ok_or_else(|| DbErr::RecordNotFound(job.activity.clone()))?;
 		let notif_model = upub::model::notification::ActiveModel {
 			internal: sea_orm::ActiveValue::NotSet,
 			activity: sea_orm::ActiveValue::Unchanged(activity),
