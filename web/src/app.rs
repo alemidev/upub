@@ -93,7 +93,7 @@ pub fn App() -> impl IntoView {
 	let (notifications, set_notifications) = create_signal(0);
 	let fetch_notifications = move || spawn_local(async move {
 		let actor_id = userid.get().unwrap_or_default();
-		let notif_url = format!("{URL_BASE}/actors/{actor_id}/notifications");
+		let notif_url = format!("{actor_id}/notifications");
 		match Http::fetch::<serde_json::Value>(&notif_url, auth).await {
 			Err(e) => tracing::error!("failed fetching notifications: {e}"),
 			Ok(doc) => if let Ok(count) = doc.total_items() {
