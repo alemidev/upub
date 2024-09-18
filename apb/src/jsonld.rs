@@ -38,6 +38,7 @@ impl LD for serde_json::Value {
 				"@context".to_string(),
 				serde_json::Value::Array(vec![
 					serde_json::Value::String("https://www.w3.org/ns/activitystreams".into()),
+					serde_json::Value::String("https://w3id.org/security/v1".into()),
 					serde_json::Value::Object(ctx),
 				]),
 			);
