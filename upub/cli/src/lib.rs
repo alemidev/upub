@@ -41,6 +41,10 @@ pub enum CliCommand {
 		#[arg(long, default_value_t = false)]
 		/// store fetched object in local db
 		save: bool,
+
+		#[arg(long)]
+		/// use this actor's private key to fetch
+		fetch_as: Option<String>,
 	},
 
 	/// act on remote relay actors at instance level
@@ -139,8 +143,8 @@ pub async fn run(ctx: upub::Context, command: CliCommand) -> Result<(), Box<dyn 
 	match command {
 		CliCommand::Faker { count } =>
 			Ok(faker(ctx, count as i64).await?),
-		CliCommand::Fetch { uri, save } =>
-			Ok(fetch(ctx, uri, save).await?),
+		CliCommand::Fetch { uri, save, fetch_as } =>
+			Ok(fetch(ctx, uri, save, fetch_as).await?),
 		CliCommand::Relay { action } =>
 			Ok(relay(ctx, action).await?),
 		CliCommand::Fix { likes, shares, replies } =>
