@@ -145,7 +145,7 @@ pub async fn webfinger(
 		links: vec![
 			JsonResourceDescriptorLink {
 				rel: "self".to_string(),
-				link_type: Some("application/ld+json".to_string()),
+				link_type: Some("application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"".to_string()),
 				href: Some(user.id),
 				properties: jrd::Map::default(),
 				titles: jrd::Map::default(),
