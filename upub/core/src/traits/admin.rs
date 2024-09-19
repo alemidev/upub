@@ -2,6 +2,7 @@ use sea_orm::{ActiveValue::{NotSet, Set}, DbErr, EntityTrait};
 
 use crate::ext::JsonVec;
 
+#[allow(async_fn_in_trait)]
 pub trait Administrable {
 	async fn register_user(
 		&self,

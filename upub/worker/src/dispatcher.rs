@@ -29,6 +29,7 @@ pub enum JobError {
 
 pub type JobResult<T> = Result<T, JobError>;
 
+#[allow(async_fn_in_trait)]
 pub trait JobDispatcher : Sized {
 	async fn poll(&self, filter: Option<model::job::JobType>) -> JobResult<Option<model::job::Model>>;
 	async fn lock(&self, job_internal: i64) -> JobResult<bool>;

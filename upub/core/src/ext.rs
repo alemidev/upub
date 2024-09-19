@@ -1,6 +1,6 @@
 use sea_orm::{ConnectionTrait, PaginatorTrait};
 
-
+#[allow(async_fn_in_trait)]
 pub trait AnyQuery {
 	async fn any(self, db: &impl ConnectionTrait) -> Result<bool, sea_orm::DbErr>;
 }

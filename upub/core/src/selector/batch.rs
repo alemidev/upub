@@ -3,6 +3,7 @@ use std::collections::{hash_map::Entry, HashMap};
 use sea_orm::{ConnectionTrait, DbErr, EntityTrait, FromQueryResult, ModelTrait, QueryFilter};
 use super::RichActivity;
 
+#[allow(async_fn_in_trait)]
 pub trait BatchFillable: Sized {
 	async fn with_batched<E>(self, tx: &impl ConnectionTrait) -> Result<Self, DbErr>
 	where
@@ -114,6 +115,7 @@ use crate::selector::rich::{RichHashtag, RichMention};
 		}
 	}
 	
+#[allow(async_fn_in_trait)]
 	pub trait BatchFillableAcceptor<B> {
 		async fn accept(&mut self, batch: B, tx: &impl ConnectionTrait) -> Result<(), DbErr>;
 	}

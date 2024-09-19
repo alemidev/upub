@@ -1,5 +1,5 @@
 use sea_orm::{EntityTrait, TransactionTrait};
-use upub::traits::{fetch::{Fetchable, RequestError}, Addresser, Fetcher, Normalizer};
+use upub::traits::{fetch::RequestError, Addresser, Fetcher, Normalizer};
 
 pub async fn fetch(ctx: upub::Context, uri: String, save: bool, actor: Option<String>) -> Result<(), RequestError> {
 	use apb::Base;
@@ -48,11 +48,11 @@ pub async fn fetch(ctx: upub::Context, uri: String, save: bool, actor: Option<St
 			},
 			Ok(apb::BaseType::Object(apb::ObjectType::Activity(_))) => {
 				let act = ctx.insert_activity(obj, &tx).await?;
-				ctx.address((Some(&act), None), &tx).await?;
+				ctx.address(Some(&act), None, &tx).await?;
 			},
 			Ok(apb::BaseType::Object(apb::ObjectType::Note)) => {
 				let obj = ctx.insert_object(obj, &tx).await?;
-				ctx.address((None, Some(&obj)), &tx).await?;
+				ctx.address(None, Some(&obj), &tx).await?;
 			},
 			Ok(apb::BaseType::Object(t)) => tracing::warn!("not implemented: {:?}", t),
 			Ok(apb::BaseType::Link(_)) => tracing::error!("fetched another link?"),

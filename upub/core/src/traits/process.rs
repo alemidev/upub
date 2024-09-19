@@ -29,10 +29,12 @@ pub enum ProcessorError {
 	PullError(#[from] crate::traits::fetch::RequestError),
 }
 
+#[async_trait::async_trait]
 pub trait Processor {
 	async fn process(&self, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError>;
 }
 
+#[async_trait::async_trait]
 impl Processor for crate::Context {
 	async fn process(&self, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 		// TODO we could process Links and bare Objects maybe, but probably out of AP spec?

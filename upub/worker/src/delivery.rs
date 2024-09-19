@@ -3,6 +3,7 @@ use reqwest::Method;
 use apb::{LD, ActivityMut};
 use upub::{Context, model, traits::Fetcher};
 
+#[allow(clippy::manual_map)] // TODO can Update code be improved?
 pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<()> {
 	tracing::info!("delivering {} to {:?}", job.activity, job.target);
 

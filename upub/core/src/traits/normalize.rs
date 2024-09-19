@@ -15,6 +15,7 @@ pub enum NormalizerError {
 	DbErr(#[from] sea_orm::DbErr),
 }
 
+#[allow(async_fn_in_trait)]
 pub trait Normalizer {
 	async fn insert_object(&self, obj: impl apb::Object, tx: &impl ConnectionTrait) -> Result<crate::model::object::Model, NormalizerError>;
 	async fn insert_activity(&self, act: impl apb::Activity, tx: &impl ConnectionTrait) -> Result<crate::model::activity::Model, NormalizerError>;

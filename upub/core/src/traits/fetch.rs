@@ -463,6 +463,7 @@ async fn resolve_object_r(ctx: &crate::Context, object: serde_json::Value, depth
 	Ok(object_model)
 }
 
+#[allow(async_fn_in_trait)]
 pub trait Fetchable : Sync + Send {
 	async fn fetch(&mut self, ctx: &crate::Context) -> Result<&mut Self, RequestError>;
 }
