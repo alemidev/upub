@@ -226,7 +226,6 @@ impl worker::StopToken for CancellationToken {
 	}
 }
 
-#[sea_orm::prelude::async_trait::async_trait] // ahahaha we avoid this???
 impl routes::ShutdownToken for CancellationToken {
 	async fn event(mut self) {
 		self.0.changed().await.warn_failed("cancellation token channel closed, stopping...");

@@ -59,7 +59,6 @@ pub async fn serve(ctx: upub::Context, bind: String, shutdown: impl ShutdownToke
 	Ok(())
 }
 
-#[axum::async_trait]
 pub trait ShutdownToken: Sync + Send + 'static {
 	async fn event(self);
 }

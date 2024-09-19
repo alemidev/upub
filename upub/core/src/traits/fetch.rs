@@ -396,7 +396,7 @@ impl Fetcher for crate::Context {
 		}
 
 		let activity_model = self.insert_activity(activity, tx).await?;
-		self.address((Some(&activity_model), None), tx).await?;
+		self.address(Some(&activity_model), None, tx).await?;
 
 		Ok(activity_model)
 	}
@@ -458,17 +458,15 @@ async fn resolve_object_r(ctx: &crate::Context, object: serde_json::Value, depth
 	}
 
 	let object_model = ctx.insert_object(object, tx).await?;
-	ctx.address((None, Some(&object_model)), tx).await?;
+	ctx.address(None, Some(&object_model), tx).await?;
 
 	Ok(object_model)
 }
 
-#[async_trait::async_trait]
 pub trait Fetchable : Sync + Send {
 	async fn fetch(&mut self, ctx: &crate::Context) -> Result<&mut Self, RequestError>;
 }
 
-#[async_trait::async_trait]
 impl Fetchable for apb::Node<serde_json::Value> {
 	async fn fetch(&mut self, ctx: &crate::Context) -> Result<&mut Self, RequestError> {
 		if let apb::Node::Link(uri) = self {

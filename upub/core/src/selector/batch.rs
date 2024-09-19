@@ -3,7 +3,6 @@ use std::collections::{hash_map::Entry, HashMap};
 use sea_orm::{ConnectionTrait, DbErr, EntityTrait, FromQueryResult, ModelTrait, QueryFilter};
 use super::RichActivity;
 
-#[async_trait::async_trait]
 pub trait BatchFillable: Sized {
 	async fn with_batched<E>(self, tx: &impl ConnectionTrait) -> Result<Self, DbErr>
 	where
@@ -13,7 +12,6 @@ pub trait BatchFillable: Sized {
 }
 
 
-#[async_trait::async_trait]
 impl BatchFillable for Vec<RichActivity> {
 	// TODO 3 iterations... can we make it in less passes?
 	async fn with_batched<E>(mut self, tx: &impl ConnectionTrait) -> Result<Self, DbErr>
@@ -47,7 +45,6 @@ impl BatchFillable for Vec<RichActivity> {
 	}
 }
 
-#[async_trait::async_trait]
 impl BatchFillable for RichActivity {
 	async fn with_batched<E>(mut self, tx: &impl ConnectionTrait) -> Result<Self, DbErr>
 	where
@@ -117,12 +114,10 @@ use crate::selector::rich::{RichHashtag, RichMention};
 		}
 	}
 	
-	#[async_trait::async_trait]
 	pub trait BatchFillableAcceptor<B> {
 		async fn accept(&mut self, batch: B, tx: &impl ConnectionTrait) -> Result<(), DbErr>;
 	}
 	
-	#[async_trait::async_trait]
 	impl BatchFillableAcceptor<Vec<crate::model::attachment::Model>> for super::RichActivity {
 		async fn accept(&mut self, batch: Vec<crate::model::attachment::Model>, _tx: &impl ConnectionTrait) -> Result<(), DbErr> {
 			self.attachments = Some(batch);
@@ -130,7 +125,6 @@ use crate::selector::rich::{RichHashtag, RichMention};
 		}
 	}
 	
-	#[async_trait::async_trait]
 	impl BatchFillableAcceptor<Vec<crate::model::hashtag::Model>> for super::RichActivity {
 		async fn accept(&mut self, batch: Vec<crate::model::hashtag::Model>, _tx: &impl ConnectionTrait) -> Result<(), DbErr> {
 			self.hashtags = Some(batch.into_iter().map(|x| RichHashtag { hash: x }).collect());
@@ -138,7 +132,6 @@ use crate::selector::rich::{RichHashtag, RichMention};
 		}
 	}
 	
-	#[async_trait::async_trait]
 	impl BatchFillableAcceptor<Vec<crate::model::mention::Model>> for super::RichActivity {
 		async fn accept(&mut self, batch: Vec<crate::model::mention::Model>, tx: &impl ConnectionTrait) -> Result<(), DbErr> {
 			// TODO batch load users from mentions rather than doing for loop

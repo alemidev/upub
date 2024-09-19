@@ -5,13 +5,11 @@ use sea_orm::{ActiveValue::{NotSet, Set}, ColumnTrait, ConnectionTrait, DbErr, E
 
 use crate::traits::fetch::Fetcher;
 
-#[async_trait::async_trait]
 pub trait Addresser {
 	async fn deliver(&self, to: Vec<String>, aid: &str, from: &str, tx: &impl ConnectionTrait) -> Result<(), DbErr>;
-	async fn address(&self, (activity, object): (Option<&crate::model::activity::Model>, Option<&crate::model::object::Model>), tx: &impl ConnectionTrait) -> Result<(), DbErr>;
+	async fn address(&self, activity: Option<&crate::model::activity::Model>, object: Option<&crate::model::object::Model>, tx: &impl ConnectionTrait) -> Result<(), DbErr>;
 }
 
-#[async_trait::async_trait]
 impl Addresser for crate::Context {
 	async fn deliver(&self, to: Vec<String>, aid: &str, from: &str, tx: &impl ConnectionTrait) -> Result<(), DbErr> {
 		let to = expand_addressing(to, None, tx).await?;
@@ -56,7 +54,7 @@ impl Addresser for crate::Context {
 		Ok(())
 	}
 
-	async fn address(&self, (activity, object): (Option<&crate::model::activity::Model>, Option<&crate::model::object::Model>), tx: &impl ConnectionTrait) -> Result<(), DbErr> {
+	async fn address(&self, activity: Option<&crate::model::activity::Model>, object: Option<&crate::model::object::Model>, tx: &impl ConnectionTrait) -> Result<(), DbErr> {
 		match (activity, object) {
 			(None, None) => Ok(()),
 			(Some(activity), None) => {

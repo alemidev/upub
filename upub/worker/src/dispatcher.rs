@@ -29,14 +29,12 @@ pub enum JobError {
 
 pub type JobResult<T> = Result<T, JobError>;
 
-#[async_trait::async_trait]
 pub trait JobDispatcher : Sized {
 	async fn poll(&self, filter: Option<model::job::JobType>) -> JobResult<Option<model::job::Model>>;
 	async fn lock(&self, job_internal: i64) -> JobResult<bool>;
 	async fn run(self, concurrency: usize, poll_interval: u64, job_filter: Option<model::job::JobType>, stop: impl crate::StopToken);
 }
 
-#[async_trait::async_trait]
 impl JobDispatcher for Context {
 	async fn poll(&self, filter: Option<model::job::JobType>) -> JobResult<Option<model::job::Model>> {
 		let mut s = model::job::Entity::find()

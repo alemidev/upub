@@ -1,6 +1,6 @@
 [package]
 name = "upub"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 authors = [ "alemi <me@alemi.dev>" ]
 description = "core inner workings of upub"
@@ -20,10 +20,10 @@ hmac = "0.12"
 openssl = "0.10" # TODO handle pubkeys with a smaller crate
 base64 = "0.22"
 chrono = { version = "0.4", features = ["serde"] }
-uuid = { version = "1.8", features = ["v4"] }
+uuid = { version = "1.10", features = ["v4"] }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-serde_default = "0.1"
+serde_default = "0.2"
 serde-inline-default = "0.2"
 toml = "0.8"
 uriproxy = { path = "../../utils/uriproxy" }

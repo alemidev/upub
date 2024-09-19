@@ -62,7 +62,6 @@ impl Identity {
 
 pub struct AuthIdentity(pub Identity);
 
-#[axum::async_trait]
 impl<S> FromRequestParts<S> for AuthIdentity
 where
 	upub::Context: FromRef<S>,
