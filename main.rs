@@ -167,8 +167,8 @@ async fn init(args: Args, config: upub::Config) {
 		return;
 	}
 
-	let (tx_wake, rx_wake) = tokio::sync::watch::channel(false);
-	let wake = CancellationToken(rx_wake);
+	let (tx_wake, rx_wake) = tokio::sync::mpsc::unbounded_channel();
+	let wake = WakeToken(rx_wake);
 
 	let ctx = upub::Context::new(db, domain, config.clone(), Some(Box::new(WakerToken(tx_wake))))
 		.await.expect("failed creating server context");
@@ -219,10 +219,18 @@ async fn init(args: Args, config: upub::Config) {
 	signals_task.await.expect("failed joining signal handler task");
 }
 
-struct WakerToken(tokio::sync::watch::Sender<bool>);
+struct WakerToken(tokio::sync::mpsc::UnboundedSender<()>);
 impl context::WakerToken for WakerToken {
 	fn wake(&self) {
-		self.0.send_replace(true);
+		self.0.send(()).warn_failed("failed waking up workers");
+	}
+}
+
+struct WakeToken(tokio::sync::mpsc::UnboundedReceiver<()>);
+
+impl worker::WakeToken for WakeToken {
+	async fn wait(&mut self) {
+		let _ = self.0.recv().await;
 	}
 }
 
@@ -232,12 +240,6 @@ struct CancellationToken(tokio::sync::watch::Receiver<bool>);
 impl worker::StopToken for CancellationToken {
 	fn stop(&self) -> bool {
 		*self.0.borrow()
-	}
-}
-
-impl worker::WakeToken for CancellationToken {
-	async fn wait(&mut self) {
-		self.0.changed().await.err_failed("error waiting for waker token");
 	}
 }
 
