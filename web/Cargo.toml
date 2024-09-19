@@ -27,7 +27,7 @@ dashmap = "6.1"
 leptos = { version = "0.6", features = ["csr", "tracing"] }
 leptos_router = { version = "0.6", features = ["csr"] }
 leptos-use = "0.13"
-codee = { version = "0.2", features = ["serde_json"] }
+codee = { version = "0.2", features = ["json_serde"] }
 reqwest = { version = "0.12", features = ["json"] }
 apb = { path = "../apb", features = ["unstructured", "activitypub-fe", "activitypub-counters", "litepub", "did-core"] }
 uriproxy = { path = "../utils/uriproxy/" }
