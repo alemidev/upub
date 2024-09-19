@@ -11,14 +11,20 @@ pub fn spawn(
 	poll: u64,
 	filter: Option<upub::model::job::JobType>,
 	stop: impl StopToken,
+	wake: impl WakeToken,
 ) -> tokio::task::JoinHandle<()> {
 	use dispatcher::JobDispatcher;
 	tokio::spawn(async move {
 		tracing::info!("starting worker task");
-		ctx.run(concurrency, poll, filter, stop).await
+		ctx.run(concurrency, poll, filter, stop, wake).await
 	})
 }
 
 pub trait StopToken: Sync + Send + 'static {
 	fn stop(&self) -> bool;
+}
+
+pub trait WakeToken: Sync + Send + 'static {
+	//                    TODO this is bs...
+	fn wait(&mut self) -> impl std::future::Future<Output = ()> + std::marker::Send;
 }

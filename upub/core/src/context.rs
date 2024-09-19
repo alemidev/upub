@@ -17,6 +17,7 @@ struct ContextInner {
 	actor: model::actor::Model,
 	instance: model::instance::Model,
 	pkey: String,
+	waker: Option<Box<dyn WakerToken>>,
 	#[allow(unused)] relay: Relays,
 }
 
@@ -33,10 +34,14 @@ macro_rules! url {
 	};
 }
 
+pub trait WakerToken: Sync + Send {
+	fn wake(&self);
+}
+
 impl Context {
 
 	// TODO slim constructor down, maybe make a builder?
-	pub async fn new(db: DatabaseConnection, mut domain: String, config: Config) -> Result<Self, crate::init::InitError> {
+	pub async fn new(db: DatabaseConnection, mut domain: String, config: Config, waker: Option<Box<dyn WakerToken>>) -> Result<Self, crate::init::InitError> {
 		let protocol = if domain.starts_with("http://")
 		{ "http://" } else { "https://" }.to_string();
 		if domain.ends_with('/') {
@@ -72,7 +77,7 @@ impl Context {
 		};
 
 		Ok(Context(Arc::new(ContextInner {
-			base_url, db, domain, protocol, actor, instance, config, pkey, relay,
+			base_url, db, domain, protocol, actor, instance, config, pkey, relay, waker,
 		})))
 	}
 
@@ -165,6 +170,12 @@ impl Context {
 		}
 
 		Ok(None)
+	}
+
+	pub fn wake_workers(&self) {
+		if let Some(ref waker) = self.0.waker {
+			waker.wake();
+		}
 	}
 
 	#[allow(unused)]

@@ -4,8 +4,8 @@ use sea_orm::{ConnectOptions, Database};
 use signal_hook::consts::signal::*;
 use signal_hook_tokio::Signals;
 use futures::stream::StreamExt;
+use upub::{context, ext::LoggableError};
 
-use upub::ext::LoggableError;
 #[cfg(feature = "cli")]
 use upub_cli as cli;
 
@@ -167,8 +167,10 @@ async fn init(args: Args, config: upub::Config) {
 		return;
 	}
 
+	let (tx_wake, rx_wake) = tokio::sync::watch::channel(false);
+	let wake = CancellationToken(rx_wake);
 
-	let ctx = upub::Context::new(db, domain, config.clone())
+	let ctx = upub::Context::new(db, domain, config.clone(), Some(Box::new(WakerToken(tx_wake))))
 		.await.expect("failed creating server context");
 
 	#[cfg(feature = "cli")]
@@ -195,12 +197,12 @@ async fn init(args: Args, config: upub::Config) {
 
 		#[cfg(feature = "worker")]
 		Mode::Work { filter, tasks, poll } =>
-			worker::spawn(ctx, tasks, poll, filter.into(), stop)
+			worker::spawn(ctx, tasks, poll, filter.into(), stop, wake)
 				.await.expect("failed running worker"),
 
 		#[cfg(all(feature = "serve", feature = "worker"))]
 		Mode::Monolith { bind, tasks, poll } => {
-			worker::spawn(ctx.clone(), tasks, poll, None, stop.clone());
+			worker::spawn(ctx.clone(), tasks, poll, None, stop.clone(), wake);
 
 			routes::serve(ctx, bind, stop)
 				.await.expect("failed serving api routes");
@@ -217,12 +219,25 @@ async fn init(args: Args, config: upub::Config) {
 	signals_task.await.expect("failed joining signal handler task");
 }
 
+struct WakerToken(tokio::sync::watch::Sender<bool>);
+impl context::WakerToken for WakerToken {
+	fn wake(&self) {
+		self.0.send_replace(true);
+	}
+}
+
 #[derive(Clone)]
 struct CancellationToken(tokio::sync::watch::Receiver<bool>);
 
 impl worker::StopToken for CancellationToken {
 	fn stop(&self) -> bool {
 		*self.0.borrow()
+	}
+}
+
+impl worker::WakeToken for CancellationToken {
+	async fn wait(&mut self) {
+		self.0.changed().await.err_failed("error waiting for waker token");
 	}
 }
 

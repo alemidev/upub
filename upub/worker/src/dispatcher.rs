@@ -32,7 +32,7 @@ pub type JobResult<T> = Result<T, JobError>;
 pub trait JobDispatcher : Sized {
 	async fn poll(&self, filter: Option<model::job::JobType>) -> JobResult<Option<model::job::Model>>;
 	async fn lock(&self, job_internal: i64) -> JobResult<bool>;
-	async fn run(self, concurrency: usize, poll_interval: u64, job_filter: Option<model::job::JobType>, stop: impl crate::StopToken);
+	async fn run(self, concurrency: usize, poll_interval: u64, job_filter: Option<model::job::JobType>, stop: impl crate::StopToken, wake: impl crate::WakeToken);
 }
 
 impl JobDispatcher for Context {
@@ -69,12 +69,15 @@ impl JobDispatcher for Context {
 		Ok(true)
 	}
 
-	async fn run(self, concurrency: usize, poll_interval: u64, job_filter: Option<model::job::JobType>, stop: impl crate::StopToken) {
+	async fn run(self, concurrency: usize, poll_interval: u64, job_filter: Option<model::job::JobType>, stop: impl crate::StopToken, mut wake: impl crate::WakeToken) {
 		macro_rules! restart {
 			(now) => { continue };
 			() => {
 				{
-					tokio::time::sleep(std::time::Duration::from_secs(poll_interval)).await;
+					tokio::select! {
+						_ = tokio::time::sleep(std::time::Duration::from_secs(poll_interval)) => {},
+						_ = wake.wait() => {},
+					}
 					continue;
 				}
 			}

@@ -53,12 +53,13 @@ pub async fn serve(ctx: upub::Context, bind: String, shutdown: impl ShutdownToke
 
 	let listener = tokio::net::TcpListener::bind(bind).await?;
 	axum::serve(listener, router)
-		.with_graceful_shutdown(async move { shutdown.event().await })
+		.with_graceful_shutdown(shutdown.event())
 		.await?;
 
 	Ok(())
 }
 
 pub trait ShutdownToken: Sync + Send + 'static {
-	async fn event(self);
+	//                TODO this is bs...
+	fn event(self) -> impl std::future::Future<Output = ()> + std::marker::Send;
 }
