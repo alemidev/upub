@@ -4,7 +4,11 @@ use leptos_router::*;
 use crate::prelude::*;
 use crate::CONTACT;
 
-use leptos_use::{signal_debounced, storage::use_local_storage, use_cookie_with_options, use_element_size, use_window_scroll, UseCookieOptions, utils::{FromToStringCodec, JsonCodec}, UseElementSizeReturn};
+use codee::string::{FromToStringCodec, JsonSerdeCodec};
+use leptos_use::{
+	signal_debounced, storage::use_local_storage, use_cookie_with_options, use_element_size, use_window_scroll,
+	UseCookieOptions, UseElementSizeReturn
+};
 
 #[derive(Clone, Copy)]
 pub struct Feeds {
@@ -59,7 +63,7 @@ pub fn App() -> impl IntoView {
 			// .secure(true)
 			.path("/")
 	);
-	let (config, set_config, _) = use_local_storage::<crate::Config, JsonCodec>("config");
+	let (config, set_config, _) = use_local_storage::<crate::Config, JsonSerdeCodec>("config");
 
 	let auth = Auth { token, userid };
 
