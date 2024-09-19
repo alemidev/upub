@@ -72,6 +72,8 @@ pub async fn post(
 
 			model::job::Entity::insert(job).exec(ctx.db()).await?;
 
+			ctx.wake_workers();
+
 			Ok(CreationResult(aid))
 		}
 	}

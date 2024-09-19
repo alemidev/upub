@@ -148,7 +148,5 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 
 	tx.commit().await?;
 
-	ctx.wake_workers();
-
 	Ok(())
 }
