@@ -1,6 +1,6 @@
-use apb::{field::OptionalString, target::Addressed, Activity, ActivityMut, Actor, Base, BaseMut, Object, ObjectMut};
+use apb::{field::OptionalString, target::Addressed, Activity, ActivityMut, Base, BaseMut, Object, ObjectMut};
 use sea_orm::{prelude::Expr, ColumnTrait, DbErr, EntityTrait, QueryFilter, QueryOrder, QuerySelect, SelectColumns, TransactionTrait};
-use upub::{model::{self, actor::Field}, traits::{Addresser, Processor}, Context};
+use upub::{model::{self, actor::Field}, traits::{process::ProcessorError, Addresser, Processor}, Context};
 
 
 pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<()> {
@@ -65,38 +65,66 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 		activity = activity.set_object(apb::Node::object(undone));
 	}
 
+	macro_rules! update {
+		($prev:ident, $field:ident, $getter:expr) => {
+			if let Some($field) = $getter {
+				$prev.$field = Some($field.to_string());
+			}
+		};
+	}
+
 	if matches!(t, apb::ObjectType::Activity(apb::ActivityType::Update)) {
 		let mut updated = activity.object().extract().ok_or(crate::JobError::MissingPayload)?;
-		if updated.actor_type().is_ok() {
-			let mut prev = model::actor::Entity::find_by_ap_id(updated.id()?)
-				.one(&tx)
-				.await?
-				.ok_or_else(|| crate::JobError::MissingPayload)?;
-			if prev.id != job.actor {
-				return Err(crate::JobError::Forbidden);
-			}
-			if let Some(name) = updated.name().str() {
-				prev.name = Some(name);
-			}
-			if let Some(summary) = updated.summary().str() {
-				prev.summary = Some(summary);
-			}
-			if let Some(icon) = updated.icon().get().and_then(|x| x.url().id().str()) {
-				prev.icon = Some(icon);
-			}
-			if let Some(image) = updated.image().get().and_then(|x| x.url().id().str()) {
-				prev.image = Some(image);
-			}
-			if !updated.attachment().is_empty() {
-				prev.fields = updated.attachment()
-					.flat()
-					.into_iter()
-					.filter_map(|x| x.extract())
-					.map(Field::from)
-					.collect::<Vec<Field>>()
-					.into();
-			}
-			updated = prev.ap();
+		match updated.object_type()? {
+			apb::ObjectType::Actor(_) => {
+				let mut prev = model::actor::Entity::find_by_ap_id(updated.id()?)
+					.one(&tx)
+					.await?
+					.ok_or_else(|| crate::JobError::MissingPayload)?;
+
+				if prev.id != job.actor {
+					return Err(crate::JobError::Forbidden);
+				}
+				
+				update!(prev, name, updated.name().ok());
+				update!(prev, summary, updated.summary().ok());
+				update!(prev, icon, updated.icon().get().and_then(|x| x.url().id().str()));
+				update!(prev, image, updated.image().get().and_then(|x| x.url().id().str()));
+
+				if !updated.attachment().is_empty() {
+					prev.fields = updated.attachment()
+						.flat()
+						.into_iter()
+						.filter_map(|x| x.extract())
+						.map(Field::from)
+						.collect::<Vec<Field>>()
+						.into();
+				}
+
+				updated = prev.ap();
+			},
+			apb::ObjectType::Note => {
+				let mut prev = model::object::Entity::find_by_ap_id(updated.id()?)
+					.one(&tx)
+					.await?
+					.ok_or_else(|| crate::JobError::MissingPayload)?;
+
+				if prev.attributed_to.as_ref() != Some(&job.actor) {
+					return Err(crate::JobError::Forbidden);
+				}
+
+				update!(prev, name, updated.name().ok());
+				update!(prev, summary, updated.summary().ok());
+				update!(prev, content, updated.content().ok());
+				update!(prev, image, updated.image().get().and_then(|x| x.url().id().str()));
+
+				if let Ok(sensitive) = updated.sensitive() {
+					prev.sensitive = sensitive;
+				}
+
+				updated = prev.ap();
+			},
+			t => return Err(crate::JobError::ProcessorError(ProcessorError::Unprocessable(format!("{t}")))),
 		}
 		activity = activity.set_object(apb::Node::object(updated));
 	}
