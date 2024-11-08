@@ -1,7 +1,7 @@
 use std::collections::BTreeSet;
 
 use apb::target::Addressed;
-use sea_orm::{ActiveValue::{NotSet, Set}, ColumnTrait, ConnectionTrait, DbErr, EntityTrait, QueryFilter, QuerySelect, SelectColumns};
+use sea_orm::{ActiveModelTrait, ActiveValue::{NotSet, Set}, ColumnTrait, ConnectionTrait, DbErr, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect, SelectColumns};
 
 use crate::traits::fetch::Fetcher;
 
@@ -100,6 +100,29 @@ async fn address_to(ctx: &crate::Context, to: Vec<String>, aid: Option<i64>, oid
 				(_, None) => { tracing::error!("failed resolving actor {target}"); continue; },
 			}
 		};
+
+		// TODO this is yet another select to insert, can we avoid merging these or think of something
+		//      else entirely??
+
+		// if we discovered this object previously, merge its addressing with older entry so it doesnt
+		// appear twice in timelines
+		if let (Some(aid), Some(oid)) = (aid, oid) {
+			if let Some(prev) = crate::model::addressing::Entity::find()
+				.filter(crate::model::addressing::Column::Activity.is_null())
+				.filter(crate::model::addressing::Column::Object.eq(oid))
+				.filter(crate::model::addressing::Column::Actor.eq(actor))
+				.filter(crate::model::addressing::Column::Instance.eq(server))
+				.one(tx)
+				.await?
+			{
+				let mut prev = prev.into_active_model();
+				prev.activity = Set(Some(aid));
+				prev.object = Set(Some(oid));
+				prev.update(tx).await?;
+				continue; // no need to insert this one
+			}
+		}
+
 		addressing.push(
 			crate::model::addressing::ActiveModel {
 				internal: NotSet,
