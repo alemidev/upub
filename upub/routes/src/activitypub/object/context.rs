@@ -1,8 +1,8 @@
 use axum::extract::{Path, Query, State};
-use sea_orm::{ColumnTrait, Condition, Order, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect};
+use sea_orm::{ColumnTrait, Order, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect};
 use upub::{model, selector::{BatchFillable, RichActivity}, Context};
 
-use crate::{activitypub::Pagination, builders::JsonLD, AuthIdentity, Identity};
+use crate::{activitypub::Pagination, builders::JsonLD, AuthIdentity};
 
 pub async fn get(
 	State(ctx): State<Context>,
@@ -27,24 +27,12 @@ pub async fn page(
 	AuthIdentity(auth): AuthIdentity,
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let context = ctx.oid(&id);
-
-	let mut filter = Condition::any()
-		.add(auth.filter());
-
-	if let Identity::Local { ref id, .. } = auth {
-		filter = filter.add(model::object::Column::AttributedTo.eq(id));
-	}
-
-	filter = Condition::all()
-		.add(model::object::Column::Context.eq(context))
-		.add(filter);
-
 	let limit = page.batch.unwrap_or(20).min(50);
 	let offset = page.offset.unwrap_or(0);
 
-
 	let items = upub::Query::objects(auth.my_id())
-		.filter(filter)
+		.filter(auth.filter())
+		.filter(model::object::Column::Context.eq(context))
 		.order_by(model::object::Column::Published, Order::Desc)
 		.limit(limit)
 		.offset(offset)

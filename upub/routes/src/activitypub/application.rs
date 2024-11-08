@@ -51,16 +51,9 @@ pub async fn search(
 		return Err(crate::ApiError::forbidden());
 	}
 
-	let mut filter = Condition::any()
-		.add(auth.filter());
-
-	if let Identity::Local { ref id, .. } = auth {
-		filter = filter.add(upub::model::object::Column::AttributedTo.eq(id));
-	}
-
-	filter = Condition::all()
-		.add(upub::model::object::Column::Content.like(format!("%{}%", page.q)))
-		.add(filter);
+	let filter = Condition::all()
+		.add(auth.filter())
+		.add(upub::model::object::Column::Content.like(format!("%{}%", page.q)));
 
 	// TODO lmao rethink this all
 	let page = Pagination {

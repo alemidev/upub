@@ -25,7 +25,9 @@ impl Identity {
 		match self {
 			Identity::Anonymous => base_cond,
 			Identity::Remote { internal, .. } => base_cond.add(upub::model::addressing::Column::Instance.eq(*internal)), 
-			Identity::Local { internal, .. } => base_cond.add(upub::model::addressing::Column::Actor.eq(*internal)),
+			Identity::Local { internal, id } => base_cond
+				.add(upub::model::addressing::Column::Actor.eq(*internal))
+				.add(upub::model::object::Column::AttributedTo.eq(id)),
 		}
 	}
 

@@ -16,8 +16,8 @@ pub async fn get(
 	// }
 
 	let replies_ids = upub::Query::objects(auth.my_id())
-		.filter(model::object::Column::InReplyTo.eq(ctx.oid(&id)))
 		.filter(auth.filter())
+		.filter(model::object::Column::InReplyTo.eq(ctx.oid(&id)))
 		.select_only()
 		.select_column(model::object::Column::Id)
 		.into_tuple::<String>()
