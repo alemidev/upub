@@ -118,6 +118,7 @@ async fn address_to(ctx: &crate::Context, to: Vec<String>, aid: Option<i64>, oid
 				let mut prev = prev.into_active_model();
 				prev.activity = Set(Some(aid));
 				prev.object = Set(Some(oid));
+				prev.published = Set(when);
 				prev.update(tx).await?;
 				continue; // no need to insert this one
 			}
