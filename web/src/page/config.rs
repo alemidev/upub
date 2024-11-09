@@ -6,6 +6,7 @@ use crate::{prelude::*, DEFAULT_COLOR};
 pub fn ConfigPage(setter: WriteSignal<crate::Config>) -> impl IntoView {
 	let config = use_context::<Signal<crate::Config>>().expect("missing config context");
 	let auth = use_context::<Auth>().expect("missing auth context");
+	let feeds = use_context::<Feeds>().expect("missing feeds context");
 	let (color, set_color) = leptos_use::use_css_var("--accent");
 	let (_color_rgb, set_color_rgb) = leptos_use::use_css_var("--accent-rgb");
 
@@ -97,7 +98,12 @@ pub fn ConfigPage(setter: WriteSignal<crate::Config>) -> impl IntoView {
 			<hr />
 			<p><code title="unchecked elements won't show in timelines">filters</code></p>
 			<ul>
-					<li><span title="replies to other posts"><input type="checkbox" prop:checked=get_cfg!(filter replies) on:input=set_cfg!(filter replies) />" replies"</span></li>
+					<li><span title="replies to other posts"><input type="checkbox" prop:checked=get_cfg!(filter replies) on:input=move |ev| {
+						let mut mock = config.get();
+						mock.filters.replies = event_target_checked(&ev);
+						setter.set(mock);
+						feeds.reset();
+					}/>" replies"</span></li>
 					<li><span title="like activities"><input type="checkbox" prop:checked=get_cfg!(filter likes) on:input=set_cfg!(filter likes) />" likes"</span></li>
 					<li><span title="create activities with object"><input type="checkbox" prop:checked=get_cfg!(filter creates) on:input=set_cfg!(filter creates)/>" creates"</span></li>
 					<li><span title="update activities, to objects or actors"><input type="checkbox" prop:checked=get_cfg!(filter updates) on:input=set_cfg!(filter updates)/>" updates"</span></li>

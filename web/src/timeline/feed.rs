@@ -10,10 +10,11 @@ pub fn Feed(
 	ignore_filters: bool,
 ) -> impl IntoView {
 	let auth = use_context::<Auth>().expect("missing auth context");
+	let config = use_context::<Signal<crate::Config>>().expect("missing config context");
 	if let Some(auto_scroll) = use_context::<Signal<bool>>() {
 		let _ = leptos::watch(
 			move || auto_scroll.get(),
-			move |at_end, _, _| if *at_end { tl.spawn_more(auth) },
+			move |at_end, _, _| if *at_end { tl.spawn_more(auth, config) },
 			true,
 		);
 	}

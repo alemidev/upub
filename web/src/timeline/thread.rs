@@ -6,14 +6,15 @@ use super::Timeline;
 #[component]
 pub fn Thread(tl: Timeline, root: String) -> impl IntoView {
 	let auth = use_context::<Auth>().expect("missing auth context");
+	let config = use_context::<Signal<crate::Config>>().expect("missing config context");
 	if let Some(auto_scroll) = use_context::<Signal<bool>>() {
 		let _ = leptos::watch(
 			move || auto_scroll.get(),
 			move |new, old, _| {
 				match old {
-					None => tl.spawn_more(auth), // always do it first time
+					None => tl.spawn_more(auth, config), // always do it first time
 					Some(old) => if *new && new != old {
-						tl.spawn_more(auth);
+						tl.spawn_more(auth, config);
 					},
 				}
 			},

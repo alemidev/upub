@@ -7,6 +7,7 @@ pub fn LoginBox(
 	userid_tx: WriteSignal<Option<String>>,
 ) -> impl IntoView {
 	let auth = use_context::<Auth>().expect("missing auth context");
+	let config = use_context::<Signal<crate::Config>>().expect("missing config context");
 	let username_ref: NodeRef<html::Input> = create_node_ref();
 	let password_ref: NodeRef<html::Input> = create_node_ref();
 	let feeds = use_context::<Feeds>().expect("missing feeds context");
@@ -17,8 +18,8 @@ pub fn LoginBox(
 				<input style="float:right" type="submit" value="logout" on:click=move |_| {
 					token_tx.set(None);
 					feeds.reset();
-					feeds.global.spawn_more(auth);
-					feeds.server.spawn_more(auth);
+					feeds.global.spawn_more(auth, config);
+					feeds.server.spawn_more(auth, config);
 				} />
 			</div>
 			<div class:hidden=move || auth.present() >
@@ -45,14 +46,14 @@ pub fn LoginBox(
 						token_tx.set(Some(auth_response.token));
 						// reset home feed and point it to our user's inbox
 						feeds.home.reset(Some(format!("{URL_BASE}/actors/{username}/inbox/page")));
-						feeds.home.spawn_more(auth);
+						feeds.home.spawn_more(auth, config);
 						feeds.notifications.reset(Some(format!("{URL_BASE}/actors/{username}/notifications/page")));
-						feeds.notifications.spawn_more(auth);
+						feeds.notifications.spawn_more(auth, config);
 						// reset server feed: there may be more content now that we're authed
 						feeds.global.reset(Some(format!("{URL_BASE}/inbox/page")));
-						feeds.global.spawn_more(auth);
+						feeds.global.spawn_more(auth, config);
 						feeds.server.reset(Some(format!("{URL_BASE}/outbox/page")));
-						feeds.server.spawn_more(auth);
+						feeds.server.spawn_more(auth, config);
 					});
 				} >
 					<table class="w-100 align">

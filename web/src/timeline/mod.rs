@@ -40,7 +40,7 @@ impl Timeline {
 		}
 	}
 
-	pub fn refresh(&self, auth: Auth) {
+	pub fn refresh(&self, auth: Auth, config: Signal<crate::Config>) {
 		self.reset(
 			self.next
 				.get_untracked()
@@ -48,13 +48,13 @@ impl Timeline {
 				.next()
 				.map(|x| x.to_string())
 		);
-		self.spawn_more(auth);
+		self.spawn_more(auth, config);
 	}
 
-	pub fn spawn_more(&self, auth: Auth) {
+	pub fn spawn_more(&self, auth: Auth, config: Signal<crate::Config>) {
 		let _self = *self;
 		spawn_local(async move {
-			_self.more(auth).await
+			_self.more(auth, config).await
 		});
 	}
 
@@ -62,21 +62,28 @@ impl Timeline {
 		self.loading.get_untracked()
 	}
 
-	pub async fn more(&self, auth: Auth) {
+	pub async fn more(&self, auth: Auth, config: Signal<crate::Config>) {
 		if self.loading.get_untracked() { return }
 		if self.over.get_untracked() { return }
 		self.loading.set(true);
-		let res = self.load_more(auth).await;
+		let res = self.load_more(auth, config).await;
 		self.loading.set(false);
 		if let Err(e) = res {
 			tracing::error!("failed loading posts for timeline: {e}");
 		}
 	}
 
-	pub async fn load_more(&self, auth: Auth) -> reqwest::Result<()> {
+	pub async fn load_more(&self, auth: Auth, config: Signal<crate::Config>) -> reqwest::Result<()> {
 		use apb::{Collection, CollectionPage};
 
-		let feed_url = self.next.get_untracked();
+		let mut feed_url = self.next.get_untracked();
+		if !config.get_untracked().filters.replies {
+			feed_url = if feed_url.contains('?') {
+				feed_url + "&replies=false"
+			} else {
+				feed_url + "?replies=false"
+			};
+		}
 		let collection : serde_json::Value = Http::fetch(&feed_url, auth).await?;
 		let activities : Vec<serde_json::Value> = collection
 			.ordered_items()

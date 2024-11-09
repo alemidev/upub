@@ -193,6 +193,7 @@ fn Scrollable() -> impl IntoView {
 	let location = use_location();
 	let feeds = use_context::<Feeds>().expect("missing feeds context");
 	let auth = use_context::<Auth>().expect("missing auth context");
+	let config = use_context::<Signal<crate::Config>>().expect("missing config context");
 	let relevant_timeline = Signal::derive(move || {
 		let path = location.pathname.get();
 		if path.contains("/web/home") {
@@ -246,7 +247,7 @@ fn Scrollable() -> impl IntoView {
 				<a class="breadcrumb mr-1" href="javascript:history.back()" ><b>"<<"</b></a>
 				<b>{crate::NAME}</b>" :: "{breadcrumb}
 				{move || relevant_timeline.get().map(|tl| view! {
-					<a class="breadcrumb ml-1" href="#" on:click=move|_| tl.refresh(auth)  ><b>"↺"</b></a>
+					<a class="breadcrumb ml-1" href="#" on:click=move|_| tl.refresh(auth, config)  ><b>"↺"</b></a>
 				})}
 			</div>
 			<Outlet />
