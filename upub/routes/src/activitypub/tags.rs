@@ -47,7 +47,6 @@ pub async fn page(
 		offset,
 		limit,
 		objects,
-		true,
 	)
 
 }

@@ -51,5 +51,5 @@ pub async fn page(
 		.map(|item| item.ap())
 		.collect();
 
-	crate::builders::collection_page(&id, offset, limit, items, true)
+	crate::builders::collection_page(&id, offset, limit, items)
 }

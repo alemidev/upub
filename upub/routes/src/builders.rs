@@ -21,9 +21,7 @@ pub async fn paginate_feed(
 		.add(filter);
 
 	// by default we want replies because servers don't know about our api and want everything
-	let replies = page.replies.unwrap_or(true);
-
-	if !replies {
+	if !page.replies.unwrap_or(true) {
 		conditions = conditions.add(upub::model::object::Column::InReplyTo.is_null());
 	}
 
@@ -54,19 +52,18 @@ pub async fn paginate_feed(
 		.map(|item| item.ap())
 		.collect();
 
-	collection_page(&id, offset, limit, items, replies)
+	collection_page(&id, offset, limit, items)
 }
 
-pub fn collection_page(id: &str, offset: u64, limit: u64, items: Vec<serde_json::Value>, replies: bool) -> crate::ApiResult<JsonLD<serde_json::Value>> {
-	let replies = if replies { "" } else { "&replies=false" };
+pub fn collection_page(id: &str, offset: u64, limit: u64, items: Vec<serde_json::Value>) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let next = if items.len() < limit as usize {
 		apb::Node::Empty
 	} else {
-		apb::Node::link(format!("{id}?offset={}{replies}", offset+limit))
+		apb::Node::link(format!("{id}?offset={}", offset+limit))
 	};
 	Ok(JsonLD(
 		apb::new()
-			.set_id(Some(&format!("{id}?offset={offset}{replies}")))
+			.set_id(Some(&format!("{id}?offset={offset}")))
 			.set_collection_type(Some(apb::CollectionType::OrderedCollectionPage))
 			.set_part_of(apb::Node::link(id.replace("/page", "")))
 			.set_ordered_items(apb::Node::array(items))

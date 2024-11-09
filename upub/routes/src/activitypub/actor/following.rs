@@ -120,6 +120,5 @@ pub async fn page<const OUTGOING: bool>(
 		&upub::url!(ctx, "/actors/{id}/{follow___}/page"),
 		offset, limit,
 		following.into_iter().map(serde_json::Value::String).collect(),
-		true
 	)
 }
