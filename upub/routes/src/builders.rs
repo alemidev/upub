@@ -1,5 +1,5 @@
 use apb::{BaseMut, CollectionMut, CollectionPageMut, LD};
-use sea_orm::{Condition, ConnectionTrait, QueryFilter, QuerySelect, RelationTrait};
+use sea_orm::{Condition, ConnectionTrait, QueryFilter, QuerySelect, RelationTrait, ColumnTrait};
 use axum::response::{IntoResponse, Response};
 use upub::selector::{BatchFillable, RichActivity};
 
@@ -17,6 +17,14 @@ pub async fn paginate_feed(
 	let limit = page.batch.unwrap_or(20).min(50);
 	let offset = page.offset.unwrap_or(0);
 
+	let mut conditions = Condition::all()
+		.add(filter);
+
+	// by default we want replies because servers don't know about our api and want everything
+	if !page.replies.unwrap_or(true) {
+		conditions = conditions.add(upub::model::object::Column::InReplyTo.is_null());
+	}
+
 	let mut select = upub::Query::feed(my_id);
 
 	if with_users {
@@ -25,7 +33,7 @@ pub async fn paginate_feed(
 	}
 
 	let items = select
-		.filter(filter)
+		.filter(conditions)
 		// TODO also limit to only local activities
 		.limit(limit)
 		.offset(offset)

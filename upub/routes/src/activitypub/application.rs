@@ -4,7 +4,7 @@ use reqwest::Method;
 use sea_orm::{Condition, ColumnTrait};
 use upub::{traits::{Cloaker, Fetcher}, Context};
 
-use crate::{builders::JsonLD, ApiError, AuthIdentity, Identity};
+use crate::{builders::JsonLD, ApiError, AuthIdentity};
 
 use super::{PaginatedSearch, Pagination};
 
@@ -56,9 +56,11 @@ pub async fn search(
 		.add(upub::model::object::Column::Content.like(format!("%{}%", page.q)));
 
 	// TODO lmao rethink this all
+	//      still haven't redone this gg me
 	let page = Pagination {
 		offset: page.offset,
 		batch: page.batch,
+		replies: Some(true),
 	};
 
 	crate::builders::paginate_feed(

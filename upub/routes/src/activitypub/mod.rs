@@ -90,6 +90,7 @@ pub struct TryFetch {
 pub struct Pagination {
 	pub offset: Option<u64>,
 	pub batch: Option<u64>,
+	pub replies: Option<bool>,
 }
 
 #[derive(Debug, serde::Deserialize)]

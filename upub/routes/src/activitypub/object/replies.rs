@@ -38,11 +38,14 @@ pub async fn get(
 pub async fn page(
 	State(ctx): State<Context>,
 	Path(id): Path<String>,
-	Query(page): Query<Pagination>,
+	Query(mut page): Query<Pagination>,
 	AuthIdentity(auth): AuthIdentity,
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let page_id = upub::url!(ctx, "/objects/{id}/replies/page");
 	let oid = ctx.oid(&id);
+
+	// TODO kinda weird ignoring this but its weirder to exclude replies from replies view...
+	page.replies = Some(true);
 
 	crate::builders::paginate_feed(
 		page_id,
