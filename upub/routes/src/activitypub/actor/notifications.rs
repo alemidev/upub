@@ -52,6 +52,6 @@ pub async fn page(
 		.map(|x| x.ap())
 		.collect();
 
-	crate::builders::collection_page(&upub::url!(ctx, "/actors/{id}/notifications/page"), offset, limit, activities)
+	crate::builders::collection_page(&upub::url!(ctx, "/actors/{id}/notifications/page"), offset, limit, activities, true)
 
 }
