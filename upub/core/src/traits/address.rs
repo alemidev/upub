@@ -67,7 +67,7 @@ impl Addresser for crate::Context {
 				address_to(self, to, None, Some(object.internal), self.is_local(&object.id), object.published, tx).await
 			},
 			(Some(activity), Some(object)) => {
-				let to_activity = BTreeSet::from_iter(expand_addressing(activity.addressed(), None, tx).await?);
+				let to_activity = BTreeSet::from_iter(expand_addressing(activity.addressed(), object.audience.clone(), tx).await?);
 				let to_object = BTreeSet::from_iter(expand_addressing(object.addressed(), object.audience.clone(), tx).await?);
 
 				let to_common = to_activity.intersection(&to_object).cloned().collect();
