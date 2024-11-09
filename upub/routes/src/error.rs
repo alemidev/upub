@@ -19,6 +19,9 @@ pub enum ApiError {
 	#[error("fetch error: {0:?}")]
 	FetchError(#[from] upub::traits::fetch::RequestError),
 
+	#[error("error interacting with file system: {0:?}")]
+	IO(#[from] std::io::Error),
+
 	// wrapper error to return arbitraty status codes
 	#[error("{0}")]
 	Status(StatusCode),

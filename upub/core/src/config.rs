@@ -15,6 +15,9 @@ pub struct Config {
 	#[serde(default)]
 	pub compat: CompatibilityConfig,
 
+	#[serde(default)]
+	pub files: FileStorageConfig,
+
 	// TODO should i move app keys here?
 }
 
@@ -113,6 +116,13 @@ pub struct CompatibilityConfig {
 
 	#[serde(default)]
 	pub skip_single_attachment_if_image_is_set: bool,
+}
+
+#[serde_inline_default::serde_inline_default]
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize, serde_default::DefaultFromSerde)]
+pub struct FileStorageConfig {
+	#[serde_inline_default("files/".to_string())]
+	pub path: String,
 }
 
 impl Config {

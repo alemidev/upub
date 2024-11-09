@@ -6,6 +6,7 @@ pub mod activity;
 pub mod application;
 pub mod auth;
 pub mod tags;
+pub mod file;
 pub mod well_known;
 
 use axum::{http::StatusCode, response::IntoResponse, routing::{get, patch, post, put}, Router};
@@ -69,13 +70,13 @@ impl ActivityPubRouter for Router<upub::Context> {
 			.route("/objects/:id/replies/page", get(ap::object::replies::page))
 			.route("/objects/:id/context", get(ap::object::context::get))
 			.route("/objects/:id/context/page", get(ap::object::context::page))
+			// file routes
+			.route("/file", post(ap::file::upload))
+			.route("/file/:id", get(ap::file::download))
 			//.route("/objects/:id/likes", get(ap::object::likes::get))
 			//.route("/objects/:id/likes/page", get(ap::object::likes::page))
 			//.route("/objects/:id/shares", get(ap::object::announces::get))
 			//.route("/objects/:id/shares/page", get(ap::object::announces::page))
-			// hashtags routes
-			//.route("/hashtags/:name", get(ap::hashtags::get))
-			//.route("/hashtags/:name/page", get(ap::hashtags::page))
 	}
 }
 
