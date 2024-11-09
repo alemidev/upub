@@ -35,19 +35,19 @@ impl Timeline {
 	pub fn reset(&self, url: Option<String>) {
 		self.feed.set(vec![]);
 		self.over.set(false);
-		if let Some(url) = url {
-			self.next.set(url);
-		}
-	}
-
-	pub fn refresh(&self, auth: Auth, config: Signal<crate::Config>) {
-		self.reset(
+		let url = url.unwrap_or_else(||
 			self.next
 				.get_untracked()
 				.split('?')
 				.next()
 				.map(|x| x.to_string())
+				.unwrap_or("".to_string())
 		);
+		self.next.set(url);
+	}
+
+	pub fn refresh(&self, auth: Auth, config: Signal<crate::Config>) {
+		self.reset(None);
 		self.spawn_more(auth, config);
 	}
 
