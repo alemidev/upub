@@ -1,5 +1,5 @@
 use axum::{http::StatusCode, extract::{Path, Query, State}, Json};
-use sea_orm::{sea_query::IntoCondition, ColumnTrait};
+use sea_orm::{ColumnTrait, Condition};
 
 use upub::Context;
 
@@ -37,7 +37,10 @@ pub async fn page(
 
 	crate::builders::paginate_feed(
 		upub::url!(ctx, "/actors/{id}/inbox/page"),
-		upub::model::addressing::Column::Actor.eq(*internal).into_condition(),
+		Condition::any()
+			.add(upub::model::addressing::Column::Actor.eq(*internal))
+			.add(upub::model::activity::Column::Actor.eq(uid))
+			.add(upub::model::object::Column::AttributedTo.eq(uid)),
 		ctx.db(),
 		page,
 		auth.my_id(),
