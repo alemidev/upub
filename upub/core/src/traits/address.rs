@@ -69,12 +69,19 @@ impl Addresser for crate::Context {
 			(Some(activity), Some(object)) => {
 				let to_activity = BTreeSet::from_iter(expand_addressing(activity.addressed(), None, tx).await?);
 				let to_object = BTreeSet::from_iter(expand_addressing(object.addressed(), object.audience.clone(), tx).await?);
+
 				let to_common = to_activity.intersection(&to_object).cloned().collect();
 				address_to(self, to_common, Some(activity.internal), Some(object.internal), self.is_local(&activity.id), activity.published, tx).await?;
-				let to_only_activity = (&to_activity - &to_object).into_iter().collect();
-				address_to(self, to_only_activity, Some(activity.internal), None, self.is_local(&activity.id), activity.published, tx).await?;
-				let to_only_object = (&to_object - &to_activity).into_iter().collect();
-				address_to(self, to_only_object, None, Some(object.internal), self.is_local(&activity.id), object.published, tx).await?;
+
+				let to_only_activity: Vec<String> = (&to_activity - &to_object).into_iter().collect();
+				if !to_only_activity.is_empty() {
+					address_to(self, to_only_activity, Some(activity.internal), None, self.is_local(&activity.id), activity.published, tx).await?;
+				}
+
+				let to_only_object: Vec<String> = (&to_object - &to_activity).into_iter().collect();
+				if !to_only_object.is_empty() {
+					address_to(self, to_only_object, None, Some(object.internal), self.is_local(&activity.id), object.published, tx).await?;
+				}
 				Ok(())
 			},
 		}
