@@ -19,6 +19,8 @@ pub use crate::{
 		view::ObjectView,
 		attachment::Attachment,
 		item::{Object, Summary, LikeButton, RepostButton, ReplyButton},
+		context::ObjectContext,
+		replies::ObjectReplies,
 	},
 	timeline::{
 		Timeline,

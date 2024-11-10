@@ -2,7 +2,7 @@ use leptos::*;
 use leptos_router::*;
 use crate::prelude::*;
 
-use apb::{Object};
+use apb::{Base, Object};
 
 #[component]
 pub fn ObjectView() -> impl IntoView {
@@ -13,7 +13,7 @@ pub fn ObjectView() -> impl IntoView {
 		move |oid| async move {
 			let obj = cache::OBJECTS.resolve(&oid, U::Object, auth).await?;
 			if let Ok(author) = obj.attributed_to().id() {
-				cache::OBJECTS.resolve(&author, U::Actor, auth).await;
+				cache::OBJECTS.resolve(author, U::Actor, auth).await;
 			}
 			Some(obj)
 
@@ -35,12 +35,14 @@ pub fn ObjectView() -> impl IntoView {
 		},
 		Some(Some(o)) => {
 			let object = o.clone();
+			let base = Uri::web(U::Object, o.id().unwrap_or_default());
 			view!{
 				<Object object=object />
 				<hr class="color ma-2" />
-				<div class="mr-1-r ml-1-r">
-					<Thread tl=feeds.context root=o.id().unwrap_or_default().to_string() />
-				</div>
+				<code class="cw color center mt-1 mb-1 ml-3 mr-3">
+					<a href=format!("{base}/context")><b>context</b></a> | <a href=format!("{base}/replies")><b>replies</b></a>
+				</code>
+				<Outlet />
 			}.into_view()
 		},
 	}}

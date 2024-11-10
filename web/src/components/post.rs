@@ -109,6 +109,8 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 				on:input=move |ev| set_content.set(event_target_value(&ev))
 			></textarea>
 
+
+
 			<table class="align rev w-100">
 				<tr>
 					<td><input id="priv-public" type="radio" name="privacy" value="public" title="public" node_ref=public_ref /></td>

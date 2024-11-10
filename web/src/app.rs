@@ -10,6 +10,12 @@ use leptos_use::{
 	UseCookieOptions, UseElementSizeReturn
 };
 
+// TODO this is getting out of hand
+//      when we will add lists there will have to potentially be multiple timelines (one per list)
+//      per user, which doesn't scale with this model. we should either take the "go back to where
+//      you were" into our own hands (maybe with timeline "segments"? would also solve slow load,
+//      but infinite-scroll upwards too may be hard to do) or understand how it works (with page
+//      stacks?) and keep timelines local to views.
 #[derive(Clone, Copy)]
 pub struct Feeds {
 	pub home: Timeline,
@@ -19,6 +25,7 @@ pub struct Feeds {
 	pub user: Timeline,
 	pub server: Timeline,
 	pub context: Timeline,
+	pub replies: Timeline,
 	pub tag: Timeline,
 }
 
@@ -32,6 +39,7 @@ impl Feeds {
 			server: Timeline::new(format!("{URL_BASE}/outbox/page")),
 			tag: Timeline::new(format!("{URL_BASE}/tags/upub/page")),
 			context: Timeline::new(format!("{URL_BASE}/outbox/page")), // TODO ehhh
+			replies: Timeline::new(format!("{URL_BASE}/outbox/page")), // TODO ehhh
 		}
 	}
 
@@ -42,6 +50,7 @@ impl Feeds {
 		self.user.reset(None);
 		self.server.reset(None);
 		self.context.reset(None);
+		self.replies.reset(None);
 		self.tag.reset(None);
 	}
 }
@@ -155,6 +164,7 @@ pub fn App() -> impl IntoView {
 										<Route path="global" view=move || view! { <Feed tl=feeds.global /> } />
 										<Route path="local" view=move || view! { <Feed tl=feeds.server /> } />
 										<Route path="notifications" view=move || view! { <Feed tl=feeds.notifications ignore_filters=true /> } />
+										<Route path="tags/:id" view=move || view! { <HashtagFeed tl=feeds.tag /> } />
 
 										<Route path="about" view=AboutPage />
 										<Route path="config" view=move || view! { <ConfigPage setter=set_config /> } />
@@ -166,9 +176,14 @@ pub fn App() -> impl IntoView {
 											<Route path="followers" view=move || view! { <FollowList outgoing=false /> } />
 										</Route>
 
-										<Route path="tags/:id" view=move || view! { <HashtagFeed tl=feeds.tag /> } />
 
-										<Route path="objects/:id" view=ObjectView />
+										<Route path="objects/:id" view=ObjectView >
+											<Route path="" view=ObjectContext />
+											<Route path="replies" view=ObjectReplies />
+											// <Route path="liked" view=ObjectLiked />
+											// <Route path="announced" view=ObjectAnnounced />
+										</Route>
+
 										// <Route path="/web/activities/:id" view=move || view! { <ActivityPage tl=context_tl /> } />
 
 										<Route path="search" view=SearchPage />
