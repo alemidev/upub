@@ -11,6 +11,26 @@ pub enum Node<T : super::Base> {
 	Empty,
 }
 
+impl<T: super::Base + std::fmt::Debug> std::fmt::Debug for Node<T> {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		if f.alternate() {
+			match self {
+				Self::Array(x) => write!(f, "Node(array: {x:#?})"),
+				Self::Link(x) => write!(f, "Node(link: {})", x.href().unwrap_or_default()),
+				Self::Object(x) => write!(f, "Node(object: {x:#?})"),
+				Self::Empty => write!(f, "Node(empty)"),
+			}
+		} else {
+			match self {
+				Self::Array(x) => write!(f, "Node(array: {x:?})"),
+				Self::Link(x) => write!(f, "Node(link: {})", x.href().unwrap_or_default()),
+				Self::Object(x) => write!(f, "Node(object: {x:?})"),
+				Self::Empty => write!(f, "Node(empty)"),
+			}
+		}
+	}
+}
+
 // TODO convert in a from_residual (iirc?) so that in rust nightly we can do ?
 impl<T : super::Base> From<Option<T>> for Node<T> {
 	fn from(value: Option<T>) -> Self {
@@ -245,19 +265,6 @@ impl From<serde_json::Value> for Node<serde_json::Value> {
 				Err(_) => Node::Object(Box::new(value)),
 			},
 			_ => Node::Empty,
-		}
-	}
-}
-
-#[cfg(feature = "unstructured")]
-impl From<Node<serde_json::Value>> for serde_json::Value {
-	fn from(value: Node<serde_json::Value>) -> Self {
-		match value {
-			Node::Empty => serde_json::Value::Null,
-			Node::Link(l) => serde_json::Value::String(l.href().unwrap_or_default().to_string()), // TODO there could be more
-			Node::Object(o) => *o,
-			Node::Array(arr) =>
-				serde_json::Value::Array(arr.into_iter().map(|x| x.into()).collect()),
 		}
 	}
 }
