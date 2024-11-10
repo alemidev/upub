@@ -40,7 +40,7 @@ pub fn ObjectView() -> impl IntoView {
 				<Object object=object />
 				<hr class="color ma-2" />
 				<code class="cw color center mt-1 mb-1 ml-3 mr-3">
-					<a href=format!("{base}/context")><span class="emoji">"🕸️"</span>" "<b>context</b></a>" | "<a href=format!("{base}/replies")><span class="emoji">"📫"</span>" "<b>replies</b></a>
+					<a class="clean" href=format!("{base}/context")><span class="emoji">"🕸️"</span>" "<b>context</b></a>" | "<a class="clean" href=format!("{base}/replies")><span class="emoji">"📫"</span>" "<b>replies</b></a>
 				</code>
 				<Outlet />
 			}.into_view()
