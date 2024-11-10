@@ -55,7 +55,7 @@ pub fn ObjectView() -> impl IntoView {
 
 fn crawl(base: String, auth: Auth) {
 	spawn_local(async move {
-		if let Err(e) = Http::fetch::<serde_json::Value>(&format!("{base}/replies?fetch=true"), auth).await {
+		if let Err(e) = Http::fetch::<serde_json::Value>(&format!("{URL_BASE}{base}/replies?fetch=true"), auth).await {
 			tracing::error!("failed crawling replies for {base}: {e}");
 		}
 	});
