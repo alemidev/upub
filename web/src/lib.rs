@@ -41,7 +41,7 @@ pub mod cache {
 
 #[derive(Debug)]
 pub enum LookupStatus<T> {
-	Resolving,
+	Resolving, // TODO use this to avoid fetching twice!
 	Found(T),
 	NotFound,
 }
@@ -87,6 +87,26 @@ impl<T> Cache for DashmapCache<T> {
 	fn store(&self, key: &str, value: Self::Item) -> Option<Self::Item> {
 		self.0.insert(key.to_string(), LookupStatus::Found(value))
 			.and_then(|x| if let LookupStatus::Found(x) = x { Some(x) } else { None } )
+	}
+}
+
+impl DashmapCache<Object> {
+	pub async fn resolve(&self, key: &str, kind: UriClass, auth: Auth) -> Option<Object> {
+		let full_key = Uri::full(kind, key);
+		match self.get(&full_key) {
+			Some(x) => Some(x),
+			None => {
+				let obj = match Http::fetch::<serde_json::Value>(&Uri::api(kind, key, true), auth).await {
+					Ok(obj) => Arc::new(obj),
+					Err(e) => {
+						tracing::error!("failed loading object from backend: {e}");
+						return None;
+					},
+				};
+				cache::OBJECTS.store(&full_key, obj.clone());
+				Some(obj)
+			},
+		}
 	}
 }
 

@@ -13,18 +13,13 @@ pub fn ActorHeader() -> impl IntoView {
 		move |id| {
 			async move {
 				match cache::OBJECTS.get(&Uri::full(U::Actor, &id)) {
-					Some(x) => Ok::<_, String>(x.clone()),
+					Some(x) => Some(x.clone()),
 					None => {
-						let user : serde_json::Value = Http::fetch(&Uri::api(U::Actor, &id, true), auth)
-							.await
-							.map_err(|e| e.to_string())?;
-						let user = std::sync::Arc::new(user);
-						let uid = Uri::full(U::Actor, &id);
-						cache::OBJECTS.store(&uid, user.clone());
+						let user = cache::OBJECTS.resolve(&id, U::Actor, auth).await?;
 						if let Some(url) = user.url().id().str() {
-							cache::WEBFINGER.store(&url, uid);
+							cache::WEBFINGER.store(&url, user.id().unwrap_or_default().to_string());
 						}
-						Ok(user)
+						Some(user)
 					},
 				}
 			}
@@ -32,8 +27,8 @@ pub fn ActorHeader() -> impl IntoView {
 	);
 	move || match actor.get() {
 		None => view! { <Loader /> }.into_view(),
-		Some(Err(e)) => view! { <code class="center cw color">"could not resolve user: "{e}</code> }.into_view(),
-		Some(Ok(actor)) => {
+		Some(None) => view! { <code class="center cw color">"could not resolve user"</code> }.into_view(),
+		Some(Some(actor)) => {
 			let avatar_url = actor.icon().get().map(|x| x.url().id().str().unwrap_or(FALLBACK_IMAGE_URL.into())).unwrap_or(FALLBACK_IMAGE_URL.into());
 			let background_url = actor.image().get().map(|x| x.url().id().str().unwrap_or(FALLBACK_IMAGE_URL.into())).unwrap_or(FALLBACK_IMAGE_URL.into());
 			let username = actor.preferred_username().unwrap_or_default().to_string();

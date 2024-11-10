@@ -1,48 +1,28 @@
-use std::sync::Arc;
-
 use leptos::*;
 use leptos_router::*;
 use crate::prelude::*;
 
-use apb::{Base, Object};
+use apb::{Object};
 
 #[component]
 pub fn ObjectView() -> impl IntoView {
 	let params = use_params_map();
 	let auth = use_context::<Auth>().expect("missing auth context");
-	let feeds = use_context::<Feeds>().expect("missing feeds context");
 	let object = create_local_resource(
 		move || params.get().get("id").cloned().unwrap_or_default(),
 		move |oid| async move {
-			let obj = match cache::OBJECTS.get(&Uri::full(U::Object, &oid)) {
-				Some(x) => x.clone(),
-				None => {
-					let obj = match Http::fetch::<serde_json::Value>(&Uri::api(U::Object, &oid, true), auth).await {
-						Ok(obj) => Arc::new(obj),
-						Err(e) => {
-							tracing::error!("failed loading object from backend: {e}");
-							return None;
-						},
-					};
-					if let Ok(author) = obj.attributed_to().id() {
-						if let Ok(user) = Http::fetch::<serde_json::Value>(
-							&Uri::api(U::Actor, author, true), auth
-						).await {
-							cache::OBJECTS.store(&Uri::full(U::Actor, author), Arc::new(user));
-						}
-					}
-					cache::OBJECTS.store(&Uri::full(U::Object, &oid), obj.clone());
-					obj
-				}
-			};
-			if let Ok(ctx) = obj.context().id() {
-				let tl_url = format!("{}/context/page", Uri::api(U::Object, ctx, false));
-				if !feeds.context.next.get_untracked().starts_with(&tl_url) {
-					feeds.context.reset(Some(tl_url));
-				}
+			let obj = cache::OBJECTS.resolve(&oid, U::Object, auth).await?;
+			if let Ok(author) = obj.attributed_to().id() {
+				cache::OBJECTS.resolve(&author, U::Actor, auth).await;
 			}
-
 			Some(obj)
+
+			// if let Ok(ctx) = obj.context().id() {
+			// 	let tl_url = format!("{}/context/page", Uri::api(U::Object, ctx, false));
+			// 	if !feeds.context.next.get_untracked().starts_with(&tl_url) {
+			// 		feeds.context.reset(Some(tl_url));
+			// 	}
+			// }
 		}
 	);
 
