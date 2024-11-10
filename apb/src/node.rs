@@ -133,6 +133,20 @@ impl<T : super::Base> Node<T> {
 
 #[cfg(feature = "unstructured")]
 impl Node<serde_json::Value> {
+	pub fn into_inner(self) -> serde_json::Value {
+		match self {
+			Self::Object(x) => *x,
+			Self::Link(l) => serde_json::Value::String(l.href().unwrap_or_default().to_string()),
+			Self::Empty => serde_json::Value::Null,
+			Self::Array(arr) => serde_json::Value::Array(
+				arr
+					.into_iter()
+					.map(|x| x.into_inner())
+					.collect()
+			),
+		}
+	}
+
 	pub fn link(uri: String) -> Self {
 		Node::Link(Box::new(uri))
 	}
