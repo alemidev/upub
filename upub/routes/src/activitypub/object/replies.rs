@@ -1,7 +1,7 @@
 use apb::{BaseMut, CollectionMut, LD};
 use axum::extract::{Path, Query, State};
 use sea_orm::{ColumnTrait, Condition, QueryFilter, QuerySelect, SelectColumns};
-use upub::{model, Context};
+use upub::{model, traits::Fetcher, Context};
 
 use crate::{activitypub::{Pagination, TryFetch}, builders::JsonLD, AuthIdentity};
 
@@ -9,11 +9,17 @@ pub async fn get(
 	State(ctx): State<Context>,
 	Path(id): Path<String>,
 	AuthIdentity(auth): AuthIdentity,
-	Query(_q): Query<TryFetch>,
+	Query(q): Query<TryFetch>,
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
-	// if auth.is_local() && q.fetch {
-	// 	ctx.fetch_thread(&oid).await?;
-	// }
+	let oid = ctx.oid(&id);
+	if auth.is_local() && q.fetch {
+		// TODO a task should do this, not the web handler!
+		//      so we dont keep clients waiting and we limit
+		//      concurrent possible crawlers
+		//      however the results given immediately would
+		//      become inaccurate!!
+		ctx.fetch_thread(&oid, ctx.db()).await?;
+	}
 
 	let replies_ids = upub::Query::objects(auth.my_id())
 		.filter(auth.filter())
