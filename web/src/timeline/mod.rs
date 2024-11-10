@@ -84,6 +84,9 @@ impl Timeline {
 				feed_url + "?replies=false"
 			};
 		}
+		if auth.present() {
+			feed_url += "&fetch=true";
+		}
 		let collection : serde_json::Value = Http::fetch(&feed_url, auth).await?;
 		let activities : Vec<serde_json::Value> = collection
 			.ordered_items()
