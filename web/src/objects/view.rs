@@ -41,9 +41,22 @@ pub fn ObjectView() -> impl IntoView {
 				<hr class="color ma-2" />
 				<code class="cw color center mt-1 mb-1 ml-3 mr-3">
 					<a class="clean" href=format!("{base}/context")><span class="emoji">"🕸️"</span>" "<b>context</b></a>" | "<a class="clean" href=format!("{base}/replies")><span class="emoji">"📫"</span>" "<b>replies</b></a>
+					{if auth.present() {
+						Some(view! {
+							" | "<a class="clean" href="#crawl" on:click=move |_| crawl(base.clone(), auth) ><span class="emoji">"↺"</span></a>
+						})
+					} else { None }}
 				</code>
 				<Outlet />
 			}.into_view()
 		},
 	}}
+}
+
+fn crawl(base: String, auth: Auth) {
+	spawn_local(async move {
+		if let Err(e) = Http::fetch::<serde_json::Value>(&format!("{base}/replies?fetch=true"), auth).await {
+			tracing::error!("failed crawling replies for {base}: {e}");
+		}
+	});
 }
