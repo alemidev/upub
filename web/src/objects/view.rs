@@ -35,7 +35,9 @@ pub fn ObjectView() -> impl IntoView {
 		},
 		Some(Some(o)) => {
 			let object = o.clone();
-			let base = Uri::web(U::Object, o.id().unwrap_or_default());
+			let oid = o.id().unwrap_or_default();
+			let base = Uri::web(U::Object, oid);
+			let api = Uri::api(U::Object, oid, false);
 			view!{
 				<Object object=object />
 				<hr class="color ma-2" />
@@ -43,7 +45,7 @@ pub fn ObjectView() -> impl IntoView {
 					<a class="clean" href=format!("{base}/context")><span class="emoji">"🕸️"</span>" "<b>context</b></a>" | "<a class="clean" href=format!("{base}/replies")><span class="emoji">"📫"</span>" "<b>replies</b></a>
 					{if auth.present() {
 						Some(view! {
-							" | "<a class="clean" href="#crawl" on:click=move |_| crawl(base.clone(), auth) ><span class="emoji">"↺"</span></a>
+							" | "<a class="clean" href="#crawl" on:click=move |_| crawl(api.clone(), auth) ><span class="emoji">"↺"</span></a>
 						})
 					} else { None }}
 				</code>
@@ -55,7 +57,7 @@ pub fn ObjectView() -> impl IntoView {
 
 fn crawl(base: String, auth: Auth) {
 	spawn_local(async move {
-		if let Err(e) = Http::fetch::<serde_json::Value>(&format!("{URL_BASE}{base}/replies?fetch=true"), auth).await {
+		if let Err(e) = Http::fetch::<serde_json::Value>(&format!("{base}/replies?fetch=true"), auth).await {
 			tracing::error!("failed crawling replies for {base}: {e}");
 		}
 	});
