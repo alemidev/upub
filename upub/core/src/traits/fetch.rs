@@ -404,13 +404,17 @@ impl Fetcher for crate::Context {
 	async fn fetch_thread(&self, id: &str, tx: &impl ConnectionTrait) -> Result<(), RequestError> {
 		tracing::info!("crawling replies of '{id}'");
 		let object = self.pull(id).await?.object()?;
+		tracing::info!("pulled object {object:?}");
 		let replies = object.replies().resolve(self).await?;
+		tracing::info!("resolved replies {replies:?}");
 
 		let mut page;
 		let mut next = replies.first();
+		tracing::info!("first next: {next:?}");
 
 		loop {
 			page = next.resolve(self).await?;
+			tracing::info!("resolved next page: {page:?}");
 
 			// fix for mastodon: at some point it introduces ?only_other_accounts=true and then returns a
 			// collection, not a page anymore ???
@@ -431,6 +435,7 @@ impl Fetcher for crate::Context {
 			}
 
 			next = page.next();
+			tracing::info!("next page: {next:?}");
 			if next.is_empty() { break };
 		}
 
