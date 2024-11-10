@@ -180,6 +180,7 @@ pub fn App() -> impl IntoView {
 										<Route path="objects/:id" view=ObjectView >
 											<Route path="" view=ObjectContext />
 											<Route path="replies" view=ObjectReplies />
+											<Route path="context" view=ObjectContext />
 											// <Route path="liked" view=ObjectLiked />
 											// <Route path="announced" view=ObjectAnnounced />
 										</Route>
