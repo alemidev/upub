@@ -464,26 +464,28 @@ async fn resolve_object_r(ctx: &crate::Context, object: serde_json::Value, depth
 }
 
 #[allow(async_fn_in_trait)]
-pub trait Fetchable : Sync + Send {
-	async fn fetch(&mut self, ctx: &crate::Context) -> Result<&mut Self, RequestError>;
+pub trait Dereferenceable<T> : Sync + Send {
+	async fn resolve(self, ctx: &crate::Context) -> Result<T, RequestError>;
 }
 
-impl Fetchable for apb::Node<serde_json::Value> {
-	async fn fetch(&mut self, ctx: &crate::Context) -> Result<&mut Self, RequestError> {
-		if let apb::Node::Link(uri) = self {
-			if let Ok(href) = uri.href() {
-				*self = crate::Context::request(Method::GET, href, None, ctx.base(), ctx.pkey(), ctx.domain())
+impl Dereferenceable<serde_json::Value> for apb::Node<serde_json::Value> {
+	async fn resolve(self, ctx: &crate::Context) -> Result<serde_json::Value, RequestError> {
+		match self {
+			apb::Node::Link(uri) => {
+				let href = uri.href()?;
+				tracing::info!("dereferencing {href}");
+				let res = crate::Context::request(Method::GET, href, None, ctx.base(), ctx.pkey(), ctx.domain())
 					.await?
 					.json::<serde_json::Value>()
-					.await?
-					.into();
-			}
+					.await?;
+				Ok(res)
+			},
+			apb::Node::Object(x) => Ok(*x),
+			apb::Node::Empty => Err(RequestError::Tombstone),
+			apb::Node::Array(_) => Err(RequestError::Malformed(apb::FieldErr("id"))), // TODO weird!!
 		}
-
-		Ok(self)
 	}
 }
-
 // #[async_recursion::async_recursion]
 // async fn crawl_replies(ctx: &crate::Context, id: &str, depth: usize) -> Result<(), PullError> {
 // 	tracing::info!("crawling replies of '{id}'");
