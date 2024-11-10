@@ -418,7 +418,7 @@ impl Fetcher for crate::Context {
 
 			// fix for mastodon: at some point it introduces ?only_other_accounts=true and then returns a
 			// collection, not a page anymore ???
-			if matches!(page.object_type()?, apb::ObjectType::Collection(..)) {
+			if matches!(page.object_type()?, apb::ObjectType::Collection(apb::CollectionType::Collection)) {
 				page = page.first().extract().ok_or(RequestError::Tombstone)?;
 			}
 
