@@ -42,6 +42,9 @@ pub fn ActorHeader() -> impl IntoView {
 				Some(view! { <sup class="ml-s"><small>"["{actor_type.as_ref().to_lowercase()}"]"</small></sup> } )
 			};
 			let fields = actor.attachment()
+				.flat()
+				.into_iter()
+				.filter_map(|x| x.extract())
 				.map(|x| view! {
 					<tr>
 						<td class="w-25"><b class="color">{x.name().str().unwrap_or_default()}</b></td>

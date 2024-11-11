@@ -15,6 +15,9 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 	let public = addressed.iter().any(|x| x.as_str() == apb::target::PUBLIC);
 	let external_url = object.url().id().str().unwrap_or_else(|| oid.clone());
 	let attachments = object.attachment()
+		.flat()
+		.into_iter()
+		.filter_map(|x| x.extract()) // TODO maybe show links?
 		.map(|x| view! { <Attachment object=x sensitive=sensitive /> })
 		.collect_view();
 	let comments = object.replies().get()

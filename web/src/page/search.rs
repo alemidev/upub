@@ -35,7 +35,17 @@ pub fn SearchPage() -> impl IntoView {
 			let search = format!("{URL_BASE}/search?q={q}");
 			async move {
 				let items = Http::fetch::<serde_json::Value>(&search, auth).await.ok()?;
-				Some(crate::timeline::process_activities(items.ordered_items().collect(), auth).await)
+				Some(
+					crate::timeline::process_activities(
+						items
+							.ordered_items()
+							.flat()
+							.into_iter()
+							.filter_map(|x| x.extract())
+							.collect(),
+						auth
+					).await
+				)
 			}
 		}
 	);

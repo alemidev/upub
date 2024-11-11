@@ -41,32 +41,6 @@ impl<T : super::Base> From<Option<T>> for Node<T> {
 	}
 }
 
-impl<T : super::Base> Iterator for Node<T> {
-	type Item = T;
-
-	fn next(&mut self) -> Option<Self::Item> {
-		match std::mem::replace(self, Self::Empty) {
-			Self::Empty => None,
-			Self::Object(res) => Some(*res),
-			Self::Link(lnk) => {
-				*self = Self::Link(lnk);
-				None
-			},
-			Self::Array(mut arr) => {
-				let mut out = None;
-				while let Some(res) = arr.pop_front() {
-					if let Some(inner) = res.extract() {
-						out = Some(inner);
-						break;
-					}
-				}
-				*self = Self::Array(arr);
-				out
-			}
-		}
-	}
-}
-
 impl<T : super::Base> Node<T> {
 	/// return reference to embedded object (or first if many are present)
 	pub fn get(&self) -> Option<&T> {

@@ -87,6 +87,9 @@ impl Timeline {
 		let collection : serde_json::Value = Http::fetch(&feed_url, auth).await?;
 		let activities : Vec<serde_json::Value> = collection
 			.ordered_items()
+			.flat()
+			.into_iter()
+			.filter_map(|x| x.extract())
 			.collect();
 	
 		let mut feed = self.feed.get_untracked();
