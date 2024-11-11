@@ -61,7 +61,7 @@ impl<T : super::Base> Node<T> {
 	}
 
 	/// true only if Node is empty
-	pub fn is_nothing(&self) -> bool {
+	pub fn is_empty(&self) -> bool {
 		matches!(self, Node::Empty)
 	}
 
@@ -79,12 +79,6 @@ impl<T : super::Base> Node<T> {
 	pub fn is_array(&self) -> bool {
 		matches!(self, Node::Array(_))
 	}
-
-	/// true only if Node is empty
-	pub fn is_empty(&self) -> bool {
-		self.len() == 0
-	}
-
 
 	/// returns number of contained items (links count as items for len)
 	pub fn len(&self) -> usize {
