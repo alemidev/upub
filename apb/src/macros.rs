@@ -311,7 +311,7 @@ pub fn set_maybe_node(obj: &mut serde_json::Value, key: &str, node: crate::Node<
 	if node.is_empty() {
 		set_maybe_value(obj, key, None)
 	} else {
-		set_maybe_value(obj, key, Some(node.into_inner()))
+		set_maybe_value(obj, key, Some(node.into_value()))
 	}
 }
 
