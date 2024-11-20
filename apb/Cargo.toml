@@ -23,7 +23,7 @@ sea-orm = { version = "1.0", optional = true, default-features = false }
 reqwest = { version = "0.12", features = ["json"], optional = true }
 
 [features]
-default = ["activitypub-miscellaneous-terms", "send"]
+default = ["activitypub-miscellaneous-terms", "send", "shortcuts"]
 # extensions
 activitypub-miscellaneous-terms = [] # https://swicg.github.io/miscellany/
 activitypub-counters = [] # https://ns.alemi.dev/as/counters/#
@@ -38,6 +38,7 @@ jsonld = []
 send = []
 orm = ["dep:sea-orm"]
 fetch = ["dep:reqwest"]
+shortcuts = []
 # providers
 unstructured = ["dep:serde_json"]
 #TODO eventually also make a structured base?

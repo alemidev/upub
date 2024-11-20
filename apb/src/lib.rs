@@ -104,6 +104,11 @@ pub use key::{PublicKey, PublicKeyMut};
 pub mod field;
 pub use field::{Field, FieldErr};
 
+#[cfg(feature = "shortcuts")]
+pub mod shortcuts;
+#[cfg(feature = "shortcuts")]
+pub use shortcuts::Shortcuts;
+
 #[cfg(feature = "jsonld")]
 mod jsonld;
 
