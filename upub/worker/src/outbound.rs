@@ -46,7 +46,7 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 		.set_published(Some(now));
 
 	if matches!(t, apb::ObjectType::Activity(apb::ActivityType::Undo)) {
-		let mut undone = activity.object().extract().ok_or(crate::JobError::MissingPayload)?;
+		let mut undone = activity.object().into_inner()?;
 		if undone.id().is_err() {
 			let undone_target = undone.object().id().str().ok_or(crate::JobError::MissingPayload)?;
 			let undone_type = undone.activity_type().map_err(|_| crate::JobError::MissingPayload)?;
@@ -74,7 +74,7 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 	}
 
 	if matches!(t, apb::ObjectType::Activity(apb::ActivityType::Update)) {
-		let mut updated = activity.object().extract().ok_or(crate::JobError::MissingPayload)?;
+		let mut updated = activity.object().into_inner()?;
 		match updated.object_type()? {
 			apb::ObjectType::Actor(_) => {
 				let mut prev = model::actor::Entity::find_by_ap_id(updated.id()?)
@@ -95,7 +95,7 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 					prev.fields = updated.attachment()
 						.flat()
 						.into_iter()
-						.filter_map(|x| x.extract())
+						.filter_map(|x| x.into_inner().ok())
 						.map(Field::from)
 						.collect::<Vec<Field>>()
 						.into();
@@ -133,7 +133,7 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 		let raw_oid = Context::new_id();
 		let oid = ctx.oid(&raw_oid);
 		// object must be embedded, wont dereference here
-		let object = activity.object().extract().ok_or(apb::FieldErr("object"))?;
+		let object = activity.object().into_inner()?;
 		// TODO regex hell here i come...
 		let re = regex::Regex::new(r"@(.+)@([^ ]+)").expect("failed compiling regex pattern");
 		let mut content = object.content().map(|x| x.to_string()).ok();

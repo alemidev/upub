@@ -1,5 +1,6 @@
-use apb::{field::OptionalString, Collection, Document, Endpoints, Node, Object, PublicKey};
+use apb::{field::OptionalString, Document, Endpoints, Node, Object, PublicKey};
 use sea_orm::{sea_query::Expr, ActiveModelTrait, ActiveValue::{Unchanged, NotSet, Set}, ColumnTrait, ConnectionTrait, DbErr, EntityTrait, IntoActiveModel, QueryFilter};
+use crate::ext::Shortcuts;
 
 use super::{Cloaker, Fetcher};
 
@@ -310,19 +311,16 @@ impl AP {
 			name: object.name().str(),
 			summary: object.summary().str(),
 			content: object.content().str(),
-			image: object.image().get().and_then(|x| x.url().id().str()),
+			image: object.image_url().ok(),
 			context: object.context().id().str(),
 			in_reply_to: object.in_reply_to().id().str(),
 			quote: object.quote_url().id().str(),
 			published: object.published().unwrap_or_else(|_| chrono::Utc::now()),
 			updated: object.updated().unwrap_or_else(|_| chrono::Utc::now()),
 			url: object.url().id().str(),
-			replies: object.replies().get()
-				.map_or(0, |x| x.total_items().unwrap_or(0)) as i32,
-			likes: object.likes().get()
-				.map_or(0, |x| x.total_items().unwrap_or(0)) as i32,
-			announces: object.shares().get()
-				.map_or(0, |x| x.total_items().unwrap_or(0)) as i32,
+			replies: object.replies_count().unwrap_or_default(),
+			likes: object.likes_count().unwrap_or_default(),
+			announces: object.shares_count().unwrap_or_default(),
 			audience: object.audience().id().str(),
 			to: object.to().all_ids().into(),
 			bto: object.bto().all_ids().into(),
@@ -368,11 +366,11 @@ impl AP {
 			actor_type: actor.actor_type()?,
 			name: actor.name().str(),
 			summary: actor.summary().str(),
-			icon: actor.icon().get().and_then(|x| x.url().id().str()),
-			image: actor.image().get().and_then(|x| x.url().id().str()),
+			icon: actor.icon_url().ok(),
+			image: actor.image_url().ok(),
 			inbox: actor.inbox().id().str(),
 			outbox: actor.outbox().id().str(),
-			shared_inbox: actor.endpoints().get().and_then(|x| x.shared_inbox().str()),
+			shared_inbox: actor.endpoints().inner().and_then(|x| x.shared_inbox()).map(|x| x.to_string()).ok(),
 			followers: actor.followers().id().str(),
 			following: actor.following().id().str(),
 			also_known_as: actor.also_known_as().flat().into_iter().filter_map(|x| x.id().str()).collect::<Vec<String>>().into(),
@@ -382,12 +380,12 @@ impl AP {
 			following_count: actor.following_count().unwrap_or(0) as i32,
 			followers_count: actor.followers_count().unwrap_or(0) as i32,
 			statuses_count: actor.statuses_count().unwrap_or(0) as i32,
-			public_key: actor.public_key().get().ok_or(apb::FieldErr("publicKey"))?.public_key_pem().to_string(),
+			public_key: actor.public_key().inner()?.public_key_pem().to_string(),
 			private_key: None, // there's no way to transport privkey over AP json, must come from DB
 			fields: actor.attachment()
 				.flat()
 				.into_iter()
-				.filter_map(|x| Some(crate::model::actor::Field::from(x.extract()?)))
+				.filter_map(|x| Some(crate::model::actor::Field::from(x.into_inner().ok()?)))
 				.collect::<Vec<crate::model::actor::Field>>()
 				.into(),
 		})

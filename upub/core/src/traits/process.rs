@@ -55,7 +55,7 @@ impl Processor for crate::Context {
 }
 
 pub async fn create(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
-	let Some(object_node) = activity.object().extract() else {
+	let Ok(object_node) = activity.object().into_inner() else {
 		// TODO we could process non-embedded activities or arrays but im lazy rn
 		tracing::error!("refusing to process activity without embedded object");
 		return Err(ProcessorError::Unprocessable(activity.id()?.to_string()));
@@ -356,7 +356,7 @@ pub async fn delete(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 
 pub async fn update(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 	// TODO when attachments get updated we do nothing!!!!!!!!!!
-	let Some(object_node) = activity.object().extract() else {
+	let Ok(object_node) = activity.object().into_inner() else {
 		tracing::error!("refusing to process activity without embedded object");
 		return Err(ProcessorError::Unprocessable(activity.id()?.to_string()));
 	};
@@ -415,9 +415,7 @@ pub async fn update(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 
 pub async fn undo(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 	// TODO in theory we could work with just object_id but right now only accept embedded
-	let undone_activity = activity.object()
-		.extract()
-		.ok_or(apb::FieldErr("object"))?;
+	let undone_activity = activity.object().into_inner()?;
 
 	let uid = activity.actor().id()?.to_string();
 	let internal_uid = crate::model::actor::Entity::ap_to_internal(&uid, tx)

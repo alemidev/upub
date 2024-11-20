@@ -4,7 +4,7 @@ use apb::{Activity, Actor, ActorMut, Base, Collection, CollectionPage, Object};
 use reqwest::{header::{ACCEPT, CONTENT_TYPE, USER_AGENT}, Method, Response};
 use sea_orm::{ActiveValue::Set, ColumnTrait, ConnectionTrait, DbErr, EntityTrait, IntoActiveModel, NotSet, QueryFilter};
 
-use crate::traits::normalize::AP;
+use crate::{ext::Shortcuts, traits::normalize::AP};
 
 use super::{Addresser, Cloaker, Normalizer};
 use httpsign::HttpSignature;
@@ -414,7 +414,7 @@ impl Fetcher for crate::Context {
 			// fix for mastodon: at some point it introduces ?only_other_accounts=true and then returns a
 			// collection, not a page anymore ???
 			if matches!(page.object_type()?, apb::ObjectType::Collection(apb::CollectionType::Collection)) {
-				page = page.first().extract().ok_or(RequestError::Tombstone)?;
+				page = page.first().into_inner()?;
 			}
 
 			for obj in page.items().flat() {
