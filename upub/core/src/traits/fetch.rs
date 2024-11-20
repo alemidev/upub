@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use apb::{Activity, Actor, ActorMut, Base, Collection, CollectionPage, Object};
 use reqwest::{header::{ACCEPT, CONTENT_TYPE, USER_AGENT}, Method, Response};
-use sea_orm::{ActiveValue::Set, ColumnTrait, ConnectionTrait, DbErr, EntityTrait, IntoActiveModel, NotSet, QueryFilter};
+use sea_orm::{ActiveValue::Set, ColumnTrait, ConnectionTrait, DbErr, EntityTrait, IntoActiveModel, NotSet, QueryFilter, ActiveModelTrait};
 
 use crate::{ext::Shortcuts, traits::normalize::AP};
 
@@ -403,6 +403,29 @@ impl Fetcher for crate::Context {
 
 	async fn fetch_thread(&self, id: &str, tx: &impl ConnectionTrait) -> Result<(), RequestError> {
 		let object = self.pull(id).await?.object()?;
+
+		// also update object stats since we're pulling it again
+		let model = self.fetch_object(id, tx).await?;
+		let mut active = model.clone().into_active_model();
+		let mut changed = false;
+
+		let new_like_count = object.likes_count().unwrap_or_default();
+		if new_like_count > model.likes {
+			active.likes = Set(new_like_count);
+			changed = true;
+		}
+
+		let new_share_count = object.shares_count().unwrap_or_default();
+		if new_share_count > model.announces {
+			active.announces = Set(new_share_count);
+			changed = true;
+		}
+
+		if changed {
+			active.update(tx).await?;
+		}
+
+		// crawl replies collection
 		let replies = object.replies().resolve(self).await?;
 
 		let mut page;
