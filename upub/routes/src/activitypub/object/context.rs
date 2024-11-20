@@ -27,13 +27,14 @@ pub async fn page(
 	AuthIdentity(auth): AuthIdentity,
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let context = ctx.oid(&id);
-	let limit = page.batch.unwrap_or(20).min(50);
+	let limit = page.batch.unwrap_or(50).min(50);
 	let offset = page.offset.unwrap_or(0);
 
 	let items = upub::Query::objects(auth.my_id())
 		.filter(auth.filter())
 		.filter(model::object::Column::Context.eq(context))
-		.order_by(model::object::Column::Published, Order::Desc)
+		// note that this should be ASC so we get replies somewhat ordered
+		.order_by(model::object::Column::Published, Order::Asc)
 		.limit(limit)
 		.offset(offset)
 		.into_model::<RichActivity>()
