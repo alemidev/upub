@@ -137,11 +137,12 @@ macro_rules! getter {
 		}
 	};
 
-	($name:ident -> &str) => {
+	($name:ident -> String) => {
 		paste::paste! {
-			fn [< $name:snake >](&self) -> $crate::Field<&str> {
+			fn [< $name:snake >](&self) -> $crate::Field<String> {
 				self.get(stringify!($name))
 					.and_then(|x| x.as_str())
+					.map(|x| x.to_string())
 					.ok_or($crate::FieldErr(stringify!($name)))
 			}
 		}
@@ -225,11 +226,11 @@ macro_rules! setter {
 		}
 	};
 
-	($name:ident -> &str) => {
+	($name:ident -> String) => {
 		paste::item! {
-			fn [< set_$name:snake >](mut self, val: Option<&str>) -> Self {
+			fn [< set_$name:snake >](mut self, val: Option<String>) -> Self {
 				$crate::macros::set_maybe_value(
-					&mut self, stringify!($name), val.map(|x| serde_json::Value::String(x.to_string()))
+					&mut self, stringify!($name), val.map(|x| serde_json::Value::String(x))
 				);
 				self
 			}

@@ -52,14 +52,14 @@ pub trait Object : Base {
 	/// The content or textual representation of the Object encoded as a JSON string. By default, the value of content is HTML
 	/// The mediaType property can be used in the object to indicate a different content type
 	/// The content MAY be expressed using multiple language-tagged values
-	fn content(&self) -> Field<&str> { Err(FieldErr("content")) } // TODO handle language maps
+	fn content(&self) -> Field<String> { Err(FieldErr("content")) } // TODO handle language maps
 	/// Identifies the context within which the object exists or an activity was performed
 	/// The notion of "context" used is intentionally vague
 	/// The intended function is to serve as a means of grouping objects and activities that share a common originating context or purpose
 	/// An example could be all activities relating to a common project or event
 	fn context(&self) -> Node<Self::Object> { Node::Empty } 
 	/// A simple, human-readable, plain-text name for the object. HTML markup MUST NOT be included. The name MAY be expressed using multiple language-tagged values
-	fn name(&self) -> Field<&str> { Err(FieldErr("name")) }       // also in link // TODO handle language maps
+	fn name(&self) -> Field<String> { Err(FieldErr("name")) }       // also in link // TODO handle language maps
 	/// The date and time describing the actual or expected ending time of the object
 	/// When used with an Activity object, for instance, the endTime property specifies the moment the activity concluded or is expected to conclude. 
 	fn end_time(&self) -> Field<chrono::DateTime<chrono::Utc>> { Err(FieldErr("endTime")) }
@@ -89,7 +89,7 @@ pub trait Object : Base {
 	/// When used with an Activity object, for instance, the startTime property specifies the moment the activity began or is scheduled to begin. 
 	fn start_time(&self) -> Field<chrono::DateTime<chrono::Utc>> { Err(FieldErr("startTime")) }
 	/// A natural language summarization of the object encoded as HTML. Multiple language tagged summaries MAY be provided
-	fn summary(&self) -> Field<&str> { Err(FieldErr("summary")) }
+	fn summary(&self) -> Field<String> { Err(FieldErr("summary")) }
 	/// One or more "tags" that have been associated with an objects. A tag can be any kind of Object
 	/// The key difference between attachment and tag is that the former implies association by inclusion, while the latter implies associated by reference
 	// TODO technically this is an object? but spec says that it works my reference, idk
@@ -107,10 +107,10 @@ pub trait Object : Base {
 	/// When used on a Link, identifies the MIME media type of the referenced resource.
 	/// When used on an Object, identifies the MIME media type of the value of the content property.
 	/// If not specified, the content property is assumed to contain text/html content. 
-	fn media_type(&self) -> Field<&str> { Err(FieldErr("mediaType")) } // also in link
+	fn media_type(&self) -> Field<String> { Err(FieldErr("mediaType")) } // also in link
 	/// When the object describes a time-bound resource, such as an audio or video, a meeting, etc, the duration property indicates the object's approximate duration.
 	/// The value MUST be expressed as an xsd:duration as defined by [ xmlschema11-2], section 3.3.6 (e.g. a period of 5 seconds is represented as "PT5S"). 
-	fn duration(&self) -> Field<&str> { Err(FieldErr("duration")) } // TODO how to parse xsd:duration ?
+	fn duration(&self) -> Field<String> { Err(FieldErr("duration")) } // TODO how to parse xsd:duration ?
 
 	#[cfg(feature = "activitypub-miscellaneous-terms")]
 	fn sensitive(&self) -> Field<bool> { Err(FieldErr("sensitive")) }
@@ -129,7 +129,7 @@ pub trait Object : Base {
 	fn as_document(&self) -> Result<&Self::Document, FieldErr> { Err(FieldErr("type")) }
 
 	#[cfg(feature = "did-core")] // TODO this isn't from did-core actually!?!?!?!?!
-	fn value(&self) -> Field<&str> { Err(FieldErr("value")) }
+	fn value(&self) -> Field<String> { Err(FieldErr("value")) }
 }
 
 pub trait ObjectMut : BaseMut {
@@ -143,9 +143,9 @@ pub trait ObjectMut : BaseMut {
 	fn set_attachment(self, val: Node<Self::Object>) -> Self;
 	fn set_attributed_to(self, val: Node<Self::Actor>) -> Self;
 	fn set_audience(self, val: Node<Self::Actor>) -> Self;
-	fn set_content(self, val: Option<&str>) -> Self; // TODO handle language maps
+	fn set_content(self, val: Option<String>) -> Self; // TODO handle language maps
 	fn set_context(self, val: Node<Self::Object>) -> Self; 
-	fn set_name(self, val: Option<&str>) -> Self;       // also in link // TODO handle language maps
+	fn set_name(self, val: Option<String>) -> Self;       // also in link // TODO handle language maps
 	fn set_end_time(self, val: Option<chrono::DateTime<chrono::Utc>>) -> Self;
 	fn set_generator(self, val: Node<Self::Actor>) -> Self;
 	fn set_icon(self, val: Node<Self::Document>) -> Self;
@@ -159,15 +159,15 @@ pub trait ObjectMut : BaseMut {
 	fn set_likes(self, val: Node<Self::Collection>) -> Self;
 	fn set_shares(self, val: Node<Self::Collection>) -> Self;
 	fn set_start_time(self, val: Option<chrono::DateTime<chrono::Utc>>) -> Self;
-	fn set_summary(self, val: Option<&str>) -> Self;
+	fn set_summary(self, val: Option<String>) -> Self;
 	fn set_tag(self, val: Node<Self::Object>) -> Self;
 	fn set_url(self, val: Node<Self::Link>) -> Self;
 	fn set_to(self, val: Node<Self::Link>) -> Self;
 	fn set_bto(self, val: Node<Self::Link>) -> Self;
 	fn set_cc(self, val: Node<Self::Link>) -> Self;
 	fn set_bcc(self, val: Node<Self::Link>) -> Self;
-	fn set_media_type(self, val: Option<&str>) -> Self; // also in link
-	fn set_duration(self, val: Option<&str>) -> Self; // TODO how to parse xsd:duration ?
+	fn set_media_type(self, val: Option<String>) -> Self; // also in link
+	fn set_duration(self, val: Option<String>) -> Self; // TODO how to parse xsd:duration ?
 
 	#[cfg(feature = "activitypub-miscellaneous-terms")]
 	fn set_sensitive(self, val: Option<bool>) -> Self;
@@ -181,7 +181,7 @@ pub trait ObjectMut : BaseMut {
 	fn set_conversation(self, val: Node<Self::Object>) -> Self;
 
 	#[cfg(feature = "did-core")] // TODO this isn't from did-core actually!?!?!?!?!
-	fn set_value(self, val: Option<&str>) -> Self;
+	fn set_value(self, val: Option<String>) -> Self;
 }
 
 #[cfg(feature = "unstructured")]
@@ -197,9 +197,9 @@ impl Object for serde_json::Value {
 	crate::getter! { attachment -> node <Self as Object>::Object }
 	crate::getter! { attributedTo -> node Self::Actor }
 	crate::getter! { audience -> node Self::Actor }
-	crate::getter! { content -> &str }
+	crate::getter! { content -> String }
 	crate::getter! { context -> node <Self as Object>::Object }
-	crate::getter! { name -> &str }
+	crate::getter! { name -> String }
 	crate::getter! { endTime -> chrono::DateTime<chrono::Utc> }
 	crate::getter! { generator -> node Self::Actor }
 	crate::getter! { icon -> node Self::Document }
@@ -213,14 +213,14 @@ impl Object for serde_json::Value {
 	crate::getter! { likes -> node Self::Collection }
 	crate::getter! { shares -> node Self::Collection }
 	crate::getter! { startTime -> chrono::DateTime<chrono::Utc> }
-	crate::getter! { summary -> &str }
+	crate::getter! { summary -> String }
 	crate::getter! { tag -> node <Self as Object>::Object }
 	crate::getter! { to -> node Self::Link }
 	crate::getter! { bto -> node Self::Link }
 	crate::getter! { cc -> node Self::Link }
 	crate::getter! { bcc -> node Self::Link }
-	crate::getter! { mediaType -> &str }
-	crate::getter! { duration -> &str }
+	crate::getter! { mediaType -> String }
+	crate::getter! { duration -> String }
 	crate::getter! { url -> node Self::Link }
 
 	#[cfg(feature = "activitypub-miscellaneous-terms")]
@@ -235,7 +235,7 @@ impl Object for serde_json::Value {
 	crate::getter! { conversation -> node <Self as Object>::Object }
 
 	#[cfg(feature = "did-core")] // TODO this isn't from did-core actually!?!?!?!?!
-	crate::getter! { value -> &str }
+	crate::getter! { value -> String }
 
 	fn as_activity(&self) -> Result<&Self::Activity, FieldErr> {
 		match self.object_type()? {
@@ -278,9 +278,9 @@ impl ObjectMut for serde_json::Value {
 	crate::setter! { attachment -> node <Self as Object>::Object }
 	crate::setter! { attributedTo -> node Self::Actor }
 	crate::setter! { audience -> node Self::Actor }
-	crate::setter! { content -> &str }
+	crate::setter! { content -> String }
 	crate::setter! { context -> node <Self as Object>::Object }
-	crate::setter! { name -> &str }
+	crate::setter! { name -> String }
 	crate::setter! { endTime -> chrono::DateTime<chrono::Utc> }
 	crate::setter! { generator -> node Self::Actor }
 	crate::setter! { icon -> node Self::Document }
@@ -294,14 +294,14 @@ impl ObjectMut for serde_json::Value {
 	crate::setter! { likes -> node Self::Collection }
 	crate::setter! { shares -> node Self::Collection }
 	crate::setter! { startTime -> chrono::DateTime<chrono::Utc> }
-	crate::setter! { summary -> &str }
+	crate::setter! { summary -> String }
 	crate::setter! { tag -> node <Self as Object>::Object }
 	crate::setter! { to -> node Self::Link }
 	crate::setter! { bto -> node Self::Link}
 	crate::setter! { cc -> node Self::Link }
 	crate::setter! { bcc -> node Self::Link }
-	crate::setter! { mediaType -> &str }
-	crate::setter! { duration -> &str }
+	crate::setter! { mediaType -> String }
+	crate::setter! { duration -> String }
 	crate::setter! { url -> node Self::Link }
 
 	#[cfg(feature = "activitypub-miscellaneous-terms")]
@@ -316,5 +316,5 @@ impl ObjectMut for serde_json::Value {
 	crate::setter! { conversation -> node <Self as Object>::Object }
 
 	#[cfg(feature = "did-core")] // TODO this isn't from did-core actually!?!?!?!?!
-	crate::setter! { value -> &str }
+	crate::setter! { value -> String }
 }

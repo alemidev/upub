@@ -16,7 +16,7 @@ pub trait Actor : Object {
 
 	fn actor_type(&self) -> Field<ActorType> { Err(FieldErr("type")) }
 	/// A short username which may be used to refer to the actor, with no uniqueness guarantees.
-	fn preferred_username(&self) -> Field<&str> { Err(FieldErr("preferredUsername")) }
+	fn preferred_username(&self) -> Field<String> { Err(FieldErr("preferredUsername")) }
 	/// A reference to an [ActivityStreams] OrderedCollection comprised of all the messages received by the actor; see 5.2 Inbox. 
 	fn inbox(&self) -> Node<Self::Collection>;
 	/// An [ActivityStreams] OrderedCollection comprised of all the messages produced by the actor; see 5.1 Outbox. 
@@ -64,17 +64,17 @@ pub trait Actor : Object {
 
 pub trait Endpoints : Object {
 	/// Endpoint URI so this actor's clients may access remote ActivityStreams objects which require authentication to access. To use this endpoint, the client posts an x-www-form-urlencoded id parameter with the value being the id of the requested ActivityStreams object. 
-	fn proxy_url(&self) -> Field<&str> { Err(FieldErr("proxyUrl")) }
+	fn proxy_url(&self) -> Field<String> { Err(FieldErr("proxyUrl")) }
 	/// If OAuth 2.0 bearer tokens [RFC6749] [RFC6750] are being used for authenticating client to server interactions, this endpoint specifies a URI at which a browser-authenticated user may obtain a new authorization grant. 
-	fn oauth_authorization_endpoint(&self) -> Field<&str> { Err(FieldErr("oauthAuthorizationEndpoint")) }
+	fn oauth_authorization_endpoint(&self) -> Field<String> { Err(FieldErr("oauthAuthorizationEndpoint")) }
 	/// If OAuth 2.0 bearer tokens [RFC6749] [RFC6750] are being used for authenticating client to server interactions, this endpoint specifies a URI at which a client may acquire an access token. 
-	fn oauth_token_endpoint(&self) -> Field<&str> { Err(FieldErr("oauthTokenEndpoint")) }
+	fn oauth_token_endpoint(&self) -> Field<String> { Err(FieldErr("oauthTokenEndpoint")) }
 	/// If Linked Data Signatures and HTTP Signatures are being used for authentication and authorization, this endpoint specifies a URI at which browser-authenticated users may authorize a client's public key for client to server interactions. 
-	fn provide_client_key(&self) -> Field<&str> { Err(FieldErr("provideClientKey")) }
+	fn provide_client_key(&self) -> Field<String> { Err(FieldErr("provideClientKey")) }
 	/// If Linked Data Signatures and HTTP Signatures are being used for authentication and authorization, this endpoint specifies a URI at which a client key may be signed by the actor's key for a time window to act on behalf of the actor in interacting with foreign servers. 
-	fn sign_client_key(&self) -> Field<&str> { Err(FieldErr("signClientKey")) }
+	fn sign_client_key(&self) -> Field<String> { Err(FieldErr("signClientKey")) }
 	/// An optional endpoint used for wide delivery of publicly addressed activities and activities sent to followers. sharedInbox endpoints SHOULD also be publicly readable OrderedCollection objects containing objects addressed to the Public special collection. Reading from the sharedInbox endpoint MUST NOT present objects which are not addressed to the Public endpoint.
-	fn shared_inbox(&self) -> Field<&str> { Err(FieldErr("sharedInbox")) }
+	fn shared_inbox(&self) -> Field<String> { Err(FieldErr("sharedInbox")) }
 }
 
 pub trait ActorMut : ObjectMut {
@@ -82,7 +82,7 @@ pub trait ActorMut : ObjectMut {
 	type Endpoints : Endpoints;
 
 	fn set_actor_type(self, val: Option<ActorType>) -> Self;
-	fn set_preferred_username(self, val: Option<&str>) -> Self;
+	fn set_preferred_username(self, val: Option<String>) -> Self;
 	fn set_inbox(self, val: Node<Self::Collection>) -> Self;
 	fn set_outbox(self, val: Node<Self::Collection>) -> Self;
 	fn set_following(self, val: Node<Self::Collection>) -> Self;
@@ -122,17 +122,17 @@ pub trait ActorMut : ObjectMut {
 
 pub trait EndpointsMut : ObjectMut {
 	/// Endpoint URI so this actor's clients may access remote ActivityStreams objects which require authentication to access. To use this endpoint, the client posts an x-www-form-urlencoded id parameter with the value being the id of the requested ActivityStreams object. 
-	fn set_proxy_url(self, val: Option<&str>) -> Self;
+	fn set_proxy_url(self, val: Option<String>) -> Self;
 	/// If OAuth 2.0 bearer tokens [RFC6749] [RFC6750] are being used for authenticating client to server interactions, this endpoint specifies a URI at which a browser-authenticated user may obtain a new authorization grant. 
-	fn set_oauth_authorization_endpoint(self, val: Option<&str>) -> Self;
+	fn set_oauth_authorization_endpoint(self, val: Option<String>) -> Self;
 	/// If OAuth 2.0 bearer tokens [RFC6749] [RFC6750] are being used for authenticating client to server interactions, this endpoint specifies a URI at which a client may acquire an access token. 
-	fn set_oauth_token_endpoint(self, val: Option<&str>) -> Self;
+	fn set_oauth_token_endpoint(self, val: Option<String>) -> Self;
 	/// If Linked Data Signatures and HTTP Signatures are being used for authentication and authorization, this endpoint specifies a URI at which browser-authenticated users may authorize a client's public key for client to server interactions. 
-	fn set_provide_client_key(self, val: Option<&str>) -> Self;
+	fn set_provide_client_key(self, val: Option<String>) -> Self;
 	/// If Linked Data Signatures and HTTP Signatures are being used for authentication and authorization, this endpoint specifies a URI at which a client key may be signed by the actor's key for a time window to act on behalf of the actor in interacting with foreign servers. 
-	fn set_sign_client_key(self, val: Option<&str>) -> Self;
+	fn set_sign_client_key(self, val: Option<String>) -> Self;
 	/// An optional endpoint used for wide delivery of publicly addressed activities and activities sent to followers. sharedInbox endpoints SHOULD also be publicly readable OrderedCollection objects containing objects addressed to the Public special collection. Reading from the sharedInbox endpoint MUST NOT present objects which are not addressed to the Public endpoint.
-	fn set_shared_inbox(self, val: Option<&str>) -> Self;
+	fn set_shared_inbox(self, val: Option<String>) -> Self;
 }
 
 #[cfg(feature = "unstructured")]
@@ -141,7 +141,7 @@ impl Actor for serde_json::Value {
 	type Endpoints = serde_json::Value;
 
 	crate::getter! { actorType -> type ActorType }
-	crate::getter! { preferredUsername -> &str }
+	crate::getter! { preferredUsername -> String }
 	crate::getter! { inbox -> node Self::Collection }
 	crate::getter! { outbox -> node Self::Collection }
 	crate::getter! { following -> node Self::Collection }
@@ -181,12 +181,12 @@ impl Actor for serde_json::Value {
 
 #[cfg(feature = "unstructured")]
 impl Endpoints for serde_json::Value {
-	crate::getter! { proxyUrl -> &str }
-	crate::getter! { oauthAuthorizationEndpoint -> &str }
-	crate::getter! { oauthTokenEndpoint -> &str }
-	crate::getter! { provideClientKey -> &str }
-	crate::getter! { signClientKey -> &str }
-	crate::getter! { sharedInbox -> &str }
+	crate::getter! { proxyUrl -> String }
+	crate::getter! { oauthAuthorizationEndpoint -> String }
+	crate::getter! { oauthTokenEndpoint -> String }
+	crate::getter! { provideClientKey -> String }
+	crate::getter! { signClientKey -> String }
+	crate::getter! { sharedInbox -> String }
 }
 
 #[cfg(feature = "unstructured")]
@@ -195,7 +195,7 @@ impl ActorMut for serde_json::Value {
 	type Endpoints = serde_json::Value;
 
 	crate::setter! { actor_type -> type ActorType }
-	crate::setter! { preferredUsername -> &str }
+	crate::setter! { preferredUsername -> String }
 	crate::setter! { inbox -> node Self::Collection }
 	crate::setter! { outbox -> node Self::Collection }
 	crate::setter! { following -> node Self::Collection }
@@ -236,10 +236,10 @@ impl ActorMut for serde_json::Value {
 
 #[cfg(feature = "unstructured")]
 impl EndpointsMut for serde_json::Value {
-	crate::setter! { proxyUrl -> &str }
-	crate::setter! { oauthAuthorizationEndpoint -> &str }
-	crate::setter! { oauthTokenEndpoint -> &str }
-	crate::setter! { provideClientKey -> &str }
-	crate::setter! { signClientKey -> &str }
-	crate::setter! { sharedInbox -> &str }
+	crate::setter! { proxyUrl -> String }
+	crate::setter! { oauthAuthorizationEndpoint -> String }
+	crate::setter! { oauthTokenEndpoint -> String }
+	crate::setter! { provideClientKey -> String }
+	crate::setter! { signClientKey -> String }
+	crate::setter! { sharedInbox -> String }
 }

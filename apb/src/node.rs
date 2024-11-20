@@ -113,7 +113,7 @@ impl<T : super::Base> Node<T> {
 	}
 
 	/// returns id of object: url for link, id for object, None if empty or array
-	pub fn id(&self) -> crate::Field<&str> {
+	pub fn id(&self) -> crate::Field<String> {
 		match self {
 			Node::Empty => Err(crate::FieldErr("id")),
 			Node::Link(uri) => uri.href(),
