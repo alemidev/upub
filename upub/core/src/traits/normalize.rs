@@ -1,6 +1,5 @@
-use apb::{field::OptionalString, Document, Endpoints, Node, Object, PublicKey};
+use apb::{Document, Endpoints, Node, Object, PublicKey, Shortcuts};
 use sea_orm::{sea_query::Expr, ActiveModelTrait, ActiveValue::{Unchanged, NotSet, Set}, ColumnTrait, ConnectionTrait, DbErr, EntityTrait, IntoActiveModel, QueryFilter};
-use crate::ext::Shortcuts;
 
 use super::{Cloaker, Fetcher};
 
@@ -40,7 +39,7 @@ impl Normalizer for crate::Context {
 		// > kind of dumb. there should be a job system so this can be done in waves. or maybe there's
 		// > some whole other way to do this?? im thinking but misskey aaaa!! TODO
 		if let Ok(reply) = object.in_reply_to().id() {
-			if let Some(o) = crate::model::object::Entity::find_by_ap_id(reply).one(tx).await? {
+			if let Some(o) = crate::model::object::Entity::find_by_ap_id(&reply).one(tx).await? {
 				object_model.context = o.context;
 			} else {
 				object_model.context = None; // TODO to be filled by some other task
@@ -104,7 +103,7 @@ impl Normalizer for crate::Context {
 					Node::Link(l) => {
 						let url = l.href().unwrap_or_default();
 						if url == obj_image { continue };
-						let mut media_type = l.media_type().unwrap_or("link").to_string();
+						let mut media_type = l.media_type().unwrap_or("link".to_string());
 						let mut document_type = apb::DocumentType::Page;
 						if self.cfg().compat.fix_attachment_images_media_type
 							&& [".jpg", ".jpeg", ".png", ".webp", ".bmp"] // TODO more image types???
@@ -117,10 +116,10 @@ impl Normalizer for crate::Context {
 						}
 						crate::model::attachment::ActiveModel {
 							internal: sea_orm::ActiveValue::NotSet,
-							url: Set(self.cloaked(url)),
+							url: Set(self.cloaked(&url)),
 							object: Set(object_model.internal),
 							document_type: Set(document_type),
-							name: Set(l.name().str()),
+							name: Set(l.name().ok()),
 							media_type: Set(media_type),
 						}
 					},
@@ -142,7 +141,7 @@ impl Normalizer for crate::Context {
 							//      we should try to resolve remote users mentioned, otherwise most mentions will
 							//      be lost. also we shouldn't fail inserting the whole post if the mention fails
 							//      resolving.
-							if let Ok(user) = self.fetch_user(href, tx).await {
+							if let Ok(user) = self.fetch_user(&href, tx).await {
 								let model = crate::model::mention::ActiveModel {
 									internal: NotSet,
 									object: Set(object_model.internal),
@@ -156,7 +155,7 @@ impl Normalizer for crate::Context {
 					},
 					Ok(apb::LinkType::Hashtag) => {
 						let hashtag = l.name()
-							.unwrap_or_else(|_| l.href().unwrap_or_default().split('/').last().unwrap_or_default()) // TODO maybe just fail?
+							.unwrap_or_else(|_| l.href().unwrap_or_default().split('/').last().unwrap_or_default().to_string()) // TODO maybe just fail?
 							.replace('#', "");
 						// TODO lemmy added a "fix" to make its communities kind of work with mastodon:
 						//      basically they include the community name as hashtag. ughhhh, since we handle
@@ -238,8 +237,8 @@ impl AP {
 			id: activity.id()?.to_string(),
 			activity_type: activity.activity_type()?,
 			actor: activity.actor().id()?.to_string(),
-			object: activity.object().id().str(),
-			target: activity.target().id().str(),
+			object: activity.object().id().ok(),
+			target: activity.target().id().ok(),
 			published: activity.published().unwrap_or(chrono::Utc::now()),
 			to: activity.to().all_ids().into(),
 			bto: activity.bto().all_ids().into(),
@@ -268,11 +267,11 @@ impl AP {
 		}
 		Ok(crate::model::attachment::Model {
 			internal: 0,
-			url: document.url().id().str().unwrap_or_default(),
+			url: document.url().id().unwrap_or_default(),
 			object: parent,
 			document_type: document.as_document().map_or(apb::DocumentType::Document, |x| x.document_type().unwrap_or(apb::DocumentType::Page)),
-			name: document.name().str(),
-			media_type: document.media_type().unwrap_or("link").to_string(),
+			name: document.name().ok(),
+			media_type: document.media_type().unwrap_or("link".to_string()),
 		})
 	}
 
@@ -307,21 +306,21 @@ impl AP {
 			internal: 0,
 			id: object.id()?.to_string(),
 			object_type: object.object_type()?,
-			attributed_to: object.attributed_to().id().str(),
-			name: object.name().str(),
-			summary: object.summary().str(),
-			content: object.content().str(),
+			attributed_to: object.attributed_to().id().ok(),
+			name: object.name().ok(),
+			summary: object.summary().ok(),
+			content: object.content().ok(),
 			image: object.image_url().ok(),
-			context: object.context().id().str(),
-			in_reply_to: object.in_reply_to().id().str(),
-			quote: object.quote_url().id().str(),
+			context: object.context().id().ok(),
+			in_reply_to: object.in_reply_to().id().ok(),
+			quote: object.quote_url().id().ok(),
 			published: object.published().unwrap_or_else(|_| chrono::Utc::now()),
 			updated: object.updated().unwrap_or_else(|_| chrono::Utc::now()),
-			url: object.url().id().str(),
+			url: object.url().id().ok(),
 			replies: object.replies_count().unwrap_or_default(),
 			likes: object.likes_count().unwrap_or_default(),
 			announces: object.shares_count().unwrap_or_default(),
-			audience: object.audience().id().str(),
+			audience: object.audience().id().ok(),
 			to: object.to().all_ids().into(),
 			bto: object.bto().all_ids().into(),
 			cc: object.cc().all_ids().into(),
@@ -362,19 +361,19 @@ impl AP {
 			internal: 0,
 			domain,
 			id: ap_id,
-			preferred_username: actor.preferred_username().unwrap_or(&fallback_preferred_username).to_string(),
+			preferred_username: actor.preferred_username().unwrap_or(fallback_preferred_username).to_string(),
 			actor_type: actor.actor_type()?,
-			name: actor.name().str(),
-			summary: actor.summary().str(),
+			name: actor.name().ok(),
+			summary: actor.summary().ok(),
 			icon: actor.icon_url().ok(),
 			image: actor.image_url().ok(),
-			inbox: actor.inbox().id().str(),
-			outbox: actor.outbox().id().str(),
+			inbox: actor.inbox().id().ok(),
+			outbox: actor.outbox().id().ok(),
 			shared_inbox: actor.endpoints().inner().and_then(|x| x.shared_inbox()).map(|x| x.to_string()).ok(),
-			followers: actor.followers().id().str(),
-			following: actor.following().id().str(),
-			also_known_as: actor.also_known_as().flat().into_iter().filter_map(|x| x.id().str()).collect::<Vec<String>>().into(),
-			moved_to: actor.moved_to().id().str(),
+			followers: actor.followers().id().ok(),
+			following: actor.following().id().ok(),
+			also_known_as: actor.also_known_as().flat().into_iter().filter_map(|x| x.id().ok()).collect::<Vec<String>>().into(),
+			moved_to: actor.moved_to().id().ok(),
 			published: actor.published().unwrap_or(chrono::Utc::now()),
 			updated: chrono::Utc::now(),
 			following_count: actor.following_count().unwrap_or(0) as i32,

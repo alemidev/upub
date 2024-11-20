@@ -1,13 +1,13 @@
 use std::collections::BTreeMap;
 
-use apb::{Activity, Actor, ActorMut, Base, Collection, CollectionPage, Object};
+use apb::{Shortcuts, Activity, Actor, ActorMut, Base, Collection, CollectionPage, Object};
 use reqwest::{header::{ACCEPT, CONTENT_TYPE, USER_AGENT}, Method, Response};
 use sea_orm::{ActiveValue::Set, ColumnTrait, ConnectionTrait, DbErr, EntityTrait, IntoActiveModel, NotSet, QueryFilter, ActiveModelTrait};
 
-use crate::{ext::Shortcuts, traits::normalize::AP};
-
 use super::{Addresser, Cloaker, Normalizer};
 use httpsign::HttpSignature;
+
+use crate::AP;
 
 #[derive(Debug, Clone)]
 pub enum Pull<T> {
@@ -184,7 +184,7 @@ impl Fetcher for crate::Context {
 			if depth >= self.cfg().security.max_id_redirects {
 				return Err(RequestError::TooManyRedirects);
 			}
-			return self.pull(doc_id).await;
+			return self.pull(&doc_id).await;
 		}
 
 		match document.object_type()? {
@@ -299,7 +299,7 @@ impl Fetcher for crate::Context {
 		// TODO try fetching these numbers from audience/generator fields to avoid making 2 more GETs every time
 		if let Ok(followers_url) = document.followers().id() {
 			let req = Self::request(
-				Method::GET, followers_url, None,
+				Method::GET, &followers_url, None,
 				self.base(), self.pkey(), self.domain(),
 			).await;
 			if let Ok(res) = req {
@@ -313,7 +313,7 @@ impl Fetcher for crate::Context {
 
 		if let Ok(following_url) = document.following().id() {
 			let req = Self::request(
-				Method::GET, following_url, None,
+				Method::GET, &following_url, None,
 				self.base(), self.pkey(), self.domain(),
 			).await;
 			if let Ok(res) = req {
@@ -362,7 +362,7 @@ impl Fetcher for crate::Context {
 		let document = self.pull(id).await?.actor()?;
 
 		if document.id()? != id {
-			if let Some(x) = crate::model::actor::Entity::find_by_ap_id(document.id()?).one(tx).await? {
+			if let Some(x) = crate::model::actor::Entity::find_by_ap_id(&document.id()?).one(tx).await? {
 				return Ok(x); // already in db but we had to follow the "pretty" url, mehh
 			}
 		}
@@ -381,16 +381,16 @@ impl Fetcher for crate::Context {
 	}
 
 	async fn resolve_activity(&self, activity: serde_json::Value, tx: &impl ConnectionTrait) -> Result<crate::model::activity::Model, RequestError> {
-		let _domain = self.fetch_domain(&crate::Context::server(activity.id()?), tx).await?;
+		let _domain = self.fetch_domain(&crate::Context::server(&activity.id()?), tx).await?;
 
 		if let Ok(activity_actor) = activity.actor().id() {
-			if let Err(e) = self.fetch_user(activity_actor, tx).await {
+			if let Err(e) = self.fetch_user(&activity_actor, tx).await {
 				tracing::warn!("could not get actor of fetched activity: {e}");
 			}
 		}
 
 		if let Ok(activity_object) = activity.object().id() {
-			if let Err(e) = self.fetch_object(activity_object, tx).await {
+			if let Err(e) = self.fetch_object(&activity_object, tx).await {
 				tracing::warn!("could not get object of fetched activity: {e}");
 			}
 		}
@@ -441,13 +441,13 @@ impl Fetcher for crate::Context {
 			}
 
 			for obj in page.items().flat() {
-				if let Err(e) = self.fetch_object(obj.id()?, tx).await {
+				if let Err(e) = self.fetch_object(&obj.id()?, tx).await {
 					tracing::warn!("error fetching reply: {e}");
 				}
 			}
 
 			for obj in page.ordered_items().flat() {
-				if let Err(e) = self.fetch_object(obj.id()?, tx).await {
+				if let Err(e) = self.fetch_object(&obj.id()?, tx).await {
 					tracing::warn!("error fetching reply: {e}");
 				}
 			}
@@ -477,7 +477,7 @@ async fn fetch_object_r(ctx: &crate::Context, id: &str, depth: u32, tx: &impl Co
 	let object = ctx.pull(id).await?.object()?;
 
 	if object.id()? != id {
-		if let Some(x) = crate::model::object::Entity::find_by_ap_id(object.id()?).one(tx).await? {
+		if let Some(x) = crate::model::object::Entity::find_by_ap_id(&object.id()?).one(tx).await? {
 			return Ok(x); // already in db but we had to follow the "pretty" url, mehh
 		}
 	}
@@ -490,21 +490,21 @@ async fn resolve_object_r(ctx: &crate::Context, object: serde_json::Value, depth
 
 	if let Ok(oid) = object.id() {
 		if oid != id {
-			if let Some(x) = crate::model::object::Entity::find_by_ap_id(oid).one(tx).await? {
+			if let Some(x) = crate::model::object::Entity::find_by_ap_id(&oid).one(tx).await? {
 				return Ok(x); // already in db, but with id different that given url
 			}
 		}
 	}
 
 	if let Ok(attributed_to) = object.attributed_to().id() {
-		if let Err(e) = ctx.fetch_user(attributed_to, tx).await {
+		if let Err(e) = ctx.fetch_user(&attributed_to, tx).await {
 			tracing::warn!("could not get actor of fetched object: {e}");
 		}
 	}
 
 	if let Ok(reply) = object.in_reply_to().id() {
 		if depth <= ctx.cfg().security.thread_crawl_depth {
-			fetch_object_r(ctx, reply, depth + 1, tx).await?;
+			fetch_object_r(ctx, &reply, depth + 1, tx).await?;
 		} else {
 			tracing::warn!("thread deeper than {}, giving up fetching more replies", ctx.cfg().security.thread_crawl_depth);
 		}
@@ -527,7 +527,7 @@ impl Dereferenceable<serde_json::Value> for apb::Node<serde_json::Value> {
 			apb::Node::Link(uri) => {
 				let href = uri.href()?;
 				tracing::info!("dereferencing {href}");
-				let res = crate::Context::request(Method::GET, href, None, ctx.base(), ctx.pkey(), ctx.domain())
+				let res = crate::Context::request(Method::GET, &href, None, ctx.base(), ctx.pkey(), ctx.domain())
 					.await?
 					.json::<serde_json::Value>()
 					.await?;

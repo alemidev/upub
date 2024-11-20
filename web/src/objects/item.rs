@@ -3,29 +3,26 @@ use std::sync::Arc;
 use leptos::*;
 use crate::{prelude::*, URL_SENSITIVE};
 
-use apb::{field::OptionalString, target::Addressed, ActivityMut, Base, Collection, CollectionMut, Object, ObjectMut};
+use apb::{target::Addressed, ActivityMut, Base, Collection, CollectionMut, Object, ObjectMut};
 
 #[component]
 pub fn Object(object: crate::Object) -> impl IntoView {
 	let oid = object.id().unwrap_or_default().to_string();
-	let author_id = object.attributed_to().id().str().unwrap_or_default();
+	let author_id = object.attributed_to().id().ok().unwrap_or_default();
 	let author = cache::OBJECTS.get_or(&author_id, serde_json::Value::String(author_id.clone()).into());
 	let sensitive = object.sensitive().unwrap_or_default();
 	let addressed = object.addressed();
 	let public = addressed.iter().any(|x| x.as_str() == apb::target::PUBLIC);
-	let external_url = object.url().id().str().unwrap_or_else(|| oid.clone());
+	let external_url = object.url().id().ok().unwrap_or_else(|| oid.clone());
 	let attachments = object.attachment()
 		.flat()
 		.into_iter()
-		.filter_map(|x| x.extract()) // TODO maybe show links?
+		.filter_map(|x| x.into_inner().ok()) // TODO maybe show links?
 		.map(|x| view! { <Attachment object=x sensitive=sensitive /> })
 		.collect_view();
-	let comments = object.replies().get()
-		.map_or(0, |x| x.total_items().unwrap_or(0));
-	let shares = object.shares().get()
-		.map_or(0, |x| x.total_items().unwrap_or(0));
-	let likes = object.likes().get()
-		.map_or(0, |x| x.total_items().unwrap_or(0));
+	let comments = object.replies().inner().and_then(|x| x.total_items()).unwrap_or_default();
+	let shares = object.shares().inner().and_then(|x| x.total_items()).unwrap_or_default();
+	let likes = object.likes().inner().and_then(|x| x.total_items()).unwrap_or_default();
 	let already_liked = object.liked_by_me().unwrap_or(false);
 
 	let attachments_padding = if object.attachment().is_empty() {
@@ -34,9 +31,9 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 		Some(view! { <div class="pb-1"></div> })
 	};
 
-	let content = mdhtml::safe_html(object.content().unwrap_or_default());
+	let content = mdhtml::safe_html(&object.content().unwrap_or_default());
 
-	let audience_badge = object.audience().id().str()
+	let audience_badge = object.audience().id().ok()
 		.map(|x| {
 			// TODO this isn't guaranteed to work every time...
 			let name = x.split('/').last().unwrap_or_default().to_string();
@@ -56,7 +53,7 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 		.id()
 		.ok()
 		.map(|x| {
-			let href = Uri::web(U::Object, x);
+			let href = Uri::web(U::Object, &x);
 			view! {
 				<a class="clean dim" href={href}>
 					<span class="border-button ml-s" >
@@ -103,7 +100,7 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 							uid.replace("https://", "").replace("http://", "").split('/').next().unwrap_or_default().to_string(),
 						)
 					};
-					let href = Uri::web(U::Actor, uid);
+					let href = Uri::web(U::Actor, &uid);
 					Some(view! {
 						<a class="clean dim" href={href}>
 							<span class="border-button ml-s" title={format!("@{username}@{domain}")} >
@@ -119,7 +116,7 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 			}
 		}).collect_view();
 
-	let post_image = object.image().get().and_then(|x| x.url().id().str()).map(|x| {
+	let post_image = object.image().inner().and_then(|x| x.url().id()).ok().map(|x| {
 		let (expand, set_expand) = create_signal(false);
 		view! {
 			<img
@@ -180,11 +177,11 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 			<tr>
 				<td><ActorBanner object=author /></td>
 				<td class="rev" >
-					{object.in_reply_to().id().str().map(|reply| view! {
+					{object.in_reply_to().id().ok().map(|reply| view! {
 							<small><i><a class="clean" href={Uri::web(U::Object, &reply)} title={reply}>reply</a></i></small> 
 					})}
 					<PrivacyMarker addressed=addressed />
-					<a class="clean hover ml-s" href={Uri::web(U::Object, object.id().unwrap_or_default())}>
+					<a class="clean hover ml-s" href={Uri::web(U::Object, &object.id().unwrap_or_default())}>
 						<DateTime t=object.published().ok() />
 					</a>
 					<sup><small><a class="clean ml-s" href={external_url} target="_blank">"↗"</a></small></sup>
@@ -262,7 +259,7 @@ pub fn LikeButton(
 							set_count.set(count.get() + 1);
 							if let Some(cached) = cache::OBJECTS.get(&target) {
 								let mut new = (*cached).clone().set_liked_by_me(Some(true));
-								if let Some(likes) = new.likes().get() {
+								if let Ok(likes) = new.likes().inner() {
 									if let Ok(count) = likes.total_items() {
 										new = new.set_likes(apb::Node::object(likes.clone().set_total_items(Some(count + 1))));
 									}

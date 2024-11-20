@@ -90,7 +90,7 @@ impl Entity {
 impl Model {
 	pub fn ap(self) -> serde_json::Value {
 		apb::new()
-			.set_id(Some(&self.id))
+			.set_id(Some(self.id))
 			.set_activity_type(Some(self.activity_type))
 			.set_actor(apb::Node::link(self.actor))
 			.set_object(apb::Node::maybe_link(self.object))

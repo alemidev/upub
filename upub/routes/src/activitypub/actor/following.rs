@@ -47,7 +47,7 @@ pub async fn get<const OUTGOING: bool>(
 	};
 
 
-	crate::builders::collection(&upub::url!(ctx, "/actors/{id}/{follow___}"), Some(count as u64))
+	crate::builders::collection(upub::url!(ctx, "/actors/{id}/{follow___}"), Some(count as u64))
 }
 
 pub async fn page<const OUTGOING: bool>(

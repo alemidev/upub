@@ -39,7 +39,7 @@ impl Model {
 		apb::new()
 			.set_url(apb::Node::link(self.url))
 			.set_document_type(Some(self.document_type))
-			.set_media_type(Some(&self.media_type))
-			.set_name(self.name.as_deref())
+			.set_media_type(Some(self.media_type))
+			.set_name(self.name)
 	}
 }

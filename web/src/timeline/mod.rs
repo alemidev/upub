@@ -3,7 +3,7 @@ pub mod thread;
 
 use std::{collections::BTreeSet, pin::Pin, sync::Arc};
 
-use apb::{field::OptionalString, Activity, ActivityMut, Actor, Base, Object};
+use apb::{Activity, ActivityMut, Actor, Base, Object};
 use leptos::*;
 use crate::prelude::*;
 
@@ -89,7 +89,7 @@ impl Timeline {
 			.ordered_items()
 			.flat()
 			.into_iter()
-			.filter_map(|x| x.extract())
+			.filter_map(|x| x.into_inner().ok())
 			.collect();
 	
 		let mut feed = self.feed.get_untracked();
@@ -121,18 +121,18 @@ pub async fn process_activities(activities: Vec<serde_json::Value>, auth: Auth) 
 	for activity in activities {
 		let activity_type = activity.activity_type().unwrap_or(apb::ActivityType::Activity);
 		// save embedded object if present
-		if let Some(object) = activity.object().get() {
+		if let Ok(object) = activity.object().inner() {
 			// also fetch actor attributed to
-			if let Some(attributed_to) = object.attributed_to().id().str() {
+			if let Ok(attributed_to) = object.attributed_to().id() {
 				actors_seen.insert(attributed_to);
 			}
 			if let Ok(object_uri) = object.id() {
-				cache::OBJECTS.store(object_uri, Arc::new(object.clone()));
+				cache::OBJECTS.store(&object_uri, Arc::new(object.clone()));
 			} else {
 				tracing::warn!("embedded object without id: {object:?}");
 			}
 		} else { // try fetching it
-			if let Some(object_id) = activity.object().id().str() {
+			if let Ok(object_id) = activity.object().id() {
 				if !gonna_fetch.contains(&object_id) {
 					let fetch_kind = match activity_type {
 						apb::ActivityType::Follow => U::Actor,
@@ -145,25 +145,25 @@ pub async fn process_activities(activities: Vec<serde_json::Value>, auth: Auth) 
 		}
 	
 		// save activity, removing embedded object
-		let object_id = activity.object().id().str();
-		if let Some(activity_id) = activity.id().str() {
+		let object_id = activity.object().id().ok();
+		if let Ok(activity_id) = activity.id() {
 			out.push(activity_id.to_string());
 			cache::OBJECTS.store(
 				&activity_id,
 				Arc::new(activity.clone().set_object(apb::Node::maybe_link(object_id)))
 			);
-		} else if let Some(object_id) = activity.object().id().str() {
+		} else if let Ok(object_id) = activity.object().id() {
 			out.push(object_id);
 		}
 
-		if let Some(uid) = activity.attributed_to().id().str() {
+		if let Ok(uid) = activity.attributed_to().id() {
 			if cache::OBJECTS.get(&uid).is_none() && !gonna_fetch.contains(&uid) {
 				gonna_fetch.insert(uid.clone());
 				sub_tasks.push(Box::pin(fetch_and_update(U::Actor, uid, auth)));
 			}
 		}
 	
-		if let Some(uid) = activity.actor().id().str() {
+		if let Ok(uid) = activity.actor().id() {
 			if cache::OBJECTS.get(&uid).is_none() && !gonna_fetch.contains(&uid) {
 				gonna_fetch.insert(uid.clone());
 				sub_tasks.push(Box::pin(fetch_and_update(U::Actor, uid, auth)));
@@ -185,7 +185,7 @@ async fn fetch_and_update(kind: U, id: String, auth: Auth) {
 		Err(e) => console_warn(&format!("could not fetch '{id}': {e}")),
 		Ok(data) => {
 			if data.actor_type().is_ok() {
-				if let Some(url) = data.url().id().str() {
+				if let Ok(url) = data.url().id() {
 					cache::WEBFINGER.store(&id, url);
 				}
 			}
@@ -198,8 +198,8 @@ async fn fetch_and_update_with_user(kind: U, id: String, auth: Auth) {
 	fetch_and_update(kind, id.clone(), auth).await;
 	if let Some(obj) = cache::OBJECTS.get(&id) {
 		if let Some(actor_id) = match kind {
-			U::Object => obj.attributed_to().id().str(),
-			U::Activity => obj.actor().id().str(),
+			U::Object => obj.attributed_to().id().ok(),
+			U::Activity => obj.actor().id().ok(),
 			U::Actor => None,
 			U::Hashtag => None,
 		} {

@@ -163,12 +163,12 @@ impl Entity {
 impl Model {
 	pub fn ap(self) -> serde_json::Value {
 		apb::new()
-			.set_id(Some(&self.id))
+			.set_id(Some(self.id))
 			.set_object_type(Some(self.object_type))
 			.set_attributed_to(apb::Node::maybe_link(self.attributed_to))
-			.set_name(self.name.as_deref())
-			.set_summary(self.summary.as_deref())
-			.set_content(self.content.as_deref())
+			.set_name(self.name)
+			.set_summary(self.summary)
+			.set_content(self.content)
 			.set_image(apb::Node::maybe_object(self.image.map(|x| 
 				apb::new()
 					.set_document_type(Some(apb::DocumentType::Image))

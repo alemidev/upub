@@ -67,7 +67,7 @@ pub async fn relay(ctx: upub::Context, action: RelayCommand) -> Result<(), Reque
 		RelayCommand::Follow { actor } => {
 			let aid = ctx.aid(&upub::Context::new_id());
 			let payload = apb::new()
-				.set_id(Some(&aid))
+				.set_id(Some(aid.clone()))
 				.set_activity_type(Some(apb::ActivityType::Follow))
 				.set_actor(apb::Node::link(ctx.base().to_string()))
 				.set_object(apb::Node::link(actor.clone()))
@@ -76,7 +76,7 @@ pub async fn relay(ctx: upub::Context, action: RelayCommand) -> Result<(), Reque
 				.set_published(Some(chrono::Utc::now()));
 			let job = upub::model::job::ActiveModel {
 				internal: NotSet,
-				activity: Set(aid.clone()),
+				activity: Set(aid),
 				job_type: Set(upub::model::job::JobType::Outbound),
 				actor: Set(ctx.base().to_string()),
 				target: Set(None),
@@ -103,7 +103,7 @@ pub async fn relay(ctx: upub::Context, action: RelayCommand) -> Result<(), Reque
 				.ok_or_else(|| DbErr::RecordNotFound(format!("activity#{}", relation.activity)))?;
 			let aid = ctx.aid(&upub::Context::new_id());
 			let payload = apb::new()
-				.set_id(Some(&aid))
+				.set_id(Some(aid.clone()))
 				.set_activity_type(Some(apb::ActivityType::Accept(apb::AcceptType::Accept)))
 				.set_actor(apb::Node::link(ctx.base().to_string()))
 				.set_object(apb::Node::link(activity.id))
@@ -112,7 +112,7 @@ pub async fn relay(ctx: upub::Context, action: RelayCommand) -> Result<(), Reque
 				.set_published(Some(chrono::Utc::now()));
 			let job = upub::model::job::ActiveModel {
 				internal: NotSet,
-				activity: Set(aid.clone()),
+				activity: Set(aid),
 				job_type: Set(upub::model::job::JobType::Outbound),
 				actor: Set(ctx.base().to_string()),
 				target: Set(None),
@@ -140,7 +140,7 @@ pub async fn relay(ctx: upub::Context, action: RelayCommand) -> Result<(), Reque
 				.ok_or_else(|| DbErr::RecordNotFound(format!("activity#{}", accept_activity_id)))?;
 			let aid = ctx.aid(&upub::Context::new_id());
 			let payload = apb::new()
-				.set_id(Some(&aid))
+				.set_id(Some(aid.clone()))
 				.set_activity_type(Some(apb::ActivityType::Undo))
 				.set_actor(apb::Node::link(ctx.base().to_string()))
 				.set_object(apb::Node::object(activity.ap()))
@@ -149,7 +149,7 @@ pub async fn relay(ctx: upub::Context, action: RelayCommand) -> Result<(), Reque
 				.set_published(Some(chrono::Utc::now()));
 			let job = upub::model::job::ActiveModel {
 				internal: NotSet,
-				activity: Set(aid.clone()),
+				activity: Set(aid),
 				job_type: Set(upub::model::job::JobType::Outbound),
 				actor: Set(ctx.base().to_string()),
 				target: Set(None),
@@ -176,7 +176,7 @@ pub async fn relay(ctx: upub::Context, action: RelayCommand) -> Result<(), Reque
 				.ok_or_else(|| DbErr::RecordNotFound(format!("activity#{}", relation.activity)))?;
 			let aid = ctx.aid(&upub::Context::new_id());
 			let payload = apb::new()
-				.set_id(Some(&aid))
+				.set_id(Some(aid.clone()))
 				.set_activity_type(Some(apb::ActivityType::Undo))
 				.set_actor(apb::Node::link(ctx.base().to_string()))
 				.set_object(apb::Node::object(activity.ap()))
@@ -185,7 +185,7 @@ pub async fn relay(ctx: upub::Context, action: RelayCommand) -> Result<(), Reque
 				.set_published(Some(chrono::Utc::now()));
 			let job = upub::model::job::ActiveModel {
 				internal: NotSet,
-				activity: Set(aid.clone()),
+				activity: Set(aid),
 				job_type: Set(upub::model::job::JobType::Outbound),
 				actor: Set(ctx.base().to_string()),
 				target: Set(None),

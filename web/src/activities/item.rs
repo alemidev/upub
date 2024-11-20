@@ -1,16 +1,16 @@
 use leptos::*;
 use crate::prelude::*;
 
-use apb::{field::OptionalString, target::Addressed, Activity, ActivityMut, Base, Object};
+use apb::{target::Addressed, Activity, ActivityMut, Base, Object};
 
 
 #[component]
 pub fn ActivityLine(activity: crate::Object, children: Children) -> impl IntoView {
-	let object_id = activity.object().id().str().unwrap_or_default();
+	let object_id = activity.object().id().unwrap_or_default();
 	let activity_url = activity.id().map(|x| view! {
 		<sup><small><a class="clean ml-s" href={x.to_string()} target="_blank">"↗"</a></small></sup>
 	});
-	let actor_id = activity.actor().id().str().unwrap_or_default();
+	let actor_id = activity.actor().id().unwrap_or_default();
 	let actor = cache::OBJECTS.get_or(&actor_id, serde_json::Value::String(actor_id.clone()).into());
 	let kind = activity.activity_type().unwrap_or(apb::ActivityType::Activity);
 	let href = match kind {
@@ -60,7 +60,7 @@ pub fn Item(
 				Some(view! { <Object object=item.clone() />{sep.clone()} }.into_view()),
 			// everything else
 			apb::ObjectType::Activity(t) => {
-				let object_id = item.object().id().str().unwrap_or_default();
+				let object_id = item.object().id().unwrap_or_default();
 				let object = match t {
 					apb::ActivityType::Create | apb::ActivityType::Announce => 
 						cache::OBJECTS.get(&object_id).map(|obj| {

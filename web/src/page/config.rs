@@ -21,10 +21,15 @@ pub fn ConfigPage(setter: WriteSignal<crate::Config>) -> impl IntoView {
 	let banner_url_ref: NodeRef<html::Input> = create_node_ref();
 
 	let myself = cache::OBJECTS.get(&auth.userid.get_untracked().unwrap_or_default());
-	let curr_display_name = myself.as_ref().and_then(|x| Some(x.name().ok()?.to_string())).unwrap_or_default();
-	let curr_summary = myself.as_ref().and_then(|x| Some(x.summary().ok()?.to_string())).unwrap_or_default();
-	let curr_icon = myself.as_ref().and_then(|x| Some(x.icon().get()?.url().id().ok()?.to_string())).unwrap_or_default();
-	let curr_banner = myself.as_ref().and_then(|x| Some(x.image().get()?.url().id().ok()?.to_string())).unwrap_or_default();
+	let (curr_display_name, curr_summary, curr_icon, curr_banner) = match myself.as_ref() {
+		None => (String::default(), String::default(), String::default(), String::default()),
+		Some(myself) => (
+			myself.name().unwrap_or_default().to_string(),
+			myself.summary().unwrap_or_default().to_string(),
+			myself.icon().inner().and_then(|x| Ok(x.url().id()?.to_string())).unwrap_or_default(),
+			myself.image().inner().and_then(|x| Ok(x.url().id()?.to_string())).unwrap_or_default(),
+		),
+	};
 
 	macro_rules! get_cfg {
 		(filter $field:ident) => {
@@ -175,8 +180,8 @@ pub fn ConfigPage(setter: WriteSignal<crate::Config>) -> impl IntoView {
 							.set_to(apb::Node::links(vec![apb::target::PUBLIC.to_string(), format!("{id}/followers")]))
 							.set_object(apb::Node::object(
 								(*me).clone()
-									.set_name(display_name.as_deref())
-									.set_summary(summary.as_deref())
+									.set_name(display_name)
+									.set_summary(summary)
 									.set_icon(apb::Node::maybe_object(avatar))
 									.set_image(apb::Node::maybe_object(banner))
 									.set_published(Some(chrono::Utc::now()))

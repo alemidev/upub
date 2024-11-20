@@ -1,4 +1,4 @@
-use apb::{field::OptionalString, Activity, Base, Object};
+use apb::{Activity, Base, Object};
 use leptos::*;
 use crate::prelude::*;
 use super::Timeline;
@@ -40,15 +40,15 @@ fn FeedRecursive(tl: Timeline, root: String) -> impl IntoView {
 			let (oid, reply) = match document.object_type().ok()? {
 				// if it's a create, get and check created object: does it reply to root?
 				apb::ObjectType::Activity(apb::ActivityType::Create) => {
-					let object = cache::OBJECTS.get(document.object().id().ok()?)?;
-					(object.id().str()?, object.in_reply_to().id().str()?)
+					let object = cache::OBJECTS.get(&document.object().id().ok()?)?;
+					(object.id().ok()?, object.in_reply_to().id().ok()?)
 				},
 
 				// if it's a raw note, directly check if it replies to root
-				apb::ObjectType::Note => (document.id().str()?, document.in_reply_to().id().str()?),
+				apb::ObjectType::Note => (document.id().ok()?, document.in_reply_to().id().ok()?),
 
 				// if it's anything else, check if it relates to root, maybe like or announce?
-				_ => (document.id().str()?, document.object().id().str()?),
+				_ => (document.id().ok()?, document.object().id().ok()?),
 			};
 			if reply == root {
 				Some((oid, document))

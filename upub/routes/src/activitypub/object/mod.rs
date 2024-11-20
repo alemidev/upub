@@ -55,7 +55,7 @@ pub async fn view(
 
 		replies = apb::Node::object(
 			apb::new()
-				.set_id(Some(&upub::url!(ctx, "/objects/{id}/replies")))
+				.set_id(Some(upub::url!(ctx, "/objects/{id}/replies")))
 				.set_first(apb::Node::link(upub::url!(ctx, "/objects/{id}/replies/page")))
 				.set_collection_type(Some(apb::CollectionType::Collection))
 				.set_total_items(item.object.as_ref().map(|x| x.replies as u64))

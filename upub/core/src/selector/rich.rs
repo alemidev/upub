@@ -12,8 +12,8 @@ impl RichMention {
 		use apb::LinkMut;
 		apb::new()
 			.set_link_type(Some(apb::LinkType::Mention))
-			.set_href(Some(&self.id))
-			.set_name(Some(&self.fqn))
+			.set_href(Some(self.id))
+			.set_name(Some(self.fqn))
 	}
 }
 
@@ -25,7 +25,7 @@ impl RichHashtag {
 	pub fn ap(self) -> serde_json::Value {
 		use apb::LinkMut;
 		apb::new()
-			.set_name(Some(&format!("#{}", self.hash.name)))
+			.set_name(Some(format!("#{}", self.hash.name)))
 			.set_link_type(Some(apb::LinkType::Hashtag))
 	}
 }

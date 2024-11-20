@@ -10,7 +10,7 @@ pub async fn get(
 	Path(id): Path<String>,
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	crate::builders::collection(
-		&upub::url!(ctx, "/tags/{id}"),
+		upub::url!(ctx, "/tags/{id}"),
 		None,
 	)
 }

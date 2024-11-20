@@ -13,7 +13,7 @@ pub fn ObjectView() -> impl IntoView {
 		move |oid| async move {
 			let obj = cache::OBJECTS.resolve(&oid, U::Object, auth).await?;
 			if let Ok(author) = obj.attributed_to().id() {
-				cache::OBJECTS.resolve(author, U::Actor, auth).await;
+				cache::OBJECTS.resolve(&author, U::Actor, auth).await;
 			}
 			Some(obj)
 
@@ -36,8 +36,8 @@ pub fn ObjectView() -> impl IntoView {
 		Some(Some(o)) => {
 			let object = o.clone();
 			let oid = o.id().unwrap_or_default();
-			let base = Uri::web(U::Object, oid);
-			let api = Uri::api(U::Object, oid, false);
+			let base = Uri::web(U::Object, &oid);
+			let api = Uri::api(U::Object, &oid, false);
 			view!{
 				<Object object=object />
 				<hr class="color ma-2" />

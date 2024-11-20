@@ -60,14 +60,14 @@ pub async fn create(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 		tracing::error!("refusing to process activity without embedded object");
 		return Err(ProcessorError::Unprocessable(activity.id()?.to_string()));
 	};
-	if model::object::Entity::ap_to_internal(object_node.id()?, tx).await?.is_some() {
+	if model::object::Entity::ap_to_internal(&object_node.id()?, tx).await?.is_some() {
 		return Err(ProcessorError::AlreadyProcessed);
 	}
 	if object_node.attributed_to().id()? != activity.actor().id()? {
 		return Err(ProcessorError::Unauthorized);
 	}
 	if let Ok(reply) = object_node.in_reply_to().id() {
-		if let Err(e) = ctx.fetch_object(reply, tx).await {
+		if let Err(e) = ctx.fetch_object(&reply, tx).await {
 			tracing::warn!("failed fetching replies for received object: {e}");
 		}
 	}
@@ -96,8 +96,8 @@ pub async fn create(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 }
 
 pub async fn like(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
-	let actor = ctx.fetch_user(activity.actor().id()?, tx).await?;
-	let obj = ctx.fetch_object(activity.object().id()?, tx).await?;
+	let actor = ctx.fetch_user(&activity.actor().id()?, tx).await?;
+	let obj = ctx.fetch_object(&activity.object().id()?, tx).await?;
 	let likes_local_object = obj.attributed_to.as_ref().map(|x| ctx.is_local(x)).unwrap_or_default();
 	if crate::model::like::Entity::find_by_uid_oid(actor.internal, obj.internal)
 		.any(tx)
@@ -146,8 +146,8 @@ pub async fn like(ctx: &crate::Context, activity: impl apb::Activity, tx: &Datab
 
 // TODO basically same as like, can we make one function, maybe with const generic???
 pub async fn dislike(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
-	let actor = ctx.fetch_user(activity.actor().id()?, tx).await?;
-	let obj = ctx.fetch_object(activity.object().id()?, tx).await?;
+	let actor = ctx.fetch_user(&activity.actor().id()?, tx).await?;
+	let obj = ctx.fetch_object(&activity.object().id()?, tx).await?;
 	if crate::model::dislike::Entity::find_by_uid_oid(actor.internal, obj.internal)
 		.any(tx)
 		.await?
@@ -186,11 +186,11 @@ pub async fn dislike(ctx: &crate::Context, activity: impl apb::Activity, tx: &Da
 }
 
 pub async fn follow(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
-	let source_actor = crate::model::actor::Entity::find_by_ap_id(activity.actor().id()?)
+	let source_actor = crate::model::actor::Entity::find_by_ap_id(&activity.actor().id()?)
 		.one(tx)
 		.await?
 		.ok_or(ProcessorError::Incomplete)?;
-	let target_actor = ctx.fetch_user(activity.object().id()?, tx).await?;
+	let target_actor = ctx.fetch_user(&activity.object().id()?, tx).await?;
 	let activity_model = ctx.insert_activity(activity, tx).await?;
 	ctx.address(Some(&activity_model), None, tx).await?;
 
@@ -246,7 +246,7 @@ pub async fn follow(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 
 pub async fn accept(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 	// TODO what about TentativeAccept
-	let follow_activity = crate::model::activity::Entity::find_by_ap_id(activity.object().id()?)
+	let follow_activity = crate::model::activity::Entity::find_by_ap_id(&activity.object().id()?)
 		.one(tx)
 		.await?
 		.ok_or(ProcessorError::Incomplete)?;
@@ -305,7 +305,7 @@ pub async fn accept(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 
 pub async fn reject(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 	// TODO what about TentativeReject?
-	let follow_activity = crate::model::activity::Entity::find_by_ap_id(activity.object().id()?)
+	let follow_activity = crate::model::activity::Entity::find_by_ap_id(&activity.object().id()?)
 		.one(tx)
 		.await?
 		.ok_or(ProcessorError::Incomplete)?;
@@ -429,7 +429,7 @@ pub async fn undo(ctx: &crate::Context, activity: impl apb::Activity, tx: &Datab
 	match undone_activity.as_activity()?.activity_type()? {
 		apb::ActivityType::Like => {
 			let internal_oid = crate::model::object::Entity::ap_to_internal(
-				undone_activity.as_activity()?.object().id()?,
+				&undone_activity.as_activity()?.object().id()?,
 				tx
 			)
 				.await?
@@ -450,7 +450,7 @@ pub async fn undo(ctx: &crate::Context, activity: impl apb::Activity, tx: &Datab
 		},
 		apb::ActivityType::Follow => {
 			let internal_uid_following = crate::model::actor::Entity::ap_to_internal(
-				undone_activity.as_activity()?.object().id()?,
+				&undone_activity.as_activity()?.object().id()?,
 				tx,
 			)
 				.await?
@@ -494,7 +494,7 @@ pub async fn undo(ctx: &crate::Context, activity: impl apb::Activity, tx: &Datab
 		ctx.address(Some(&activity_model), None, tx).await?;
 	}
 
-	if let Some(internal) = crate::model::activity::Entity::ap_to_internal(undone_activity.id()?, tx).await? {
+	if let Some(internal) = crate::model::activity::Entity::ap_to_internal(&undone_activity.id()?, tx).await? {
 		crate::model::notification::Entity::delete_many()
 			.filter(crate::model::notification::Column::Activity.eq(internal))
 			.exec(tx)
@@ -532,7 +532,7 @@ pub async fn announce(ctx: &crate::Context, activity: impl apb::Activity, tx: &D
 		}
 	};
 
-	let actor = ctx.fetch_user(activity.actor().id()?, tx).await?;
+	let actor = ctx.fetch_user(&activity.actor().id()?, tx).await?;
 
 	// we only care about announces produced by "Person" actors, because there's intention
 	// anything shared by groups, services or applications is automated: fetch it and be done

@@ -9,7 +9,7 @@ pub async fn get(
 	State(ctx): State<Context>,
 	Path(id): Path<String>,
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
-	crate::builders::collection(&upub::url!(ctx, "/actors/{id}/outbox"), None)
+	crate::builders::collection(upub::url!(ctx, "/actors/{id}/outbox"), None)
 }
 
 pub async fn page(

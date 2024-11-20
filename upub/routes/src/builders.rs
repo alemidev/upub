@@ -63,7 +63,7 @@ pub fn collection_page(id: &str, offset: u64, limit: u64, items: Vec<serde_json:
 	};
 	Ok(JsonLD(
 		apb::new()
-			.set_id(Some(&format!("{id}?offset={offset}")))
+			.set_id(Some(format!("{id}?offset={offset}")))
 			.set_collection_type(Some(apb::CollectionType::OrderedCollectionPage))
 			.set_part_of(apb::Node::link(id.replace("/page", "")))
 			.set_ordered_items(apb::Node::array(items))
@@ -73,13 +73,13 @@ pub fn collection_page(id: &str, offset: u64, limit: u64, items: Vec<serde_json:
 }
 
 
-pub fn collection(id: &str, total_items: Option<u64>) -> crate::ApiResult<JsonLD<serde_json::Value>> {
+pub fn collection(id: String, total_items: Option<u64>) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	Ok(JsonLD(
 		apb::new()
-			.set_id(Some(id))
 			.set_collection_type(Some(apb::CollectionType::OrderedCollection))
 			.set_first(apb::Node::link(format!("{id}/page")))
 			.set_total_items(total_items)
+			.set_id(Some(id))
 			.ld_context()
 	))
 }

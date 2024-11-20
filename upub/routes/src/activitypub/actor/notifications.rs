@@ -22,7 +22,7 @@ pub async fn get(
 		.count(ctx.db())
 		.await?;
 
-	crate::builders::collection(&upub::url!(ctx, "/actors/{id}/notifications"), Some(count))
+	crate::builders::collection(upub::url!(ctx, "/actors/{id}/notifications"), Some(count))
 }
 
 pub async fn page(

@@ -41,7 +41,7 @@ pub fn SearchPage() -> impl IntoView {
 							.ordered_items()
 							.flat()
 							.into_iter()
-							.filter_map(|x| x.extract())
+							.filter_map(|x| x.into_inner().ok())
 							.collect(),
 						auth
 					).await

@@ -2,7 +2,7 @@ use leptos::*;
 use crate::{prelude::*, URL_SENSITIVE};
 
 use base64::prelude::*;
-use apb::{field::OptionalString, Document, Object};
+use apb::{Document, Object};
 
 fn uncloak(txt: Option<&str>) -> Option<String> {
 	let decoded = BASE64_URL_SAFE.decode(txt?).ok()?;
@@ -17,11 +17,10 @@ pub fn Attachment(
 ) -> impl IntoView {
 	let config = use_context::<Signal<crate::Config>>().expect("missing config context");
 	let (expand, set_expand) = create_signal(false);
-	let href = object.url().id().str().unwrap_or_default();
+	let href = object.url().id().ok().unwrap_or_default();
 	let uncloaked = uncloak(href.split('/').last()).unwrap_or_default();
 	let media_type = object.media_type()
-		.unwrap_or("link") // TODO make it an Option rather than defaulting to link everywhere
-		.to_string();
+		.unwrap_or("link".to_string()); // TODO make it an Option rather than defaulting to link everywhere
 	let mut kind = media_type
 		.split('/')
 		.next()

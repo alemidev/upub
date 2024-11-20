@@ -1,7 +1,7 @@
 use leptos::*;
 use crate::{prelude::*, FALLBACK_IMAGE_URL};
 
-use apb::{field::OptionalString, Activity, ActivityMut, Actor, Base, Object, ObjectMut};
+use apb::{Activity, ActivityMut, Actor, Base, Object, ObjectMut, Shortcuts};
 
 lazy_static::lazy_static! {
 	static ref REGEX: regex::Regex = regex::Regex::new(r":\w+:").expect("failed compiling custom emoji regex");
@@ -12,7 +12,7 @@ pub fn ActorStrip(object: crate::Object) -> impl IntoView {
 	let actor_id = object.id().unwrap_or_default().to_string();
 	let username = object.preferred_username().unwrap_or_default().to_string();
 	let domain = object.id().unwrap_or_default().replace("https://", "").split('/').next().unwrap_or_default().to_string();
-	let avatar = object.icon().get().map(|x| x.url().id().str().unwrap_or(FALLBACK_IMAGE_URL.into())).unwrap_or(FALLBACK_IMAGE_URL.into());
+	let avatar = object.icon_url().unwrap_or(FALLBACK_IMAGE_URL.into());
 	view! {
 		<a href={Uri::web(U::Actor, &actor_id)} class="clean hover">
 			<img src={avatar} class="avatar inline mr-s" onerror={format!("this.onerror=null; this.src='{FALLBACK_IMAGE_URL}';")} /><b>{username}</b><small>@{domain}</small>
@@ -29,7 +29,7 @@ pub fn ActorBanner(object: crate::Object) -> impl IntoView {
 		serde_json::Value::Object(_) => {
 			let uid = object.id().unwrap_or_default().to_string();
 			let uri = Uri::web(U::Actor, &uid);
-			let avatar_url = object.icon().get().map(|x| x.url().id().str().unwrap_or(FALLBACK_IMAGE_URL.into())).unwrap_or(FALLBACK_IMAGE_URL.into());
+			let avatar_url = object.icon_url().unwrap_or(FALLBACK_IMAGE_URL.into());
 			let username = object.preferred_username().unwrap_or_default().to_string();
 			let domain = object.id().unwrap_or_default().replace("https://", "").split('/').next().unwrap_or_default().to_string();
 			let display_name = object.name().unwrap_or_default().to_string();
@@ -70,7 +70,7 @@ pub fn FollowRequestButtons(activity_id: String, actor_id: String) -> impl IntoV
 	// TODO lmao what is going on with this double move / triple clone ???????????
 	let _activity_id = activity_id.clone();
 	let _actor_id = actor_id.clone();
-	let from_actor = cache::OBJECTS.get(&activity_id).map(|x| x.actor().id().str().unwrap_or_default()).unwrap_or_default();
+	let from_actor = cache::OBJECTS.get(&activity_id).and_then(|x| x.actor().id().ok()).unwrap_or_default();
 	let _from_actor = from_actor.clone();
 	if actor_id == auth.user_id() {
 		Some(view! {

@@ -1,4 +1,4 @@
-use apb::{field::OptionalString, target::Addressed, Activity, ActivityMut, Base, BaseMut, Object, ObjectMut};
+use apb::{target::Addressed, Activity, ActivityMut, Base, BaseMut, Object, ObjectMut, Shortcuts};
 use sea_orm::{prelude::Expr, ColumnTrait, DbErr, EntityTrait, QueryFilter, QueryOrder, QuerySelect, SelectColumns, TransactionTrait};
 use upub::{model::{self, actor::Field}, traits::{process::ProcessorError, Addresser, Processor}, Context};
 
@@ -17,7 +17,7 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 		let actor = upub::model::actor::Entity::ap_to_internal(&job.actor, &tx)
 			.await?
 			.ok_or_else(|| DbErr::RecordNotFound(job.actor.clone()))?;
-		let activity = upub::model::activity::Entity::ap_to_internal(activity.object().id()?, &tx)
+		let activity = upub::model::activity::Entity::ap_to_internal(&activity.object().id()?, &tx)
 			.await?
 			.ok_or_else(|| DbErr::RecordNotFound(activity.object().id().unwrap_or_default().to_string()))?;
 		upub::model::notification::Entity::update_many()
@@ -41,14 +41,14 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 	}
 
 	activity = activity
-		.set_id(Some(&job.activity))
+		.set_id(Some(job.activity.clone()))
 		.set_actor(apb::Node::link(job.actor.clone()))
 		.set_published(Some(now));
 
 	if matches!(t, apb::ObjectType::Activity(apb::ActivityType::Undo)) {
 		let mut undone = activity.object().into_inner()?;
 		if undone.id().is_err() {
-			let undone_target = undone.object().id().str().ok_or(crate::JobError::MissingPayload)?;
+			let undone_target = undone.object().id()?;
 			let undone_type = undone.activity_type().map_err(|_| crate::JobError::MissingPayload)?;
 			let undone_model = model::activity::Entity::find()
 				.filter(model::activity::Column::Object.eq(&undone_target))
@@ -59,7 +59,7 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 				.await?
 				.ok_or_else(|| sea_orm::DbErr::RecordNotFound(format!("actor={},type={},object={}",job.actor, undone_type, undone_target)))?;
 			undone = undone
-				.set_id(Some(&undone_model.id))
+				.set_id(Some(undone_model.id))
 				.set_actor(apb::Node::link(job.actor.clone()));
 		}
 		activity = activity.set_object(apb::Node::object(undone));
@@ -67,7 +67,7 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 
 	macro_rules! update {
 		($prev:ident, $field:ident, $getter:expr) => {
-			if let Some($field) = $getter {
+			if let Ok($field) = $getter {
 				$prev.$field = Some($field.to_string());
 			}
 		};
@@ -77,7 +77,7 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 		let mut updated = activity.object().into_inner()?;
 		match updated.object_type()? {
 			apb::ObjectType::Actor(_) => {
-				let mut prev = model::actor::Entity::find_by_ap_id(updated.id()?)
+				let mut prev = model::actor::Entity::find_by_ap_id(&updated.id()?)
 					.one(&tx)
 					.await?
 					.ok_or_else(|| crate::JobError::MissingPayload)?;
@@ -86,10 +86,10 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 					return Err(crate::JobError::Forbidden);
 				}
 				
-				update!(prev, name, updated.name().ok());
-				update!(prev, summary, updated.summary().ok());
-				update!(prev, icon, updated.icon().get().and_then(|x| x.url().id().str()));
-				update!(prev, image, updated.image().get().and_then(|x| x.url().id().str()));
+				update!(prev, name, updated.name());
+				update!(prev, summary, updated.summary());
+				update!(prev, icon, updated.icon_url());
+				update!(prev, image, updated.image_url());
 
 				if !updated.attachment().is_empty() {
 					prev.fields = updated.attachment()
@@ -104,7 +104,7 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 				updated = prev.ap();
 			},
 			apb::ObjectType::Note => {
-				let mut prev = model::object::Entity::find_by_ap_id(updated.id()?)
+				let mut prev = model::object::Entity::find_by_ap_id(&updated.id()?)
 					.one(&tx)
 					.await?
 					.ok_or_else(|| crate::JobError::MissingPayload)?;
@@ -113,10 +113,10 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 					return Err(crate::JobError::Forbidden);
 				}
 
-				update!(prev, name, updated.name().ok());
-				update!(prev, summary, updated.summary().ok());
-				update!(prev, content, updated.content().ok());
-				update!(prev, image, updated.image().get().and_then(|x| x.url().id().str()));
+				update!(prev, name, updated.name());
+				update!(prev, summary, updated.summary());
+				update!(prev, content, updated.content());
+				update!(prev, image, updated.image_url());
 
 				if let Ok(sensitive) = updated.sensitive() {
 					prev.sensitive = sensitive;
@@ -158,8 +158,8 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 		activity = activity
 			.set_object(apb::Node::object(
 					object
-						.set_id(Some(&oid))
-						.set_content(content.as_deref())
+						.set_id(Some(oid))
+						.set_content(content)
 						.set_attributed_to(apb::Node::link(job.actor.clone()))
 						.set_published(Some(now))
 						.set_updated(Some(now))

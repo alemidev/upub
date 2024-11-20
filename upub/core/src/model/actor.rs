@@ -1,6 +1,6 @@
 use sea_orm::{entity::prelude::*, QuerySelect, SelectColumns};
 
-use apb::{field::OptionalString, ActorMut, ActorType, BaseMut, DocumentMut, EndpointsMut, ObjectMut, PublicKeyMut};
+use apb::{ActorMut, ActorType, BaseMut, DocumentMut, EndpointsMut, ObjectMut, PublicKeyMut};
 
 use crate::ext::{JsonVec, TypeName};
 
@@ -25,8 +25,8 @@ impl TypeName for Field {
 impl<T: apb::Object> From<T> for Field {
 	fn from(value: T) -> Self {
 		Field {
-			name: value.name().str().unwrap_or_default(),
-			value: mdhtml::safe_html(value.value().unwrap_or_default()),
+			name: value.name().unwrap_or_default().to_string(),
+			value: mdhtml::safe_html(&value.value().unwrap_or_default()),
 			field_type: "PropertyValue".to_string(), // TODO can we try parsing this instead??
 			verified_at: None, // TODO where does verified_at come from? extend apb maybe
 		}
@@ -203,10 +203,10 @@ impl Entity {
 impl Model {
 	pub fn ap(self) -> serde_json::Value {
 		apb::new()
-			.set_id(Some(&self.id))
+			.set_id(Some(self.id.clone()))
 			.set_actor_type(Some(self.actor_type))
-			.set_name(self.name.as_deref())
-			.set_summary(self.summary.as_deref())
+			.set_name(self.name)
+			.set_summary(self.summary)
 			.set_icon(apb::Node::maybe_object(self.icon.map(|i|
 				apb::new()
 					.set_document_type(Some(apb::DocumentType::Image))
@@ -225,7 +225,7 @@ impl Model {
 			))
 			.set_published(Some(self.published))
 			.set_updated(if self.updated != self.published { Some(self.updated) } else { None })
-			.set_preferred_username(Some(&self.preferred_username))
+			.set_preferred_username(Some(self.preferred_username))
 			.set_statuses_count(Some(self.statuses_count as u64))
 			.set_followers_count(Some(self.followers_count as u64))
 			.set_following_count(Some(self.following_count as u64))
@@ -235,13 +235,13 @@ impl Model {
 			.set_followers(apb::Node::maybe_link(self.followers))
 			.set_public_key(apb::Node::object(
 				apb::new()
-					.set_id(Some(&format!("{}#main-key", self.id)))
-					.set_owner(Some(&self.id))
-					.set_public_key_pem(&self.public_key)
+					.set_id(Some(format!("{}#main-key", self.id)))
+					.set_owner(Some(self.id))
+					.set_public_key_pem(self.public_key)
 			))
 			.set_endpoints(apb::Node::object(
 				apb::new()
-					.set_shared_inbox(self.shared_inbox.as_deref())
+					.set_shared_inbox(self.shared_inbox)
 			))
 			.set_also_known_as(apb::Node::links(self.also_known_as.0))
 			.set_moved_to(apb::Node::maybe_link(self.moved_to))

@@ -2,7 +2,7 @@ use leptos::*;
 use leptos_router::*;
 use crate::{getters::Getter, prelude::*, FALLBACK_IMAGE_URL};
 
-use apb::{field::OptionalString, ActivityMut, Actor, Base, Object, ObjectMut};
+use apb::{ActivityMut, Actor, Base, Object, ObjectMut, Shortcuts};
 
 #[component]
 pub fn ActorHeader() -> impl IntoView {
@@ -16,7 +16,7 @@ pub fn ActorHeader() -> impl IntoView {
 					Some(x) => Some(x.clone()),
 					None => {
 						let user = cache::OBJECTS.resolve(&id, U::Actor, auth).await?;
-						if let Some(url) = user.url().id().str() {
+						if let Ok(url) = user.url().id() {
 							cache::WEBFINGER.store(&url, user.id().unwrap_or_default().to_string());
 						}
 						Some(user)
@@ -29,10 +29,10 @@ pub fn ActorHeader() -> impl IntoView {
 		None => view! { <Loader /> }.into_view(),
 		Some(None) => view! { <code class="center cw color">"could not resolve user"</code> }.into_view(),
 		Some(Some(actor)) => {
-			let avatar_url = actor.icon().get().map(|x| x.url().id().str().unwrap_or(FALLBACK_IMAGE_URL.into())).unwrap_or(FALLBACK_IMAGE_URL.into());
-			let background_url = actor.image().get().map(|x| x.url().id().str().unwrap_or(FALLBACK_IMAGE_URL.into())).unwrap_or(FALLBACK_IMAGE_URL.into());
+			let avatar_url = actor.icon_url().unwrap_or(FALLBACK_IMAGE_URL.into());
+			let background_url = actor.image_url().unwrap_or(FALLBACK_IMAGE_URL.into());
 			let username = actor.preferred_username().unwrap_or_default().to_string();
-			let name = actor.name().str().unwrap_or(username.clone());
+			let name = actor.name().unwrap_or(username.clone());
 			let created = actor.published().ok();
 			let following_me = actor.following_me().unwrap_or(false);
 			let followed_by_me = actor.followed_by_me().unwrap_or(false);
@@ -44,11 +44,11 @@ pub fn ActorHeader() -> impl IntoView {
 			let fields = actor.attachment()
 				.flat()
 				.into_iter()
-				.filter_map(|x| x.extract())
+				.filter_map(|x| x.into_inner().ok())
 				.map(|x| view! {
 					<tr>
-						<td class="w-25"><b class="color">{x.name().str().unwrap_or_default()}</b></td>
-						<td class="w-75" inner_html={mdhtml::safe_html(x.value().unwrap_or_default())}></td>
+						<td class="w-25"><b class="color">{x.name().unwrap_or_default()}</b></td>
+						<td class="w-75" inner_html={mdhtml::safe_html(&x.value().unwrap_or_default())}></td>
 					</tr>
 				})
 				.collect_view();
@@ -110,7 +110,7 @@ pub fn ActorHeader() -> impl IntoView {
 							}}
 						</div>
 					</div>
-					<p class="mb-2 mt-0 center bio" inner_html={mdhtml::safe_html(actor.summary().unwrap_or_default())}></p>
+					<p class="mb-2 mt-0 center bio" inner_html={mdhtml::safe_html(&actor.summary().unwrap_or_default())}></p>
 					<p class="center">
 						<table class="fields center w-100 pa-s" style="margin: auto; table-layout: fixed;">{fields}</table>
 					</p>

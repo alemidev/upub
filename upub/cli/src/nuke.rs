@@ -63,7 +63,7 @@ pub async fn nuke(ctx: upub::Context, for_real: bool, delete_posts: bool) -> Res
 
 		let aid = ctx.aid(&upub::Context::new_id());
 		let undo_activity = apb::new()
-			.set_id(Some(&aid))
+			.set_id(Some(aid.clone()))
 			.set_activity_type(Some(apb::ActivityType::Undo))
 			.set_actor(apb::Node::link(activity.actor.clone()))
 			.set_object(apb::Node::object(undone))
@@ -73,7 +73,7 @@ pub async fn nuke(ctx: upub::Context, for_real: bool, delete_posts: bool) -> Res
 
 		let job = upub::model::job::ActiveModel {
 			internal: NotSet,
-			activity: Set(aid.clone()),
+			activity: Set(aid),
 			job_type: Set(upub::model::job::JobType::Outbound),
 			actor: Set(activity.actor),
 			target: Set(None),
@@ -101,7 +101,7 @@ pub async fn nuke(ctx: upub::Context, for_real: bool, delete_posts: bool) -> Res
 			let aid = ctx.aid(&upub::Context::new_id());
 			let actor = object.attributed_to.unwrap_or_else(|| ctx.domain().to_string());
 			let undo_activity = apb::new()
-				.set_id(Some(&aid))
+				.set_id(Some(aid.clone()))
 				.set_activity_type(Some(apb::ActivityType::Delete))
 				.set_actor(apb::Node::link(actor.clone()))
 				.set_object(apb::Node::link(object.id.clone()))
@@ -114,7 +114,7 @@ pub async fn nuke(ctx: upub::Context, for_real: bool, delete_posts: bool) -> Res
 
 			let job = upub::model::job::ActiveModel {
 				internal: NotSet,
-				activity: Set(aid.clone()),
+				activity: Set(aid),
 				job_type: Set(upub::model::job::JobType::Outbound),
 				actor: Set(actor),
 				target: Set(None),

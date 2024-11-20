@@ -32,7 +32,7 @@ pub async fn get(
 
 	Ok(JsonLD(
 		apb::new()
-			.set_id(Some(&upub::url!(ctx, "/objects/{id}/replies")))
+			.set_id(Some(upub::url!(ctx, "/objects/{id}/replies")))
 			.set_collection_type(Some(apb::CollectionType::Collection))
 			.set_first(apb::Node::link(upub::url!(ctx, "/objects/{id}/replies/page")))
 			.set_total_items(Some(replies_ids.len() as u64))

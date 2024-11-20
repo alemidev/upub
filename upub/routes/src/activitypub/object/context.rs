@@ -17,7 +17,7 @@ pub async fn get(
 		.count(ctx.db())
 		.await?;
 
-	crate::builders::collection(&upub::url!(ctx, "/objects/{id}/context"), Some(count))
+	crate::builders::collection(upub::url!(ctx, "/objects/{id}/context"), Some(count))
 }
 
 pub async fn page(

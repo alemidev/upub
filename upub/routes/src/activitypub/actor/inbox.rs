@@ -14,7 +14,7 @@ pub async fn get(
 		Identity::Anonymous => Err(crate::ApiError::forbidden()),
 		Identity::Remote { .. } => Err(crate::ApiError::forbidden()),
 		Identity::Local { id: user, .. } => if ctx.uid(&id) == user {
-			crate::builders::collection(&upub::url!(ctx, "/actors/{id}/inbox"), None)
+			crate::builders::collection(upub::url!(ctx, "/actors/{id}/inbox"), None)
 		} else {
 			Err(crate::ApiError::forbidden())
 		},

@@ -25,7 +25,7 @@ pub async fn fetch(ctx: upub::Context, uri: String, save: bool, actor: Option<St
 	let mut node = apb::Node::link(uri.to_string());
 	if let apb::Node::Link(ref uri) = node {
 		if let Ok(href) = uri.href() {
-			node = upub::Context::request(reqwest::Method::GET, href, None, &from, &pkey, ctx.domain())
+			node = upub::Context::request(reqwest::Method::GET, &href, None, &from, &pkey, ctx.domain())
 				.await?
 				.json::<serde_json::Value>()
 				.await?

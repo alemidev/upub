@@ -5,7 +5,7 @@ use upub::Context;
 use crate::{activitypub::{CreationResult, Pagination}, AuthIdentity, builders::JsonLD};
 
 pub async fn get(State(ctx): State<Context>) -> crate::ApiResult<JsonLD<serde_json::Value>> {
-	crate::builders::collection(&upub::url!(ctx, "/outbox"), None)
+	crate::builders::collection(upub::url!(ctx, "/outbox"), None)
 }
 
 pub async fn page(

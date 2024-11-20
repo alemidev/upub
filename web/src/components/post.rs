@@ -1,4 +1,4 @@
-use apb::{field::OptionalString, ActivityMut, Base, BaseMut, Object, ObjectMut};
+use apb::{ActivityMut, Base, BaseMut, Object, ObjectMut};
 
 use leptos::*;
 use crate::prelude::*;
@@ -12,7 +12,7 @@ pub struct ReplyControls {
 impl ReplyControls {
 	pub fn reply(&self, oid: &str) {
 		if let Some(obj) = cache::OBJECTS.get(oid) {
-			self.context.set(obj.context().id().str());
+			self.context.set(obj.context().id().ok());
 			self.reply_to.set(obj.id().ok().map(|x| x.to_string()));
 		}
 	}
@@ -24,7 +24,7 @@ impl ReplyControls {
 }
 
 fn post_author(post_id: &str) -> Option<crate::Object> {
-	let usr = cache::OBJECTS.get(post_id)?.attributed_to().id().str()?;
+	let usr = cache::OBJECTS.get(post_id)?.attributed_to().id().ok()?;
 	cache::OBJECTS.get(&usr)
 }
 
@@ -135,9 +135,9 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 									.into_iter()
 									.map(|x| {
 										use apb::LinkMut;
-										LinkMut::set_name(apb::new(), Some(&format!("@{}@{}", x.name, x.domain))) // TODO ewww but name clashes
+										LinkMut::set_name(apb::new(), Some(format!("@{}@{}", x.name, x.domain))) // TODO ewww but name clashes
 											.set_link_type(Some(apb::LinkType::Mention))
-											.set_href(Some(&x.href))
+											.set_href(Some(x.href))
 									})
 									.collect();
 
@@ -146,10 +146,10 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 										if let Ok(uid) = au.id() {
 											to_vec.push(uid.to_string());
 											if let Ok(name) = au.name() {
-												let domain = Uri::domain(uid);
+												let domain = Uri::domain(&uid);
 												mention_tags.push({
 													use apb::LinkMut;
-													LinkMut::set_name(apb::new(), Some(&format!("@{}@{}", name, domain))) // TODO ewww but name clashes
+													LinkMut::set_name(apb::new(), Some(format!("@{}@{}", name, domain))) // TODO ewww but name clashes
 														.set_link_type(Some(apb::LinkType::Mention))
 														.set_href(Some(uid))
 												});
@@ -162,8 +162,8 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 								}
 								let payload = apb::new()
 									.set_object_type(Some(apb::ObjectType::Note))
-									.set_summary(summary.as_deref())
-									.set_content(Some(&content))
+									.set_summary(summary)
+									.set_content(Some(content))
 									.set_context(apb::Node::maybe_link(reply.context.get()))
 									.set_in_reply_to(apb::Node::maybe_link(reply.reply_to.get()))
 									.set_to(apb::Node::links(to_vec))
@@ -299,11 +299,11 @@ pub fn AdvancedPostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 								if embedded.get() {
 									apb::Node::object(
 										serde_json::Value::Object(serde_json::Map::default())
-											.set_id(object_id.as_deref())
+											.set_id(object_id)
 											.set_object_type(Some(apb::ObjectType::Note))
-											.set_name(name.as_deref())
-											.set_summary(summary.as_deref())
-											.set_content(content.as_deref())
+											.set_name(name)
+											.set_summary(summary)
+											.set_content(content)
 											.set_in_reply_to(apb::Node::maybe_link(reply))
 											.set_context(apb::Node::maybe_link(context))
 											.set_to(apb::Node::links(to))
