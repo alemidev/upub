@@ -6,7 +6,7 @@ pub enum ApiError {
 	Database(#[from] sea_orm::DbErr),
 
 	#[error("encountered malformed object: {0}")]
-	Field(#[from] apb::FieldErr),
+	Malformed(#[from] apb::FieldErr),
 
 	#[error("http signature error: {0:?}")]
 	HttpSignature(#[from] httpsign::HttpSignatureError),
@@ -104,7 +104,7 @@ impl axum::response::IntoResponse for ApiError {
 					"inner": format!("{pull:#?}"),
 				}))
 			).into_response(),
-			ApiError::Field(x) => (
+			ApiError::Malformed(x) => (
 				axum::http::StatusCode::BAD_REQUEST,
 				axum::Json(serde_json::json!({
 					"error": "field",
