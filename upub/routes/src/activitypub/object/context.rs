@@ -51,5 +51,5 @@ pub async fn page(
 		.map(|item| item.ap())
 		.collect();
 
-	crate::builders::collection_page(&ctx.oid(&id), offset, limit, items)
+	crate::builders::collection_page(&upub::url!(ctx, "/objects/{id}/context"), offset, limit, items)
 }
