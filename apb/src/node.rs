@@ -43,6 +43,7 @@ impl<T : super::Base> From<Option<T>> for Node<T> {
 
 impl<T : super::Base> Node<T> {
 	/// return reference to embedded object (or first if many are present)
+	#[deprecated = "use .inner() instead"]
 	pub fn get(&self) -> Option<&T> {
 		match self {
 			Node::Empty | Node::Link(_) => None,
@@ -51,12 +52,33 @@ impl<T : super::Base> Node<T> {
 		}
 	}
 
-	/// return reference to embedded object (or first if many are present)
+	/// return embedded object (or first if many are present)
+	#[deprecated = "use .into_inner() instead"]
 	pub fn extract(self) -> Option<T> {
 		match self {
 			Node::Empty | Node::Link(_) => None,
 			Node::Object(x) => Some(*x),
 			Node::Array(mut v) => v.pop_front()?.extract(),
+		}
+	}
+
+	/// return reference to embedded object (or first if many are present)
+	pub fn inner(&self) -> crate::Field<&T> {
+		match self {
+			Node::Empty => Err(crate::FieldErr("node is empty")),
+			Node::Link(_) => Err(crate::FieldErr("node has not been dereferenced")),
+			Node::Object(x) => Ok(x),
+			Node::Array(v) => v.iter().next().ok_or(crate::FieldErr("node contains no items"))?.inner(),
+		}
+	}
+
+	/// return embedded object (or first if many are present)
+	pub fn into_inner(self) -> crate::Field<T> {
+		match self {
+			Node::Empty => Err(crate::FieldErr("node is empty")),
+			Node::Link(_) => Err(crate::FieldErr("node has not been dereferenced")),
+			Node::Object(x) => Ok(*x),
+			Node::Array(v) => v.into_iter().next().ok_or(crate::FieldErr("node contains no items"))?.into_inner(),
 		}
 	}
 
