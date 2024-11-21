@@ -105,7 +105,7 @@ pub fn App() -> impl IntoView {
 	// refresh notifications
 	let (notifications, set_notifications) = create_signal(0);
 	let fetch_notifications = move || spawn_local(async move {
-		let actor_id = userid.get().unwrap_or_default();
+		let actor_id = userid.get_untracked().unwrap_or_default();
 		let notif_url = format!("{actor_id}/notifications");
 		match Http::fetch::<serde_json::Value>(&notif_url, auth).await {
 			Err(e) => tracing::error!("failed fetching notifications: {e}"),
@@ -180,7 +180,6 @@ pub fn App() -> impl IntoView {
 										<Route path="objects/:id" view=ObjectView >
 											<Route path="" view=ObjectContext />
 											<Route path="replies" view=ObjectReplies />
-											<Route path="context" view=ObjectContext />
 											// <Route path="liked" view=ObjectLiked />
 											// <Route path="announced" view=ObjectAnnounced />
 										</Route>
@@ -204,30 +203,52 @@ pub fn App() -> impl IntoView {
 	}
 }
 
+#[derive(Debug, Clone, Copy)]
+pub(crate) enum FeedRoute {
+	Home, Global, Server, Notifications, User, Replies, Context
+}
+
 #[component]
 fn Scrollable() -> impl IntoView {
 	let location = use_location();
 	let feeds = use_context::<Feeds>().expect("missing feeds context");
 	let auth = use_context::<Auth>().expect("missing auth context");
 	let config = use_context::<Signal<crate::Config>>().expect("missing config context");
+	// TODO this is terrible!! omg maybe it should receive from context current timeline?? idk this
+	//      is awful and i patched it another time instead of doing it properly...
+	//      at least im going to provide a route enum to use in other places
+	let (route, set_route) = create_signal(FeedRoute::Home);
 	let relevant_timeline = Signal::derive(move || {
 		let path = location.pathname.get();
 		if path.contains("/web/home") {
+			set_route.set(FeedRoute::Home);
 			Some(feeds.home)
 		} else if path.contains("/web/global") {
+			set_route.set(FeedRoute::Global);
 			Some(feeds.global)
 		} else if path.contains("/web/local") {
+			set_route.set(FeedRoute::Server);
 			Some(feeds.server)
 		} else if path.starts_with("/web/notifications") {
+			set_route.set(FeedRoute::Notifications);
 			Some(feeds.notifications)
 		} else if path.starts_with("/web/actors") {
+			set_route.set(FeedRoute::User);
 			Some(feeds.user)
 		} else if path.starts_with("/web/objects") {
-			Some(feeds.context)
+			if matches!(path.split('/').nth(4), Some("replies")) {
+				set_route.set(FeedRoute::Replies);
+				Some(feeds.replies)
+			} else {
+				set_route.set(FeedRoute::Context);
+				Some(feeds.context)
+			}
 		} else {
 			None
 		}
 	});
+	provide_context(route);
+	provide_context(relevant_timeline);
 	let breadcrumb = Signal::derive(move || {
 		let path = location.pathname.get();
 		let mut path_iter = path.split('/').skip(2);

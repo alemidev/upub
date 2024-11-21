@@ -8,14 +8,12 @@ use crate::prelude::*;
 pub fn ObjectContext() -> impl IntoView {
 	let feeds = use_context::<Feeds>().expect("missing feeds context");
 	let params = use_params::<IdParam>();
-	let id = Signal::derive(move || {
-		let id = params.get().ok()
-			.and_then(|x| x.id)
-			.unwrap_or_default();
+	let id = move || {
+		let id = params.with(|p| p.as_ref().ok().and_then(|x| x.id.as_ref()).cloned()).unwrap_or_default();
 		Uri::full(U::Object, &id)
-	});
+	};
 	let context_id = Signal::derive(move ||
-		cache::OBJECTS.get(&id.get())
+		cache::OBJECTS.get(&id())
 			.and_then(|x| x.context().id().ok())
 			.unwrap_or_default()
 	);
@@ -27,7 +25,7 @@ pub fn ObjectContext() -> impl IntoView {
 	});
 	view! {
 		<div class="mr-1-r ml-1-r">
-			<Thread tl=feeds.context root=id.get() />
+			<Thread tl=feeds.context root=id() />
 		</div>
 	}
 }

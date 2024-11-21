@@ -8,7 +8,7 @@ pub fn ObjectReplies() -> impl IntoView {
 	let feeds = use_context::<Feeds>().expect("missing feeds context");
 	let params = use_params::<IdParam>();
 	let id = Signal::derive(move ||
-		params.get().ok().and_then(|x| x.id).unwrap_or_default()
+		params.with(|p| p.as_ref().ok().and_then(|x| x.id.as_ref()).cloned()).unwrap_or_default()
 	);
 	create_effect(move |_| {
 		let tl_url = format!("{}/replies/page", Uri::api(U::Object, &id.get(), false));

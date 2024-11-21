@@ -3,7 +3,7 @@ use std::sync::Arc;
 use leptos::*;
 use crate::{prelude::*, URL_SENSITIVE};
 
-use apb::{target::Addressed, ActivityMut, Base, Collection, CollectionMut, Object, ObjectMut};
+use apb::{target::Addressed, ActivityMut, Base, Collection, CollectionMut, Object, ObjectMut, Shortcuts};
 
 #[component]
 pub fn Object(object: crate::Object) -> impl IntoView {
@@ -20,9 +20,9 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 		.filter_map(|x| x.into_inner().ok()) // TODO maybe show links?
 		.map(|x| view! { <Attachment object=x sensitive=sensitive /> })
 		.collect_view();
-	let comments = object.replies().inner().and_then(|x| x.total_items()).unwrap_or_default();
-	let shares = object.shares().inner().and_then(|x| x.total_items()).unwrap_or_default();
-	let likes = object.likes().inner().and_then(|x| x.total_items()).unwrap_or_default();
+	let comments = object.replies_count().unwrap_or_default();
+	let shares = object.shares_count().unwrap_or_default();
+	let likes = object.likes_count().unwrap_or_default();
 	let already_liked = object.liked_by_me().unwrap_or(false);
 
 	let attachments_padding = if object.attachment().is_empty() {
@@ -220,7 +220,7 @@ pub fn Summary(summary: Option<String>, children: Children) -> impl IntoView {
 
 #[component]
 pub fn LikeButton(
-	n: u64,
+	n: i32,
 	target: String,
 	liked: bool,
 	author: String,
@@ -279,7 +279,7 @@ pub fn LikeButton(
 }
 
 #[component]
-pub fn ReplyButton(n: u64, target: String) -> impl IntoView {
+pub fn ReplyButton(n: i32, target: String) -> impl IntoView {
 	let reply = use_context::<ReplyControls>().expect("missing reply controls context");
 	let auth = use_context::<Auth>().expect("missing auth context");
 	let comments = if n > 0 {
@@ -304,7 +304,7 @@ pub fn ReplyButton(n: u64, target: String) -> impl IntoView {
 }
 
 #[component]
-pub fn RepostButton(n: u64, target: String) -> impl IntoView {
+pub fn RepostButton(n: i32, target: String) -> impl IntoView {
 	let (count, set_count) = create_signal(n);
 	let (clicked, set_clicked) = create_signal(true);
 	let auth = use_context::<Auth>().expect("missing auth context");

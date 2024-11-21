@@ -60,6 +60,7 @@ pub trait Cache {
 
 	fn lookup(&self, key: &str) -> Option<impl Deref<Target = LookupStatus<Self::Item>>>;
 	fn store(&self, key: &str, value: Self::Item) -> Option<Self::Item>;
+	fn invalidate(&self, key: &str);
 
 	fn get(&self, key: &str) -> Option<Self::Item> where Self::Item : Clone {
 		Some(self.lookup(key)?.deref().inner()?.clone())
@@ -88,11 +89,16 @@ impl<T> Cache for DashmapCache<T> {
 		self.0.insert(key.to_string(), LookupStatus::Found(value))
 			.and_then(|x| if let LookupStatus::Found(x) = x { Some(x) } else { None } )
 	}
+
+	fn invalidate(&self, key: &str) {
+		self.0.remove(key);
+	}
 }
 
 impl DashmapCache<Object> {
 	pub async fn resolve(&self, key: &str, kind: UriClass, auth: Auth) -> Option<Object> {
 		let full_key = Uri::full(kind, key);
+		tracing::info!("resolving {key} -> {full_key}");
 		match self.get(&full_key) {
 			Some(x) => Some(x),
 			None => {
