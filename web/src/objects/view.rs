@@ -3,7 +3,7 @@ use leptos::*;
 use leptos_router::*;
 use crate::{app::FeedRoute, prelude::*, Config};
 
-use apb::{Base, Object};
+use apb::Object;
 
 #[component]
 pub fn ObjectView() -> impl IntoView {
@@ -16,7 +16,7 @@ pub fn ObjectView() -> impl IntoView {
 	let id = Signal::derive(move || params.get().get("id").cloned().unwrap_or_default());
 	let object = create_local_resource(
 		move || (id.get(), loading.get()),
-		move |(oid, loading)| async move {
+		move |(oid, _loading)| async move {
 			tracing::info!("rerunning fetcher");
 			let obj = cache::OBJECTS.resolve(&oid, U::Object, auth).await?;
 			if let Ok(author) = obj.attributed_to().id() {
