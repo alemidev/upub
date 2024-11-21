@@ -1,11 +1,12 @@
 use futures::TryStreamExt;
-use sea_orm::{ActiveModelTrait, ActiveValue::Set, ColumnTrait, EntityTrait, QueryFilter, ModelTrait};
+use sea_orm::{ActiveModelTrait, ActiveValue::{Unchanged, Set}, ColumnTrait, EntityTrait, ModelTrait, QueryFilter, QueryOrder};
 use upub::traits::Fetcher;
 
 pub async fn update_users(ctx: upub::Context, days: i64, limit: Option<u64>) -> Result<(), sea_orm::DbErr> {
 	let mut count = 0;
 	let mut stream = upub::model::actor::Entity::find()
 		.filter(upub::model::actor::Column::Updated.lt(chrono::Utc::now() - chrono::Duration::days(days)))
+		.order_by_asc(upub::model::actor::Column::Updated)
 		.stream(ctx.db())
 		.await?;
 
@@ -30,9 +31,10 @@ pub async fn update_users(ctx: upub::Context, days: i64, limit: Option<u64>) -> 
 				}
 			},
 			Err(e) => tracing::warn!("could not fetch user {}: {e}", user.id),
-			Ok(doc) => match upub::AP::actor_q(&doc, Some(user.internal)) {
+			Ok(doc) => match ctx.resolve_user(doc, ctx.db()).await {
 				Ok(mut u) => {
 					tracing::info!("updating user {}", user.id);
+					u.internal = Unchanged(user.internal);
 					u.updated = Set(chrono::Utc::now());
 					u.update(ctx.db()).await?;
 					count += 1;

@@ -89,7 +89,7 @@ pub trait Fetcher {
 	async fn fetch_domain(&self, domain: &str, tx: &impl ConnectionTrait) -> Result<crate::model::instance::Model, RequestError>;
 
 	async fn fetch_user(&self, id: &str, tx: &impl ConnectionTrait) -> Result<crate::model::actor::Model, RequestError>;
-	async fn resolve_user(&self, actor: serde_json::Value, tx: &impl ConnectionTrait) -> Result<crate::model::actor::Model, RequestError>;
+	async fn resolve_user(&self, actor: serde_json::Value, tx: &impl ConnectionTrait) -> Result<crate::model::actor::ActiveModel, RequestError>;
 
 	async fn fetch_activity(&self, id: &str, tx: &impl ConnectionTrait) -> Result<crate::model::activity::Model, RequestError>;
 	async fn resolve_activity(&self, activity: serde_json::Value, tx: &impl ConnectionTrait) -> Result<crate::model::activity::Model, RequestError>;
@@ -291,7 +291,7 @@ impl Fetcher for crate::Context {
 		Ok(instance_model)
 	}
 
-	async fn resolve_user(&self, mut document: serde_json::Value, tx: &impl ConnectionTrait) -> Result<crate::model::actor::Model, RequestError> {
+	async fn resolve_user(&self, mut document: serde_json::Value, tx: &impl ConnectionTrait) -> Result<crate::model::actor::ActiveModel, RequestError> {
 		let id = document.id()?.to_string();
 
 		let _domain = self.fetch_domain(&crate::Context::server(&id), tx).await?;
@@ -340,18 +340,7 @@ impl Fetcher for crate::Context {
 			}
 		}
 
-		// TODO this may fail: while fetching, remote server may fetch our service actor.
-		//      if it does so with http signature, we will fetch that actor in background
-		//      meaning that, once we reach here, it's already inserted and returns an UNIQUE error
-		crate::model::actor::Entity::insert(user_model).exec(tx).await?;
-		
-		// TODO fetch it back to get the internal id
-		Ok(
-			crate::model::actor::Entity::find_by_ap_id(&id)
-				.one(tx)
-				.await?
-				.ok_or_else(|| DbErr::RecordNotFound(id.to_string()))?
-		)
+		Ok(user_model)
 	}
 
 	async fn fetch_user(&self, id: &str, tx: &impl ConnectionTrait) -> Result<crate::model::actor::Model, RequestError> {
@@ -367,7 +356,20 @@ impl Fetcher for crate::Context {
 			}
 		}
 
-		self.resolve_user(document, tx).await
+		let active_model = self.resolve_user(document, tx).await?;
+
+		// TODO this may fail: while fetching, remote server may fetch our service actor.
+		//      if it does so with http signature, we will fetch that actor in background
+		//      meaning that, once we reach here, it's already inserted and returns an UNIQUE error
+		crate::model::actor::Entity::insert(active_model).exec(tx).await?;
+		
+		// TODO fetch it back to get the internal id
+		Ok(
+			crate::model::actor::Entity::find_by_ap_id(id)
+				.one(tx)
+				.await?
+				.ok_or_else(|| DbErr::RecordNotFound(id.to_string()))?
+		)
 	}
 
 	async fn fetch_activity(&self, id: &str, tx: &impl ConnectionTrait) -> Result<crate::model::activity::Model, RequestError> {
