@@ -297,30 +297,26 @@ impl Fetcher for crate::Context {
 		let _domain = self.fetch_domain(&crate::Context::server(&id), tx).await?;
 
 		// TODO try fetching these numbers from audience/generator fields to avoid making 2 more GETs every time
-		if let Ok(followers_url) = document.followers().id() {
-			let req = Self::request(
-				Method::GET, &followers_url, None,
-				self.base(), self.pkey(), self.domain(),
-			).await;
-			if let Ok(res) = req {
-				if let Ok(user_followers) = res.json::<serde_json::Value>().await {
-					if let Ok(total) = user_followers.total_items() {
-						document = document.set_followers_count(Some(total));
-					}
+		if document.followers_count().is_err() {
+			if let Ok(followers) = document.followers().resolve(self).await {
+				if let Ok(total) = followers.total_items() {
+					document = document.set_followers_count(Some(total));
 				}
 			}
 		}
 
-		if let Ok(following_url) = document.following().id() {
-			let req = Self::request(
-				Method::GET, &following_url, None,
-				self.base(), self.pkey(), self.domain(),
-			).await;
-			if let Ok(res) = req {
-				if let Ok(user_following) = res.json::<serde_json::Value>().await {
-					if let Ok(total) = user_following.total_items() {
-						document = document.set_following_count(Some(total));
-					}
+		if document.following_count().is_err() {
+			if let Ok(following) = document.following().resolve(self).await {
+				if let Ok(total) = following.total_items() {
+					document = document.set_following_count(Some(total));
+				}
+			}
+		}
+
+		if document.statuses_count().is_err() {
+			if let Ok(outbox) = document.outbox().resolve(self).await {
+				if let Ok(total) = outbox.total_items() {
+					document = document.set_statuses_count(Some(total));
 				}
 			}
 		}
