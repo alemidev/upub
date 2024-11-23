@@ -74,6 +74,8 @@ pub fn App() -> impl IntoView {
 	);
 	let (config, set_config, _) = use_local_storage::<crate::Config, JsonSerdeCodec>("config");
 
+	let (privacy, set_privacy) = create_signal(Privacy::Private);
+
 	let auth = Auth { token, userid };
 
 	let username = auth.userid.get_untracked()
@@ -85,6 +87,7 @@ pub fn App() -> impl IntoView {
 	provide_context(auth);
 	provide_context(config);
 	provide_context(feeds);
+	provide_context(privacy);
 
 	let reply_controls = ReplyControls::default();
 	provide_context(reply_controls);
@@ -136,6 +139,8 @@ pub fn App() -> impl IntoView {
 					/>
 					<hr class="mt-1 mb-1" />
 					<div class:hidden=move || !auth.present() >
+						<PrivacySelector setter=set_privacy />
+						<hr class="mt-1 mb-1" />
 						{move || if advanced.get() { view! {
 							<AdvancedPostBox advanced=set_advanced/>
 						}} else { view! {

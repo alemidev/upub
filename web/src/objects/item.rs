@@ -11,8 +11,9 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 	let author_id = object.attributed_to().id().ok().unwrap_or_default();
 	let author = cache::OBJECTS.get_or(&author_id, serde_json::Value::String(author_id.clone()).into());
 	let sensitive = object.sensitive().unwrap_or_default();
-	let addressed = object.addressed();
-	let public = addressed.iter().any(|x| x.as_str() == apb::target::PUBLIC);
+	let to = object.to().all_ids();
+	let cc = object.cc().all_ids();
+	let privacy = Privacy::from_addressed(&to, &cc);
 	let external_url = object.url().id().ok().unwrap_or_else(|| oid.clone());
 	let attachments = object.attachment()
 		.flat()
@@ -180,7 +181,7 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 					{object.in_reply_to().id().ok().map(|reply| view! {
 							<small><i><a class="clean" href={Uri::web(U::Object, &reply)} title={reply}>reply</a></i></small> 
 					})}
-					<PrivacyMarker addressed=addressed />
+					<PrivacyMarker privacy=privacy to=&to cc=&cc />
 					<a class="clean hover ml-s" href={Uri::web(U::Object, &object.id().unwrap_or_default())}>
 						<DateTime t=object.published().ok() />
 					</a>
@@ -195,8 +196,8 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 			{audience_badge}
 			<span style="white-space:nowrap">
 				<ReplyButton n=comments target=oid.clone() />
-				<LikeButton n=likes liked=already_liked target=oid.clone() author=author_id private=!public />
-				<RepostButton n=shares target=oid />
+				<LikeButton n=likes liked=already_liked target=oid.clone() author=author_id.clone() private=!privacy.is_public() />
+				{if privacy.is_public() { Some(view! { <RepostButton n=shares target=oid author=author_id /> }) } else { None }}
 			</span>
 		</div>
 	}
@@ -230,6 +231,7 @@ pub fn LikeButton(
 	let (count, set_count) = create_signal(n);
 	let (clicked, set_clicked) = create_signal(!liked);
 	let auth = use_context::<Auth>().expect("missing auth context");
+	let privacy = use_context::<PrivacyControl>().expect("missing privacy context");
 	view! {
 		<span
 			class:emoji=clicked
@@ -239,18 +241,17 @@ pub fn LikeButton(
 			on:click=move |_ev| {
 				if !auth.present() { return; }
 				if !clicked.get() { return; }
-				let to = apb::Node::links(vec![author.to_string()]);
-				let cc = if private { apb::Node::Empty } else {
-					apb::Node::links(vec![
-						apb::target::PUBLIC.to_string(),
-						format!("{URL_BASE}/actors/{}/followers", auth.username())
-					])
+				let (mut to, cc) = if private {
+					(vec![], vec![])
+				} else {
+					privacy.get().address(&auth.username())
 				};
+				to.push(author.clone());
 				let payload = serde_json::Value::Object(serde_json::Map::default())
 					.set_activity_type(Some(apb::ActivityType::Like))
 					.set_object(apb::Node::link(target.clone()))
-					.set_to(to)
-					.set_cc(cc);
+					.set_to(apb::Node::links(to))
+					.set_cc(apb::Node::links(cc));
 				let target = target.clone();
 				spawn_local(async move {
 					match Http::post(&auth.outbox(), &payload, auth).await {
@@ -304,10 +305,11 @@ pub fn ReplyButton(n: i32, target: String) -> impl IntoView {
 }
 
 #[component]
-pub fn RepostButton(n: i32, target: String) -> impl IntoView {
+pub fn RepostButton(n: i32, target: String, author: String) -> impl IntoView {
 	let (count, set_count) = create_signal(n);
 	let (clicked, set_clicked) = create_signal(true);
 	let auth = use_context::<Auth>().expect("missing auth context");
+	let privacy = use_context::<PrivacyControl>().expect("missing privacy context");
 	view! {
 		<span
 			class:emoji=clicked
@@ -318,13 +320,13 @@ pub fn RepostButton(n: i32, target: String) -> impl IntoView {
 				if !auth.present() { return; }
 				if !clicked.get() { return; }
 				set_clicked.set(false);
-				let to = apb::Node::links(vec![apb::target::PUBLIC.to_string()]);
-				let cc = apb::Node::links(vec![format!("{URL_BASE}/actors/{}/followers", auth.username())]);
+				let (mut to, cc) = privacy.get().address(&auth.username());
+				to.push(author.clone());
 				let payload = serde_json::Value::Object(serde_json::Map::default())
 					.set_activity_type(Some(apb::ActivityType::Announce))
 					.set_object(apb::Node::link(target.clone()))
-					.set_to(to)
-					.set_cc(cc);
+					.set_to(apb::Node::links(to))
+					.set_cc(apb::Node::links(cc));
 				spawn_local(async move {
 					match Http::post(&auth.outbox(), &payload, auth).await {
 						Ok(()) => set_count.set(count.get() + 1),

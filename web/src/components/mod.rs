@@ -37,21 +37,17 @@ pub fn DateTime(t: Option<chrono::DateTime<chrono::Utc>>) -> impl IntoView {
 	}
 }
 
-pub const PRIVACY_PUBLIC : &str = "🪩";
-pub const PRIVACY_FOLLOWERS : &str = "🔒";
-pub const PRIVACY_PRIVATE : &str = "📨";
-
 #[component]
-pub fn PrivacyMarker(addressed: Vec<String>) -> impl IntoView {
-	let privacy = if addressed.iter().any(|x| x == apb::target::PUBLIC) {
-		PRIVACY_PUBLIC
-	} else if addressed.iter().any(|x| x.ends_with("/followers")) {
-		PRIVACY_FOLLOWERS
-	} else {
-		PRIVACY_PRIVATE
-	};
-	let audience = format!("[ {} ]", addressed.join(", "));
+pub fn PrivacyMarker<'a>(
+	privacy: Privacy,
+	#[prop(optional)] to: &'a [String],
+	#[prop(optional)] cc: &'a [String],
+	#[prop(optional)] big: bool,
+) -> impl IntoView {
+	let to_txt = if to.is_empty() { String::new() } else { format!("to: {}", to.join(", ")) };
+	let cc_txt = if cc.is_empty() { String::new() } else { format!("cc: {}", cc.join(", ")) };
+	let audience = format!("{to_txt}\n{cc_txt}");
 	view! {
-		<span class="emoji ml-1 mr-s moreinfo" title={audience} >{privacy}</span>
+		<span class:big-emoji=big class="emoji ml-1 mr-s moreinfo" title={audience} >{privacy.icon()}</span>
 	}
 }

@@ -317,6 +317,16 @@
 			color: var(--background);
 			cursor: pointer;
 		}
+		input[type="range"] {
+			accent-color: var(--accent);
+		}
+		input[type="range"]:hover {
+			outline: none;
+		}
+		input[type="range"]:focus {
+			outline: none;
+			accent-color: var(--accent-dim);
+		}
 		.ml-1-r {
 			margin-left: 1em;
 		}
@@ -376,6 +386,9 @@
 		span.emoji-btn:hover {
 			color: unset;
 			text-shadow: unset;
+		}
+		span.big-emoji {
+			font-size: 1.5em;
 		}
 		div.context {
 			border-left: 1px solid var(--background-dim);

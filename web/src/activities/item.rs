@@ -1,12 +1,15 @@
 use leptos::*;
 use crate::prelude::*;
 
-use apb::{target::Addressed, Activity, ActivityMut, Base, Object};
+use apb::{Activity, ActivityMut, Base, Object};
 
 
 #[component]
 pub fn ActivityLine(activity: crate::Object, children: Children) -> impl IntoView {
 	let object_id = activity.object().id().unwrap_or_default();
+	let to = activity.to().all_ids();
+	let cc = activity.cc().all_ids();
+	let privacy = Privacy::from_addressed(&to, &cc);
 	let activity_url = activity.id().map(|x| view! {
 		<sup><small><a class="clean ml-s" href={x.to_string()} target="_blank">"↗"</a></small></sup>
 	});
@@ -31,7 +34,7 @@ pub fn ActivityLine(activity: crate::Object, children: Children) -> impl IntoVie
 							{kind.as_ref().to_string()}
 						</a>
 						{activity_url}
-						<PrivacyMarker addressed=activity.addressed() />
+						<PrivacyMarker privacy=privacy to=&to cc=&cc />
 					</code>
 				</td>
 			</tr>

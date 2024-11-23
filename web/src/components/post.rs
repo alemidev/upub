@@ -35,17 +35,122 @@ struct MentionMatch {
 	domain: String,
 }
 
+pub type PrivacyControl = ReadSignal<Privacy>;
+
+#[derive(Debug, Clone, Copy)]
+pub enum Privacy {
+	Broadcast = 4,
+	Public = 3,
+	Private = 2,
+	Direct = 1,
+}
+
+impl Privacy {
+	pub fn is_public(&self) -> bool {
+		match self {
+			Self::Broadcast | Self::Public => true,
+			_ => false,
+		}
+	}
+
+	pub fn from_value(v: &str) -> Self {
+		match v {
+			"1" => Self::Direct,
+			"2" => Self::Private,
+			"3" => Self::Public,
+			"4" => Self::Broadcast,
+			_ => panic!("invalid value for privacy"),
+		}
+	}
+
+	pub fn from_addressed(to: &[String], cc: &[String]) -> Self {
+		if to.iter().any(|x| x == apb::target::PUBLIC) {
+			return Self::Broadcast;
+		}
+		if cc.iter().any(|x| x == apb::target::PUBLIC) {
+			return Self::Public;
+		}
+		if to.iter().any(|x| x.ends_with("/followers"))
+		|| cc.iter().any(|x| x.ends_with("/followers")) {
+			return Self::Private;
+		}
+
+		Self::Direct
+	}
+
+	pub fn icon(&self) -> &'static str {
+		match self {
+			Self::Broadcast => "📢",
+			Self::Public => "🪩",
+			Self::Private => "🔒",
+			Self::Direct => "📨",
+		}
+	}
+
+	pub fn address(&self, user: &str) -> (Vec<String>, Vec<String>) {
+		match self {
+			Self::Broadcast => (
+				vec![apb::target::PUBLIC.to_string()],
+				vec![format!("{URL_BASE}/actors/{user}/followers")],
+			),
+			Self::Public => (
+				vec![],
+				vec![apb::target::PUBLIC.to_string(), format!("{URL_BASE}/actors/{user}/followers")],
+			),
+			Self::Private => (
+				vec![],
+				vec![format!("{URL_BASE}/actors/{user}/followers")],
+			),
+			Self::Direct => (
+				vec![],
+				vec![],
+			),
+		}
+	}
+}
+
+#[component]
+pub fn PrivacySelector(setter: WriteSignal<Privacy>) -> impl IntoView {
+	let privacy = use_context::<PrivacyControl>().expect("missing privacy context");
+	let auth = use_context::<Auth>().expect("missing auth context");
+	view! {
+		<table class="align w-100">
+			<tr>
+				<td class="w-100">
+					<input
+						type="range"
+						min="1"
+						max="4"
+						class="w-100"
+						prop:value=move || privacy.get() as u8
+						on:input=move |ev| {
+							ev.prevent_default();
+							setter.set(Privacy::from_value(&event_target_value(&ev)));
+					} />
+				</td>
+				<td>
+					{move || {
+						let p = privacy.get();
+						let (to, cc) = p.address(&auth.username());
+						view! {
+							<PrivacyMarker privacy=p to=&to cc=&cc big=true />
+						}
+					}}
+				</td>
+			</tr>
+		</table>
+	}
+}
+
 #[component]
 pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 	let auth = use_context::<Auth>().expect("missing auth context");
+	let privacy = use_context::<PrivacyControl>().expect("missing privacy context");
 	let reply = use_context::<ReplyControls>().expect("missing reply controls");
 	let (posting, set_posting) = create_signal(false);
 	let (error, set_error) = create_signal(None);
 	let (content, set_content) = create_signal("".to_string());
 	let summary_ref: NodeRef<html::Input> = create_node_ref();
-	let public_ref: NodeRef<html::Input> = create_node_ref();
-	let followers_ref: NodeRef<html::Input> = create_node_ref();
-	let private_ref: NodeRef<html::Input> = create_node_ref();
 
 	// TODO is this too abusive with resources? im even checking if TLD exists...
 	let mentions = create_local_resource(
@@ -109,88 +214,63 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 				on:input=move |ev| set_content.set(event_target_value(&ev))
 			></textarea>
 
+			<button class="w-100" prop:disabled=posting type="button" style="height: 3em" on:click=move |_| {
+				set_posting.set(true);
+				spawn_local(async move {
+					let summary = get_if_some(summary_ref);
+					let content = content.get();
+					let (mut to_vec, cc_vec) = privacy.get().address(&auth.username());
+					let mut mention_tags : Vec<serde_json::Value> = mentions.get()
+						.unwrap_or_default()
+						.into_iter()
+						.map(|x| {
+							use apb::LinkMut;
+							LinkMut::set_name(apb::new(), Some(format!("@{}@{}", x.name, x.domain))) // TODO ewww but name clashes
+								.set_link_type(Some(apb::LinkType::Mention))
+								.set_href(Some(x.href))
+						})
+						.collect();
 
-
-			<table class="align rev w-100">
-				<tr>
-					<td><input id="priv-public" type="radio" name="privacy" value="public" title="public" node_ref=public_ref /></td>
-					<td><span class="emoji" title="public" >{PRIVACY_PUBLIC}</span></td>
-					<td class="w-100" rowspan="3">
-						<button class="w-100" prop:disabled=posting type="button" style="height: 3em" on:click=move |_| {
-							set_posting.set(true);
-							spawn_local(async move {
-								let summary = get_if_some(summary_ref);
-								let content = content.get();
-								let mut cc_vec = Vec::new();
-								let mut to_vec = Vec::new();
-								if get_checked(followers_ref) {
-									cc_vec.push(format!("{URL_BASE}/actors/{}/followers", auth.username()));
-								}
-								if get_checked(public_ref) {
-									cc_vec.push(apb::target::PUBLIC.to_string());
-									cc_vec.push(format!("{URL_BASE}/actors/{}/followers", auth.username()));
-								}
-								let mut mention_tags : Vec<serde_json::Value> = mentions.get()
-									.unwrap_or_default()
-									.into_iter()
-									.map(|x| {
+					if let Some(r) = reply.reply_to.get() {
+						if let Some(au) = post_author(&r) {
+							if let Ok(uid) = au.id() {
+								to_vec.push(uid.to_string());
+								if let Ok(name) = au.name() {
+									let domain = Uri::domain(&uid);
+									mention_tags.push({
 										use apb::LinkMut;
-										LinkMut::set_name(apb::new(), Some(format!("@{}@{}", x.name, x.domain))) // TODO ewww but name clashes
+										LinkMut::set_name(apb::new(), Some(format!("@{}@{}", name, domain))) // TODO ewww but name clashes
 											.set_link_type(Some(apb::LinkType::Mention))
-											.set_href(Some(x.href))
-									})
-									.collect();
+											.set_href(Some(uid))
+									});
+								}
+							}
+						}
+					}
+					for mention in mentions.get().as_deref().unwrap_or(&[]) {
+						to_vec.push(mention.href.clone());
+					}
+					let payload = apb::new()
+						.set_object_type(Some(apb::ObjectType::Note))
+						.set_summary(summary)
+						.set_content(Some(content))
+						.set_context(apb::Node::maybe_link(reply.context.get()))
+						.set_in_reply_to(apb::Node::maybe_link(reply.reply_to.get()))
+						.set_to(apb::Node::links(to_vec))
+						.set_cc(apb::Node::links(cc_vec))
+						.set_tag(apb::Node::array(mention_tags));
+					match Http::post(&auth.outbox(), &payload, auth).await {
+						Err(e) => set_error.set(Some(e.to_string())),
+						Ok(()) => {
+							set_error.set(None);
+							if let Some(x) = summary_ref.get() { x.set_value("") }
+							set_content.set("".to_string());
+						},
+					}
+					set_posting.set(false);
+				})
+			} >post</button>
 
-								if let Some(r) = reply.reply_to.get() {
-									if let Some(au) = post_author(&r) {
-										if let Ok(uid) = au.id() {
-											to_vec.push(uid.to_string());
-											if let Ok(name) = au.name() {
-												let domain = Uri::domain(&uid);
-												mention_tags.push({
-													use apb::LinkMut;
-													LinkMut::set_name(apb::new(), Some(format!("@{}@{}", name, domain))) // TODO ewww but name clashes
-														.set_link_type(Some(apb::LinkType::Mention))
-														.set_href(Some(uid))
-												});
-											}
-										}
-									}
-								}
-								for mention in mentions.get().as_deref().unwrap_or(&[]) {
-									to_vec.push(mention.href.clone());
-								}
-								let payload = apb::new()
-									.set_object_type(Some(apb::ObjectType::Note))
-									.set_summary(summary)
-									.set_content(Some(content))
-									.set_context(apb::Node::maybe_link(reply.context.get()))
-									.set_in_reply_to(apb::Node::maybe_link(reply.reply_to.get()))
-									.set_to(apb::Node::links(to_vec))
-									.set_cc(apb::Node::links(cc_vec))
-									.set_tag(apb::Node::array(mention_tags));
-								match Http::post(&auth.outbox(), &payload, auth).await {
-									Err(e) => set_error.set(Some(e.to_string())),
-									Ok(()) => {
-										set_error.set(None);
-										if let Some(x) = summary_ref.get() { x.set_value("") }
-										set_content.set("".to_string());
-									},
-								}
-								set_posting.set(false);
-							})
-						} >post</button>
-					</td>
-				</tr>
-				<tr>
-					<td><input id="priv-followers" type="radio" name="privacy" value="followers" title="followers" node_ref=followers_ref checked /></td>
-					<td><span class="emoji" title="followers" >{PRIVACY_FOLLOWERS}</span></td>
-				</tr>
-				<tr>
-					<td><input id="priv-private" type="radio" name="privacy" value="private" title="private" node_ref=private_ref /></td>
-					<td><span class="emoji" title="private" >{PRIVACY_PRIVATE}</span></td>
-				</tr>
-			</table>
 			{move|| error.get().map(|x| view! { <blockquote class="mt-s">{x}</blockquote> })}
 		</div>
 	}
