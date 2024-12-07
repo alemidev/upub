@@ -208,14 +208,16 @@ impl Node<serde_json::Value> {
 	#[cfg(feature = "fetch")]
 	pub async fn fetch(&mut self) -> reqwest::Result<&mut Self> {
 		if let Node::Link(link) = self {
-			*self = reqwest::Client::new()
-				.get(link.href())
-				.header("Accept", "application/json")
-				.send()
-				.await?
-				.json::<serde_json::Value>()
-				.await?
-				.into();
+			if let Ok(url) = link.href() {
+				*self = reqwest::Client::new()
+					.get(url)
+					.header("Accept", "application/json")
+					.send()
+					.await?
+					.json::<serde_json::Value>()
+					.await?
+					.into();
+			}
 		}
 		Ok(self)
 	}

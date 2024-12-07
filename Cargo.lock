@@ -140,7 +140,7 @@ checksum = "d301b3b94cb4b2f23d7917810addbbaff90738e0ca2be692bd027e70d7e0330c"
 
 [[package]]
 name = "apb"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "chrono",
  "paste",
