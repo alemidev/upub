@@ -146,3 +146,6 @@ pub use types::{
 pub fn new() -> serde_json::Value {
 	serde_json::Value::Object(serde_json::Map::default())
 }
+
+#[cfg(feature = "fetch")]
+pub use reqwest;
