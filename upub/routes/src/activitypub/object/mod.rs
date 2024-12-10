@@ -28,7 +28,7 @@ pub async fn view(
 	}
 
 	let item = upub::Query::objects(auth.my_id())
-		.filter(auth.filter())
+		.filter(auth.filter_objects())
 		.filter(model::object::Column::Id.eq(&oid))
 		.into_model::<RichActivity>()
 		.one(ctx.db())
@@ -45,7 +45,7 @@ pub async fn view(
 	
 	if ctx.cfg().security.show_reply_ids {
 		let replies_ids = upub::Query::objects(auth.my_id())
-			.filter(auth.filter())
+			.filter(auth.filter_objects())
 			.filter(model::object::Column::InReplyTo.eq(oid))
 			.select_only()
 			.select_column(model::object::Column::Id)

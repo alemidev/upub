@@ -20,7 +20,24 @@ pub enum Identity {
 }
 
 impl Identity {
-	pub fn filter(&self) -> Condition {
+	// TODO i hate having to do this, but if i don't include `activity.actor` column
+	//      we can't see our own activities (likes, announces, follows), and if i do
+	//      all queries which don't bring up activities break. so it's necessary to
+	//      split these two in order to manually include the extra filter when
+	//      needed
+
+	pub fn filter_objects(&self) -> Condition {
+		let base_cond = Condition::any().add(upub::model::addressing::Column::Actor.is_null());
+		match self {
+			Identity::Anonymous => base_cond,
+			Identity::Remote { internal, .. } => base_cond.add(upub::model::addressing::Column::Instance.eq(*internal)), 
+			Identity::Local { internal, id } => base_cond
+				.add(upub::model::addressing::Column::Actor.eq(*internal))
+				.add(upub::model::object::Column::AttributedTo.eq(id))
+		}
+	}
+
+	pub fn filter_activities(&self) -> Condition {
 		let base_cond = Condition::any().add(upub::model::addressing::Column::Actor.is_null());
 		match self {
 			Identity::Anonymous => base_cond,

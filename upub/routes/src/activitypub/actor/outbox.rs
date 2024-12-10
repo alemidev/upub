@@ -20,7 +20,7 @@ pub async fn page(
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let uid = ctx.uid(&id);
 	let filter = Condition::all()
-		.add(auth.filter())
+		.add(auth.filter_activities())
 		.add(
 			Condition::any()
 				.add(model::activity::Column::Actor.eq(&uid))

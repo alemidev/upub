@@ -52,7 +52,7 @@ pub async fn search(
 	}
 
 	let filter = Condition::all()
-		.add(auth.filter())
+		.add(auth.filter_activities())
 		.add(upub::model::object::Column::Content.like(format!("%{}%", page.q)));
 
 	// TODO lmao rethink this all

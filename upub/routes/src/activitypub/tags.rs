@@ -25,7 +25,7 @@ pub async fn page(
 	let offset = page.offset.unwrap_or(0);
 
 	let objects = upub::Query::hashtags()
-		.filter(auth.filter())
+		.filter(auth.filter_objects())
 		.filter(upub::model::hashtag::Column::Name.eq(&id))
 		.limit(limit)
 		.offset(offset)

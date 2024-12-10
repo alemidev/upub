@@ -24,7 +24,7 @@ pub async fn view(
 	}
 
 	let row = upub::Query::feed(auth.my_id())
-		.filter(auth.filter())
+		.filter(auth.filter_activities())
 		.filter(model::activity::Column::Id.eq(&aid))
 		.into_model::<RichActivity>()
 		.one(ctx.db())

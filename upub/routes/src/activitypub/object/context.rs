@@ -12,7 +12,7 @@ pub async fn get(
 	let context = ctx.oid(&id);
 
 	let count = upub::Query::objects(auth.my_id())
-		.filter(auth.filter())
+		.filter(auth.filter_objects())
 		.filter(model::object::Column::Context.eq(&context))
 		.count(ctx.db())
 		.await?;
@@ -31,7 +31,7 @@ pub async fn page(
 	let offset = page.offset.unwrap_or(0);
 
 	let items = upub::Query::objects(auth.my_id())
-		.filter(auth.filter())
+		.filter(auth.filter_objects())
 		.filter(model::object::Column::Context.eq(context))
 		// note that this should be ASC so we get replies somewhat ordered
 		.order_by(model::object::Column::Published, Order::Asc)

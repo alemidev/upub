@@ -22,7 +22,7 @@ pub async fn get(
 	}
 
 	let replies_ids = upub::Query::objects(auth.my_id())
-		.filter(auth.filter())
+		.filter(auth.filter_objects())
 		.filter(model::object::Column::InReplyTo.eq(ctx.oid(&id)))
 		.select_only()
 		.select_column(model::object::Column::Id)
@@ -56,7 +56,7 @@ pub async fn page(
 	crate::builders::paginate_feed(
 		page_id,
 		Condition::all()
-			.add(auth.filter())
+			.add(auth.filter_activities())
 			.add(model::object::Column::InReplyTo.eq(oid)),
 		ctx.db(),
 		page,
