@@ -27,7 +27,8 @@ impl Identity {
 			Identity::Remote { internal, .. } => base_cond.add(upub::model::addressing::Column::Instance.eq(*internal)), 
 			Identity::Local { internal, id } => base_cond
 				.add(upub::model::addressing::Column::Actor.eq(*internal))
-				.add(upub::model::object::Column::AttributedTo.eq(id)),
+				.add(upub::model::object::Column::AttributedTo.eq(id))
+				.add(upub::model::activity::Column::Actor.eq(id)),
 		}
 	}
 
