@@ -215,10 +215,14 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 			></textarea>
 
 			<button class="w-100" prop:disabled=posting type="button" style="height: 3em" on:click=move |_| {
+				let content = content.get();
+				if content.is_empty() {
+					set_error.set(Some("missing post body".to_string()));
+					return;
+				}
 				set_posting.set(true);
 				spawn_local(async move {
 					let summary = get_if_some(summary_ref);
-					let content = content.get();
 					let (mut to_vec, cc_vec) = privacy.get().address(&auth.username());
 					let mut mention_tags : Vec<serde_json::Value> = mentions.get()
 						.unwrap_or_default()
