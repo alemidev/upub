@@ -47,10 +47,7 @@ pub enum Privacy {
 
 impl Privacy {
 	pub fn is_public(&self) -> bool {
-		match self {
-			Self::Broadcast | Self::Public => true,
-			_ => false,
-		}
+		matches!(self, Self::Broadcast | Self::Public)
 	}
 
 	pub fn from_value(v: &str) -> Self {
@@ -429,6 +426,7 @@ fn get_vec_if_some(node: NodeRef<html::Input>) -> Vec<String> {
 		).unwrap_or_default()
 }
 
+#[allow(unused)]
 fn get_checked(node: NodeRef<html::Input>) -> bool {
 	node.get()
 		.map(|x| x.checked())

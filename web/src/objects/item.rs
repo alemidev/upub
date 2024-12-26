@@ -3,7 +3,7 @@ use std::sync::Arc;
 use leptos::*;
 use crate::{prelude::*, URL_SENSITIVE};
 
-use apb::{target::Addressed, ActivityMut, Base, Collection, CollectionMut, Object, ObjectMut, Shortcuts};
+use apb::{ActivityMut, Base, Collection, CollectionMut, Object, ObjectMut, Shortcuts};
 
 #[component]
 pub fn Object(object: crate::Object) -> impl IntoView {
