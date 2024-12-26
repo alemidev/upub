@@ -68,6 +68,7 @@ impl Administrable for crate::Context {
 			show_following_count: Set(true),
 			show_followers: Set(false),
 			show_following: Set(false),
+			show_liked_objects: Set(false),
 		};
 
 		crate::model::config::Entity::insert(config_model)

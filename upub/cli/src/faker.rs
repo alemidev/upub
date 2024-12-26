@@ -43,10 +43,11 @@ pub async fn faker(ctx: upub::Context, count: i64) -> Result<(), sea_orm::DbErr>
 		internal: NotSet,
 		actor: Set(test_user.id.clone()),
 		accept_follow_requests: Set(true),
-		show_followers: Set(true),
-		show_following: Set(true),
 		show_following_count: Set(true),
 		show_followers_count: Set(true),
+		show_followers: Set(false),
+		show_following: Set(false),
+		show_liked_objects: Set(false),
 	}).exec(db).await?;
 
 	credential::Entity::insert(credential::ActiveModel {

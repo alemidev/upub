@@ -20,6 +20,7 @@ mod m20240706_000001_add_error_to_jobs;
 mod m20240715_000001_add_quote_uri_to_objects;
 mod m20240715_000002_add_actors_fields_and_aliases;
 mod m20240811_000001_add_full_text_index;
+mod m20241226_000001_add_show_likes_collection;
 
 pub struct Migrator;
 
@@ -47,6 +48,7 @@ impl MigratorTrait for Migrator {
 			Box::new(m20240715_000001_add_quote_uri_to_objects::Migration),
 			Box::new(m20240715_000002_add_actors_fields_and_aliases::Migration),
 			Box::new(m20240811_000001_add_full_text_index::Migration),
+			Box::new(m20241226_000001_add_show_likes_collection::Migration),
 		]
 	}
 }

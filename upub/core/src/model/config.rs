@@ -12,19 +12,7 @@ pub struct Model {
 	pub show_following_count: bool,
 	pub show_followers: bool,
 	pub show_following: bool,
-}
-
-impl Default for Model {
-	fn default() -> Self {
-		Model {
-			internal: 0, actor: "".into(),
-			accept_follow_requests: true,
-			show_following_count: true,
-			show_following: true,
-			show_followers_count: true,
-			show_followers: true,
-		}
-	}
+	pub show_liked_objects: bool,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
