@@ -161,9 +161,8 @@ impl Entity {
 }
 
 impl crate::ext::IntoActivityPub for Model {
-	fn into_activity_pub_json(self, _ctx: &crate::Context) -> serde_json::Value {
+	fn into_activity_pub_json(self, ctx: &crate::Context) -> serde_json::Value {
 		apb::new()
-			.set_id(Some(self.id))
 			.set_object_type(Some(self.object_type))
 			.set_attributed_to(apb::Node::maybe_link(self.attributed_to))
 			.set_name(self.name)
@@ -175,7 +174,7 @@ impl crate::ext::IntoActivityPub for Model {
 					.set_url(apb::Node::link(x))
 			)))
 			.set_context(apb::Node::maybe_link(self.context.clone()))
-			.set_conversation(apb::Node::maybe_link(self.context.clone())) // duplicate context for mastodon
+			.set_conversation(apb::Node::maybe_link(self.context)) // duplicate context for mastodon
 			.set_in_reply_to(apb::Node::maybe_link(self.in_reply_to.clone()))
 			.set_quote_url(apb::Node::maybe_link(self.quote.clone()))
 			.set_published(Some(self.published))
@@ -199,9 +198,12 @@ impl crate::ext::IntoActivityPub for Model {
 			))
 			.set_replies(apb::Node::object(
 				apb::new()
+					.set_id(if ctx.is_local(&self.id) { Some(format!("{}/replies", self.id)) } else { None })
+					.set_first( if ctx.is_local(&self.id) { apb::Node::link(format!("{}/replies/page", self.id)) } else { apb::Node::Empty })
 					.set_collection_type(Some(apb::CollectionType::OrderedCollection))
 					.set_total_items(Some(self.replies as u64))
 			))
+			.set_id(Some(self.id))
 	}
 }
 

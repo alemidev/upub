@@ -201,7 +201,9 @@ impl Entity {
 }
 
 impl crate::ext::IntoActivityPub for Model {
-	fn into_activity_pub_json(self, _ctx: &crate::Context) -> serde_json::Value {
+	fn into_activity_pub_json(self, ctx: &crate::Context) -> serde_json::Value {
+		let is_local = ctx.is_local(&self.id);
+		let id = ctx.id(&self.id);
 		apb::new()
 			.set_id(Some(self.id.clone()))
 			.set_actor_type(Some(self.actor_type))
@@ -227,12 +229,15 @@ impl crate::ext::IntoActivityPub for Model {
 			.set_updated(if self.updated != self.published { Some(self.updated) } else { None })
 			.set_preferred_username(Some(self.preferred_username))
 			.set_statuses_count(Some(self.statuses_count as u64))
-			.set_followers_count(Some(self.followers_count as u64))
-			.set_following_count(Some(self.following_count as u64))
-			.set_inbox(apb::Node::maybe_link(self.inbox))
-			.set_outbox(apb::Node::maybe_link(self.outbox))
-			.set_following(apb::Node::maybe_link(self.following))
-			.set_followers(apb::Node::maybe_link(self.followers))
+			// local users may want to hide these! default to hidden, and downstream we can opt-in to
+			// showing them. for remote users we assume the number is already "protected" by remote
+			// instance so we just show it
+			.set_followers_count(if is_local { None } else { Some(self.followers_count as u64) })
+			.set_following_count(if is_local { None } else { Some(self.following_count as u64) })
+			.set_inbox(if is_local { apb::Node::link(crate::url!(ctx, "/actors/{id}/inbox")) } else { apb::Node::maybe_link(self.inbox) })
+			.set_outbox(if is_local { apb::Node::link(crate::url!(ctx, "/actors/{id}/outbox")) } else { apb::Node::maybe_link(self.outbox) })
+			.set_following(if is_local { apb::Node::link(crate::url!(ctx, "/actors{id}/following")) } else { apb::Node::maybe_link(self.following) })
+			.set_followers(if is_local { apb::Node::link(crate::url!(ctx, "/actors/{id}/followers")) } else { apb::Node::maybe_link(self.followers) })
 			.set_public_key(apb::Node::object(
 				apb::new()
 					.set_id(Some(format!("{}#main-key", self.id)))
@@ -241,7 +246,8 @@ impl crate::ext::IntoActivityPub for Model {
 			))
 			.set_endpoints(apb::Node::object(
 				apb::new()
-					.set_shared_inbox(self.shared_inbox)
+					.set_shared_inbox(if is_local { Some(crate::url!(ctx, "/inbox")) } else { self.shared_inbox })
+					.set_proxy_url(if is_local { Some(crate::url!(ctx, "/fetch")) } else { None })
 			))
 			.set_also_known_as(apb::Node::links(self.also_known_as.0))
 			.set_moved_to(apb::Node::maybe_link(self.moved_to))

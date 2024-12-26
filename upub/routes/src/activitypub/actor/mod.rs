@@ -7,7 +7,7 @@ pub mod notifications;
 
 use axum::extract::{Path, Query, State};
 
-use apb::{LD, ActorMut, EndpointsMut, Node, ObjectMut};
+use apb::{LD, ActorMut, Node, ObjectMut};
 use upub::{ext::AnyQuery, model, traits::Fetcher, Context};
 
 use crate::{builders::JsonLD, ApiError, AuthIdentity};
@@ -56,32 +56,25 @@ pub async fn view(
 	{
 		// local user
 		Some((user_model, Some(cfg))) => {
+			let (followers, following) = (user_model.followers_count, user_model.following_count);
 			let mut user = ctx.ap(user_model)
-				.set_inbox(Node::link(upub::url!(ctx, "/actors/{id}/inbox")))
-				.set_outbox(Node::link(upub::url!(ctx, "/actors/{id}/outbox")))
-				.set_following(Node::link(upub::url!(ctx, "/actors/{id}/following")))
-				.set_followers(Node::link(upub::url!(ctx, "/actors/{id}/followers")))
 				.set_following_me(following_me)
 				.set_followed_by_me(followed_by_me)
-				.set_manually_approves_followers(Some(!cfg.accept_follow_requests))
-				.set_endpoints(Node::object(
-					apb::new()
-						.set_shared_inbox(Some(upub::url!(ctx, "/inbox")))
-						.set_proxy_url(Some(upub::url!(ctx, "/fetch")))
-				));
+				.set_manually_approves_followers(Some(!cfg.accept_follow_requests));
 
 			if auth.is(&uid) {
 				user = user.set_notifications(Node::link(upub::url!(ctx, "/actors/{id}/notifications")));
 			}
 
-			if !auth.is(&uid) && !cfg.show_followers_count {
-				user = user.set_followers_count(None);
+			if auth.is(&uid) || cfg.show_followers_count {
+				user = user.set_followers_count(Some(u64::try_from(followers).unwrap_or(0)));
 			}
 
-			if !auth.is(&uid) && !cfg.show_following_count {
-				user = user.set_following_count(None);
+			if auth.is(&uid) || cfg.show_following_count {
+				user = user.set_following_count(Some(u64::try_from(following).unwrap_or(0)));
 			}
 
+			// TODO this is known "magically" !! very tight coupling ouchhh
 			if let Some(ref fe) = ctx.cfg().instance.frontend {
 				user = user.set_url(Node::link(format!("{fe}/actors/{id}")));
 			}
