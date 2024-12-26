@@ -1,9 +1,9 @@
-use apb::{BaseMut, CollectionMut, CollectionPageMut, LD};
+use apb::{BaseMut, CollectionMut, LD};
 use axum::extract::{Path, Query, State};
-use sea_orm::{ColumnTrait, ConnectionTrait, PaginatorTrait, QueryFilter, QuerySelect, SelectColumns};
-use upub::{model, traits::Fetcher, Context};
+use sea_orm::{ColumnTrait, PaginatorTrait, QueryFilter, QuerySelect};
+use upub::{model, selector::RichObject, traits::Fetcher, Context};
 
-use crate::{activitypub::{Pagination, TryFetch}, builders::JsonLD, ApiResult, AuthIdentity, Identity};
+use crate::{activitypub::{Pagination, TryFetch}, builders::JsonLD, AuthIdentity};
 
 pub async fn get(
 	State(ctx): State<Context>,
@@ -21,21 +21,18 @@ pub async fn get(
 		ctx.fetch_thread(&oid, ctx.db()).await?;
 	}
 
-	let replies_count = total_replies(&oid, &auth, ctx.db()).await?;
-	let replies_ids = replies_ids(&oid, &auth, ctx.db(), 20, 0).await?;
-
-	let first = apb::new()
-		.set_id(Some(upub::url!(ctx, "/objects/{id}/replies/page")))
-		.set_collection_type(Some(apb::CollectionType::OrderedCollectionPage))
-		.set_next(apb::Node::link(upub::url!(ctx, "/objects/{id}/replies/page?offset=20")))
-		.set_ordered_items(apb::Node::links(replies_ids));
+	let total_replies = upub::Query::objects(None)
+		.filter(auth.filter_objects())
+		.filter(model::object::Column::InReplyTo.eq(&oid))
+		.count(ctx.db())
+		.await?;
 
 	Ok(JsonLD(
 		apb::new()
 			.set_id(Some(upub::url!(ctx, "/objects/{id}/replies")))
 			.set_collection_type(Some(apb::CollectionType::Collection))
-			.set_total_items(Some(replies_count))
-			.set_first(apb::Node::object(first))
+			.set_total_items(Some(total_replies))
+			.set_first(apb::Node::link(upub::url!(ctx, "/objects/{id}/replies/page")))
 			.ld_context()
 	))
 }
@@ -53,35 +50,22 @@ pub async fn page(
 	// TODO kinda weird ignoring this but its weirder to exclude replies from replies view...
 	page.replies = Some(true);
 
-	let replies_ids = replies_ids(&oid, &auth, ctx.db(), limit, offset).await?;
-
-	crate::builders::collection_page(
-		&page_id,
-		offset,
-		limit,
-		apb::Node::links(replies_ids)
-	)
-}
-
-async fn replies_ids(oid: &str, auth: &Identity, db: &impl ConnectionTrait, limit: u64, offset: u64) -> ApiResult<Vec<String>> {
 	let res = upub::Query::objects(auth.my_id())
 		.limit(limit)
 		.offset(offset)
 		.filter(auth.filter_objects())
 		.filter(model::object::Column::InReplyTo.eq(oid))
-		.select_only()
-		.select_column(model::object::Column::Id)
-		.into_tuple::<String>()
-		.all(db)
-		.await?;
-	Ok(res)
-}
+		.into_model::<RichObject>()
+		.all(ctx.db())
+		.await?
+		.into_iter()
+		.map(|x| ctx.ap(x))
+		.collect();
 
-async fn total_replies(oid: &str, auth: &Identity, db: &impl ConnectionTrait) -> ApiResult<u64> {
-	let count = upub::Query::objects(None)
-		.filter(auth.filter_objects())
-		.filter(model::object::Column::InReplyTo.eq(oid))
-		.count(db)
-		.await?;
-	Ok(count)
+	crate::builders::collection_page(
+		&page_id,
+		offset,
+		limit,
+		apb::Node::array(res)
+	)
 }

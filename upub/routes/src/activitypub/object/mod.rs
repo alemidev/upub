@@ -1,10 +1,10 @@
 pub mod replies;
 pub mod context;
 
-use apb::{BaseMut, Object, ObjectMut, LD};
+use apb::LD;
 use axum::extract::{Path, Query, State};
 use sea_orm::{ColumnTrait, QueryFilter, TransactionTrait};
-use upub::{model, selector::{BatchFillable, RichActivity}, traits::Fetcher, Context};
+use upub::{model, selector::{BatchFillable, RichObject}, traits::Fetcher, Context};
 
 use crate::{builders::JsonLD, AuthIdentity};
 
@@ -27,12 +27,10 @@ pub async fn view(
 		}
 	}
 
-	let replies_url = upub::url!(ctx, "/objects/{id}/replies");
-
-	let item_model = upub::Query::objects(auth.my_id())
+	let item = upub::Query::objects(auth.my_id())
 		.filter(auth.filter_objects())
 		.filter(model::object::Column::Id.eq(&oid))
-		.into_model::<RichActivity>()
+		.into_model::<RichObject>()
 		.one(ctx.db())
 		.await?
 		.ok_or_else(crate::ApiError::not_found)?
@@ -43,17 +41,5 @@ pub async fn view(
 		.with_batched::<upub::model::hashtag::Entity>(ctx.db())
 		.await?;
 
-	let mut item = ctx.ap(item_model);
-
-	let replies_patched = 
-	apb::Node::object(
-		item.replies()
-			.into_inner()
-			.unwrap()
-			.set_id(Some(replies_url))
-	);
-
-	item = item.set_replies(replies_patched);
-
-	Ok(JsonLD(item.ld_context()))
+	Ok(JsonLD(ctx.ap(item).ld_context()))
 }
