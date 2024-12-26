@@ -1,6 +1,6 @@
 use axum::extract::{Path, Query, State};
 use sea_orm::{ColumnTrait, Order, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect};
-use upub::{model, selector::{BatchFillable, RichActivity}, Context};
+use upub::{model, selector::{BatchFillable, RichObject}, Context};
 
 use crate::{activitypub::Pagination, builders::JsonLD, AuthIdentity};
 
@@ -36,7 +36,7 @@ pub async fn page(
 		.order_by(model::object::Column::Published, Order::Asc)
 		.limit(limit)
 		.offset(offset)
-		.into_model::<RichActivity>()
+		.into_model::<RichObject>()
 		.all(ctx.db())
 		.await?
 		.with_batched::<upub::model::attachment::Entity>(ctx.db())

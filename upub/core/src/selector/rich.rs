@@ -32,23 +32,70 @@ impl IntoActivityPub for RichHashtag {
 	}
 }
 
-pub struct RichActivity {
-	pub activity: Option<crate::model::activity::Model>,
+pub struct RichObject {
 	pub object: Option<crate::model::object::Model>,
 	pub liked: Option<i64>,
 	pub attachments: Option<Vec<crate::model::attachment::Model>>,
 	pub hashtags: Option<Vec<RichHashtag>>,
 	pub mentions: Option<Vec<RichMention>>,
+}
+
+impl FromQueryResult for RichObject {
+	fn from_query_result(res: &QueryResult, _pre: &str) -> Result<Self, DbErr> {
+		Ok(RichObject {
+			attachments: None,
+			hashtags: None,
+			mentions: None,
+			liked: res.try_get(crate::model::like::Entity.table_name(), &crate::model::like::Column::Actor.to_string()).ok(),
+			object: crate::model::object::Model::from_query_result_optional(res, crate::model::object::Entity.table_name())?,
+		})
+	}
+}
+
+impl IntoActivityPub for RichObject {
+	fn into_activity_pub_json(self, ctx: &crate::Context) -> serde_json::Value {
+		use apb::ObjectMut;
+		match self.object {
+			Some(object) => {
+				let mut tags = Vec::new();
+				if let Some(mentions) = self.mentions {
+					for mention in mentions {
+						tags.push(mention.into_activity_pub_json(ctx));
+					}
+				}
+				if let Some(hashtags) = self.hashtags {
+					for hash in hashtags {
+						tags.push(hash.into_activity_pub_json(ctx));
+					}
+				}
+				object.into_activity_pub_json(ctx)
+					.set_liked_by_me(if self.liked.is_some() { Some(true) } else { None })
+					.set_tag(apb::Node::maybe_array(tags))
+					.set_attachment(match self.attachments {
+						None => apb::Node::Empty,
+						Some(vec) => apb::Node::array(
+							vec.into_iter()
+								.map(|x| x.into_activity_pub_json(ctx))
+								.collect()
+						),
+					})
+			},
+			None => serde_json::Value::Null,
+		}
+	}
+}
+
+pub struct RichActivity {
+	pub activity: Option<crate::model::activity::Model>,
+	pub object: Option<RichObject>,
 	pub discovered: chrono::DateTime<chrono::Utc>,
 }
 
 impl FromQueryResult for RichActivity {
 	fn from_query_result(res: &QueryResult, _pre: &str) -> Result<Self, DbErr> {
 		Ok(RichActivity {
-			attachments: None, hashtags: None, mentions: None,
-			liked: res.try_get(crate::model::like::Entity.table_name(), &crate::model::like::Column::Actor.to_string()).ok(),
-			object: crate::model::object::Model::from_query_result(res, crate::model::object::Entity.table_name()).ok(),
-			activity: crate::model::activity::Model::from_query_result(res, crate::model::activity::Entity.table_name()).ok(),
+			object: RichObject::from_query_result_optional(res, _pre)?,
+			activity: crate::model::activity::Model::from_query_result_optional(res, crate::model::activity::Entity.table_name())?,
 			discovered: res.try_get(
 				crate::model::addressing::Entity.table_name(),
 				&crate::model::addressing::Column::Published.to_string()
@@ -63,76 +110,18 @@ impl IntoActivityPub for RichActivity {
 		match (self.activity, self.object) {
 			(None, None) => serde_json::Value::Null,
 
-			(Some(activity), None) => {
-				let obj = apb::Node::maybe_link(activity.object.clone());
-				activity.into_activity_pub_json(ctx).set_object(obj)
-			},
+			(Some(activity), None) => activity.into_activity_pub_json(ctx),
 
-			(maybe_activity, Some(object)) => {
-				let mut tags = Vec::new();
-				if let Some(mentions) = self.mentions {
-					for mention in mentions {
-						tags.push(mention.into_activity_pub_json(ctx));
-					}
-				}
-				if let Some(hashtags) = self.hashtags {
-					for hash in hashtags {
-						tags.push(hash.into_activity_pub_json(ctx));
-					}
-				}
+			(None, Some(object)) => apb::new()
+				.set_activity_type(Some(apb::ActivityType::View))
+				.set_published(Some(self.discovered))
+				.set_object(apb::Node::object(object.into_activity_pub_json(ctx))),
 
-				let activity = match maybe_activity {
-					Some(activity) => activity.into_activity_pub_json(ctx),
-					None => apb::new()
-						.set_activity_type(Some(apb::ActivityType::View))
-						.set_published(Some(self.discovered))
-				};
-
-				activity
-					.set_object(apb::Node::object(
-						object.into_activity_pub_json(ctx)
-							.set_liked_by_me(if self.liked.is_some() { Some(true) } else { None })
-							.set_tag(apb::Node::maybe_array(tags))
-							.set_attachment(match self.attachments {
-								None => apb::Node::Empty,
-								Some(vec) => apb::Node::array(
-									vec.into_iter().map(|x| x.into_activity_pub_json(ctx)).collect()
-								),
-							})
-					))
-			},
+			(Some(activity), Some(object)) => activity
+				.into_activity_pub_json(ctx)
+				.set_object(apb::Node::object(object.into_activity_pub_json(ctx))),
 		}
 	}
-
-	// // TODO ughhh cant make it a trait because there's this different one!!!
-	// pub fn object_ap(self) -> serde_json::Value {
-	// 	use apb::ObjectMut;
-	// 	match self.object {
-	// 		Some(object) => {
-	// 			let mut tags = Vec::new();
-	// 			if let Some(mentions) = self.mentions {
-	// 				for mention in mentions {
-	// 					tags.push(mention.ap());
-	// 				}
-	// 			}
-	// 			if let Some(hashtags) = self.hashtags {
-	// 				for hash in hashtags {
-	// 					tags.push(hash.ap());
-	// 				}
-	// 			}
-	// 			object.ap()
-	// 				.set_liked_by_me(if self.liked.is_some() { Some(true) } else { None })
-	// 				.set_tag(apb::Node::maybe_array(tags))
-	// 				.set_attachment(match self.attachments {
-	// 					None => apb::Node::Empty,
-	// 					Some(vec) => apb::Node::array(
-	// 						vec.into_iter().map(|x| x.ap()).collect()
-	// 					),
-	// 				})
-	// 		},
-	// 		None => serde_json::Value::Null,
-	// 	}
-	// }
 }
 
 pub struct RichNotification {
