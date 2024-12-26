@@ -1,5 +1,5 @@
 use axum::extract::{Path, Query, State};
-use sea_orm::{ColumnTrait, Order, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect};
+use sea_orm::{ColumnTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect};
 use upub::{model, selector::{BatchFillable, RichObject}, Context};
 
 use crate::{activitypub::Pagination, builders::JsonLD, AuthIdentity};
@@ -33,7 +33,7 @@ pub async fn page(
 		.filter(auth.filter_objects())
 		.filter(model::object::Column::Context.eq(context))
 		// note that this should be ASC so we get replies somewhat ordered
-		.order_by(model::object::Column::Published, Order::Asc)
+		.order_by_asc(model::object::Column::Published)
 		.limit(limit)
 		.offset(offset)
 		.into_model::<RichObject>()

@@ -1,6 +1,6 @@
 use apb::{BaseMut, CollectionMut, LD};
 use axum::extract::{Path, Query, State};
-use sea_orm::{ColumnTrait, PaginatorTrait, QueryFilter, QuerySelect};
+use sea_orm::{ColumnTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect};
 use upub::{model, selector::RichObject, traits::Fetcher, Context};
 
 use crate::{activitypub::{Pagination, TryFetch}, builders::JsonLD, AuthIdentity};
@@ -55,6 +55,7 @@ pub async fn page(
 		.offset(offset)
 		.filter(auth.filter_objects())
 		.filter(model::object::Column::InReplyTo.eq(oid))
+		.order_by_desc(model::object::Column::Published)
 		.into_model::<RichObject>()
 		.all(ctx.db())
 		.await?
