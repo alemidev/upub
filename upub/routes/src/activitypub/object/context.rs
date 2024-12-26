@@ -49,7 +49,7 @@ pub async fn page(
 
 	let items : Vec<serde_json::Value> = items
 		.into_iter()
-		.map(|item| item.ap())
+		.map(|item| ctx.ap(item))
 		.collect();
 
 	crate::builders::collection_page(&upub::url!(ctx, "/objects/{id}/context/page"), offset, limit, items)

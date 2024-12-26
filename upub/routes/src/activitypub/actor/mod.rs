@@ -55,7 +55,7 @@ pub async fn view(
 	{
 		// local user
 		Some((user_model, Some(cfg))) => {
-			let mut user = user_model.ap()
+			let mut user = ctx.ap(user_model)
 				.set_inbox(Node::link(upub::url!(ctx, "/actors/{id}/inbox")))
 				.set_outbox(Node::link(upub::url!(ctx, "/actors/{id}/outbox")))
 				.set_following(Node::link(upub::url!(ctx, "/actors/{id}/following")))
@@ -89,7 +89,7 @@ pub async fn view(
 		},
 		// remote user
 		Some((user_model, None)) => Ok(JsonLD(
-			user_model.ap()
+			ctx.ap(user_model)
 				.set_following_me(following_me)
 				.set_followed_by_me(followed_by_me)
 				.ld_context()

@@ -114,6 +114,10 @@ impl Context {
 		&self.0.base_url
 	}
 
+	pub fn ap<T: crate::ext::IntoActivityPub>(&self, x: T) -> serde_json::Value {
+		x.into_activity_pub_json(self)
+	}
+
 	pub fn new_id() -> String {
 		uuid::Uuid::new_v4().to_string()
 	}

@@ -31,7 +31,7 @@ pub async fn page(
 	crate::builders::paginate_feed(
 		upub::url!(ctx, "/actors/{id}/outbox/page"),
 		filter,
-		ctx.db(),
+		&ctx,
 		page,
 		auth.my_id(),
 		false,

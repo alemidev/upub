@@ -39,7 +39,7 @@ pub async fn page(
 		.with_batched::<upub::model::hashtag::Entity>(ctx.db())
 		.await?
 		.into_iter()
-		.map(|x| x.ap())
+		.map(|x| ctx.ap(x))
 		.collect();
 
 	crate::builders::collection_page(

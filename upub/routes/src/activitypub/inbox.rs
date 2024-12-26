@@ -22,7 +22,7 @@ pub async fn page(
 	crate::builders::paginate_feed(
 		upub::url!(ctx, "/inbox/page"),
 		upub::model::addressing::Column::Actor.is_null().into_condition(),
-		ctx.db(),
+		&ctx,
 		page,
 		auth.my_id(),
 		false,

@@ -18,7 +18,7 @@ pub async fn page(
 		Condition::all()
 			.add(upub::model::addressing::Column::Actor.is_null())
 			.add(upub::model::actor::Column::Domain.eq(ctx.domain().to_string())),
-		ctx.db(),
+		&ctx,
 		page,
 		auth.my_id(),
 		true,

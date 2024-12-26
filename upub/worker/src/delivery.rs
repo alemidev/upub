@@ -21,17 +21,17 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 				model::object::Entity::find_by_ap_id(oid)
 					.one(ctx.db())
 					.await?
-					.map(|x| x.ap()),
+					.map(|x| ctx.ap(x)),
 			apb::ActivityType::Accept(_) | apb::ActivityType::Reject(_) | apb::ActivityType::Undo =>
 				model::activity::Entity::find_by_ap_id(oid)
 					.one(ctx.db())
 					.await?
-					.map(|x| x.ap()),
+					.map(|x| ctx.ap(x)),
 			apb::ActivityType::Update => {
 				if let Some(o) = model::object::Entity::find_by_ap_id(oid).one(ctx.db()).await? {
-					Some(o.ap())
+					Some(ctx.ap(o))
 				} else if let Some(a) = model::actor::Entity::find_by_ap_id(oid).one(ctx.db()).await? {
-					Some(a.ap())
+					Some(ctx.ap(a))
 				} else {
 					None
 				}
@@ -40,7 +40,7 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 		}
 	} else { None };
 	
-	let mut payload = activity.ap();
+	let mut payload = ctx.ap(activity);
 	if let Some(object) = object {
 		payload = payload.set_object(apb::Node::object(object));
 	}

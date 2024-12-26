@@ -37,6 +37,6 @@ pub async fn view(
 		.with_batched::<upub::model::hashtag::Entity>(ctx.db())
 		.await?;
 
-	Ok(JsonLD(row.ap().ld_context()))
+	Ok(JsonLD(ctx.ap(row).ld_context()))
 }
 

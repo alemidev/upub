@@ -200,8 +200,8 @@ impl Entity {
 	}
 }
 
-impl Model {
-	pub fn ap(self) -> serde_json::Value {
+impl crate::ext::IntoActivityPub for Model {
+	fn into_activity_pub_json(self, _ctx: &crate::Context) -> serde_json::Value {
 		apb::new()
 			.set_id(Some(self.id.clone()))
 			.set_actor_type(Some(self.actor_type))

@@ -1,14 +1,16 @@
 use apb::ActivityMut;
 use sea_orm::{DbErr, EntityName, FromQueryResult, Iden, QueryResult};
 
+use crate::ext::IntoActivityPub;
+
 pub struct RichMention {
 	pub mention: crate::model::mention::Model,
 	pub id: String,
 	pub fqn: String,
 }
 
-impl RichMention {
-	pub fn ap(self) -> serde_json::Value {
+impl IntoActivityPub for RichMention {
+	fn into_activity_pub_json(self, _ctx: &crate::Context) -> serde_json::Value {
 		use apb::LinkMut;
 		apb::new()
 			.set_link_type(Some(apb::LinkType::Mention))
@@ -21,8 +23,8 @@ pub struct RichHashtag {
 	pub hash: crate::model::hashtag::Model,
 }
 
-impl RichHashtag {
-	pub fn ap(self) -> serde_json::Value {
+impl IntoActivityPub for RichHashtag {
+	fn into_activity_pub_json(self, _ctx: &crate::Context) -> serde_json::Value {
 		use apb::LinkMut;
 		apb::new()
 			.set_name(Some(format!("#{}", self.hash.name)))
@@ -55,32 +57,32 @@ impl FromQueryResult for RichActivity {
 	}
 }
 
-impl RichActivity {
-	pub fn ap(self) -> serde_json::Value {
+impl IntoActivityPub for RichActivity {
+	fn into_activity_pub_json(self, ctx: &crate::Context) -> serde_json::Value {
 		use apb::ObjectMut;
 		match (self.activity, self.object) {
 			(None, None) => serde_json::Value::Null,
 
 			(Some(activity), None) => {
 				let obj = apb::Node::maybe_link(activity.object.clone());
-				activity.ap().set_object(obj)
+				activity.into_activity_pub_json(ctx).set_object(obj)
 			},
 
 			(maybe_activity, Some(object)) => {
 				let mut tags = Vec::new();
 				if let Some(mentions) = self.mentions {
 					for mention in mentions {
-						tags.push(mention.ap());
+						tags.push(mention.into_activity_pub_json(ctx));
 					}
 				}
 				if let Some(hashtags) = self.hashtags {
 					for hash in hashtags {
-						tags.push(hash.ap());
+						tags.push(hash.into_activity_pub_json(ctx));
 					}
 				}
 
 				let activity = match maybe_activity {
-					Some(activity) => activity.ap(),
+					Some(activity) => activity.into_activity_pub_json(ctx),
 					None => apb::new()
 						.set_activity_type(Some(apb::ActivityType::View))
 						.set_published(Some(self.discovered))
@@ -88,13 +90,13 @@ impl RichActivity {
 
 				activity
 					.set_object(apb::Node::object(
-						object.ap()
+						object.into_activity_pub_json(ctx)
 							.set_liked_by_me(if self.liked.is_some() { Some(true) } else { None })
 							.set_tag(apb::Node::maybe_array(tags))
 							.set_attachment(match self.attachments {
 								None => apb::Node::Empty,
 								Some(vec) => apb::Node::array(
-									vec.into_iter().map(|x| x.ap()).collect()
+									vec.into_iter().map(|x| x.into_activity_pub_json(ctx)).collect()
 								),
 							})
 					))
@@ -102,35 +104,35 @@ impl RichActivity {
 		}
 	}
 
-	// TODO ughhh cant make it a trait because there's this different one!!!
-	pub fn object_ap(self) -> serde_json::Value {
-		use apb::ObjectMut;
-		match self.object {
-			Some(object) => {
-				let mut tags = Vec::new();
-				if let Some(mentions) = self.mentions {
-					for mention in mentions {
-						tags.push(mention.ap());
-					}
-				}
-				if let Some(hashtags) = self.hashtags {
-					for hash in hashtags {
-						tags.push(hash.ap());
-					}
-				}
-				object.ap()
-					.set_liked_by_me(if self.liked.is_some() { Some(true) } else { None })
-					.set_tag(apb::Node::maybe_array(tags))
-					.set_attachment(match self.attachments {
-						None => apb::Node::Empty,
-						Some(vec) => apb::Node::array(
-							vec.into_iter().map(|x| x.ap()).collect()
-						),
-					})
-			},
-			None => serde_json::Value::Null,
-		}
-	}
+	// // TODO ughhh cant make it a trait because there's this different one!!!
+	// pub fn object_ap(self) -> serde_json::Value {
+	// 	use apb::ObjectMut;
+	// 	match self.object {
+	// 		Some(object) => {
+	// 			let mut tags = Vec::new();
+	// 			if let Some(mentions) = self.mentions {
+	// 				for mention in mentions {
+	// 					tags.push(mention.ap());
+	// 				}
+	// 			}
+	// 			if let Some(hashtags) = self.hashtags {
+	// 				for hash in hashtags {
+	// 					tags.push(hash.ap());
+	// 				}
+	// 			}
+	// 			object.ap()
+	// 				.set_liked_by_me(if self.liked.is_some() { Some(true) } else { None })
+	// 				.set_tag(apb::Node::maybe_array(tags))
+	// 				.set_attachment(match self.attachments {
+	// 					None => apb::Node::Empty,
+	// 					Some(vec) => apb::Node::array(
+	// 						vec.into_iter().map(|x| x.ap()).collect()
+	// 					),
+	// 				})
+	// 		},
+	// 		None => serde_json::Value::Null,
+	// 	}
+	// }
 }
 
 pub struct RichNotification {
@@ -150,10 +152,10 @@ impl FromQueryResult for RichNotification {
 	}
 }
 
-impl RichNotification {
-	pub fn ap(self) -> serde_json::Value {
+impl IntoActivityPub for RichNotification {
+	fn into_activity_pub_json(self, ctx: &crate::Context) -> serde_json::Value {
 		let seen = self.seen;
-		self.activity.ap()
+		self.activity.into_activity_pub_json(ctx)
 			.set_seen(Some(seen))
 	}
 }

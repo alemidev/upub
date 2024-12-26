@@ -1,5 +1,9 @@
 use sea_orm::{ConnectionTrait, PaginatorTrait};
 
+pub trait IntoActivityPub {
+	fn into_activity_pub_json(self, ctx: &crate::Context) -> serde_json::Value;
+}
+
 #[allow(async_fn_in_trait)]
 pub trait AnyQuery {
 	async fn any(self, db: &impl ConnectionTrait) -> Result<bool, sea_orm::DbErr>;

@@ -34,8 +34,8 @@ impl Related<super::object::Entity> for Entity {
 
 impl ActiveModelBehavior for ActiveModel {}
 
-impl Model {
-	pub fn ap(self) -> serde_json::Value {
+impl crate::ext::IntoActivityPub for Model {
+	fn into_activity_pub_json(self, _ctx: &crate::Context) -> serde_json::Value {
 		apb::new()
 			.set_url(apb::Node::link(self.url))
 			.set_document_type(Some(self.document_type))

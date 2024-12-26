@@ -101,7 +101,7 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 						.into();
 				}
 
-				updated = prev.ap();
+				updated = ctx.ap(prev);
 			},
 			apb::ObjectType::Note => {
 				let mut prev = model::object::Entity::find_by_ap_id(&updated.id()?)
@@ -122,7 +122,7 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 					prev.sensitive = sensitive;
 				}
 
-				updated = prev.ap();
+				updated = ctx.ap(prev);
 			},
 			t => return Err(crate::JobError::ProcessorError(ProcessorError::Unprocessable(format!("{t}")))),
 		}

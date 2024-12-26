@@ -41,7 +41,7 @@ pub async fn page(
 			.add(upub::model::addressing::Column::Actor.eq(*internal))
 			.add(upub::model::activity::Column::Actor.eq(uid))
 			.add(upub::model::object::Column::AttributedTo.eq(uid)),
-		ctx.db(),
+		&ctx,
 		page,
 		auth.my_id(),
 		false,

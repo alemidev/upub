@@ -66,7 +66,7 @@ pub async fn search(
 	crate::builders::paginate_feed(
 		upub::url!(ctx, "/search"),
 		filter,
-		ctx.db(),
+		&ctx,
 		page,
 		auth.my_id(),
 		false,

@@ -1,5 +1,5 @@
 use apb::{BaseMut, CollectionMut, CollectionPageMut, LD};
-use sea_orm::{Condition, ConnectionTrait, QueryFilter, QuerySelect, RelationTrait, ColumnTrait};
+use sea_orm::{Condition, QueryFilter, QuerySelect, RelationTrait, ColumnTrait};
 use axum::response::{IntoResponse, Response};
 use upub::selector::{BatchFillable, RichActivity};
 
@@ -9,7 +9,7 @@ use crate::activitypub::Pagination;
 pub async fn paginate_feed(
 	id: String,
 	filter: Condition,
-	db: &impl ConnectionTrait,
+	ctx: &upub::Context,
 	page: Pagination,
 	my_id: Option<i64>,
 	with_users: bool, // TODO ewww too many arguments for this weird function...
@@ -32,6 +32,7 @@ pub async fn paginate_feed(
 			.join(sea_orm::JoinType::InnerJoin, upub::model::activity::Relation::Actors.def());
 	}
 
+	let db = ctx.db();
 	let items = select
 		.filter(conditions)
 		// TODO also limit to only local activities
@@ -49,7 +50,7 @@ pub async fn paginate_feed(
 
 	let items : Vec<serde_json::Value> = items
 		.into_iter()
-		.map(|item| item.ap())
+		.map(|item| ctx.ap(item))
 		.collect();
 
 	collection_page(&id, offset, limit, items)

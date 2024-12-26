@@ -52,13 +52,13 @@ pub async fn nuke(ctx: upub::Context, for_real: bool, delete_posts: bool) -> Res
 		};
 
 		let (target, undone) = if matches!(activity.activity_type, apb::ActivityType::Follow) {
-			(oid.clone(), activity.clone().ap())
+			(oid.clone(), ctx.ap(activity.clone()))
 		} else {
 			let follow_activity = upub::model::activity::Entity::find_by_ap_id(oid)
 				.one(ctx.db())
 				.await?
 				.ok_or(sea_orm::DbErr::RecordNotFound(oid.clone()))?;
-			(follow_activity.clone().object.unwrap_or_default(), follow_activity.ap())
+			(follow_activity.clone().object.unwrap_or_default(), ctx.ap(follow_activity))
 		};
 
 		let aid = ctx.aid(&upub::Context::new_id());

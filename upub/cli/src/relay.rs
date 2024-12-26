@@ -143,7 +143,7 @@ pub async fn relay(ctx: upub::Context, action: RelayCommand) -> Result<(), Reque
 				.set_id(Some(aid.clone()))
 				.set_activity_type(Some(apb::ActivityType::Undo))
 				.set_actor(apb::Node::link(ctx.base().to_string()))
-				.set_object(apb::Node::object(activity.ap()))
+				.set_object(apb::Node::object(ctx.ap(activity)))
 				.set_to(apb::Node::links(vec![actor.clone()]))
 				.set_cc(apb::Node::links(vec![apb::target::PUBLIC.to_string()]))
 				.set_published(Some(chrono::Utc::now()));
@@ -179,7 +179,7 @@ pub async fn relay(ctx: upub::Context, action: RelayCommand) -> Result<(), Reque
 				.set_id(Some(aid.clone()))
 				.set_activity_type(Some(apb::ActivityType::Undo))
 				.set_actor(apb::Node::link(ctx.base().to_string()))
-				.set_object(apb::Node::object(activity.ap()))
+				.set_object(apb::Node::object(ctx.ap(activity)))
 				.set_to(apb::Node::links(vec![actor.clone()]))
 				.set_cc(apb::Node::links(vec![apb::target::PUBLIC.to_string()]))
 				.set_published(Some(chrono::Utc::now()));
