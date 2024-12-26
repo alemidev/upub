@@ -1,6 +1,9 @@
 mod count;
 pub use count::*;
 
+mod fix_activities;
+pub use fix_activities::*;
+
 mod fetch;
 pub use fetch::*;
 
@@ -136,6 +139,17 @@ pub enum CliCommand {
 		#[arg(long, default_value_t = false)]
 		contents: bool,
 	},
+
+	/// restore activities links, only needed for very old installs
+	FixActivities {
+		/// restore like activity links
+		#[arg(long, default_value_t = false)]
+		likes: bool,
+
+		/// restore announces activity links
+		#[arg(long, default_value_t = false)]
+		announces: bool,
+	},
 }
 
 pub async fn run(ctx: upub::Context, command: CliCommand) -> Result<(), Box<dyn std::error::Error>> {
@@ -159,5 +173,7 @@ pub async fn run(ctx: upub::Context, command: CliCommand) -> Result<(), Box<dyn 
 			Ok(thread(ctx).await?),
 		CliCommand::Cloak { objects, actors, contents } =>
 			Ok(cloak(ctx, contents, objects, actors).await?),
+		CliCommand::FixActivities { likes, announces } =>
+			Ok(fix_activities(ctx, likes, announces).await?),
 	}
 }
