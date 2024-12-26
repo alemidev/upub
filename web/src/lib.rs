@@ -9,8 +9,6 @@ mod activities;
 mod objects;
 mod timeline;
 
-mod getters;
-
 pub use app::App;
 pub use config::Config;
 pub use auth::Auth;

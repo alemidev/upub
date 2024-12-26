@@ -1,6 +1,6 @@
 use leptos::*;
 use leptos_router::*;
-use crate::{app::FeedRoute, getters::Getter, prelude::*, FALLBACK_IMAGE_URL};
+use crate::{app::FeedRoute, prelude::*, FALLBACK_IMAGE_URL};
 
 use apb::{ActivityMut, Actor, Base, Object, ObjectMut, Shortcuts};
 
