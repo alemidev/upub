@@ -187,6 +187,8 @@ impl Fetcher for crate::Context {
 			return self.pull(&doc_id).await;
 		}
 
+		crate::downtime::unset(self.db(), &crate::Context::server(id)).await?;
+
 		match document.object_type()? {
 			apb::ObjectType::Collection(x) => Err(RequestError::mismatch(apb::ObjectType::Object, apb::ObjectType::Collection(x))),
 			apb::ObjectType::Tombstone => Err(RequestError::Tombstone),

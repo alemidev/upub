@@ -22,6 +22,7 @@ mod m20240715_000002_add_actors_fields_and_aliases;
 mod m20240811_000001_add_full_text_index;
 mod m20241226_000001_add_show_likes_collection;
 mod m20241226_000002_add_like_activities;
+mod m20241226_000003_create_downtime_table;
 
 pub struct Migrator;
 
@@ -51,6 +52,7 @@ impl MigratorTrait for Migrator {
 			Box::new(m20240811_000001_add_full_text_index::Migration),
 			Box::new(m20241226_000001_add_show_likes_collection::Migration),
 			Box::new(m20241226_000002_add_like_activities::Migration),
+			Box::new(m20241226_000003_create_downtime_table::Migration),
 		]
 	}
 }

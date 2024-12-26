@@ -15,4 +15,6 @@ pub use selector::Query;
 
 pub use traits::normalize::AP;
 
+pub mod downtime;
+
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

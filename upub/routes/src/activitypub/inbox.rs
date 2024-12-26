@@ -63,6 +63,7 @@ pub async fn post(
 	};
 
 	let aid = activity.id()?.to_string();
+	let server = upub::Context::server(&aid);
 
 	if activity.actor().id()? != uid {
 		return Err(crate::ApiError::forbidden());
@@ -86,6 +87,8 @@ pub async fn post(
 	};
 
 	upub::model::job::Entity::insert(job).exec(ctx.db()).await?;
+
+	upub::downtime::unset(ctx.db(), &server).await?;
 
 	Ok(StatusCode::ACCEPTED)
 }

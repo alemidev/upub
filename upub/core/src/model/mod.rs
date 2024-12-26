@@ -19,3 +19,5 @@ pub mod dislike;
 pub mod hashtag;
 pub mod mention;
 pub mod attachment;
+
+pub mod downtime;

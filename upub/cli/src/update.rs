@@ -16,6 +16,8 @@ pub async fn update_users(ctx: upub::Context, days: i64, limit: Option<u64>) -> 
 		if let Some(limit) = limit {
 			if count >= limit { break }
 		}
+		let server = upub::Context::server(&user.id);
+		if upub::downtime::get(ctx.db(), &server).await?.is_some() { continue }
 		match ctx.pull(&user.id).await.and_then(|x| x.actor()) {
 			Err(upub::traits::fetch::RequestError::Fetch(status, msg)) => {
 				if status.as_u16() == 410 {
@@ -27,11 +29,19 @@ pub async fn update_users(ctx: upub::Context, days: i64, limit: Option<u64>) -> 
 					user.delete(ctx.db()).await?;
 				}
 				else {
+					upub::downtime::set(ctx.db(), &server).await?;
 					tracing::warn!("could not fetch user {}: failed with status {status} -- {msg}", user.id);
 				}
 			},
-			Err(e) => tracing::warn!("could not fetch user {}: {e}", user.id),
+			Err(e) => {
+				upub::downtime::set(ctx.db(), &server).await?;
+				tracing::warn!("could not fetch user {}: {e}", user.id)
+			},
 			Ok(doc) => match ctx.resolve_user(doc, ctx.db()).await {
+				Err(e) => {
+					upub::downtime::set(ctx.db(), &server).await?;
+					tracing::warn!("failed deserializing user '{}': {e}", user.id)
+				},
 				Ok(mut u) => {
 					tracing::info!("updating user {}", user.id);
 					u.internal = Unchanged(user.internal);
@@ -39,7 +49,6 @@ pub async fn update_users(ctx: upub::Context, days: i64, limit: Option<u64>) -> 
 					u.update(ctx.db()).await?;
 					count += 1;
 				},
-				Err(e) => tracing::warn!("failed deserializing user '{}': {e}", user.id),
 			},
 		}
 	}
