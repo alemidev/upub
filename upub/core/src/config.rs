@@ -84,9 +84,6 @@ pub struct SecurityConfig {
 	pub proxy_secret: String,
 
 	#[serde_inline_default(true)]
-	pub show_reply_ids: bool,
-
-	#[serde_inline_default(true)]
 	pub allow_login_refresh: bool,
 
 	#[serde_inline_default(7 * 24)]
