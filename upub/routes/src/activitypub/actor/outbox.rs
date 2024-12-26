@@ -1,7 +1,7 @@
 use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
-use sea_orm::{ActiveValue::{NotSet, Set}, ColumnTrait, Condition, EntityTrait};
+use sea_orm::{ActiveValue::{NotSet, Set}, ColumnTrait, Condition, EntityTrait, QueryFilter, QuerySelect};
 
-use upub::{model, Context};
+use upub::{model, selector::{RichActivity, RichFillable}, Context};
 
 use crate::{activitypub::{CreationResult, Pagination}, builders::JsonLD, AuthIdentity, Identity};
 
@@ -28,15 +28,23 @@ pub async fn page(
 				.add(model::object::Column::Audience.eq(&uid))
 		);
 
-	crate::builders::paginate_feed(
-		upub::url!(ctx, "/actors/{id}/outbox/page"),
-		filter,
-		&ctx,
-		page,
-		auth.my_id(),
-		false,
-	)
-		.await
+	let (limit, offset) = page.pagination();
+	// by default we want replies because servers don't know about our api and need to see everything
+	let items = upub::Query::feed(auth.my_id(), page.replies.unwrap_or(true))
+		.filter(filter)
+		// TODO also limit to only local activities
+		.limit(limit)
+		.offset(offset)
+		.into_model::<RichActivity>()
+		.all(ctx.db())
+		.await?
+		.load_batched_models(ctx.db())
+		.await?
+		.into_iter()
+		.map(|item| ctx.ap(item))
+		.collect();
+
+	crate::builders::collection_page(&upub::url!(ctx, "/actors/{id}/outbox/page"), page, apb::Node::array(items))
 }
 
 pub async fn post(

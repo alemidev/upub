@@ -4,7 +4,7 @@ use crate::model;
 pub struct Query;
 
 impl Query {
-	pub fn feed(my_id: Option<i64>) -> Select<model::addressing::Entity> {
+	pub fn feed(my_id: Option<i64>, with_replies: bool) -> Select<model::addressing::Entity> {
 		let mut select = model::addressing::Entity::find()
 			.distinct_on([
 				(model::addressing::Entity, model::addressing::Column::Published).into_column_ref(),
@@ -45,10 +45,14 @@ impl Query {
 				.select_column_as(model::like::Column::Actor, format!("{}{}", model::like::Entity.table_name(), model::like::Column::Actor.to_string()));
 		}
 
+		if !with_replies {
+			select = select.filter(model::object::Column::InReplyTo.is_null());
+		}
+
 		select
 	}
 
-	pub fn objects(my_id: Option<i64>) -> Select<model::addressing::Entity> {
+	pub fn objects(my_id: Option<i64>, with_replies: bool) -> Select<model::addressing::Entity> {
 		let mut select = model::addressing::Entity::find()
 			.distinct()
 			.join(sea_orm::JoinType::InnerJoin, model::addressing::Relation::Objects.def())
@@ -66,6 +70,10 @@ impl Query {
 						.on_condition(move |_l, _r| model::like::Column::Actor.eq(uid).into_condition()),
 				)
 				.select_column_as(model::like::Column::Actor, format!("{}{}", model::like::Entity.table_name(), model::like::Column::Actor.to_string()));
+		}
+
+		if !with_replies {
+			select = select.filter(model::object::Column::InReplyTo.is_null());
 		}
 
 		select

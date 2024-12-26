@@ -1,5 +1,5 @@
 mod batch;
-pub use batch::BatchFillable;
+pub use batch::{BatchFillable, RichFillable};
 
 mod query;
 pub use query::Query;

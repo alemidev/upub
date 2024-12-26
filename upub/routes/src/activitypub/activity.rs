@@ -1,6 +1,6 @@
 use axum::extract::{Path, Query, State};
-use sea_orm::{ColumnTrait, QueryFilter, TransactionTrait};
-use upub::{model, selector::{BatchFillable, RichActivity}, traits::Fetcher, Context};
+use sea_orm::{ColumnTrait, Condition, QueryFilter, TransactionTrait};
+use upub::{model, selector::{RichActivity, RichFillable}, traits::Fetcher, Context};
 use apb::LD;
 
 use crate::{builders::JsonLD, AuthIdentity};
@@ -23,20 +23,19 @@ pub async fn view(
 		}
 	}
 
-	let row = upub::Query::feed(auth.my_id())
-		.filter(auth.filter_activities())
-		.filter(model::activity::Column::Id.eq(&aid))
+	let filter = Condition::all()
+		.add(auth.filter_activities())
+		.add(model::activity::Column::Id.eq(&aid));
+
+	let activity = upub::Query::feed(auth.my_id(), true)
+		.filter(filter)
 		.into_model::<RichActivity>()
 		.one(ctx.db())
 		.await?
 		.ok_or_else(crate::ApiError::not_found)?
-		.with_batched::<upub::model::attachment::Entity>(ctx.db())
-		.await?
-		.with_batched::<upub::model::mention::Entity>(ctx.db())
-		.await?
-		.with_batched::<upub::model::hashtag::Entity>(ctx.db())
+		.load_batched_models(ctx.db())
 		.await?;
 
-	Ok(JsonLD(ctx.ap(row).ld_context()))
+	Ok(JsonLD(ctx.ap(activity).ld_context()))
 }
 

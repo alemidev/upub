@@ -4,6 +4,27 @@ use sea_orm::{ConnectionTrait, DbErr, EntityTrait, FromQueryResult, ModelTrait, 
 use super::{RichActivity, RichObject};
 
 #[allow(async_fn_in_trait)]
+pub trait RichFillable: Sized {
+	async fn load_batched_models(self, tx: &impl ConnectionTrait) -> Result<Self, DbErr>;
+}
+
+impl<T> RichFillable for T
+where
+	T: BatchFillable
+{
+	async fn load_batched_models(self, tx: &impl ConnectionTrait) -> Result<Self, DbErr> {
+		self
+			.with_batched::<crate::model::attachment::Entity>(tx)
+			.await?
+			.with_batched::<crate::model::mention::Entity>(tx)
+			.await?
+			.with_batched::<crate::model::hashtag::Entity>(tx)
+			.await
+	}
+}
+
+
+#[allow(async_fn_in_trait)]
 pub trait BatchFillable: Sized {
 	async fn with_batched<E>(self, tx: &impl ConnectionTrait) -> Result<Self, DbErr>
 	where

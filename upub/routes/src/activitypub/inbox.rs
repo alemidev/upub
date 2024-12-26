@@ -1,7 +1,7 @@
 use apb::{Activity, ActivityType, Base};
 use axum::{extract::{Query, State}, http::StatusCode, Json};
-use sea_orm::{sea_query::IntoCondition, ActiveValue::{NotSet, Set}, ColumnTrait, EntityTrait};
-use upub::{model::job::JobType, Context};
+use sea_orm::{sea_query::IntoCondition, ActiveValue::{NotSet, Set}, ColumnTrait, EntityTrait, QueryFilter, QuerySelect};
+use upub::{model::job::JobType, selector::{RichActivity, RichFillable}, Context};
 
 use crate::{AuthIdentity, Identity, builders::JsonLD};
 
@@ -19,23 +19,22 @@ pub async fn page(
 	AuthIdentity(auth): AuthIdentity,
 	Query(page): Query<Pagination>,
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
-	crate::builders::paginate_feed(
-		upub::url!(ctx, "/inbox/page"),
-		upub::model::addressing::Column::Actor.is_null().into_condition(),
-		&ctx,
-		page,
-		auth.my_id(),
-		false,
-	)
-		.await
+	let filter = upub::model::addressing::Column::Actor.is_null().into_condition();
+	let (limit, offset) = page.pagination();
+	let items = upub::Query::feed(auth.my_id(), page.replies.unwrap_or(true))
+		.filter(filter)
+		.limit(limit)
+		.offset(offset)
+		.into_model::<RichActivity>()
+		.all(ctx.db())
+		.await?
+		.load_batched_models(ctx.db())
+		.await?
+		.into_iter()
+		.map(|item| ctx.ap(item))
+		.collect();
+	crate::builders::collection_page(&upub::url!(ctx, "/inbox/page"), page, apb::Node::array(items))
 }
-
-macro_rules! pretty_json {
-	($json:ident) => {
-		serde_json::to_string_pretty(&$json).expect("failed serializing to string serde_json::Value")
-	}
-}
-
 
 pub async fn post(
 	State(ctx): State<Context>,
@@ -52,7 +51,10 @@ pub async fn post(
 			// would be cool if mastodon played nicer with the network...
 			return Ok(StatusCode::OK);
 		}
-		tracing::warn!("refusing unauthorized activity: {}", pretty_json!(activity));
+		tracing::warn!(
+			"refusing unauthorized activity: {}",
+			serde_json::to_string_pretty(&activity).expect("failed serializing to string serde_json::Value?")
+		);
 		if matches!(auth, Identity::Anonymous) {
 			return Err(crate::ApiError::unauthorized());
 		} else {

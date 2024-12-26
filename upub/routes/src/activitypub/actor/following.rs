@@ -59,7 +59,7 @@ pub async fn page<const OUTGOING: bool>(
 	use upub::model::relation::Column::{Follower, Following, FollowerInstance, FollowingInstance};
 	let follow___ = if OUTGOING { "following" } else { "followers" };
 
-	let (limit, offset) = page.pagination();
+	let (limit, _offset) = page.pagination();
 
 	let (user, config) = model::actor::Entity::find_by_ap_id(&ctx.uid(&id))
 		.find_also_related(model::config::Entity)
@@ -117,7 +117,7 @@ pub async fn page<const OUTGOING: bool>(
 
 	crate::builders::collection_page(
 		&upub::url!(ctx, "/actors/{id}/{follow___}/page"),
-		offset, limit,
+		page,
 		apb::Node::links(following),
 	)
 }

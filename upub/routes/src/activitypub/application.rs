@@ -1,8 +1,8 @@
 use apb::{LD, ActorMut, BaseMut, ObjectMut, PublicKeyMut};
 use axum::{extract::{Path, Query, State}, http::HeaderMap, response::{IntoResponse, Redirect, Response}};
 use reqwest::Method;
-use sea_orm::{Condition, ColumnTrait};
-use upub::{traits::{Cloaker, Fetcher}, Context};
+use sea_orm::{ColumnTrait, Condition, QueryFilter, QuerySelect};
+use upub::{selector::{RichFillable, RichObject}, traits::{Cloaker, Fetcher}, Context};
 
 use crate::{builders::JsonLD, ApiError, AuthIdentity};
 
@@ -57,21 +57,28 @@ pub async fn search(
 
 	// TODO lmao rethink this all
 	//      still haven't redone this gg me
+	//      have redone it but didnt rethink it properly so we're stuck with this bahahaha
 	let page = Pagination {
 		offset: page.offset,
 		batch: page.batch,
 		replies: Some(true),
 	};
 
-	crate::builders::paginate_feed(
-		upub::url!(ctx, "/search"),
-		filter,
-		&ctx,
-		page,
-		auth.my_id(),
-		false,
-	)
-		.await
+	let (limit, offset) = page.pagination();
+	let items = upub::Query::feed(auth.my_id(), true)
+		.filter(filter)
+		.limit(limit)
+		.offset(offset)
+		.into_model::<RichObject>()
+		.all(ctx.db())
+		.await?
+		.load_batched_models(ctx.db())
+		.await?
+		.into_iter()
+		.map(|item| ctx.ap(item))
+		.collect();
+
+	crate::builders::collection_page(&upub::url!(ctx, "/search"), page, apb::Node::array(items))
 }
 
 #[derive(Debug, serde::Deserialize)]

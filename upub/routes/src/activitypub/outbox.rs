@@ -1,6 +1,6 @@
 use axum::{extract::{Query, State}, http::StatusCode, Json};
-use sea_orm::{ColumnTrait, Condition};
-use upub::Context;
+use sea_orm::{ColumnTrait, Condition, QueryFilter, QuerySelect};
+use upub::{selector::{RichActivity, RichFillable}, Context};
 
 use crate::{activitypub::{CreationResult, Pagination}, AuthIdentity, builders::JsonLD};
 
@@ -13,17 +13,25 @@ pub async fn page(
 	Query(page): Query<Pagination>,
 	AuthIdentity(auth): AuthIdentity,
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
-	crate::builders::paginate_feed(
-		upub::url!(ctx, "/outbox/page"),
-		Condition::all()
-			.add(upub::model::addressing::Column::Actor.is_null())
-			.add(upub::model::actor::Column::Domain.eq(ctx.domain().to_string())),
-		&ctx,
-		page,
-		auth.my_id(),
-		true,
-	)
-		.await
+	let filter = Condition::all()
+		.add(upub::model::addressing::Column::Actor.is_null())
+		.add(upub::model::actor::Column::Domain.eq(ctx.domain().to_string()));
+	
+	let (limit, offset) = page.pagination();
+	let items = upub::Query::feed(auth.my_id(), page.replies.unwrap_or(true))
+		.filter(filter)
+		.limit(limit)
+		.offset(offset)
+		.into_model::<RichActivity>()
+		.all(ctx.db())
+		.await?
+		.load_batched_models(ctx.db())
+		.await?
+		.into_iter()
+		.map(|item| ctx.ap(item))
+		.collect();
+
+	crate::builders::collection_page(&upub::url!(ctx, "/outbox/page"), page, apb::Node::array(items))
 }
 
 pub async fn post(

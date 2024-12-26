@@ -31,15 +31,13 @@ pub async fn page(
 
 	let (limit, offset) = page.pagination();
 
-	let mut select = upub::Query::objects(auth.my_id())
+	let items : Vec<serde_json::Value> = upub::Query::objects(auth.my_id(), true)
 		.join(sea_orm::JoinType::InnerJoin, upub::model::object::Relation::Likes.def())
 		.filter(auth.filter_objects())
 		.filter(upub::model::like::Column::Actor.eq(user.internal))
 		.order_by_desc(upub::model::like::Column::Published)
 		.limit(limit)
-		.offset(offset);
-
-	let items : Vec<serde_json::Value> = select
+		.offset(offset)
 		.into_model::<RichObject>()
 		.all(ctx.db())
 		.await?
@@ -52,14 +50,6 @@ pub async fn page(
 		.into_iter()
 		.map(|x| ctx.ap(x))
 		.collect();
-	
-	crate::builders::paginate_feed(
-		upub::url!(ctx, "/actors/{id}/outbox/page"),
-		auth.filter_objects(),
-		&ctx,
-		page,
-		auth.my_id(),
-		false,
-	)
-		.await
+
+	crate::builders::collection_page(&upub::url!(ctx, "/actors/{id}/outbox/page"), page, apb::Node::array(items))
 }

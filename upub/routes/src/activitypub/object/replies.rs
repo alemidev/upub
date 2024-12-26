@@ -1,7 +1,7 @@
 use apb::{BaseMut, CollectionMut, LD};
 use axum::extract::{Path, Query, State};
-use sea_orm::{ColumnTrait, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect};
-use upub::{model, selector::RichObject, traits::Fetcher, Context};
+use sea_orm::{ColumnTrait, Condition, PaginatorTrait, QueryFilter, QuerySelect};
+use upub::{model, selector::{RichFillable, RichObject}, traits::Fetcher, Context};
 
 use crate::{activitypub::{Pagination, TryFetch}, builders::JsonLD, AuthIdentity};
 
@@ -21,7 +21,7 @@ pub async fn get(
 		ctx.fetch_thread(&oid, ctx.db()).await?;
 	}
 
-	let total_replies = upub::Query::objects(None)
+	let total_replies = upub::Query::objects(None, true)
 		.filter(auth.filter_objects())
 		.filter(model::object::Column::InReplyTo.eq(&oid))
 		.count(ctx.db())
@@ -43,30 +43,29 @@ pub async fn page(
 	Query(mut page): Query<Pagination>,
 	AuthIdentity(auth): AuthIdentity,
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
-	let page_id = upub::url!(ctx, "/objects/{id}/replies/page");
 	let oid = ctx.oid(&id);
-	let (limit, offset) = page.pagination();
 
 	// TODO kinda weird ignoring this but its weirder to exclude replies from replies view...
 	page.replies = Some(true);
 
-	let res = upub::Query::objects(auth.my_id())
+	let filter = Condition::all()
+		.add(auth.filter_objects())
+		.add(model::object::Column::InReplyTo.eq(oid));
+
+	let (limit, offset) = page.pagination();
+	let items = upub::Query::feed(auth.my_id(), page.replies.unwrap_or(true))
+		.filter(filter)
+		// TODO also limit to only local activities
 		.limit(limit)
 		.offset(offset)
-		.filter(auth.filter_objects())
-		.filter(model::object::Column::InReplyTo.eq(oid))
-		.order_by_desc(model::object::Column::Published)
 		.into_model::<RichObject>()
 		.all(ctx.db())
 		.await?
+		.load_batched_models(ctx.db())
+		.await?
 		.into_iter()
-		.map(|x| ctx.ap(x))
+		.map(|item| ctx.ap(item))
 		.collect();
 
-	crate::builders::collection_page(
-		&page_id,
-		offset,
-		limit,
-		apb::Node::array(res)
-	)
+	crate::builders::collection_page(&upub::url!(ctx, "/objects/{id}/replies/page"), page, apb::Node::array(items))
 }

@@ -1,61 +1,10 @@
 use apb::{BaseMut, CollectionMut, CollectionPageMut, LD};
-use sea_orm::{Condition, QueryFilter, QuerySelect, RelationTrait, ColumnTrait};
 use axum::response::{IntoResponse, Response};
-use upub::selector::{BatchFillable, RichActivity};
 
 use crate::activitypub::Pagination;
 
-#[deprecated = "use upub::Query directly"]
-pub async fn paginate_feed(
-	id: String,
-	filter: Condition,
-	ctx: &upub::Context,
-	page: Pagination,
-	my_id: Option<i64>,
-	with_users: bool, // TODO ewww too many arguments for this weird function...
-) -> crate::ApiResult<JsonLD<serde_json::Value>> {
+pub fn collection_page(id: &str, page: Pagination, items: apb::Node<serde_json::Value>) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let (limit, offset) = page.pagination();
-
-	let mut conditions = Condition::all()
-		.add(filter);
-
-	// by default we want replies because servers don't know about our api and want everything
-	if !page.replies.unwrap_or(true) {
-		conditions = conditions.add(upub::model::object::Column::InReplyTo.is_null());
-	}
-
-	let mut select = upub::Query::feed(my_id);
-
-	if with_users {
-		select = select
-			.join(sea_orm::JoinType::InnerJoin, upub::model::activity::Relation::Actors.def());
-	}
-
-	let db = ctx.db();
-	let items = select
-		.filter(conditions)
-		// TODO also limit to only local activities
-		.limit(limit)
-		.offset(offset)
-		.into_model::<RichActivity>()
-		.all(db)
-		.await?
-		.with_batched::<upub::model::attachment::Entity>(db)
-		.await?
-		.with_batched::<upub::model::mention::Entity>(db)
-		.await?
-		.with_batched::<upub::model::hashtag::Entity>(db)
-		.await?;
-
-	let items : Vec<serde_json::Value> = items
-		.into_iter()
-		.map(|item| ctx.ap(item))
-		.collect();
-
-	collection_page(&id, offset, limit, apb::Node::array(items))
-}
-
-pub fn collection_page(id: &str, offset: u64, limit: u64, items: apb::Node<serde_json::Value>) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let next = if items.len() < limit as usize {
 		apb::Node::Empty
 	} else {

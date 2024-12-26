@@ -88,7 +88,7 @@ pub struct TryFetch {
 	pub fetch: bool,
 }
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, serde::Deserialize)]
 // TODO i don't really like how pleroma/mastodon do it actually, maybe change this?
 pub struct Pagination {
 	pub offset: Option<u64>,

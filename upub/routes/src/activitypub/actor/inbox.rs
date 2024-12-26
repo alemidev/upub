@@ -1,7 +1,7 @@
 use axum::{http::StatusCode, extract::{Path, Query, State}, Json};
-use sea_orm::{ColumnTrait, Condition};
+use sea_orm::{ColumnTrait, Condition, QueryFilter, QuerySelect};
 
-use upub::Context;
+use upub::{selector::{RichActivity, RichFillable}, Context};
 
 use crate::{activitypub::Pagination, builders::JsonLD, AuthIdentity, Identity};
 
@@ -35,18 +35,26 @@ pub async fn page(
 		return Err(crate::ApiError::forbidden());
 	}
 
-	crate::builders::paginate_feed(
-		upub::url!(ctx, "/actors/{id}/inbox/page"),
-		Condition::any()
-			.add(upub::model::addressing::Column::Actor.eq(*internal))
-			.add(upub::model::activity::Column::Actor.eq(uid))
-			.add(upub::model::object::Column::AttributedTo.eq(uid)),
-		&ctx,
-		page,
-		auth.my_id(),
-		false,
-	)
-		.await
+	let filter = Condition::any()
+		.add(upub::model::addressing::Column::Actor.eq(*internal))
+		.add(upub::model::activity::Column::Actor.eq(uid))
+		.add(upub::model::object::Column::AttributedTo.eq(uid));
+
+	let (limit, offset) = page.pagination();
+	let items = upub::Query::feed(auth.my_id(), page.replies.unwrap_or(true))
+		.filter(filter)
+		.limit(limit)
+		.offset(offset)
+		.into_model::<RichActivity>()
+		.all(ctx.db())
+		.await?
+		.load_batched_models(ctx.db())
+		.await?
+		.into_iter()
+		.map(|item| ctx.ap(item))
+		.collect();
+
+	crate::builders::collection_page(&upub::url!(ctx, "/actors/{id}/inbox/page"), page, apb::Node::array(items))
 }
 
 pub async fn post(
