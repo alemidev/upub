@@ -64,36 +64,20 @@ pub fn ActorHeader() -> impl IntoView {
 						<div style="height: 10em"></div> // TODO bad way to have it fixed height ewwww
 					</div>
 					<div class="overlap">
-						<table class="pl-2 pr-2 align w-100" style="table-layout: fixed">
-							<tr>
-								<td rowspan=4 style="width: 8em">
-									<img class="avatar avatar-border mr-s" src={avatar_url} style="height: 7em; width: 7em" onerror={format!("this.onerror=null; this.src='{FALLBACK_IMAGE_URL}';")} />
-								</td>
-								<td rowspan=2 class="bottom">
-									<b class="big">{name}</b>{actor_type_tag}
-								</td>
-								<td rowspan=2 class="bottom rev" title="statuses">
-									<a class="clean" href={web_path.clone()}>{actor.statuses_count().want()}" "<span class="emoji">"\u{1f582}"</span></a>
-								</td>
-							</tr>
-							<tr></tr>
-							<tr>
-								<td class="top">
-									<small><a class="clean hover" href={uid.clone()} target="_blank">{username.clone()}@{domain}</a></small>
-								</td>
-								<td class="rev" title="following">
-									<a class="clean" href={format!("{web_path}/following")}>{actor.following_count().want()}" "<span class="emoji">"👥"</span></a>
-								</td>
-							</tr>
-							<tr>
-								<td>
-									<DateTime t=created />
-								</td>
-								<td class="rev" title="followers">
-									<a class="clean" href={format!("{web_path}/followers")}>{actor.followers_count().want()}" "<span class="emoji">"📢"</span></a>
-								</td>
-							</tr>
-						</table>
+						<div class="pl-1 pr-1" style="display: flex">
+							<img class="avatar avatar-border mr-s" src={avatar_url} style="height: 7em; width: 7em" onerror={format!("this.onerror=null; this.src='{FALLBACK_IMAGE_URL}';")} />
+
+							<div class="ma-s pt-3">
+								<b class="big">{name}</b>{actor_type_tag}<br/>
+								<small><a class="clean hover" href={uid.clone()} target="_blank">{username.clone()}@{domain}</a></small><br/>
+								<DateTime t=created />
+							</div>
+							<div class="ma-s pt-3 rev" style="flex-grow: 1; white-space: nowrap;">
+								{actor.statuses_count().unwrap_or_default()}" "<span class="emoji">"\u{1f582}"</span><br/>
+								{actor.following_count().unwrap_or_default()}" "<span class="emoji">"👥"</span><br/>
+								{actor.followers_count().unwrap_or_default()}" "<span class="emoji">"📢"</span>
+							</div>
+						</div>
 						<div class="rev mr-1" class:hidden=move || !auth.present() || auth.user_id() == uid>
 							{if following_me {
 								Some(view! { <code class="mr-1 color">follows you</code> })
