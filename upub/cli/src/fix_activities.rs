@@ -58,6 +58,7 @@ pub async fn fix_activities(ctx: upub::Context, likes: bool, announces: bool) ->
 				.one(ctx.db())
 				.await?
 			{
+				tracing::info!("joining like {} to activity {}", like.internal, activity.id);
 				let mut active = like.into_active_model();
 				active.activity = sea_orm::Set(Some(activity.internal));
 				active.update(ctx.db()).await?;
