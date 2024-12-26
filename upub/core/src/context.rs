@@ -160,6 +160,11 @@ impl Context {
 		id.starts_with(self.base())
 	}
 
+	#[allow(unused)]
+	pub fn is_relay(&self, id: &str) -> bool {
+		self.0.relay.sources.contains(id) || self.0.relay.sinks.contains(id)
+	}
+
 	pub async fn find_internal(&self, id: &str) -> Result<Option<Internal>, DbErr> {
 		if let Some(internal) = model::object::Entity::ap_to_internal(id, self.db()).await? {
 			return Ok(Some(Internal::Object(internal)));
@@ -180,11 +185,6 @@ impl Context {
 		if let Some(ref waker) = self.0.waker {
 			waker.wake();
 		}
-	}
-
-	#[allow(unused)]
-	pub fn is_relay(&self, id: &str) -> bool {
-		self.0.relay.sources.contains(id) || self.0.relay.sinks.contains(id)
 	}
 }
 
