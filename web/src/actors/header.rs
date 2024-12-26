@@ -1,6 +1,6 @@
 use leptos::*;
 use leptos_router::*;
-use crate::{getters::Getter, prelude::*, FALLBACK_IMAGE_URL};
+use crate::{app::FeedRoute, getters::Getter, prelude::*, FALLBACK_IMAGE_URL};
 
 use apb::{ActivityMut, Actor, Base, Object, ObjectMut, Shortcuts};
 
@@ -8,6 +8,7 @@ use apb::{ActivityMut, Actor, Base, Object, ObjectMut, Shortcuts};
 pub fn ActorHeader() -> impl IntoView {
 	let params = use_params::<IdParam>();
 	let auth = use_context::<Auth>().expect("missing auth context");
+	let matched_route = use_context::<ReadSignal<crate::app::FeedRoute>>().expect("missing route context");
 	let actor = create_local_resource(
 		move || params.get().ok().and_then(|x| x.id).unwrap_or_default(),
 		move |id| {
@@ -99,6 +100,18 @@ pub fn ActorHeader() -> impl IntoView {
 						<table class="fields center w-100 pa-s" style="margin: auto; table-layout: fixed;">{fields}</table>
 					</p>
 				</div>
+				<p class="mt-2">
+					<span class:tab-active=move || matches!(matched_route.get(), FeedRoute::User)>
+						<a class="clean" href=web_path.clone()><span class="emoji ml-2">"🖂 "</span>"statuses"</a>
+					</span>
+					<span style="float: right" class:tab-active=move || matches!(matched_route.get(), FeedRoute::Followers)>
+						<a class="clean" href=format!("{web_path}/followers")><span class="emoji ml-2">"📢 "</span>"followers"</a>
+					</span>
+					<span style="float: right" class:tab-active=move || matches!(matched_route.get(), FeedRoute::Following)>
+						<a class="clean" href=format!("{web_path}/following")><span class="emoji ml-2">"👥 "</span>"following"</a>
+					</span>
+				</p>
+				<hr class="color" />
 				<Outlet />
 			}.into_view()
 		},

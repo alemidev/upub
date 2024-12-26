@@ -14,9 +14,6 @@ pub fn ActorPosts() -> impl IntoView {
 		}
 	});
 	view! {
-		<code class="cw color center mt-1 mb-1 ml-3 mr-3">
-			<span class="emoji">"🖂"</span>" "<b>posts</b>
-		</code>
 		<Feed tl=feeds.user />
 	}
 }

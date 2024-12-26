@@ -210,7 +210,7 @@ pub fn App() -> impl IntoView {
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum FeedRoute {
-	Home, Global, Server, Notifications, User, Replies, Context
+	Home, Global, Server, Notifications, User, Following, Followers, Likes, Replies, Context
 }
 
 #[component]
@@ -238,8 +238,24 @@ fn Scrollable() -> impl IntoView {
 			set_route.set(FeedRoute::Notifications);
 			Some(feeds.notifications)
 		} else if path.starts_with("/web/actors") {
-			set_route.set(FeedRoute::User);
-			Some(feeds.user)
+			match path.split('/').nth(4) {
+				Some("following") => {
+					set_route.set(FeedRoute::Following);
+					None
+				},
+				Some("followers") => {
+					set_route.set(FeedRoute::Followers);
+					None
+				},
+				Some("likes") => {
+					set_route.set(FeedRoute::Likes);
+					None
+				},
+				_ => {
+					set_route.set(FeedRoute::User);
+					Some(feeds.user)
+				},
+			}
 		} else if path.starts_with("/web/objects") {
 			if matches!(path.split('/').nth(4), Some("replies")) {
 				set_route.set(FeedRoute::Replies);

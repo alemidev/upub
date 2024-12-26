@@ -27,11 +27,13 @@ pub fn FollowList(outgoing: bool) -> impl IntoView {
 		}
 	);
 	view! {
-		<code class="cw center color mt-1 mr-3 ml-3"><span class="emoji">{symbol}</span>" "<b>{follow___}</b></code>
 		<div class="tl ml-3-r mr-3-r pl-1 pt-1 pb-1">
 			{move || match resource.get() {
 				None => view! { <Loader /> }.into_view(),
-				Some(Err(e)) => view! { <p class="center">could not load {follow___}: {e}</p> }.into_view(),
+				Some(Err(e)) => {
+					tracing::error!("could not load followers: {e}");
+					view! { <code class="cw center color">{follow___}" unavailable"</code> }.into_view()
+				},
 				Some(Ok(mut arr)) => {
 					// TODO cheap fix: server gives us follows from oldest to newest
 					//      but it's way more convenient to have them other way around
