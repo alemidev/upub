@@ -1,9 +1,9 @@
 pub mod replies;
 pub mod context;
 
-use apb::{BaseMut, CollectionMut, ObjectMut, LD};
+use apb::{BaseMut, Object, ObjectMut, LD};
 use axum::extract::{Path, Query, State};
-use sea_orm::{ColumnTrait, QueryFilter, QuerySelect, SelectColumns, TransactionTrait};
+use sea_orm::{ColumnTrait, QueryFilter, TransactionTrait};
 use upub::{model, selector::{BatchFillable, RichActivity}, traits::Fetcher, Context};
 
 use crate::{builders::JsonLD, AuthIdentity};
@@ -27,7 +27,9 @@ pub async fn view(
 		}
 	}
 
-	let item = upub::Query::objects(auth.my_id())
+	let replies_url = upub::url!(ctx, "/objects/{id}/replies");
+
+	let item_model = upub::Query::objects(auth.my_id())
 		.filter(auth.filter_objects())
 		.filter(model::object::Column::Id.eq(&oid))
 		.into_model::<RichActivity>()
@@ -41,31 +43,17 @@ pub async fn view(
 		.with_batched::<upub::model::hashtag::Entity>(ctx.db())
 		.await?;
 
-	let mut replies = apb::Node::Empty;
-	
-	if ctx.cfg().security.show_reply_ids {
-		let replies_ids = upub::Query::objects(auth.my_id())
-			.filter(auth.filter_objects())
-			.filter(model::object::Column::InReplyTo.eq(oid))
-			.select_only()
-			.select_column(model::object::Column::Id)
-			.into_tuple::<String>()
-			.all(ctx.db())
-			.await?;
+	let mut item = ctx.ap(item_model);
 
-		replies = apb::Node::object(
-			apb::new()
-				.set_id(Some(upub::url!(ctx, "/objects/{id}/replies")))
-				.set_first(apb::Node::link(upub::url!(ctx, "/objects/{id}/replies/page")))
-				.set_collection_type(Some(apb::CollectionType::Collection))
-				.set_total_items(item.object.as_ref().map(|x| x.replies as u64))
-				.set_items(apb::Node::links(replies_ids))
-		);
-	}
-	
-	Ok(JsonLD(
-		item.object_ap()
-			.set_replies(replies)
-			.ld_context()
-	))
+	let replies_patched = 
+	apb::Node::object(
+		item.replies()
+			.into_inner()
+			.unwrap()
+			.set_id(Some(replies_url))
+	);
+
+	item = item.set_replies(replies_patched);
+
+	Ok(JsonLD(item.ld_context()))
 }
