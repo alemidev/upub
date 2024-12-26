@@ -21,7 +21,8 @@ pub enum Likes {
 	Internal,
 	Actor,
 	Object,
-	Activity, // DROPPED
+	Activity, // DROPPED and ADDED BACK with migration m20241226_000002
+	Content, // ADDED with migration m20241226_000002
 	Published,
 }
 
@@ -32,6 +33,7 @@ pub enum Announces {
 	Internal,
 	Actor,
 	Object,
+	Activity, // ADDED with migration m20241226_000002
 	Published,
 }
 

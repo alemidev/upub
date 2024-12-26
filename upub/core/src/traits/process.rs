@@ -106,11 +106,26 @@ pub async fn like(ctx: &crate::Context, activity: impl apb::Activity, tx: &Datab
 		return Err(ProcessorError::AlreadyProcessed);
 	}
 
+	let published = activity.published().unwrap_or_else(|_|chrono::Utc::now());
+	let content = activity.content().unwrap_or_default();
+
+	// likes without addressing are "silent likes", process them but dont store activity or notify
+	let aid = if likes_local_object || !activity.addressed().is_empty() {
+		let mut activity_model = ctx.insert_activity(activity, tx).await?;
+		if likes_local_object {
+			activity_model.to.0.push(obj.attributed_to.clone().unwrap_or_default());
+		}
+		ctx.address(Some(&activity_model), None, tx).await?;
+		Some(activity_model.internal)
+	} else { None };
+
 	let like = crate::model::like::ActiveModel {
 		internal: NotSet,
 		actor: Set(actor.internal),
 		object: Set(obj.internal),
-		published: Set(activity.published().unwrap_or_else(|_|chrono::Utc::now())),
+		published: Set(published),
+		activity: Set(aid),
+		content: Set(content),
 	};
 
 	crate::model::like::Entity::insert(like).exec(tx).await?;
@@ -120,19 +135,12 @@ pub async fn like(ctx: &crate::Context, activity: impl apb::Activity, tx: &Datab
 		.exec(tx)
 		.await?;
 
-	// likes without addressing are "silent likes", process them but dont store activity or notify
-	if likes_local_object || !activity.addressed().is_empty() {
-		let mut activity_model = ctx.insert_activity(activity, tx).await?;
-		if likes_local_object {
-			activity_model.to.0.push(obj.attributed_to.clone().unwrap_or_default());
-		}
-		ctx.address(Some(&activity_model), None, tx).await?;
-
+	if let Some(aid) = aid {
 		// TODO check that object author is in this like addressing!!! otherwise skip notification
 		if let Some(ref attributed_to) = obj.attributed_to {
 			if ctx.is_local(attributed_to) {
 				if let Some(actor_internal) = crate::model::actor::Entity::ap_to_internal(attributed_to, tx).await? {
-					crate::Query::notify(activity_model.internal, actor_internal)
+					crate::Query::notify(aid, actor_internal)
 						.exec(tx)
 						.await?;
 				}
@@ -534,6 +542,19 @@ pub async fn announce(ctx: &crate::Context, activity: impl apb::Activity, tx: &D
 
 	let actor = ctx.fetch_user(&activity.actor().id()?, tx).await?;
 
+	let published = activity.published().unwrap_or(chrono::Utc::now());
+
+	// TODO we should probably insert an activity, otherwise this won't appear on timelines!!
+	//      or maybe go update all addressing records for this object, pushing them up
+	//      or maybe create new addressing rows with more recent dates
+	//      or maybe create fake objects that reference the original one
+	//      idk!!!!
+	let aid = if actor.actor_type == apb::ActorType::Person || ctx.is_local(&actor.id) {
+		let activity_model = ctx.insert_activity(activity, tx).await?;
+		ctx.address(Some(&activity_model), None, tx).await?;
+		Some(activity_model.internal)
+	} else { None };
+
 	// we only care about announces produced by "Person" actors, because there's intention
 	// anything shared by groups, services or applications is automated: fetch it and be done
 	if actor.actor_type == apb::ActorType::Person {
@@ -553,26 +574,19 @@ pub async fn announce(ctx: &crate::Context, activity: impl apb::Activity, tx: &D
 			internal: NotSet,
 			actor: Set(actor.internal),
 			object: Set(object.internal),
-			published: Set(activity.published().unwrap_or(chrono::Utc::now())),
+			published: Set(published),
+			activity: Set(aid),
 		};
 
 		crate::model::announce::Entity::insert(share)
 			.exec(tx).await?;
 	}
 
-	// TODO we should probably insert an activity, otherwise this won't appear on timelines!!
-	//      or maybe go update all addressing records for this object, pushing them up
-	//      or maybe create new addressing rows with more recent dates
-	//      or maybe create fake objects that reference the original one
-	//      idk!!!!
-	if actor.actor_type == apb::ActorType::Person || ctx.is_local(&actor.id) {
-		let activity_model = ctx.insert_activity(activity, tx).await?;
-		ctx.address(Some(&activity_model), None, tx).await?;
-
+	if let Some(aid) = aid {
 		if let Some(ref attributed_to) = object.attributed_to {
 			if ctx.is_local(attributed_to) {
 				if let Some(actor_internal) = crate::model::actor::Entity::ap_to_internal(attributed_to, tx).await? {
-					crate::Query::notify(activity_model.internal, actor_internal)
+					crate::Query::notify(aid, actor_internal)
 						.exec(tx)
 						.await?;
 				}
