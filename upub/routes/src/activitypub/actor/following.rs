@@ -59,8 +59,7 @@ pub async fn page<const OUTGOING: bool>(
 	use upub::model::relation::Column::{Follower, Following, FollowerInstance, FollowingInstance};
 	let follow___ = if OUTGOING { "following" } else { "followers" };
 
-	let limit = page.batch.unwrap_or(100).min(500);
-	let offset = page.offset.unwrap_or(0);
+	let (limit, offset) = page.pagination();
 
 	let (user, config) = model::actor::Entity::find_by_ap_id(&ctx.uid(&id))
 		.find_also_related(model::config::Entity)

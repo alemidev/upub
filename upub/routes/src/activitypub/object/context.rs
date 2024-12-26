@@ -27,8 +27,7 @@ pub async fn page(
 	AuthIdentity(auth): AuthIdentity,
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let context = ctx.oid(&id);
-	let limit = page.batch.unwrap_or(50).min(50);
-	let offset = page.offset.unwrap_or(0);
+	let (limit, offset) = page.pagination();
 
 	let items = upub::Query::objects(auth.my_id())
 		.filter(auth.filter_objects())

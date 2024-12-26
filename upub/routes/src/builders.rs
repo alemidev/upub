@@ -14,8 +14,7 @@ pub async fn paginate_feed(
 	my_id: Option<i64>,
 	with_users: bool, // TODO ewww too many arguments for this weird function...
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
-	let limit = page.batch.unwrap_or(20).min(50);
-	let offset = page.offset.unwrap_or(0);
+	let (limit, offset) = page.pagination();
 
 	let mut conditions = Condition::all()
 		.add(filter);

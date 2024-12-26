@@ -94,6 +94,14 @@ pub struct Pagination {
 	pub replies: Option<bool>,
 }
 
+impl Pagination {
+	pub fn pagination(&self) -> (u64, u64) {
+		let limit = self.batch.unwrap_or(20).min(50);
+		let offset = self.offset.unwrap_or(0);
+		(limit, offset)
+	}
+}
+
 #[derive(Debug, serde::Deserialize)]
 // TODO i don't really like how pleroma/mastodon do it actually, maybe change this?
 pub struct PaginatedSearch {

@@ -39,8 +39,7 @@ pub async fn page(
 		return Err(crate::ApiError::forbidden());
 	}
 
-	let limit = page.batch.unwrap_or(20).min(50);
-	let offset = page.offset.unwrap_or(0);
+	let (limit, offset) = page.pagination();
 
 	let activities = upub::Query::notifications(*internal, true)
 		.limit(limit)
