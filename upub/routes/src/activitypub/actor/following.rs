@@ -118,6 +118,6 @@ pub async fn page<const OUTGOING: bool>(
 	crate::builders::collection_page(
 		&upub::url!(ctx, "/actors/{id}/{follow___}/page"),
 		offset, limit,
-		following.into_iter().map(serde_json::Value::String).collect(),
+		apb::Node::links(following),
 	)
 }

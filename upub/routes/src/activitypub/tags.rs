@@ -45,7 +45,7 @@ pub async fn page(
 		&upub::url!(ctx, "/tags/{id}/page"),
 		offset,
 		limit,
-		objects,
+		apb::Node::array(objects),
 	)
 
 }
