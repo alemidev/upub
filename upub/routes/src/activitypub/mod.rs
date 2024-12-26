@@ -57,6 +57,8 @@ impl ActivityPubRouter for Router<upub::Context> {
 			.route("/actors/:id/followers/page", get(ap::actor::following::page::<false>))
 			.route("/actors/:id/following", get(ap::actor::following::get::<true>))
 			.route("/actors/:id/following/page", get(ap::actor::following::page::<true>))
+			.route("/actors/:id/likes", get(ap::actor::likes::get))
+			.route("/actors/:id/likes/page", get(ap::actor::likes::page))
 			// .route("/actors/:id/audience", get(ap::actor::audience::get))
 			// .route("/actors/:id/audience/page", get(ap::actor::audience::page))
 			// activities
