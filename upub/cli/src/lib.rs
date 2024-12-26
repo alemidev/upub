@@ -1,5 +1,5 @@
-mod fix;
-pub use fix::*;
+mod count;
+pub use count::*;
 
 mod fetch;
 pub use fetch::*;
@@ -54,8 +54,8 @@ pub enum CliCommand {
 		action: RelayCommand,
 	},
 
-	/// run db maintenance tasks
-	Fix {
+	/// recount object statistics
+	Count {
 		#[arg(long, default_value_t = false)]
 		/// fix likes counts for posts
 		likes: bool,
@@ -147,8 +147,8 @@ pub async fn run(ctx: upub::Context, command: CliCommand) -> Result<(), Box<dyn 
 			Ok(fetch(ctx, uri, save, fetch_as).await?),
 		CliCommand::Relay { action } =>
 			Ok(relay(ctx, action).await?),
-		CliCommand::Fix { likes, shares, replies } =>
-			Ok(fix(ctx, likes, shares, replies).await?),
+		CliCommand::Count { likes, shares, replies } =>
+			Ok(count(ctx, likes, shares, replies).await?),
 		CliCommand::Update { days, limit } =>
 			Ok(update_users(ctx, days, limit).await?),
 		CliCommand::Register { username, password, display_name, summary, avatar_url, banner_url } =>

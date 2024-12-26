@@ -1,11 +1,11 @@
 use sea_orm::{ActiveModelTrait, EntityTrait};
 
-pub async fn fix(ctx: upub::Context, likes: bool, shares: bool, replies: bool) -> Result<(), sea_orm::DbErr> {
+pub async fn count(ctx: upub::Context, likes: bool, shares: bool, replies: bool) -> Result<(), sea_orm::DbErr> {
 	use futures::TryStreamExt;
 	let db = ctx.db();
 
 	if likes {
-		tracing::info!("fixing likes...");
+		tracing::info!("counting likes...");
 		let mut store = std::collections::HashMap::new();
 		{
 			let mut stream = upub::model::like::Entity::find().stream(db).await?;
@@ -27,7 +27,7 @@ pub async fn fix(ctx: upub::Context, likes: bool, shares: bool, replies: bool) -
 	}
 
 	if shares {
-		tracing::info!("fixing shares...");
+		tracing::info!("counting shares...");
 		let mut store = std::collections::HashMap::new();
 		{
 			let mut stream = upub::model::announce::Entity::find().stream(db).await?;
@@ -49,7 +49,7 @@ pub async fn fix(ctx: upub::Context, likes: bool, shares: bool, replies: bool) -
 	}
 
 	if replies {
-		tracing::info!("fixing replies...");
+		tracing::info!("counting replies...");
 		let mut store = std::collections::HashMap::new();
 		{
 			let mut stream = upub::model::object::Entity::find().stream(db).await?;
