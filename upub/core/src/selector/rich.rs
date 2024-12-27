@@ -87,14 +87,14 @@ impl IntoActivityPub for RichObject {
 
 pub struct RichActivity {
 	pub activity: Option<crate::model::activity::Model>,
-	pub object: Option<RichObject>,
+	pub object: RichObject,
 	pub discovered: chrono::DateTime<chrono::Utc>,
 }
 
 impl FromQueryResult for RichActivity {
 	fn from_query_result(res: &QueryResult, _pre: &str) -> Result<Self, DbErr> {
 		Ok(RichActivity {
-			object: RichObject::from_query_result_optional(res, _pre)?,
+			object: RichObject::from_query_result(res, _pre)?,
 			activity: crate::model::activity::Model::from_query_result_optional(res, crate::model::activity::Entity.table_name())?,
 			discovered: res.try_get(
 				crate::model::addressing::Entity.table_name(),
@@ -107,30 +107,22 @@ impl FromQueryResult for RichActivity {
 impl IntoActivityPub for RichActivity {
 	fn into_activity_pub_json(self, ctx: &crate::Context) -> serde_json::Value {
 		use apb::ObjectMut;
-		match (self.activity, self.object) {
+		match (self.activity, &self.object.object) {
 			(None, None) => serde_json::Value::Null,
 
 			(Some(activity), None) => activity.into_activity_pub_json(ctx),
 
-			// TODO RichObject may be Some but actually be empty underneath, so this pretty match is
-			//      more or less useless since we need to match underlying object anyway. can we clear up
-			//      this weirdness somehow? it's confusing too!
-
-			(None, Some(object)) => match object.object {
-				Some(object) => {
-					apb::new()
-						.set_activity_type(Some(apb::ActivityType::View))
-						.set_published(Some(self.discovered))
-						.set_object(apb::Node::object(object.into_activity_pub_json(ctx)))
-				},
-				None => serde_json::Value::Null, // TODO we shouldn't really reach here?
+			(None, Some(ref _object)) => {
+				apb::new()
+					.set_activity_type(Some(apb::ActivityType::View))
+					.set_published(Some(self.discovered))
+					.set_object(apb::Node::object(self.object.into_activity_pub_json(ctx)))
 			},
 
-			(Some(activity), Some(object)) => match object.object {
-				Some(object) => activity
+			(Some(activity), Some(ref _object)) => {
+				activity
 					.into_activity_pub_json(ctx)
-					.set_object(apb::Node::object(object.into_activity_pub_json(ctx))),
-				None => activity.into_activity_pub_json(ctx),
+					.set_object(apb::Node::object(self.object.into_activity_pub_json(ctx)))
 			},
 		}
 	}

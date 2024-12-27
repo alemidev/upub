@@ -40,10 +40,7 @@ impl BatchFillable for RichActivity {
 		E::Model: BatchFillableKey + Send + FromQueryResult + ModelTrait<Entity = E>,
 		RichObject: BatchFillableAcceptor<Vec<E::Model>>,
 	{
-		if let Some(obj) = self.object {
-			self.object = Some(obj.with_batched::<E>(tx).await?);
-		}
-
+		self.object = self.object.with_batched::<E>(tx).await?;
 		Ok(self)
 	}
 }
