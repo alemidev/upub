@@ -27,7 +27,7 @@ pub async fn fix_activities(ctx: upub::Context, likes: bool, announces: bool) ->
 			if let Some(like) = upub::model::like::Entity::find()
 				.filter(upub::model::like::Column::Object.eq(internal_oid))
 				.filter(upub::model::like::Column::Actor.eq(internal_uid))
-				.filter(upub::model::like::Column::Published.eq(activity.published))
+				// .filter(upub::model::like::Column::Published.eq(activity.published))
 				.one(ctx.db())
 				.await?
 			{
