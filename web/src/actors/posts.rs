@@ -17,3 +17,19 @@ pub fn ActorPosts() -> impl IntoView {
 		<Feed tl=feeds.user />
 	}
 }
+
+#[component]
+pub fn ActorLikes() -> impl IntoView {
+	let feeds = use_context::<Feeds>().expect("missing feeds context");
+	let params = use_params::<IdParam>();
+	create_effect(move |_| {
+		let id = params.get().ok().and_then(|x| x.id).unwrap_or_default();
+		let likes_url = format!("{}/likes/page", Uri::api(U::Actor, &id, false));
+		if !feeds.user.next.get_untracked().starts_with(&likes_url) {
+			feeds.user_likes.reset(Some(likes_url));
+		}
+	});
+	view! {
+		<Feed tl=feeds.user_likes />
+	}
+}

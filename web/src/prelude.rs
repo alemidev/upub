@@ -10,7 +10,7 @@ pub use crate::{
 	actors::{
 		header::ActorHeader,
 		follow::FollowList,
-		posts::ActorPosts,
+		posts::{ActorPosts, ActorLikes},
 	},
 	activities::{
 		item::Item,

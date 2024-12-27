@@ -124,6 +124,9 @@ pub fn ActorHeader() -> impl IntoView {
 					<span class:tab-active=move || matches!(matched_route.get(), FeedRoute::User)>
 						<a class="clean" href=web_path.clone()><span class="emoji">"🖂 "</span>"outbox"</a>
 					</span>
+					<span class="ml-1" class:tab-active=move || matches!(matched_route.get(), FeedRoute::Likes)>
+						<a class="clean" href=format!("{web_path}/likes")><span class="emoji">"⭐ "</span>"likes"</a>
+					</span>
 					<span class="ml-1" style="float: right" class:tab-active=move || matches!(matched_route.get(), FeedRoute::Followers)>
 						<a class="clean" href=format!("{web_path}/followers")><span class="emoji">"📢"</span><span class:hidden-on-mobile=move || !matches!(matched_route.get(), FeedRoute::Followers)>" followers"</span></a>
 					</span>

@@ -23,6 +23,7 @@ pub struct Feeds {
 	pub notifications: Timeline,
 	// exploration feeds
 	pub user: Timeline,
+	pub user_likes: Timeline,
 	pub server: Timeline,
 	pub context: Timeline,
 	pub replies: Timeline,
@@ -36,6 +37,7 @@ impl Feeds {
 			notifications: Timeline::new(format!("{URL_BASE}/actors/{username}/notifications/page")),
 			global: Timeline::new(format!("{URL_BASE}/inbox/page")),
 			user: Timeline::new(format!("{URL_BASE}/actors/{username}/outbox/page")),
+			user_likes: Timeline::new(format!("{URL_BASE}/actors/{username}/likes")),
 			server: Timeline::new(format!("{URL_BASE}/outbox/page")),
 			tag: Timeline::new(format!("{URL_BASE}/tags/upub/page")),
 			context: Timeline::new(format!("{URL_BASE}/outbox/page")), // TODO ehhh
@@ -48,6 +50,7 @@ impl Feeds {
 		self.notifications.reset(None);
 		self.global.reset(None);
 		self.user.reset(None);
+		self.user_likes.reset(None);
 		self.server.reset(None);
 		self.context.reset(None);
 		self.replies.reset(None);
@@ -177,6 +180,7 @@ pub fn App() -> impl IntoView {
 
 										<Route path="actors/:id" view=ActorHeader > // TODO can we avoid this?
 											<Route path="" view=ActorPosts />
+											<Route path="likes" view=ActorLikes />
 											<Route path="following" view=move || view! { <FollowList outgoing=true /> } />
 											<Route path="followers" view=move || view! { <FollowList outgoing=false /> } />
 										</Route>
@@ -249,7 +253,7 @@ fn Scrollable() -> impl IntoView {
 				},
 				Some("likes") => {
 					set_route.set(FeedRoute::Likes);
-					None
+					Some(feeds.user_likes)
 				},
 				_ => {
 					set_route.set(FeedRoute::User);
