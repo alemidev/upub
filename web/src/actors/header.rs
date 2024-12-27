@@ -81,19 +81,37 @@ pub fn ActorHeader() -> impl IntoView {
 							<div class="ma-s pt-3 rev" style="flex-grow: 1; white-space: nowrap;">
 							</div>
 						</div>
-						<div class="rev mr-1" class:hidden=move || !auth.present() || auth.user_id() == uid>
+						<div class="mr-1 ml-1" class:hidden=move || !auth.present() || auth.user_id() == uid>
 							{if following_me {
-								Some(view! { <code class="mr-1 color">follows you</code> })
+								Some(view! {
+									<a class="clean dim" href="#remove" on:click=move |_| tracing::error!("not yet implemented")>
+										<span class="border-button ml-s" title="remove follower (not yet implemented)">
+											<code class="color mr-s">"!"</code>
+											<small class="mr-s">follows you</small>
+										</span>
+									</a>
+								})
 							} else {
 								None
 							}}
 							{if followed_by_me {
 								view! {
-									<code class="color">"following"</code>
-									<input type="submit" value="x" on:click=move |_| unfollow(_uid.clone()) />
+									<a class="clean dim" href="#unfollow" on:click=move |_| unfollow(_uid.clone())>
+										<span class="border-button ml-s" title="undo follow">
+											<code class="color mr-s">x</code>
+											<small class="mr-s">following</small>
+										</span>
+									</a>
 								}.into_view()
 							} else {
-								view! { <input type="submit" value="follow" on:click=move |_| send_follow_request(_uid.clone()) /> }.into_view()
+								view! {
+									<a class="clean dim" href="#follow" on:click=move |_| send_follow_request(_uid.clone())>
+										<span class="border-button ml-s" title="send follow request">
+											<code class="color mr-s">+</code>
+											<small class="mr-s">follow</small>
+										</span>
+									</a>
+								}.into_view()
 							}}
 						</div>
 					</div>
