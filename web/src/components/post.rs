@@ -29,10 +29,15 @@ fn post_author(post_id: &str) -> Option<crate::Object> {
 }
 
 #[derive(Clone)]
-struct MentionMatch {
-	href: String,
-	name: String,
-	domain: String,
+enum TextMatch {
+	Mention {
+		href: String,
+		name: String,
+		domain: String,
+	},
+	Hashtag {
+		name: String,
+	}
 }
 
 pub type PrivacyControl = ReadSignal<Privacy>;
@@ -150,21 +155,25 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 	let summary_ref: NodeRef<html::Input> = create_node_ref();
 
 	// TODO is this too abusive with resources? im even checking if TLD exists...
+	// TODO debounce this!
 	let mentions = create_local_resource(
 		move || content.get(),
 		move |c| async move {
 			let mut out = Vec::new();
 			for word in c.split(' ') {
-				if !word.starts_with('@') { break };
-				let stripped = word.replacen('@', "", 1);
-				if let Some((name, domain)) = stripped.split_once('@') {
-					if let Some(tld) = domain.split('.').last() {
-						if tld::exist(tld) {
-							if let Some(uid) = cache::WEBFINGER.blocking_resolve(name, domain).await {
-								out.push(MentionMatch { name: name.to_string(), domain: domain.to_string(), href: uid });
+				if word.starts_with('@') {
+					let stripped = word.replacen('@', "", 1);
+					if let Some((name, domain)) = stripped.split_once('@') {
+						if let Some(tld) = domain.split('.').last() {
+							if tld::exist(tld) {
+								if let Some(uid) = cache::WEBFINGER.blocking_resolve(name, domain).await {
+									out.push(TextMatch::Mention { name: name.to_string(), domain: domain.to_string(), href: uid });
+								}
 							}
 						}
 					}
+				} else if word.starts_with('#') {
+					out.push(TextMatch::Hashtag { name: word.replacen('#', "", 1) });
 				}
 			}
 			out
@@ -193,11 +202,17 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 			}
 			{move ||
 				mentions.get()
-					.map(|x| x.into_iter().map(|u| match cache::OBJECTS.get(&u.href) {
-						Some(u) => view! { <span class="nowrap"><span class="emoji mr-s ml-s">"📨"</span><ActorStrip object=u /></span> }.into_view(),
-						None => view! { <span class="nowrap"><span class="emoji mr-s ml-s">"📨"</span><a href={Uri::web(U::Actor, &u.href)}>{u.href}</a></span> }.into_view(),
-					})
-					.collect_view())
+					.map(|x| x
+						.into_iter()
+						.map(|u| match u {
+							TextMatch::Mention { href, .. } => match cache::OBJECTS.get(&href) {
+								Some(u) => view! { <span class="nowrap"><span class="emoji mr-s ml-s">"📨"</span><ActorStrip object=u /></span> }.into_view(),
+								None => view! { <span class="nowrap"><span class="emoji mr-s ml-s">"📨"</span><a href={Uri::web(U::Actor, &href)}>{href}</a></span> }.into_view(),
+							},
+							TextMatch::Hashtag { name } => view! { <code class="color">#{name}</code> }.into_view(),
+						})
+						.collect_view()
+					)
 			}
 			<table class="align w-100">
 				<tr>
@@ -224,11 +239,20 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 					let mut mention_tags : Vec<serde_json::Value> = mentions.get()
 						.unwrap_or_default()
 						.into_iter()
-						.map(|x| {
-							use apb::LinkMut;
-							LinkMut::set_name(apb::new(), Some(format!("@{}@{}", x.name, x.domain))) // TODO ewww but name clashes
-								.set_link_type(Some(apb::LinkType::Mention))
-								.set_href(Some(x.href))
+						.map(|x| match x {
+							TextMatch::Mention { name, domain, href } => {
+								use apb::LinkMut;
+								LinkMut::set_name(apb::new(), Some(format!("@{}@{}", name, domain))) // TODO ewww but name clashes
+									.set_link_type(Some(apb::LinkType::Mention))
+									.set_href(Some(href))
+							},
+							TextMatch::Hashtag { name } => {
+								use apb::LinkMut;
+								let href = format!("{URL_BASE}/tags/{name}");
+								LinkMut::set_name(apb::new(), Some(name)) // TODO ewww but name clashes
+									.set_link_type(Some(apb::LinkType::Hashtag))
+									.set_href(Some(href))
+							}
 						})
 						.collect();
 
@@ -249,7 +273,9 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 						}
 					}
 					for mention in mentions.get().as_deref().unwrap_or(&[]) {
-						to_vec.push(mention.href.clone());
+						if let TextMatch::Mention { href, .. } = mention {
+							to_vec.push(href.clone());
+						}
 					}
 					let payload = apb::new()
 						.set_object_type(Some(apb::ObjectType::Note))
