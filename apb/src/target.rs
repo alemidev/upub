@@ -1,6 +1,11 @@
 use crate::Object;
 
 pub const PUBLIC : &str = "https://www.w3.org/ns/activitystreams#Public";
+pub const PUBLIC_COMPACT: &str = "as:Public";
+
+pub fn is_public(target: &str) -> bool {
+	target == PUBLIC || target == PUBLIC_COMPACT
+}
 
 pub trait Addressed {
 	fn addressed(&self) -> Vec<String>; // TODO rename this? remate others? idk

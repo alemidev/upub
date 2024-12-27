@@ -66,10 +66,10 @@ impl Privacy {
 	}
 
 	pub fn from_addressed(to: &[String], cc: &[String]) -> Self {
-		if to.iter().any(|x| x == apb::target::PUBLIC) {
+		if to.iter().any(|x| apb::target::is_public(x)) {
 			return Self::Broadcast;
 		}
-		if cc.iter().any(|x| x == apb::target::PUBLIC) {
+		if cc.iter().any(|x| apb::target::is_public(x)) {
 			return Self::Public;
 		}
 		if to.iter().any(|x| x.ends_with("/followers"))

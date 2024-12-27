@@ -18,7 +18,7 @@ impl Addresser for crate::Context {
 		for target in to.into_iter()
 			.filter(|to| !to.is_empty())
 			.filter(|to| crate::Context::server(to) != self.domain())
-			.filter(|to| to != apb::target::PUBLIC)
+			.filter(|to| !apb::target::is_public(to))
 		{
 			// TODO fetch concurrently
 			match self.fetch_user(&target, tx).await {
@@ -95,9 +95,9 @@ async fn address_to(ctx: &crate::Context, to: Vec<String>, aid: Option<i64>, oid
 	for target in to.into_iter()
 		.filter(|to| !to.is_empty())
 		.filter(|to| !to.ends_with("/followers"))
-		.filter(|to| local || to.as_str() == apb::target::PUBLIC || ctx.is_local(to))
+		.filter(|to| local || apb::target::is_public(to.as_str()) || ctx.is_local(to))
 	{
-		let (server, actor) = if target == apb::target::PUBLIC { (None, None) } else {
+		let (server, actor) = if apb::target::is_public(&target) { (None, None) } else {
 			match (
 				crate::model::instance::Entity::domain_to_internal(&crate::Context::server(&target), tx).await?,
 				crate::model::actor::Entity::ap_to_internal(&target, tx).await?,
