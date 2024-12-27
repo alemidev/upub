@@ -68,15 +68,17 @@ pub fn ActorHeader() -> impl IntoView {
 						<div class="pl-1 pr-1" style="display: flex">
 							<img class="avatar avatar-border mr-s" src={avatar_url} style="height: 7em; width: 7em" onerror={format!("this.onerror=null; this.src='{FALLBACK_IMAGE_URL}';")} />
 
-							<div class="ma-s pt-3">
-								<b class="big">{name}</b>{actor_type_tag}<br/>
-								<small><a class="clean hover" href={uid.clone()} target="_blank">{username.clone()}@{domain}</a></small><br/>
-								<DateTime t=created />
+							<div class="ma-s">
+								<p class="line shadow">
+									<span class="emoji mr-s">"\u{1f582}"</span><small>{actor.statuses_count().unwrap_or_default()}</small>
+									<span class="emoji ml-1 mr-s">"👥"</span><small>{actor.following_count().unwrap_or_default()}</small>
+									<span class="emoji ml-1 mr-s">"📢"</span><small>{actor.followers_count().unwrap_or_default()}</small>
+								</p>
+								<p class="line pt-1"><b class="big mt-1">{name}</b>{actor_type_tag}</p>
+								<p class="line"><small><a class="clean hover" href={uid.clone()} target="_blank">{username.clone()}@{domain}</a></small></p>
+								<p class="line"><DateTime t=created /></p>
 							</div>
 							<div class="ma-s pt-3 rev" style="flex-grow: 1; white-space: nowrap;">
-								{actor.statuses_count().unwrap_or_default()}" "<span class="emoji">"\u{1f582}"</span><br/>
-								{actor.following_count().unwrap_or_default()}" "<span class="emoji">"👥"</span><br/>
-								{actor.followers_count().unwrap_or_default()}" "<span class="emoji">"📢"</span>
 							</div>
 						</div>
 						<div class="rev mr-1" class:hidden=move || !auth.present() || auth.user_id() == uid>
@@ -102,13 +104,13 @@ pub fn ActorHeader() -> impl IntoView {
 				</div>
 				<p class="mt-2">
 					<span class:tab-active=move || matches!(matched_route.get(), FeedRoute::User)>
-						<a class="clean" href=web_path.clone()><span class="emoji ml-2">"🖂 "</span>"statuses"</a>
+						<a class="clean" href=web_path.clone()><span class="emoji">"🖂 "</span>"outbox"</a>
 					</span>
-					<span style="float: right" class:tab-active=move || matches!(matched_route.get(), FeedRoute::Followers)>
-						<a class="clean" href=format!("{web_path}/followers")><span class="emoji ml-2">"📢 "</span>"followers"</a>
+					<span class="ml-1" style="float: right" class:tab-active=move || matches!(matched_route.get(), FeedRoute::Followers)>
+						<a class="clean" href=format!("{web_path}/followers")><span class="emoji">"📢"</span><span class:hidden-on-mobile=move || !matches!(matched_route.get(), FeedRoute::Followers)>" followers"</span></a>
 					</span>
-					<span style="float: right" class:tab-active=move || matches!(matched_route.get(), FeedRoute::Following)>
-						<a class="clean" href=format!("{web_path}/following")><span class="emoji ml-2">"👥 "</span>"following"</a>
+					<span class="ml-1" style="float: right" class:tab-active=move || matches!(matched_route.get(), FeedRoute::Following)>
+						<a class="clean" href=format!("{web_path}/following")><span class="emoji">"👥"</span><span class:hidden-on-mobile=move || !matches!(matched_route.get(), FeedRoute::Following)>" following"</span></a>
 					</span>
 				</p>
 				<hr class="color" />
