@@ -1,5 +1,5 @@
 use axum::extract::{Path, Query, State};
-use sea_orm::{ColumnTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait};
+use sea_orm::{ColumnTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait, SelectColumns};
 
 use upub::{model, selector::{RichFillable, RichObject}, Context};
 
@@ -36,6 +36,7 @@ pub async fn page(
 		.join(sea_orm::JoinType::InnerJoin, upub::model::like::Relation::Activities.def())
 		.filter(auth.filter_activities())
 		.filter(upub::model::like::Column::Actor.eq(user.internal))
+		.select_column(upub::model::like::Column::Published)
 		.order_by_desc(upub::model::like::Column::Published)
 		.limit(limit)
 		.offset(offset)
