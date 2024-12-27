@@ -31,6 +31,7 @@ pub async fn fix_activities(ctx: upub::Context, likes: bool, announces: bool) ->
 				.one(ctx.db())
 				.await?
 			{
+				tracing::info!("joining like {} to activity {}", like.internal, activity.id);
 				let mut active = like.into_active_model();
 				active.activity = sea_orm::Set(Some(activity.internal));
 				active.update(ctx.db()).await?;
@@ -51,15 +52,15 @@ pub async fn fix_activities(ctx: upub::Context, likes: bool, announces: bool) ->
 			let internal_oid = ok_or_continue!(upub::model::object::Entity::ap_to_internal(&oid, ctx.db()).await?);
 			let uid = activity.actor;
 			let internal_uid = ok_or_continue!(upub::model::actor::Entity::ap_to_internal(&uid, ctx.db()).await?);
-			if let Some(like) = upub::model::announce::Entity::find()
+			if let Some(announce) = upub::model::announce::Entity::find()
 				.filter(upub::model::announce::Column::Object.eq(internal_oid))
 				.filter(upub::model::announce::Column::Actor.eq(internal_uid))
 				.filter(upub::model::announce::Column::Published.eq(activity.published))
 				.one(ctx.db())
 				.await?
 			{
-				tracing::info!("joining like {} to activity {}", like.internal, activity.id);
-				let mut active = like.into_active_model();
+				tracing::info!("joining announce {} to activity {}", announce.internal, activity.id);
+				let mut active = announce.into_active_model();
 				active.activity = sea_orm::Set(Some(activity.internal));
 				active.update(ctx.db()).await?;
 			}
