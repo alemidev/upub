@@ -48,8 +48,8 @@ pub fn ObjectView() -> impl IntoView {
 		}}
 
 		<p>
-			<span class:tab-active=move || matches!(matched_route.get(), FeedRoute::Context)><a class="clean" href=format!("/web/objects/{}", id.get())><span class="emoji ml-2">"🕸️ "</span>"context"</a></span>
-			<span class:tab-active=move || matches!(matched_route.get(), FeedRoute::Replies)><a class="clean" href=format!("/web/objects/{}/replies", id.get())><span class="emoji ml-2">"📫 "</span>"replies"</a></span>
+			<span class:tab-active=move || matches!(matched_route.get(), FeedRoute::Context)><a class="clean" href=move || format!("/web/objects/{}", id.get())><span class="emoji ml-2">"🕸️ "</span>"context"</a></span>
+			<span class:tab-active=move || matches!(matched_route.get(), FeedRoute::Replies)><a class="clean" href=move || format!("/web/objects/{}/replies", id.get())><span class="emoji ml-2">"📫 "</span>"replies"</a></span>
 			{move || if auth.present() {
 				if loading.get() {
 					Some(view! {
