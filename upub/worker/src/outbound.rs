@@ -170,8 +170,21 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 	// TODO very important that we limit Update activities!!! otherwise with .process() local users
 	// can change their document completely
 
-	let targets = activity.addressed();
+	let mut targets = activity.addressed();
+	let is_broadcast = activity.to().flat().into_iter().any(|x| apb::target::is_public(&x.id().unwrap_or_default()));
 	ctx.process(activity, &tx).await?;
+
+	if is_broadcast {
+		for relay in upub::Query::related(None, Some(ctx.actor().internal), false)
+			.select_only()
+			.select_column(upub::model::actor::Column::Id)
+			.into_tuple::<String>()
+			.all(&tx)
+			.await?
+		{
+			targets.push(relay);
+		}
+	}
 	ctx.deliver(targets, &job.activity, &job.actor, &tx).await?;
 
 	tx.commit().await?;
