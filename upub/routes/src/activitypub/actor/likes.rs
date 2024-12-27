@@ -31,9 +31,9 @@ pub async fn page(
 
 	let (limit, offset) = page.pagination();
 
-	let items : Vec<serde_json::Value> = upub::Query::objects(auth.my_id(), true)
-		.join(sea_orm::JoinType::InnerJoin, upub::model::like::Relation::Objects.def())
-		.join(sea_orm::JoinType::InnerJoin, upub::model::activity::Relation::Likes.def())
+	let items : Vec<serde_json::Value> = upub::Query::objects(None, true)
+		.join(sea_orm::JoinType::InnerJoin, upub::model::object::Relation::Likes.def())
+		.join(sea_orm::JoinType::InnerJoin, upub::model::like::Relation::Activities.def())
 		.filter(auth.filter_activities())
 		.filter(upub::model::like::Column::Actor.eq(user.internal))
 		.order_by_desc(upub::model::like::Column::Published)
