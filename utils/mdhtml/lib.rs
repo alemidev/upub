@@ -1,5 +1,53 @@
 use html5ever::{tendril::SliceExt, tokenizer::{BufferQueue, TagKind, Token, TokenSink, TokenSinkResult, Tokenizer}};
-use comrak::{markdown_to_html, Options};
+
+// TODO this drives me so mad!!! The #[non_exhaustive] attr on the underlying ___Options structs
+//      makes it impossible to construct them with struct syntax! I need to use this BULLSHIT
+//      builder pattern. And it's NOT CONST!!! I have to keep this shit heap allocated somewhere
+//      because this thing is #[non_exhaustive]... oh i hate this so much
+fn options() -> &'static comrak::Options {
+	static OPTIONS: std::sync::OnceLock<comrak::Options> = std::sync::OnceLock::new();
+	OPTIONS.get_or_init(||
+		comrak::Options {
+			extension: comrak::ExtensionOptionsBuilder::default()
+				.autolink(true)
+				.strikethrough(true)
+				.description_lists(false)
+				.tagfilter(true)
+				.table(true)
+				.tasklist(false)
+				.superscript(true)
+				.header_ids(None)
+				.footnotes(false)
+				.front_matter_delimiter(None)
+				.multiline_block_quotes(true)
+				.math_dollars(true)
+				.math_code(true)
+				.build()
+				.expect("error creating default markdown extension options"),
+		
+			parse: comrak::ParseOptionsBuilder::default()
+				.smart(false)
+				.default_info_string(None)
+				.relaxed_tasklist_matching(true)
+				.relaxed_autolinks(false)
+				.build()
+				.expect("erropr creating default markdown parse options"),
+		
+			render: comrak::RenderOptionsBuilder::default()
+				.hardbreaks(true)
+				.github_pre_lang(true)
+				.full_info_string(false)
+				.width(120)
+				.unsafe_(false)
+				.escape(true)
+				.list_style(comrak::ListStyleType::Dash)
+				.sourcepos(false)
+				.escaped_char_spans(true)
+				.build()
+				.expect("error creating default markdown render options"),
+		}
+	)
+}
 
 pub type Cloaker = Box<dyn Fn(&str) -> String>;
 
@@ -26,7 +74,7 @@ impl Sanitizer {
 	}
 
 	pub fn markdown(self, text: &str) -> String {
-		self.html(&markdown_to_html(text, &Options::default()))
+		self.html(&comrak::markdown_to_html(text, options()))
 	}
 	
 	pub fn html(self, text: &str) -> String {
@@ -54,12 +102,17 @@ impl TokenSink for Sanitizer {
 			Token::TagToken(tag) => {
 				if !matches!(
 					tag.name.as_ref(),
-					"h1" | "h2" | "h3" 
-					| "hr" | "br" | "p" | "b" | "i" | "s"
-					| "blockquote" | "pre" | "code"
-					| "ul" | "ol" | "li"
-					| "img" | "a"
-				) { return TokenSinkResult::Continue } // skip this tag
+					"h1" | "h2" | "h3"               // allow titles, up to 3 depth
+					| "sup" | "sub"                  // allow superscript/subscript
+					| "hr" | "br"                    // allow horizontal rules and linebreaks
+					| "p" | "span"                   // allow placing paragraphs and spans
+					| "b" | "i" | "s" | "del"        // allow simple formatting: bold, italic and strikethrough, but not underlined as it can look like a link!
+					| "blockquote" | "pre" | "code"  // allow code blocks
+					| "ul" | "ol" | "li"             // allow lists
+					| "img" | "a"                    // allow images and links, but will get sanitized later
+				) {
+					return TokenSinkResult::Continue; // skip this tag
+				}
 
 				self.buffer.push('<');
 
