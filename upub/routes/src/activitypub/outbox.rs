@@ -1,5 +1,5 @@
 use axum::{extract::{Query, State}, http::StatusCode, Json};
-use sea_orm::{ColumnTrait, Condition, QueryFilter, QuerySelect};
+use sea_orm::{ColumnTrait, Condition, QueryFilter, QueryOrder, QuerySelect, RelationTrait};
 use upub::{selector::{RichActivity, RichFillable}, Context};
 
 use crate::{activitypub::{CreationResult, Pagination}, AuthIdentity, builders::JsonLD};
@@ -19,6 +19,7 @@ pub async fn page(
 	
 	let (limit, offset) = page.pagination();
 	let items = upub::Query::feed(auth.my_id(), page.replies.unwrap_or(true))
+		.join(sea_orm::JoinType::InnerJoin, upub::model::object::Relation::Actors.def())
 		.filter(filter)
 		.limit(limit)
 		.offset(offset)
