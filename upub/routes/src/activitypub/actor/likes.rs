@@ -1,5 +1,5 @@
 use axum::extract::{Path, Query, State};
-use sea_orm::{ColumnTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait, SelectColumns};
+use sea_orm::{ColumnTrait, EntityTrait, Iterable, QueryFilter, QueryOrder, QuerySelect, RelationTrait, SelectColumns, Iden, EntityName};
 
 use upub::{model, selector::{RichFillable, RichObject}, Context};
 
@@ -31,13 +31,22 @@ pub async fn page(
 
 	let (limit, offset) = page.pagination();
 
-	let items : Vec<serde_json::Value> = upub::Query::objects(None, true)
-		.join(sea_orm::JoinType::InnerJoin, upub::model::object::Relation::Likes.def())
+	let mut select = upub::model::like::Entity::find()
+		.distinct()
+		.join(sea_orm::JoinType::InnerJoin, upub::model::like::Relation::Objects.def())
 		.join(sea_orm::JoinType::InnerJoin, upub::model::like::Relation::Activities.def())
+		.join(sea_orm::JoinType::InnerJoin, upub::model::activity::Relation::Addressing.def())
 		.filter(auth.filter_activities())
 		.filter(upub::model::like::Column::Actor.eq(user.internal))
-		.select_column(upub::model::like::Column::Published)
 		.order_by_desc(upub::model::like::Column::Published)
+		.select_only()
+		.select_column(upub::model::like::Column::Published);
+
+	for col in upub::model::object::Column::iter() {
+		select = select.select_column_as(col, format!("{}{}", model::object::Entity.table_name(), col.to_string()));
+	}
+
+	let items : Vec<serde_json::Value> = select
 		.limit(limit)
 		.offset(offset)
 		.into_model::<RichObject>()
