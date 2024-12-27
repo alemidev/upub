@@ -1,6 +1,6 @@
 use apb::{Activity, ActivityType, Base};
 use axum::{extract::{Query, State}, http::StatusCode, Json};
-use sea_orm::{sea_query::IntoCondition, ActiveValue::{NotSet, Set}, ColumnTrait, EntityTrait, QueryFilter, QuerySelect};
+use sea_orm::{sea_query::IntoCondition, ActiveValue::{NotSet, Set}, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect};
 use upub::{model::job::JobType, selector::{RichActivity, RichFillable}, Context};
 
 use crate::{AuthIdentity, Identity, builders::JsonLD};
@@ -25,6 +25,8 @@ pub async fn page(
 		.filter(filter)
 		.limit(limit)
 		.offset(offset)
+		.order_by_desc(upub::model::addressing::Column::Published)
+		.order_by_desc(upub::model::activity::Column::Internal)
 		.into_model::<RichActivity>()
 		.all(ctx.db())
 		.await?

@@ -23,6 +23,8 @@ pub async fn page(
 		.filter(filter)
 		.limit(limit)
 		.offset(offset)
+		.order_by_desc(upub::model::addressing::Column::Published)
+		.order_by_desc(upub::model::activity::Column::Internal)
 		.into_model::<RichActivity>()
 		.all(ctx.db())
 		.await?

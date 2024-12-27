@@ -1,5 +1,5 @@
 use axum::extract::{Path, Query, State};
-use sea_orm::{ColumnTrait, Condition, PaginatorTrait, QueryFilter, QuerySelect};
+use sea_orm::{ColumnTrait, Condition, PaginatorTrait, QueryFilter, QueryOrder, QuerySelect};
 use upub::{model, selector::{RichFillable, RichObject}, Context};
 
 use crate::{activitypub::Pagination, builders::JsonLD, AuthIdentity};
@@ -39,6 +39,8 @@ pub async fn page(
 		.filter(filter)
 		.limit(limit)
 		.offset(offset)
+		.order_by_asc(upub::model::addressing::Column::Published)
+		.order_by_asc(upub::model::activity::Column::Internal)
 		.into_model::<RichObject>()
 		.all(ctx.db())
 		.await?

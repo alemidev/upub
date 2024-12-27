@@ -1,5 +1,5 @@
 use axum::{http::StatusCode, extract::{Path, Query, State}, Json};
-use sea_orm::{ColumnTrait, Condition, QueryFilter, QuerySelect};
+use sea_orm::{ColumnTrait, Condition, QueryFilter, QueryOrder, QuerySelect};
 
 use upub::{selector::{RichActivity, RichFillable}, Context};
 
@@ -45,6 +45,8 @@ pub async fn page(
 		.filter(filter)
 		.limit(limit)
 		.offset(offset)
+		.order_by_desc(upub::model::addressing::Column::Published)
+		.order_by_desc(upub::model::activity::Column::Internal)
 		.into_model::<RichActivity>()
 		.all(ctx.db())
 		.await?

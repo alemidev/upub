@@ -18,8 +18,6 @@ impl Query {
 					.add(model::activity::Column::Id.is_not_null())
 					.add(model::object::Column::Id.is_not_null())
 			)
-			.order_by(model::addressing::Column::Published, Order::Desc)
-			.order_by(model::activity::Column::Internal, Order::Desc)
 			.select_only();
 
 		for col in model::activity::Column::iter() {

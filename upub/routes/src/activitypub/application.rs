@@ -1,7 +1,7 @@
 use apb::{LD, ActorMut, BaseMut, ObjectMut, PublicKeyMut};
 use axum::{extract::{Path, Query, State}, http::HeaderMap, response::{IntoResponse, Redirect, Response}};
 use reqwest::Method;
-use sea_orm::{ColumnTrait, Condition, QueryFilter, QuerySelect};
+use sea_orm::{ColumnTrait, Condition, QueryFilter, QueryOrder, QuerySelect};
 use upub::{selector::{RichFillable, RichObject}, traits::{Cloaker, Fetcher}, Context};
 
 use crate::{builders::JsonLD, ApiError, AuthIdentity};
@@ -69,6 +69,8 @@ pub async fn search(
 		.filter(filter)
 		.limit(limit)
 		.offset(offset)
+		.order_by_desc(upub::model::addressing::Column::Published)
+		.order_by_desc(upub::model::activity::Column::Internal)
 		.into_model::<RichObject>()
 		.all(ctx.db())
 		.await?

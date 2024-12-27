@@ -1,5 +1,5 @@
 use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
-use sea_orm::{ActiveValue::{NotSet, Set}, ColumnTrait, Condition, EntityTrait, QueryFilter, QuerySelect};
+use sea_orm::{ActiveValue::{NotSet, Set}, ColumnTrait, Condition, EntityTrait, QueryFilter, QueryOrder, QuerySelect};
 
 use upub::{model, selector::{RichActivity, RichFillable}, Context};
 
@@ -32,9 +32,10 @@ pub async fn page(
 	// by default we want replies because servers don't know about our api and need to see everything
 	let items = upub::Query::feed(auth.my_id(), page.replies.unwrap_or(true))
 		.filter(filter)
-		// TODO also limit to only local activities
 		.limit(limit)
 		.offset(offset)
+		.order_by_desc(upub::model::addressing::Column::Published)
+		.order_by_desc(upub::model::activity::Column::Internal)
 		.into_model::<RichActivity>()
 		.all(ctx.db())
 		.await?
