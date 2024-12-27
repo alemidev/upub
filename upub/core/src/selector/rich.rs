@@ -112,14 +112,26 @@ impl IntoActivityPub for RichActivity {
 
 			(Some(activity), None) => activity.into_activity_pub_json(ctx),
 
-			(None, Some(object)) => apb::new()
-				.set_activity_type(Some(apb::ActivityType::View))
-				.set_published(Some(self.discovered))
-				.set_object(apb::Node::object(object.into_activity_pub_json(ctx))),
+			// TODO RichObject may be Some but actually be empty underneath, so this pretty match is
+			//      more or less useless since we need to match underlying object anyway. can we clear up
+			//      this weirdness somehow? it's confusing too!
 
-			(Some(activity), Some(object)) => activity
-				.into_activity_pub_json(ctx)
-				.set_object(apb::Node::object(object.into_activity_pub_json(ctx))),
+			(None, Some(object)) => match object.object {
+				Some(object) => {
+					apb::new()
+						.set_activity_type(Some(apb::ActivityType::View))
+						.set_published(Some(self.discovered))
+						.set_object(apb::Node::object(object.into_activity_pub_json(ctx)))
+				},
+				None => serde_json::Value::Null, // TODO we shouldn't really reach here?
+			},
+
+			(Some(activity), Some(object)) => match object.object {
+				Some(object) => activity
+					.into_activity_pub_json(ctx)
+					.set_object(apb::Node::object(object.into_activity_pub_json(ctx))),
+				None => activity.into_activity_pub_json(ctx),
+			},
 		}
 	}
 }
