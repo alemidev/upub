@@ -169,20 +169,20 @@ pub async fn process_activities(activities: Vec<serde_json::Value>, auth: Auth) 
 		if let Ok(uid) = activity.attributed_to().id() {
 			if cache::OBJECTS.get(&uid).is_none() && !gonna_fetch.contains(&uid) {
 				gonna_fetch.insert(uid.clone());
-				sub_tasks.push(Box::pin(fetch_and_update(U::Actor, uid, auth)));
+				sub_tasks.push(Box::pin(deep_fetch_and_update(U::Actor, uid, auth)));
 			}
 		}
 	
 		if let Ok(uid) = activity.actor().id() {
 			if cache::OBJECTS.get(&uid).is_none() && !gonna_fetch.contains(&uid) {
 				gonna_fetch.insert(uid.clone());
-				sub_tasks.push(Box::pin(fetch_and_update(U::Actor, uid, auth)));
+				sub_tasks.push(Box::pin(deep_fetch_and_update(U::Actor, uid, auth)));
 			}
 		}
 	}
 
 	for user in actors_seen {
-		sub_tasks.push(Box::pin(fetch_and_update(U::Actor, user, auth)));
+		sub_tasks.push(Box::pin(deep_fetch_and_update(U::Actor, user, auth)));
 	}
 
 	futures::future::join_all(sub_tasks).await;
@@ -190,33 +190,16 @@ pub async fn process_activities(activities: Vec<serde_json::Value>, auth: Auth) 
 	out
 }
 
-async fn fetch_and_update(kind: U, id: String, auth: Auth) {
-	match Http::fetch::<serde_json::Value>(&Uri::api(kind, &id, false), auth).await {
-		Err(e) => console_warn(&format!("could not fetch '{id}': {e}")),
-		Ok(data) => {
-			if data.actor_type().is_ok() {
-				if let Ok(url) = data.url().id() {
-					cache::WEBFINGER.store(&id, url);
-				}
-			}
-			cache::OBJECTS.store(&id, Arc::new(data));
-		},
-	}
-}
-
 async fn deep_fetch_and_update(kind: U, id: String, auth: Auth) {
-	fetch_and_update(kind, id.clone(), auth).await;
-	if let Some(obj) = cache::OBJECTS.get(&id) {
+	if let Some(obj) = cache::OBJECTS.resolve(&id, kind, auth).await {
 		if let Ok(quote) = obj.quote_url().id() {
-			fetch_and_update(U::Object, quote, auth).await;
+			cache::OBJECTS.resolve(&quote, U::Object, auth).await;
 		}
-		if let Some(actor_id) = match kind {
-			U::Object => obj.attributed_to().id().ok(),
-			U::Activity => obj.actor().id().ok(),
-			U::Actor => None,
-			U::Hashtag => None,
-		} {
-			fetch_and_update(U::Actor, actor_id, auth).await;
+		if let Ok(actor) = obj.actor().id() {
+			cache::OBJECTS.resolve(&actor, U::Actor, auth).await;
+		}
+		if let Ok(attributed_to) = obj.attributed_to().id() {
+			cache::OBJECTS.resolve(&attributed_to, U::Actor, auth).await;
 		}
 	}
 }

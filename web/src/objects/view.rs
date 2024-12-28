@@ -19,9 +19,15 @@ pub fn ObjectView() -> impl IntoView {
 		move |(oid, _loading)| async move {
 			tracing::info!("rerunning fetcher");
 			let obj = cache::OBJECTS.resolve(&oid, U::Object, auth).await?;
+
+			// TODO these two can be parallelized
 			if let Ok(author) = obj.attributed_to().id() {
 				cache::OBJECTS.resolve(&author, U::Actor, auth).await;
 			}
+			if let Ok(quote) = obj.quote_url().id() {
+				cache::OBJECTS.resolve(&quote, U::Object, auth).await;
+			}
+
 			Some(obj)
 
 			// if let Ok(ctx) = obj.context().id() {

@@ -108,6 +108,11 @@ impl DashmapCache<Object> {
 					},
 				};
 				cache::OBJECTS.store(&full_key, obj.clone());
+				if matches!(kind, UriClass::Actor) {
+					if let Ok(url) = apb::Object::url(&*obj).id() { // TODO name clashes
+						cache::WEBFINGER.store(&url, full_key);
+					}
+				}
 				Some(obj)
 			},
 		}

@@ -17,9 +17,6 @@ pub fn ActorHeader() -> impl IntoView {
 					Some(x) => Some(x.clone()),
 					None => {
 						let user = cache::OBJECTS.resolve(&id, U::Actor, auth).await?;
-						if let Ok(url) = user.url().id() {
-							cache::WEBFINGER.store(&url, user.id().unwrap_or_default().to_string());
-						}
 						Some(user)
 					},
 				}
