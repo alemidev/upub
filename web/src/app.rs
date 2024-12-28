@@ -81,6 +81,22 @@ pub fn App() -> impl IntoView {
 
 	let auth = Auth { token, userid };
 
+	let (be_version, set_be_version) = create_signal("?.?.?".to_string());
+	spawn_local(async move {
+		match Http::fetch::<serde_json::Value>(&format!("{URL_BASE}/nodeinfo/2.0.json"), auth).await {
+			Err(e) => tracing::error!("failed fetching backend version: {e} - {e:?}"),
+			Ok(nodeinfo) => {
+				if let Some(version) = nodeinfo
+					.get("software")
+					.and_then(|x| x.get("version"))
+					.and_then(|x| x.as_str())
+				{
+					set_be_version.set(version.to_string());
+				}
+			},
+		}
+	});
+
 	let username = auth.userid.get_untracked()
 		.map(|x| x.split('/').last().unwrap_or_default().to_string())
 		.unwrap_or_default();
@@ -206,7 +222,7 @@ pub fn App() -> impl IntoView {
 		</div>
 		<footer>
 			<div class="sep-top">
-				<span class="footer" >"\u{26fc} woven under moonlight  :: "<a class="clean" href="https://join.upub.social/" target="_blank" >"upub v"{crate::VERSION}</a>" :: "<a class="clean" href=format!("mailto:{CONTACT}")>contact</a>" :: "<a class="clean" href="/web/dev">dev</a>" :: "<a class="clean" href="javascript:window.scrollTo({top:0, behavior:'smooth'})">top</a></span>
+				<span class="footer" >"\u{26fc} woven under moonlight  :: "<a class="clean" href="https://join.upub.social/" target="_blank" >"μpub"</a>" FE v"{crate::VERSION}" BE v"{be_version}" :: "<a class="clean" href=format!("mailto:{CONTACT}")>contact</a>" :: "<a class="clean" href="/web/dev">dev</a>" :: "<a class="clean" href="javascript:window.scrollTo({top:0, behavior:'smooth'})">top</a></span>
 			</div>
 		</footer>
 	}
