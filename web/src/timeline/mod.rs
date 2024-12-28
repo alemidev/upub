@@ -126,6 +126,12 @@ pub async fn process_activities(activities: Vec<serde_json::Value>, auth: Auth) 
 			if let Ok(attributed_to) = object.attributed_to().id() {
 				actors_seen.insert(attributed_to);
 			}
+			if let Ok(quote_id) = object.quote_url().id() {
+				if !gonna_fetch.contains(&quote_id) {
+					gonna_fetch.insert(quote_id.clone());
+					sub_tasks.push(Box::pin(fetch_and_update_with_user(U::Object, quote_id, auth)));
+				}
+			}
 			if let Ok(object_uri) = object.id() {
 				cache::OBJECTS.store(&object_uri, Arc::new(object.clone()));
 			} else {

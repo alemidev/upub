@@ -50,9 +50,19 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 			}
 		});
 
-	let quote_badge = object.quote_url()
+	let quote_block = object.quote_url()
 		.id()
 		.ok()
+		.and_then(|x| {
+			Some(view! {
+				<div class="quote">
+					<Object object=crate::cache::OBJECTS.get(&x)? />
+				</div>
+			})
+		});
+
+	let quote_badge = object.quote_url()
+		.id()
 		.map(|x| {
 			let href = Uri::web(U::Object, &x);
 			view! {
@@ -60,12 +70,13 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 					<span class="border-button ml-s" >
 						<code class="color mr-s">">"</code>
 						<small class="mr-s">
-							RE
+							quote
 						</small>
 					</span>
 				</a>" "
 			}
-		});
+		})
+		.ok();
 
 	let tag_badges = object.tag()
 		.flat()
@@ -143,7 +154,10 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 	let post = match object.object_type() {
 		// mastodon, pleroma, misskey
 		Ok(apb::ObjectType::Note) => view! {
-			<article class="tl">{post_inner}</article>
+			<article class="tl">
+				{post_inner}
+				{quote_block}
+			</article>
 		}.into_view(),
 		// lemmy with Page, peertube with Video
 		Ok(apb::ObjectType::Document(t)) => view! {
@@ -154,6 +168,7 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 						<b>{object.name().unwrap_or_default().to_string()}</b>
 					</h4>
 					{post_inner}
+					{quote_block}
 				</div>
 			</article>
 		}.into_view(),
@@ -163,12 +178,14 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 				<h3>{object.name().unwrap_or_default().to_string()}</h3>
 				<hr />
 				{post_inner}
+				{quote_block}
 			</article>
 		}.into_view(),
 		// everything else
 		Ok(t) => view! {
 			<h3>{t.as_ref().to_string()}</h3>
 			{post_inner}
+			{quote_block}
 		}.into_view(),
 		// object without type?
 		Err(_) => view! { <code>missing object type</code> }.into_view(),
