@@ -111,6 +111,10 @@ impl Timeline {
 	}
 }
 
+// TODO fetching stuff is quite centralized in upub BE but FE has this mess of three functions
+//      which interlock and are supposed to prime the global cache with everything coming from a
+//      tl. can we streamline it a bit like in our BE? maybe some traits?? maybe reuse stuff???
+
 // TODO ughhh this shouldn't be here if its pub!!!
 pub async fn process_activities(activities: Vec<serde_json::Value>, auth: Auth) -> Vec<String> {
 	let mut sub_tasks : Vec<Pin<Box<dyn futures::Future<Output = ()>>>> = Vec::new();
@@ -129,7 +133,7 @@ pub async fn process_activities(activities: Vec<serde_json::Value>, auth: Auth) 
 			if let Ok(quote_id) = object.quote_url().id() {
 				if !gonna_fetch.contains(&quote_id) {
 					gonna_fetch.insert(quote_id.clone());
-					sub_tasks.push(Box::pin(fetch_and_update_with_user(U::Object, quote_id, auth)));
+					sub_tasks.push(Box::pin(deep_fetch_and_update(U::Object, quote_id, auth)));
 				}
 			}
 			if let Ok(object_uri) = object.id() {
@@ -145,7 +149,7 @@ pub async fn process_activities(activities: Vec<serde_json::Value>, auth: Auth) 
 						_ => U::Object,
 					};
 					gonna_fetch.insert(object_id.clone());
-					sub_tasks.push(Box::pin(fetch_and_update_with_user(fetch_kind, object_id, auth)));
+					sub_tasks.push(Box::pin(deep_fetch_and_update(fetch_kind, object_id, auth)));
 				}
 			}
 		}
@@ -200,9 +204,12 @@ async fn fetch_and_update(kind: U, id: String, auth: Auth) {
 	}
 }
 
-async fn fetch_and_update_with_user(kind: U, id: String, auth: Auth) {
+async fn deep_fetch_and_update(kind: U, id: String, auth: Auth) {
 	fetch_and_update(kind, id.clone(), auth).await;
 	if let Some(obj) = cache::OBJECTS.get(&id) {
+		if let Ok(quote) = obj.quote_url().id() {
+			fetch_and_update(U::Object, quote, auth).await;
+		}
 		if let Some(actor_id) = match kind {
 			U::Object => obj.attributed_to().id().ok(),
 			U::Activity => obj.actor().id().ok(),
