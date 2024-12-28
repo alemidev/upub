@@ -6,7 +6,7 @@ use crate::{prelude::*, URL_SENSITIVE};
 use apb::{ActivityMut, Base, Collection, CollectionMut, Object, ObjectMut, Shortcuts};
 
 #[component]
-pub fn Object(object: crate::Object) -> impl IntoView {
+pub fn Object(object: crate::Object, #[prop(default = true)] controls: bool) -> impl IntoView {
 	let oid = object.id().unwrap_or_default().to_string();
 	let author_id = object.attributed_to().id().ok().unwrap_or_default();
 	let author = cache::OBJECTS.get_or(&author_id, serde_json::Value::String(author_id.clone()).into());
@@ -56,7 +56,7 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 		.and_then(|x| {
 			Some(view! {
 				<div class="quote">
-					<Object object=crate::cache::OBJECTS.get(&x)? />
+					<Object object=crate::cache::OBJECTS.get(&x)? controls=false />
 				</div>
 			})
 		});
@@ -211,11 +211,15 @@ pub fn Object(object: crate::Object) -> impl IntoView {
 			{quote_badge}
 			{tag_badges}
 			{audience_badge}
-			<span style="white-space:nowrap">
-				<ReplyButton n=comments target=oid.clone() />
-				<LikeButton n=likes liked=already_liked target=oid.clone() author=author_id.clone() private=!privacy.is_public() />
-				{if privacy.is_public() { Some(view! { <RepostButton n=shares target=oid author=author_id /> }) } else { None }}
-			</span>
+			{if controls {
+				Some(view! {
+					<span style="white-space:nowrap">
+						<ReplyButton n=comments target=oid.clone() />
+						<LikeButton n=likes liked=already_liked target=oid.clone() author=author_id.clone() private=!privacy.is_public() />
+						{if privacy.is_public() { Some(view! { <RepostButton n=shares target=oid author=author_id /> }) } else { None }}
+					</span>
+				})
+			} else { None }}
 		</div>
 	}
 }
