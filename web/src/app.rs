@@ -2,7 +2,6 @@ use apb::Collection;
 use leptos::*;
 use leptos_router::*;
 use crate::prelude::*;
-use crate::CONTACT;
 
 use codee::string::{FromToStringCodec, JsonSerdeCodec};
 use leptos_use::{
