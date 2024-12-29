@@ -64,7 +64,7 @@ pub async fn post(
 		}
 	};
 
-	if ctx.cfg().reject.everything.contains(&domain) {
+	if ctx.cfg().reject.incoming.contains(&domain) {
 		return Err(crate::ApiError::Status(StatusCode::UNAVAILABLE_FOR_LEGAL_REASONS));
 	}
 

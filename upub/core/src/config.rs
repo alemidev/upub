@@ -151,8 +151,8 @@ pub struct FileStorageConfig {
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize, serde_default::DefaultFromSerde)]
 pub struct RejectConfig {
 	#[serde(default)]
-	/// discard everything coming from these instances
-	pub everything: Vec<String>,
+	/// discard incoming activities from these instances
+	pub incoming: Vec<String>,
 
 	#[serde(default)]
 	/// prevent proxying media coming from these instances
