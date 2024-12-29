@@ -95,12 +95,12 @@ pub async fn ap_fetch(
 ) -> crate::ApiResult<axum::Json<serde_json::Value>> {
 	let _user; // need this for lifetimes
 
-	let pkey = match auth {
+	let (from, key) = match auth {
 		crate::Identity::Anonymous => {
 			if !ctx.cfg().security.allow_public_debugger {
 				return Err(crate::ApiError::unauthorized());
 			}
-			ctx.pkey()
+			(ctx.base(), ctx.pkey())
 		},
 		crate::Identity::Remote { .. } => return Err(crate::ApiError::forbidden()),
 		crate::Identity::Local { internal, .. } => {
@@ -108,10 +108,10 @@ pub async fn ap_fetch(
 				.one(ctx.db())
 				.await?;
 			match _user {
-				None => ctx.pkey(),
+				None => (ctx.base(), ctx.pkey()),
 				Some(ref u) => match u.private_key {
-					None => ctx.pkey(),
-					Some(ref k) => k.as_str(),
+					None => (ctx.base(), ctx.pkey()),
+					Some(ref k) => (u.id.as_str(), k.as_str()),
 				}
 			}
 		},
@@ -121,8 +121,8 @@ pub async fn ap_fetch(
 			Method::GET,
 			&query.uri,
 			None,
-			ctx.base(),
-			pkey,
+			from,
+			key,
 			&format!("{}+fetch", ctx.domain()),
 		)
 			.await?
