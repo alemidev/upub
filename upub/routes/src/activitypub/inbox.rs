@@ -43,7 +43,7 @@ pub async fn post(
 	AuthIdentity(auth): AuthIdentity,
 	Json(activity): Json<serde_json::Value>
 ) -> crate::ApiResult<StatusCode> {
-	let Identity::Remote { domain: _server, user: uid, .. } = auth else {
+	let Identity::Remote { domain, user: uid, .. } = auth else {
 		if matches!(activity.activity_type(), Ok(ActivityType::Delete)) {
 			// this is spammy af, ignore them!
 			// we basically received a delete for a user we can't fetch and verify, meaning remote
@@ -63,6 +63,10 @@ pub async fn post(
 			return Err(crate::ApiError::forbidden());
 		}
 	};
+
+	if ctx.cfg().reject.everything.contains(&domain) {
+		return Err(crate::ApiError::Status(StatusCode::UNAVAILABLE_FOR_LEGAL_REASONS));
+	}
 
 	let aid = activity.id()?.to_string();
 	let server = upub::Context::server(&aid);

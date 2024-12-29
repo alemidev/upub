@@ -18,6 +18,9 @@ pub struct Config {
 	#[serde(default)]
 	pub files: FileStorageConfig,
 
+	#[serde(default)]
+	pub reject: RejectConfig,
+
 	// TODO should i move app keys here?
 }
 
@@ -120,6 +123,19 @@ pub struct CompatibilityConfig {
 pub struct FileStorageConfig {
 	#[serde_inline_default("files/".to_string())]
 	pub path: String,
+}
+
+#[serde_inline_default::serde_inline_default]
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize, serde_default::DefaultFromSerde)]
+pub struct RejectConfig {
+	#[serde(default)]
+	pub everything: Vec<String>,
+
+	#[serde(default)]
+	pub media: Vec<String>,
+
+	#[serde(default)]
+	pub delivery: Vec<String>,
 }
 
 impl Config {

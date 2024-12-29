@@ -185,6 +185,18 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 			targets.push(relay);
 		}
 	}
+
+	targets
+		.retain(|target| {
+			let stripped = target.replace("https://", "").replace("http://", "");
+			if ctx.cfg().reject.delivery.iter().any(|x| stripped.starts_with(x)) {
+				tracing::warn!("rejecting delivery of {} to {target}", job.activity);
+				false
+			} else {
+				true
+			}
+		});
+
 	ctx.deliver(targets, &job.activity, &job.actor, &tx).await?;
 
 	tx.commit().await?;

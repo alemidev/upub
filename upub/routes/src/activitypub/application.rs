@@ -120,6 +120,11 @@ pub async fn cloak_proxy(
 	let uri = ctx.uncloak(&hmac, &uri)
 		.ok_or_else(ApiError::unauthorized)?;
 
+	let stripped = uri.replace("https://", "").replace("http://", "");
+	if ctx.cfg().reject.media.iter().any(|x| stripped.starts_with(x)) {
+		return Err(ApiError::Status(axum::http::StatusCode::UNAVAILABLE_FOR_LEGAL_REASONS));
+	}
+
 	let resp = Context::client(ctx.domain())
 		.get(uri)
 		.send()
