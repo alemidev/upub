@@ -1,7 +1,7 @@
 use apb::{LD, ActorMut, BaseMut, ObjectMut, PublicKeyMut};
 use axum::{extract::{Path, Query, State}, http::HeaderMap, response::{IntoResponse, Redirect, Response}};
 use reqwest::Method;
-use sea_orm::{ColumnTrait, Condition, QueryFilter, QueryOrder, QuerySelect};
+use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter, QueryOrder, QuerySelect};
 use upub::{selector::{RichFillable, RichObject}, traits::{Cloaker, Fetcher}, Context};
 
 use crate::{builders::JsonLD, ApiError, AuthIdentity};
@@ -93,17 +93,36 @@ pub async fn ap_fetch(
 	AuthIdentity(auth): AuthIdentity,
 	Query(query): Query<ProxyQuery>,
 ) -> crate::ApiResult<axum::Json<serde_json::Value>> {
-	// only local users can request fetches
-	if !ctx.cfg().security.allow_public_debugger && !auth.is_local() {
-		return Err(crate::ApiError::unauthorized());
-	}
+	let _user; // need this for lifetimes
+
+	let pkey = match auth {
+		crate::Identity::Anonymous => {
+			if !ctx.cfg().security.allow_public_debugger {
+				return Err(crate::ApiError::unauthorized());
+			}
+			ctx.pkey()
+		},
+		crate::Identity::Remote { .. } => return Err(crate::ApiError::forbidden()),
+		crate::Identity::Local { internal, .. } => {
+			_user = upub::model::actor::Entity::find_by_id(internal)
+				.one(ctx.db())
+				.await?;
+			match _user {
+				None => ctx.pkey(),
+				Some(ref u) => match u.private_key {
+					None => ctx.pkey(),
+					Some(ref k) => k.as_str(),
+				}
+			}
+		},
+	};
 
 	let resp = Context::request(
 			Method::GET,
 			&query.uri,
 			None,
 			ctx.base(),
-			ctx.pkey(),
+			pkey,
 			&format!("{}+fetch", ctx.domain()),
 		)
 			.await?
