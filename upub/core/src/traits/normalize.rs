@@ -72,62 +72,68 @@ impl Normalizer for crate::Context {
 				.await?;
 		}
 
-		// TODO this check is a bit disgusting but lemmy for some incomprehensible reason sends us
-		// the same image twice: once in `image` and once as `attachment`. you may say "well just
-		// check if url is the same" and i absolutely do but lemmy is 10 steps forwards and it sends
-		// the same image twice with two distinct links. checkmate fedi developers!!!!!
-		// so basically i don't want to clutter my timeline with double images, nor fetch every image
-		// that comes from lemmy (we cloak and lazy-load) just to dedupe it...
 		let attachments = object.attachment().flat();
-		if !(
-			self.cfg().compat.skip_single_attachment_if_image_is_set
-			&& object_model.image.is_some()
-			&& attachments.len() == 1
-		) {
-			let obj_image = object_model.image.clone().unwrap_or_default();
-			for attachment in attachments {
-				let attachment_model = match attachment {
-					Node::Empty => continue,
-					Node::Array(_) => {
-						tracing::warn!("ignoring array-in-array while processing attachments");
-						continue
-					},
-					Node::Object(o) => {
-						let mut model = AP::attachment_q(o.as_document()?, object_model.internal, None)?;
-						if let Set(u) | Unchanged(u) = model.url {
-							if u == obj_image { continue };
-							model.url = Set(self.cloaked(&u));
-						}
-						model
-					},
-					Node::Link(l) => {
-						let url = l.href().unwrap_or_default();
-						if url == obj_image { continue };
-						let mut media_type = l.media_type().unwrap_or("link".to_string());
-						let mut document_type = apb::DocumentType::Page;
-						if self.cfg().compat.fix_attachment_images_media_type
-							&& [".jpg", ".jpeg", ".png", ".webp", ".bmp"] // TODO more image types???
-							.iter()
-							.any(|x| url.ends_with(x))
-						{ 
+		let obj_image = object_model.image.clone().unwrap_or_default();
+		let attachments_len = attachments.len();
+		for attachment in attachments {
+			let attachment_model = match attachment {
+				Node::Empty => continue,
+				Node::Array(_) => {
+					tracing::warn!("ignoring array-in-array while processing attachments");
+					continue
+				},
+				Node::Object(o) => {
+					let mut model = AP::attachment_q(o.as_document()?, object_model.internal, None)?;
+					if let Set(u) | Unchanged(u) = model.url {
+						if u == obj_image { continue };
+						model.url = Set(self.cloaked(&u));
+					}
+					model
+				},
+				Node::Link(l) => {
+					let url = l.href().unwrap_or_default();
+					if url == obj_image { continue };
+					let mut media_type = l.media_type().unwrap_or("link".to_string());
+					let mut document_type = apb::DocumentType::Page;
+					let mut is_image = false;
+					if [".jpg", ".jpeg", ".png", ".webp", ".bmp"] // TODO more image types???
+						.iter()
+						.any(|x| url.ends_with(x))
+					{
+						is_image = true;
+						if self.cfg().compat.fix_attachment_images_media_type {
 							document_type = apb::DocumentType::Image;
 							media_type = format!("image/{}", url.split('.').last().unwrap_or_default());
-							
 						}
-						crate::model::attachment::ActiveModel {
-							internal: sea_orm::ActiveValue::NotSet,
-							url: Set(self.cloaked(&url)),
-							object: Set(object_model.internal),
-							document_type: Set(document_type),
-							name: Set(l.name().ok()),
-							media_type: Set(media_type),
-						}
-					},
-				};
-				crate::model::attachment::Entity::insert(attachment_model)
-					.exec(tx)
-					.await?;
-			}
+					}
+
+					// TODO this check is a bit disgusting but lemmy for some incomprehensible reason sends us
+					// the same image twice: once in `image` and once as `attachment`. you may say "well just
+					// check if url is the same" and i absolutely do but lemmy is 10 steps forwards and it sends
+					// the same image twice with two distinct links. checkmate fedi developers!!!!!
+					// so basically i don't want to clutter my timeline with double images, nor fetch every image
+					// that comes from lemmy (we cloak and lazy-load) just to dedupe it...
+					if is_image
+						&& self.cfg().compat.skip_single_attachment_if_image_is_set
+						&& object_model.image.is_some()
+						&& attachments_len == 1
+					{
+						continue;
+					}
+
+					crate::model::attachment::ActiveModel {
+						internal: sea_orm::ActiveValue::NotSet,
+						url: Set(self.cloaked(&url)),
+						object: Set(object_model.internal),
+						document_type: Set(document_type),
+						name: Set(l.name().ok()),
+						media_type: Set(media_type),
+					}
+				},
+			};
+			crate::model::attachment::Entity::insert(attachment_model)
+				.exec(tx)
+				.await?;
 		}
 
 		for tag in object.tag().flat() {
