@@ -192,7 +192,7 @@ pub fn App() -> impl IntoView {
 
 										<Route path="about" view=AboutPage />
 										<Route path="config" view=move || view! { <ConfigPage setter=set_config /> } />
-										<Route path="dev" view=DebugPage />
+										<Route path="explore" view=DebugPage />
 
 										<Route path="actors/:id" view=ActorHeader > // TODO can we avoid this?
 											<Route path="" view=ActorPosts />
@@ -222,7 +222,7 @@ pub fn App() -> impl IntoView {
 		</div>
 		<footer>
 			<div class="sep-top">
-				<span class="footer" >"\u{26fc} woven under moonlight  :: "<a class="clean" href="https://join.upub.social/" target="_blank" >"μpub"</a>" :: FE v"{crate::VERSION}" :: BE v"{be_version}" :: "<a class="clean" href=format!("mailto:{CONTACT}")>contact</a>" :: "<a class="clean" href="/web/dev">dev</a>" :: "<a class="clean" href="javascript:window.scrollTo({top:0, behavior:'smooth'})">top</a></span>
+				<span class="footer" >"\u{26fc} woven under moonlight :: "<a class="clean" href="https://join.upub.social/" target="_blank" >"μpub"</a>" :: FE v"{crate::VERSION}" :: BE v"{be_version}" :: "<a class="clean" href="javascript:window.scrollTo({top:0, behavior:'smooth'})">top</a></span>
 			</div>
 		</footer>
 	}
