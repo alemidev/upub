@@ -150,10 +150,16 @@ where
 						return Err(ApiError::unauthorized());
 					}
 
-					let internal = upub::model::instance::Entity::domain_to_internal(&user.domain, ctx.db())
-						.await?
-						.ok_or_else(ApiError::internal_server_error)?; // user but not their domain???
-					identity = Identity::Remote { user: user.id, domain: user.domain, internal };
+					if ctx.cfg().reject.fetch.contains(&user.domain) {
+						return Err(ApiError::Status(axum::http::StatusCode::UNAVAILABLE_FOR_LEGAL_REASONS));
+					}
+
+					if !ctx.cfg().reject.access.contains(&user.domain) {
+						let internal = upub::model::instance::Entity::domain_to_internal(&user.domain, ctx.db())
+							.await?
+							.ok_or_else(ApiError::internal_server_error)?; // user but not their domain???
+						identity = Identity::Remote { user: user.id, domain: user.domain, internal };
+					}
 				},
 			}
 

@@ -136,6 +136,12 @@ pub struct RejectConfig {
 
 	#[serde(default)]
 	pub delivery: Vec<String>,
+
+	#[serde(default)]
+	pub fetch: Vec<String>,
+
+	#[serde(default)]
+	pub access: Vec<String>,
 }
 
 impl Config {
