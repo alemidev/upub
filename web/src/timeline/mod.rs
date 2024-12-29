@@ -3,7 +3,7 @@ pub mod thread;
 
 use std::{collections::BTreeSet, pin::Pin, sync::Arc};
 
-use apb::{Activity, ActivityMut, Actor, Base, Object};
+use apb::{Activity, ActivityMut, Base, Object};
 use leptos::*;
 use crate::prelude::*;
 
