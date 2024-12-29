@@ -28,18 +28,23 @@ pub struct Config {
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize, serde_default::DefaultFromSerde)]
 pub struct InstanceConfig {
 	#[serde_inline_default("μpub".into())]
+	/// instance name, shown in noedinfo and instance actor
 	pub name: String,
 
 	#[serde_inline_default("micro social network, federated".into())]
+	/// description, shown in nodeinfo and instance actor
 	pub description: String,
 
 	#[serde_inline_default("upub.social".into())]
+	/// domain of current instance
 	pub domain: String,
 
 	#[serde(default)]
+	/// contact information for an administrator, currently unused
 	pub contact: Option<String>,
 
 	#[serde(default)]
+	/// base url for frontend, will be used to compose pretty urls
 	pub frontend: Option<String>,
 }
 
@@ -62,9 +67,11 @@ pub struct DatasourceConfig {
 	pub acquire_timeout_seconds: u64,
 
 	#[serde_inline_default(10u64)]
+	/// threshold for queries to be considered slow
 	pub slow_query_warn_seconds: u64,
 
 	#[serde_inline_default(true)]
+	/// enable logging warn for slow queries
 	pub slow_query_warn_enable: bool,
 }
 
@@ -72,36 +79,47 @@ pub struct DatasourceConfig {
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize, serde_default::DefaultFromSerde)]
 pub struct SecurityConfig {
 	#[serde(default)]
+	/// allow new users to register autonomously
 	pub allow_registration: bool,
 
 	#[serde(default)] // TODO i don't like the name of this
+	/// newly registered users require manual activation
 	pub require_user_approval: bool,
 
 	#[serde(default)]
+	/// allow anonymous users access to fetch debugger (explore screen)
 	pub allow_public_debugger: bool,
 
 	#[serde(default)]
+	/// allow anonymous users to perform full-text searches
 	pub allow_public_search: bool,
 
 	#[serde_inline_default("changeme".to_string())]
+	/// secret for media proxy, set this to something random
 	pub proxy_secret: String,
 
 	#[serde_inline_default(true)]
+	/// allow expired tokens to be refreshed
 	pub allow_login_refresh: bool,
 
 	#[serde_inline_default(7 * 24)]
+	/// how long do login sessions last
 	pub session_duration_hours: i64,
 
 	#[serde_inline_default(2)]
+	/// how many times we allow an object to redirect
 	pub max_id_redirects: u32, // TODO not sure it fits here
 
 	#[serde_inline_default(20)]
+	/// how deep should threads be crawled for fetching replies
 	pub thread_crawl_depth: u32, // TODO doesn't really fit here
 
 	#[serde_inline_default(30)]
+	/// how long before a job is considered stale and dropped
 	pub job_expiration_days: u32, // TODO doesn't really fit here
 
 	#[serde_inline_default(100)]
+	/// how many times to attempt inserting back incomplete jobs
 	pub reinsertion_attempt_limit: u32, // TODO doesn't really fit here
 }
 
@@ -109,12 +127,15 @@ pub struct SecurityConfig {
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize, serde_default::DefaultFromSerde)]
 pub struct CompatibilityConfig {
 	#[serde(default)]
+	/// compatibility with almost everything: set image attachments as images
 	pub fix_attachment_images_media_type: bool,
 
 	#[serde(default)]
+	/// compatibility with lemmy and mastodon: notify like receiver
 	pub add_explicit_target_to_likes_if_local: bool,
 
 	#[serde(default)]
+	/// compatibility with lemmy: avoid showing images twice
 	pub skip_single_attachment_if_image_is_set: bool,
 }
 
@@ -122,6 +143,7 @@ pub struct CompatibilityConfig {
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize, serde_default::DefaultFromSerde)]
 pub struct FileStorageConfig {
 	#[serde_inline_default("files/".to_string())]
+	/// path where media files should be stored
 	pub path: String,
 }
 
@@ -129,18 +151,23 @@ pub struct FileStorageConfig {
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize, serde_default::DefaultFromSerde)]
 pub struct RejectConfig {
 	#[serde(default)]
+	/// discard everything coming from these instances
 	pub everything: Vec<String>,
 
 	#[serde(default)]
+	/// prevent proxying media coming from these instances
 	pub media: Vec<String>,
 
 	#[serde(default)]
+	/// skip delivering to these instances
 	pub delivery: Vec<String>,
 
 	#[serde(default)]
+	/// prevent fetching from these instances (ineffective as they can still fetch without identifying)
 	pub fetch: Vec<String>,
 
 	#[serde(default)]
+	/// prevent fetching private content from these instances
 	pub access: Vec<String>,
 }
 
