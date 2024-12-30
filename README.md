@@ -5,7 +5,7 @@
 
 μpub aims to be a private, lightweight, modular and **secure** [ActivityPub](https://www.w3.org/TR/activitypub/) server
 
- * follow development [in the dedicated matrix room](https://matrix.to/#/#upub:alemi.dev)
+ * follow development [in the dedicated matrix room](https://matrix.to/#/#upub:moonlit.technology)
 
 μpub is usable as a very simple ActivityPub project: it has a home and server timeline, it allows to browse threads, star notes and leave replies, it renders remote media of any kind and can be used to browse and follow remote users
 
