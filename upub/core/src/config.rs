@@ -155,6 +155,12 @@ pub struct RejectConfig {
 	pub incoming: Vec<String>,
 
 	#[serde(default)]
+	/// prevent content from these instances from being displayed publicly
+	/// this effectively removes the public (aka NULL) addressing: only other addressees (followers,
+	/// mentions) will be able to see content from these instances on timelines and directly
+	pub public: Vec<String>,
+
+	#[serde(default)]
 	/// prevent proxying media coming from these instances
 	pub media: Vec<String>,
 

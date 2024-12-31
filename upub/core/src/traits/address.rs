@@ -59,16 +59,24 @@ impl Addresser for crate::Context {
 		match (activity, object) {
 			(None, None) => Ok(()),
 			(Some(activity), None) => {
-				let to = expand_addressing(activity.addressed(), None, tx).await?;
+				let to = expand_addressing_with_blacklist(
+					&activity.id, &self.cfg().reject.public, activity.addressed(), None, tx
+				).await?;
 				address_to(self, to, Some(activity.internal), None, self.is_local(&activity.id), activity.published, tx).await
 			},
 			(None, Some(object)) => {
-				let to = expand_addressing(object.addressed(), object.audience.clone(), tx).await?;
+				let to = expand_addressing_with_blacklist(
+					&object.id, &self.cfg().reject.public, object.addressed(), object.audience.clone(), tx
+				).await?;
 				address_to(self, to, None, Some(object.internal), self.is_local(&object.id), object.published, tx).await
 			},
 			(Some(activity), Some(object)) => {
-				let to_activity = BTreeSet::from_iter(expand_addressing(activity.addressed(), object.audience.clone(), tx).await?);
-				let to_object = BTreeSet::from_iter(expand_addressing(object.addressed(), object.audience.clone(), tx).await?);
+				let to_activity = BTreeSet::from_iter(expand_addressing_with_blacklist(
+					&activity.id, &self.cfg().reject.public, activity.addressed(), object.audience.clone(), tx
+				).await?);
+				let to_object = BTreeSet::from_iter(expand_addressing_with_blacklist(
+					&object.id, &self.cfg().reject.public, object.addressed(), object.audience.clone(), tx
+				).await?);
 
 				let to_common = to_activity.intersection(&to_object).cloned().collect();
 				address_to(self, to_common, Some(activity.internal), Some(object.internal), self.is_local(&activity.id), activity.published, tx).await?;
@@ -187,4 +195,12 @@ async fn expand_addressing(targets: Vec<String>, audience: Option<String>, tx: &
 		}
 	}
 	Ok(out)
+}
+
+async fn expand_addressing_with_blacklist(id: &str, blacklist: &[String], mut targets: Vec<String>, audience: Option<String>, tx: &impl ConnectionTrait) -> Result<Vec<String>, DbErr> {
+	let trimmed = id.replace("https://", "").replace("http://", "");
+	if blacklist.iter().any(|x| trimmed.starts_with(x)) {
+		targets.retain(|x| x != apb::target::PUBLIC && x != apb::target::PUBLIC_COMPACT);
+	}
+	expand_addressing(targets, audience, tx).await
 }
