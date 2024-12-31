@@ -188,8 +188,7 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 
 	targets
 		.retain(|target| {
-			let stripped = target.replace("https://", "").replace("http://", "");
-			if ctx.cfg().reject.delivery.iter().any(|x| stripped.starts_with(x)) {
+			if upub::ext::is_blacklisted(target, &ctx.cfg().reject.delivery) {
 				tracing::warn!("rejecting delivery of {} to {target}", job.activity);
 				false
 			} else {

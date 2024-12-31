@@ -136,3 +136,16 @@ impl TypeName for String {
 		"String".to_string()
 	}
 }
+
+pub fn strip_proto(url: &str) -> &str {
+	url
+		.strip_prefix("https://")
+		.unwrap_or(url)
+		.strip_prefix("http://")
+		.unwrap_or(url)
+}
+
+pub fn is_blacklisted(id: &str, blacklist: &[String]) -> bool {
+	let stripped = strip_proto(id);
+	blacklist.iter().any(|x| stripped.starts_with(x))
+}

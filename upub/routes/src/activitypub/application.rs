@@ -139,8 +139,7 @@ pub async fn cloak_proxy(
 	let uri = ctx.uncloak(&hmac, &uri)
 		.ok_or_else(ApiError::unauthorized)?;
 
-	let stripped = uri.replace("https://", "").replace("http://", "");
-	if ctx.cfg().reject.media.iter().any(|x| stripped.starts_with(x)) {
+	if upub::ext::is_blacklisted(&uri, &ctx.cfg().reject.media) {
 		return Err(ApiError::Status(axum::http::StatusCode::UNAVAILABLE_FOR_LEGAL_REASONS));
 	}
 

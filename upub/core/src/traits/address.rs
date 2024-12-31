@@ -198,9 +198,8 @@ async fn expand_addressing(targets: Vec<String>, audience: Option<String>, tx: &
 }
 
 async fn expand_addressing_with_blacklist(id: &str, blacklist: &[String], mut targets: Vec<String>, audience: Option<String>, tx: &impl ConnectionTrait) -> Result<Vec<String>, DbErr> {
-	let trimmed = id.replace("https://", "").replace("http://", "");
-	if blacklist.iter().any(|x| trimmed.starts_with(x)) {
-		targets.retain(|x| x != apb::target::PUBLIC && x != apb::target::PUBLIC_COMPACT);
+	if crate::ext::is_blacklisted(id, blacklist) {
+		targets.retain(|x| !apb::target::is_public(x));
 	}
 	expand_addressing(targets, audience, tx).await
 }
