@@ -150,7 +150,7 @@ where
 						return Err(ApiError::unauthorized());
 					}
 
-					if ctx.cfg().reject.fetch.contains(&user.domain) {
+					if ctx.cfg().reject.requests.contains(&user.domain) {
 						return Err(ApiError::Status(axum::http::StatusCode::UNAVAILABLE_FOR_LEGAL_REASONS));
 					}
 

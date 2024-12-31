@@ -169,12 +169,12 @@ pub struct RejectConfig {
 	pub delivery: Vec<String>,
 
 	#[serde(default)]
-	/// prevent fetching from these instances (ineffective as they can still fetch without identifying)
-	pub fetch: Vec<String>,
-
-	#[serde(default)]
 	/// prevent fetching private content from these instances
 	pub access: Vec<String>,
+
+	#[serde(default)]
+	/// reject any request from these instances (ineffective as they can still fetch anonymously)
+	pub requests: Vec<String>,
 }
 
 impl Config {
