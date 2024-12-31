@@ -1,11 +1,18 @@
-use reqwest::Method;
-
 use apb::{LD, ActivityMut};
 use upub::{Context, model, traits::Fetcher};
 
 #[allow(clippy::manual_map)] // TODO can Update code be improved?
 pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<()> {
-	tracing::info!("delivering {} to {:?}", job.activity, job.target);
+	let Some(ref target) = job.target else {
+		return Err(crate::JobError::Malformed(apb::FieldErr("target"))); // TODO not best error to use..
+	};
+
+	if upub::ext::is_blacklisted(target, &ctx.cfg().reject.delivery) {
+		tracing::warn!("aborting delivery to {target} due to rejection policies: {:?}", job.payload);
+		return Ok(());
+	}
+
+	tracing::info!("delivering {} to {target}", job.activity);
 
 	let Some(activity) = model::activity::Entity::find_by_ap_id(&job.activity)
 		.one(ctx.db())
@@ -60,7 +67,7 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 	};
 
 	Context::request(
-		Method::POST, job.target.as_deref().unwrap_or(""),
+		reqwest::Method::POST, target,
 		Some(&serde_json::to_string(&payload.ld_context()).unwrap()),
 		&job.actor, &key, ctx.domain()
 	).await?;
