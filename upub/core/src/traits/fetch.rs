@@ -42,6 +42,9 @@ pub enum RequestError {
 	#[error("resource no longer exists")]
 	Tombstone,
 
+	#[error("request aborted due to configured policies")]
+	AbortedForPolicy,
+
 	#[error("error constructing http signature: {0:?}")]
 	HttpSignature(#[from] httpsign::HttpSignatureError),
 }
@@ -131,7 +134,7 @@ pub trait Fetcher {
 
 		let mut signer = HttpSignature::new(
 			format!("{from}#main-key"), // TODO don't hardcode #main-key
-			//"hs2019".to_string(), // pixelfeed/iceshrimp made me go back
+			//"hs2019".to_string(), // TODO could we switch to this now?
 			"rsa-sha256".to_string(),
 			&headers,
 		);
@@ -168,6 +171,10 @@ pub trait Fetcher {
 #[async_trait::async_trait]
 impl Fetcher for crate::Context {
 	async fn pull_r(&self, id: &str, depth: u32) -> Result<Pull<serde_json::Value>, RequestError> {
+		if crate::ext::is_blacklisted(id, &self.cfg().reject.fetch) {
+			return Err(RequestError::AbortedForPolicy);
+		}
+
 		tracing::debug!("fetching {id}");
 		// let _domain = self.fetch_domain(&crate::Context::server(id)).await?;
 
@@ -526,6 +533,9 @@ impl Dereferenceable<serde_json::Value> for apb::Node<serde_json::Value> {
 		match self {
 			apb::Node::Link(uri) => {
 				let href = uri.href()?;
+				if crate::ext::is_blacklisted(&href, &ctx.cfg().reject.fetch) {
+					return Err(RequestError::AbortedForPolicy);
+				}
 				tracing::info!("dereferencing {href}");
 				let res = crate::Context::request(Method::GET, &href, None, ctx.base(), ctx.pkey(), ctx.domain())
 					.await?

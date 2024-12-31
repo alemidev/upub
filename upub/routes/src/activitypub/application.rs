@@ -117,6 +117,10 @@ pub async fn ap_fetch(
 		},
 	};
 
+	if upub::ext::is_blacklisted(&query.uri, &ctx.cfg().reject.fetch) {
+		return Err(crate::ApiError::FetchError(upub::traits::fetch::RequestError::AbortedForPolicy));
+	}
+
 	let resp = Context::request(
 			Method::GET,
 			&query.uri,
