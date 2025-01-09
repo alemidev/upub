@@ -137,6 +137,7 @@ pub fn App() -> impl IntoView {
 	});
 	fetch_notifications();
 	set_interval(fetch_notifications, std::time::Duration::from_secs(60));
+	provide_context((notifications, set_notifications));
 
 	view! {
 		<nav class="w-100 mt-1 mb-1 pb-s">

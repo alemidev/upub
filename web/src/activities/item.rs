@@ -115,6 +115,7 @@ pub fn Item(
 #[component]
 fn AckBtn(id: String, tx: WriteSignal<bool>) -> impl IntoView {
 	let auth = use_context::<Auth>().expect("missing auth context");
+	let (notifications, set_notifications) = use_context::<(ReadSignal<u64>, WriteSignal<u64>)>().expect("missing notifications context");
 
 	view! {
 		<span
@@ -129,6 +130,7 @@ fn AckBtn(id: String, tx: WriteSignal<bool>) -> impl IntoView {
 						tracing::error!("failed marking notification as seen: {e}");
 					} else {
 						tx.set(false);
+						set_notifications.set(notifications.get() - 1);
 					}
 				});
 			}
