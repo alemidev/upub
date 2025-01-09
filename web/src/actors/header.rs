@@ -8,7 +8,10 @@ use apb::{ActivityMut, Actor, Base, Object, ObjectMut, Shortcuts};
 pub fn ActorHeader() -> impl IntoView {
 	let params = use_params::<IdParam>();
 	let auth = use_context::<Auth>().expect("missing auth context");
+	let config = use_context::<Signal<crate::Config>>().expect("missing config context");
+	let relevant_tl = use_context::<Signal<Option<Timeline>>>().expect("missing relevant timeline context");
 	let matched_route = use_context::<ReadSignal<crate::app::FeedRoute>>().expect("missing route context");
+	let (loading, set_loading) = create_signal(false);
 	let actor = create_local_resource(
 		move || params.get().ok().and_then(|x| x.id).unwrap_or_default(),
 		move |id| {
@@ -52,7 +55,9 @@ pub fn ActorHeader() -> impl IntoView {
 				.collect_view();
 			let uid = actor.id().unwrap_or_default().to_string();
 			let web_path = Uri::web(U::Actor, &uid);
+			// TODO what the fuck...
 			let _uid = uid.clone();
+			let __uid = uid.clone();
 			view! {
 				<div class="ml-3 mr-3">
 					<div 
@@ -130,6 +135,30 @@ pub fn ActorHeader() -> impl IntoView {
 					<span class="ml-1" style="float: right" class:tab-active=move || matches!(matched_route.get(), FeedRoute::Following)>
 						<a class="clean" href=format!("{web_path}/following")><span class="emoji">"👥"</span><span class:hidden-on-mobile=move || !matches!(matched_route.get(), FeedRoute::Following)>" following"</span></a>
 					</span>
+					{move || if auth.present() {
+						if loading.get() {
+							Some(view! {
+								<span style="float: right">
+									<span class="hidden-on-mobile">"fetching "</span><span class="dots"></span>
+								</span>
+							})
+						} else {
+							let uid = __uid.clone();
+							Some(view! {
+								<span style="float: right">
+									<a
+										class="clean"
+										on:click=move |ev| fetch_cb(ev, set_loading, uid.clone(), auth, config, relevant_tl)
+										href="#"
+									>
+										<span class="emoji ml-2">"↺ "</span><span class="hidden-on-mobile">"fetch"</span>
+									</a>
+								</span>
+							})
+						}
+					} else {
+						None
+					}}
 				</p>
 				<hr class="color" />
 				<Outlet />
@@ -177,4 +206,17 @@ fn unfollow(target: String) {
 			tracing::error!("failed sending follow request: {e}");
 		}
 	})
+}
+
+fn fetch_cb(ev: ev::MouseEvent, set_loading: WriteSignal<bool>, uid: String, auth: Auth, config: Signal<crate::Config>, relevant_tl: Signal<Option<Timeline>>) {
+	let api = Uri::api(U::Actor, &uid, false);
+	ev.prevent_default();
+	set_loading.set(true);
+	spawn_local(async move {
+		if let Err(e) = Http::fetch::<serde_json::Value>(&format!("{api}/outbox?fetch=true"), auth).await {
+			tracing::error!("failed fetching outbox for {uid}: {e}");
+		}
+		set_loading.set(false);
+		relevant_tl.get().inspect(|x| x.refresh(auth, config));
+	});
 }
