@@ -477,8 +477,15 @@ impl Fetcher for crate::Context {
 
 		// TODO parallelize these
 
-		for item in outbox.ordered_items().all_ids() {
-			self.fetch_activity(&item, tx).await?;
+		// TODO we're getting inner objects because
+		//  1) fetching activities makes it look like we're following this actor: is this desirable?
+		//  2) fetching activities doesn't properly merge addressing, so we get orphan objects twice
+		for node in outbox.ordered_items().flat() {
+			if let Ok(activity) = node.into_inner() {
+				if let Ok(oid) = activity.object().id() {
+					self.fetch_object(&oid, tx).await?;
+				}
+			}
 		}
 
 		Ok(())
