@@ -20,7 +20,7 @@ serde_json = "1.0"
 upub = { path = "../core/" }
 jrd = "0.1"
 tracing = "0.1"
-tokio = { version = "1.43", features = ["full"] } # TODO slim this down
+tokio = "1.43"
 reqwest = { version = "0.12", features = ["json"] }
 axum = { version = "0.8", features = ["multipart"] }
 tower-http = { version = "0.6", features = ["cors", "trace"] }
