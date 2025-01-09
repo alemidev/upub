@@ -478,7 +478,7 @@ impl Fetcher for crate::Context {
 		// TODO parallelize these
 
 		for item in outbox.ordered_items().all_ids() {
-			self.fetch_object(&item, tx).await?;
+			self.fetch_activity(&item, tx).await?;
 		}
 
 		Ok(())
