@@ -1,53 +1,59 @@
 use html5ever::{tendril::SliceExt, tokenizer::{BufferQueue, TagKind, Token, TokenSink, TokenSinkResult, Tokenizer}};
 
-// TODO this drives me so mad!!! The #[non_exhaustive] attr on the underlying ___Options structs
-//      makes it impossible to construct them with struct syntax! I need to use this BULLSHIT
-//      builder pattern. And it's NOT CONST!!! I have to keep this shit heap allocated somewhere
-//      because this thing is #[non_exhaustive]... oh i hate this so much
-fn options() -> &'static comrak::Options {
-	static OPTIONS: std::sync::OnceLock<comrak::Options> = std::sync::OnceLock::new();
-	OPTIONS.get_or_init(||
-		comrak::Options {
-			extension: comrak::ExtensionOptionsBuilder::default()
-				.autolink(true)
-				.strikethrough(true)
-				.description_lists(false)
-				.tagfilter(true)
-				.table(true)
-				.tasklist(false)
-				.superscript(true)
-				.header_ids(None)
-				.footnotes(false)
-				.front_matter_delimiter(None)
-				.multiline_block_quotes(true)
-				.math_dollars(true)
-				.math_code(true)
-				.build()
-				.expect("error creating default markdown extension options"),
-		
-			parse: comrak::ParseOptionsBuilder::default()
-				.smart(false)
-				.default_info_string(None)
-				.relaxed_tasklist_matching(true)
-				.relaxed_autolinks(false)
-				.build()
-				.expect("erropr creating default markdown parse options"),
-		
-			render: comrak::RenderOptionsBuilder::default()
-				.hardbreaks(true)
-				.github_pre_lang(true)
-				.full_info_string(false)
-				.width(120)
-				.unsafe_(false)
-				.escape(true)
-				.list_style(comrak::ListStyleType::Dash)
-				.sourcepos(false)
-				.escaped_char_spans(true)
-				.build()
-				.expect("error creating default markdown render options"),
-		}
-	)
-}
+const OPTIONS: comrak::Options<'static> = comrak::Options {
+	extension: comrak::ExtensionOptions {
+		strikethrough: true,
+		tagfilter: true,
+		table: true,
+		autolink: true,
+		tasklist: false,
+		superscript: true,
+		header_ids: None,
+		footnotes: false,
+		description_lists: false,
+		front_matter_delimiter: None,
+		multiline_block_quotes: true,
+		math_dollars: true,
+		math_code: true,
+		wikilinks_title_after_pipe: false,
+		wikilinks_title_before_pipe: false,
+		underline: true,
+		subscript: true,
+		spoiler: true,
+		greentext: true,
+		// TODO use these two for cloaking?
+		image_url_rewriter: None,
+		link_url_rewriter: None,
+	},
+
+	parse: comrak::ParseOptions {
+		smart: false,
+		default_info_string: None,
+		relaxed_tasklist_matching: true,
+		relaxed_autolinks: false,
+		broken_link_callback: None,
+	},
+
+	render: comrak::RenderOptions {
+		hardbreaks: true,
+		github_pre_lang: true,
+		full_info_string: false,
+		width: 120,
+		unsafe_: false,
+		escape: true,
+		list_style: comrak::ListStyleType::Dash,
+		sourcepos: false,
+		escaped_char_spans: true,
+		experimental_inline_sourcepos: false,
+		ignore_setext: true,
+		ignore_empty_links: false,
+		gfm_quirks: false,
+		prefer_fenced: true,
+		figure_with_caption: false,
+		tasklist_classes: false,
+		ol_width: 3,
+	},
+};
 
 pub type Cloaker = Box<dyn Fn(&str) -> String>;
 
@@ -74,7 +80,7 @@ impl Sanitizer {
 	}
 
 	pub fn markdown(self, text: &str) -> String {
-		self.html(&comrak::markdown_to_html(text, options()))
+		self.html(&comrak::markdown_to_html(text, &OPTIONS))
 	}
 	
 	pub fn html(self, text: &str) -> String {

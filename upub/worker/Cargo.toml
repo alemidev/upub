@@ -11,14 +11,14 @@ readme = "README.md"
 [lib]
 
 [dependencies]
-thiserror = "1"
+thiserror = "2.0"
 tracing = "0.1"
 async-trait = "0.1"
-serde_json = "1"
-sea-orm = "1.0"
-regex = "1.10"
+serde_json = "1.0"
+sea-orm = "1.1"
+regex = "1.11"
 chrono = { version = "0.4", features = ["serde"] }
-tokio = { version = "1.40", features = ["full"] } # TODO slim this down
+tokio = { version = "1.43", features = ["full"] } # TODO slim this down
 reqwest = { version = "0.12", features = ["json"] }
 apb = { path = "../../apb", features = ["unstructured", "orm", "activitypub-fe", "activitypub-counters", "litepub", "ostatus", "toot"] }
 mdhtml = { path = "../../utils/mdhtml/" }

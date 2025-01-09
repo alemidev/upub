@@ -15,9 +15,9 @@ path = "lib.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-html5ever = "0.27"
+html5ever = "0.27" # have to lock this because newer versions don't get &mut self anymore
 tracing = "0.1"
-comrak = { version = "0.23", optional = true }
+comrak = { version = "0.33", optional = true }
 
 [features]
 default = ["markdown"]

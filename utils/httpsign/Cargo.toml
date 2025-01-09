@@ -15,11 +15,11 @@ path = "lib.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-thiserror = "1"
+thiserror = "2.0"
 tracing = "0.1"
 base64 = "0.22"
 openssl = "0.10" # TODO handle pubkeys with a smaller crate
-axum = { version = "0.7", optional = true }
+axum = { version = "0.8", optional = true }
 
 [features]
 default = []

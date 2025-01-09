@@ -1,6 +1,6 @@
 [package]
 name = "upub"
-version = "0.4.1"
+version = "0.4.2"
 edition = "2021"
 authors = [ "alemi <me@alemi.dev>" ]
 description = "core inner workings of upub"
@@ -11,7 +11,7 @@ readme = "README.md"
 [lib]
 
 [dependencies]
-thiserror = "1"
+thiserror = "2.0"
 async-recursion = "1.1"
 async-trait = "0.1"
 sha256 = "1.5" # TODO get rid of this and use directly sha2!!
@@ -20,9 +20,9 @@ hmac = "0.12"
 openssl = "0.10" # TODO handle pubkeys with a smaller crate
 base64 = "0.22"
 chrono = { version = "0.4", features = ["serde"] }
-uuid = { version = "1.10", features = ["v4"] }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
+uuid = { version = "1.11", features = ["v4"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 serde_default = "0.2"
 serde-inline-default = "0.2"
 toml = "0.8"
@@ -31,7 +31,7 @@ httpsign = { path = "../../utils/httpsign/" }
 mdhtml = { path = "../../utils/mdhtml/" }
 jrd = "0.1"
 tracing = "0.1"
-sea-orm = { version = "1.0", features = ["macros"] }
+sea-orm = { version = "1.1", features = ["macros"] }
 reqwest = { version = "0.12", features = ["json"] }
 apb = { path = "../../apb", features = ["unstructured", "orm", "did-core", "activitypub-miscellaneous-terms", "activitypub-fe", "activitypub-counters", "litepub", "ostatus", "toot"] }
 # nodeinfo = "0.0.2" # the version on crates.io doesn't re-export necessary types to build the struct!!!

@@ -14,13 +14,13 @@ readme = "README.md"
 apb = { path = "../../apb/" }
 upub = { path = "../core" }
 tracing = "0.1"
-serde_json = "1"
+serde_json = "1.0"
 sha256 = "1.5"
-uuid = { version = "1.10", features = ["v4"] }
+uuid = { version = "1.11", features = ["v4"] }
 chrono = { version = "0.4", features = ["serde"] }
 openssl = "0.10" # TODO handle pubkeys with a smaller crate
 clap = { version = "4.5", features = ["derive"] }
-sea-orm = "1.0"
+sea-orm = "1.1"
 futures = "0.3"
 mdhtml = { path = "../../utils/mdhtml/" }
 reqwest = { version = "0.12", features = ["json"] }
