@@ -83,7 +83,7 @@ pub async fn create(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 	ctx.address(Some(&activity_model), Some(&object_model), tx).await?;
 
 	for uid in notified {
-		if !ctx.is_local(&uid) { continue }
+		if !ctx.is_local(&uid) || uid == activity_model.actor { continue }
 		if let Some(actor_internal) = crate::model::actor::Entity::ap_to_internal(&uid, tx).await? {
 			crate::Query::notify(activity_model.internal, actor_internal)
 				.exec(tx)
@@ -138,7 +138,7 @@ pub async fn like(ctx: &crate::Context, activity: impl apb::Activity, tx: &Datab
 	if let Some(aid) = aid {
 		// TODO check that object author is in this like addressing!!! otherwise skip notification
 		if let Some(ref attributed_to) = obj.attributed_to {
-			if ctx.is_local(attributed_to) {
+			if ctx.is_local(attributed_to) && actor.id != *attributed_to {
 				if let Some(actor_internal) = crate::model::actor::Entity::ap_to_internal(attributed_to, tx).await? {
 					crate::Query::notify(aid, actor_internal)
 						.exec(tx)
@@ -584,7 +584,7 @@ pub async fn announce(ctx: &crate::Context, activity: impl apb::Activity, tx: &D
 
 	if let Some(aid) = aid {
 		if let Some(ref attributed_to) = object.attributed_to {
-			if ctx.is_local(attributed_to) {
+			if ctx.is_local(attributed_to) && actor.id != *attributed_to {
 				if let Some(actor_internal) = crate::model::actor::Entity::ap_to_internal(attributed_to, tx).await? {
 					crate::Query::notify(aid, actor_internal)
 						.exec(tx)
