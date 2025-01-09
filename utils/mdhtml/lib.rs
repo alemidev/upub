@@ -112,7 +112,8 @@ impl TokenSink for Sanitizer {
 					| "sup" | "sub"                  // allow superscript/subscript
 					| "hr" | "br"                    // allow horizontal rules and linebreaks
 					| "p" | "span"                   // allow placing paragraphs and spans
-					| "b" | "i" | "s" | "del"        // allow simple formatting: bold, italic and strikethrough, but not underlined as it can look like a link!
+					| "b" | "i" | "s"                // allow simple formatting: bold, italic and strikethrough, but not underlined as it can look like a link!
+					| "strong" | "em" | "del"        // alternative ways to do bold, italig and strikethrough
 					| "blockquote" | "pre" | "code"  // allow code blocks
 					| "ul" | "ol" | "li"             // allow lists
 					| "img" | "a"                    // allow images and links, but will get sanitized later
