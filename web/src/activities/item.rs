@@ -125,12 +125,17 @@ fn AckBtn(id: String, tx: WriteSignal<bool>) -> impl IntoView {
 				let payload = apb::new()
 					.set_activity_type(Some(apb::ActivityType::View))
 					.set_object(apb::Node::link(id.clone()));
+				let id = id.clone();
 				spawn_local(async move {
 					if let Err(e) = Http::post(&auth.outbox(), &payload, auth).await {
 						tracing::error!("failed marking notification as seen: {e}");
 					} else {
 						tx.set(false);
 						set_notifications.set(notifications.get() - 1);
+						if let Some(activity) = crate::cache::OBJECTS.get(&id) {
+							let changed = (*activity).clone().set_seen(Some(true));
+							crate::cache::OBJECTS.store(&id, std::sync::Arc::new(changed));
+						}
 					}
 				});
 			}
