@@ -1,14 +1,21 @@
 use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
 use sea_orm::{ActiveValue::{NotSet, Set}, ColumnTrait, Condition, EntityTrait, QueryFilter, QueryOrder, QuerySelect};
 
-use upub::{model, selector::{RichActivity, RichFillable}, Context};
+use upub::{model, selector::{RichActivity, RichFillable}, traits::Fetcher, Context};
 
-use crate::{activitypub::{CreationResult, Pagination}, builders::JsonLD, AuthIdentity, Identity};
+use crate::{activitypub::{CreationResult, Pagination, TryFetch}, builders::JsonLD, AuthIdentity, Identity};
 
 pub async fn get(
 	State(ctx): State<Context>,
+	AuthIdentity(auth): AuthIdentity,
 	Path(id): Path<String>,
+	Query(query): Query<TryFetch>,
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
+	let uid = ctx.uid(&id);
+	if auth.is_local() && query.fetch && !ctx.is_local(&uid) {
+		ctx.fetch_outbox(&uid, ctx.db()).await?;
+	}
+
 	crate::builders::collection(upub::url!(ctx, "/actors/{id}/outbox"), None)
 }
 

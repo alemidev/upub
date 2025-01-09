@@ -101,6 +101,7 @@ pub trait Fetcher {
 	async fn resolve_object(&self, object: serde_json::Value, tx: &impl ConnectionTrait) -> Result<crate::model::object::Model, RequestError>;
 
 	async fn fetch_thread(&self, id: &str, tx: &impl ConnectionTrait) -> Result<(), RequestError>;
+	async fn fetch_outbox(&self, id: &str, tx: &impl ConnectionTrait) -> Result<(), RequestError>;
 
 	fn client(domain: &str) -> reqwest::Client {
 		reqwest::Client::builder()
@@ -447,6 +448,8 @@ impl Fetcher for crate::Context {
 				page = page.first().into_inner()?;
 			}
 
+			// TODO parallelize these
+
 			for obj in page.items().flat() {
 				if let Err(e) = self.fetch_object(&obj.id()?, tx).await {
 					tracing::warn!("error fetching reply: {e}");
@@ -461,6 +464,21 @@ impl Fetcher for crate::Context {
 
 			next = page.next();
 			if next.is_empty() { break };
+		}
+
+		Ok(())
+	}
+
+	async fn fetch_outbox(&self, id: &str, tx: &impl ConnectionTrait) -> Result<(), RequestError> {
+		let actor = self.pull(id).await?.actor()?;
+		let outbox = actor
+			.outbox().resolve(self).await?
+			.first().resolve(self).await?;
+
+		// TODO parallelize these
+
+		for item in outbox.ordered_items().all_ids() {
+			self.fetch_object(&item, tx).await?;
 		}
 
 		Ok(())
