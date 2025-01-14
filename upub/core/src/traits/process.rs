@@ -39,22 +39,24 @@ impl Processor for crate::Context {
 	async fn process(&self, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 		// TODO we could process Links and bare Objects maybe, but probably out of AP spec?
 		match activity.activity_type()? {
-			apb::ActivityType::Like => Ok(like(self, activity, tx).await?),
-			apb::ActivityType::Dislike => Ok(dislike(self, activity, tx).await?),
-			apb::ActivityType::Create => Ok(create(self, activity, tx).await?),
-			apb::ActivityType::Follow => Ok(follow(self, activity, tx).await?),
-			apb::ActivityType::Announce => Ok(announce(self, activity, tx).await?),
-			apb::ActivityType::Accept(_) => Ok(accept(self, activity, tx).await?),
-			apb::ActivityType::Reject(_) => Ok(reject(self, activity, tx).await?),
-			apb::ActivityType::Undo => Ok(undo(self, activity, tx).await?),
-			apb::ActivityType::Delete => Ok(delete(self, activity, tx).await?),
-			apb::ActivityType::Update => Ok(update(self, activity, tx).await?),
+			apb::ActivityType::Like => Ok(process_like(self, activity, tx).await?),
+			apb::ActivityType::Dislike => Ok(process_dislike(self, activity, tx).await?),
+			apb::ActivityType::Create => Ok(process_create(self, activity, tx).await?),
+			apb::ActivityType::Follow => Ok(process_follow(self, activity, tx).await?),
+			apb::ActivityType::Announce => Ok(process_announce(self, activity, tx).await?),
+			apb::ActivityType::Accept(_) => Ok(process_accept(self, activity, tx).await?),
+			apb::ActivityType::Reject(_) => Ok(process_reject(self, activity, tx).await?),
+			apb::ActivityType::Undo => Ok(process_undo(self, activity, tx).await?),
+			apb::ActivityType::Delete => Ok(process_delete(self, activity, tx).await?),
+			apb::ActivityType::Update => Ok(process_update(self, activity, tx).await?),
+			apb::ActivityType::Flag => Ok(process_flag(self, activity, tx).await?),
+			apb::ActivityType::Move => Ok(process_move(self, activity, tx).await?),
 			_ => Err(ProcessorError::Unprocessable(activity.id()?.to_string())),
 		}
 	}
 }
 
-pub async fn create(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
+pub async fn process_create(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 	let Ok(object_node) = activity.object().into_inner() else {
 		// TODO we could process non-embedded activities or arrays but im lazy rn
 		tracing::error!("refusing to process activity without embedded object");
@@ -95,7 +97,7 @@ pub async fn create(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 	Ok(())
 }
 
-pub async fn like(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
+pub async fn process_like(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 	let actor = ctx.fetch_user(&activity.actor().id()?, tx).await?;
 	let obj = ctx.fetch_object(&activity.object().id()?, tx).await?;
 	let likes_local_object = obj.attributed_to.as_ref().map(|x| ctx.is_local(x)).unwrap_or_default();
@@ -153,7 +155,7 @@ pub async fn like(ctx: &crate::Context, activity: impl apb::Activity, tx: &Datab
 }
 
 // TODO basically same as like, can we make one function, maybe with const generic???
-pub async fn dislike(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
+pub async fn process_dislike(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 	let actor = ctx.fetch_user(&activity.actor().id()?, tx).await?;
 	let obj = ctx.fetch_object(&activity.object().id()?, tx).await?;
 	if crate::model::dislike::Entity::find_by_uid_oid(actor.internal, obj.internal)
@@ -193,7 +195,7 @@ pub async fn dislike(ctx: &crate::Context, activity: impl apb::Activity, tx: &Da
 	Ok(())
 }
 
-pub async fn follow(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
+pub async fn process_follow(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 	let source_actor = crate::model::actor::Entity::find_by_ap_id(&activity.actor().id()?)
 		.one(tx)
 		.await?
@@ -253,7 +255,7 @@ pub async fn follow(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 	Ok(())
 }
 
-pub async fn accept(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
+pub async fn process_accept(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 	// TODO what about TentativeAccept
 	let follow_activity = crate::model::activity::Entity::find_by_ap_id(&activity.object().id()?)
 		.one(tx)
@@ -312,7 +314,7 @@ pub async fn accept(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 	Ok(())
 }
 
-pub async fn reject(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
+pub async fn process_reject(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 	// TODO what about TentativeReject?
 	let follow_activity = crate::model::activity::Entity::find_by_ap_id(&activity.object().id()?)
 		.one(tx)
@@ -347,7 +349,7 @@ pub async fn reject(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 	Ok(())
 }
 
-pub async fn delete(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
+pub async fn process_delete(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 	let oid = activity.object().id()?.to_string();
 	crate::model::actor::Entity::delete_by_ap_id(&oid).exec(tx).await.info_failed("failed deleting from users");
 	crate::model::object::Entity::delete_by_ap_id(&oid).exec(tx).await.info_failed("failed deleting from objects");
@@ -363,7 +365,7 @@ pub async fn delete(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 	Ok(())
 }
 
-pub async fn update(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
+pub async fn process_update(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 	// TODO when attachments get updated we do nothing!!!!!!!!!!
 	let Ok(object_node) = activity.object().into_inner() else {
 		tracing::error!("refusing to process activity without embedded object");
@@ -422,7 +424,7 @@ pub async fn update(ctx: &crate::Context, activity: impl apb::Activity, tx: &Dat
 	Ok(())
 }
 
-pub async fn undo(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
+pub async fn process_undo(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 	// TODO in theory we could work with just object_id but right now only accept embedded
 	let undone_activity = activity.object().into_inner()?;
 
@@ -513,7 +515,7 @@ pub async fn undo(ctx: &crate::Context, activity: impl apb::Activity, tx: &Datab
 	Ok(())
 }
 
-pub async fn announce(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
+pub async fn process_announce(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 	let announced_id = activity.object().id()?.to_string();
 
 	let object = match ctx.find_internal(&announced_id).await? {
