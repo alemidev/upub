@@ -39,7 +39,7 @@ impl Processor for crate::Context {
 	async fn process(&self, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 		// TODO we could process Links and bare Objects maybe, but probably out of AP spec?
 		match activity.activity_type()? {
-			apb::ActivityType::Like => Ok(process_like(self, activity, tx).await?),
+			apb::ActivityType::Like | apb::ActivityType::EmojiReact => Ok(process_like(self, activity, tx).await?),
 			apb::ActivityType::Dislike => Ok(process_dislike(self, activity, tx).await?),
 			apb::ActivityType::Create => Ok(process_create(self, activity, tx).await?),
 			apb::ActivityType::Follow => Ok(process_follow(self, activity, tx).await?),
