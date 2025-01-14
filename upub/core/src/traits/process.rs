@@ -49,8 +49,6 @@ impl Processor for crate::Context {
 			apb::ActivityType::Undo => Ok(process_undo(self, activity, tx).await?),
 			apb::ActivityType::Delete => Ok(process_delete(self, activity, tx).await?),
 			apb::ActivityType::Update => Ok(process_update(self, activity, tx).await?),
-			apb::ActivityType::Flag => Ok(process_flag(self, activity, tx).await?),
-			apb::ActivityType::Move => Ok(process_move(self, activity, tx).await?),
 			_ => Err(ProcessorError::Unprocessable(activity.id()?.to_string())),
 		}
 	}
