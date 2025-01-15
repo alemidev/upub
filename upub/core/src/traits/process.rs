@@ -112,6 +112,14 @@ pub async fn process_like(ctx: &crate::Context, activity: impl apb::Activity, tx
 	// likes without addressing are "silent likes", process them but dont store activity or notify
 	let aid = if likes_local_object || !activity.addressed().is_empty() {
 		let mut activity_model = ctx.insert_activity(activity, tx).await?;
+		// TODO mastodon and misskey don't put any addressing at all in their likes, but treat all
+		//      likes as public by default. this is quite disrespectful to be honest: they are
+		//      effectively leaking my likes regardless of me explicitly marking them as
+		//      followers-only. since i don't want to be bullied into this really bad behaviour i end
+		//      up with almost all likes having private scope. to make them somewhat functional, i
+		//      force set the like-receiver as a `to` target, so that they can see this like regardless
+		//      of the empty addressing. as side effect, we know when we get "upvoted" from lemmy,
+		//      which instead would expect likes to be anonymous. oh well...
 		if likes_local_object {
 			activity_model.to.0.push(obj.attributed_to.clone().unwrap_or_default());
 		}
