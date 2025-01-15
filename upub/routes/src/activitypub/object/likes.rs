@@ -45,6 +45,7 @@ pub async fn page(
 		])
 		.join(sea_orm::JoinType::InnerJoin, upub::model::like::Relation::Activities.def())
 		.join(sea_orm::JoinType::InnerJoin, upub::model::activity::Relation::Addressing.def())
+		.join(sea_orm::JoinType::InnerJoin, upub::model::activity::Relation::Objects.def())
 		.filter(auth.filter_activities())
 		.filter(upub::model::like::Column::Object.eq(internal))
 		.order_by_desc(upub::model::like::Column::Published)
