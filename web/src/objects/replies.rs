@@ -22,3 +22,23 @@ pub fn ObjectReplies() -> impl IntoView {
 		</div>
 	}
 }
+
+#[component]
+pub fn ObjectLikes() -> impl IntoView {
+	let feeds = use_context::<Feeds>().expect("missing feeds context");
+	let params = use_params::<IdParam>();
+	let id = Signal::derive(move ||
+		params.with(|p| p.as_ref().ok().and_then(|x| x.id.as_ref()).cloned()).unwrap_or_default()
+	);
+	create_effect(move |_| {
+		let tl_url = format!("{}/likes/page", Uri::api(U::Object, &id.get(), false));
+		if !feeds.object_likes.next.get_untracked().starts_with(&tl_url) {
+			feeds.object_likes.reset(Some(tl_url));
+		}
+	});
+	view! {
+		<div class="mr-1-r ml-1-r">
+			<Feed tl=feeds.object_likes />
+		</div>
+	}
+}

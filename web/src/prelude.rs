@@ -20,7 +20,7 @@ pub use crate::{
 		attachment::Attachment,
 		item::{Object, Summary, LikeButton, RepostButton, ReplyButton},
 		context::ObjectContext,
-		replies::ObjectReplies,
+		replies::{ObjectReplies, ObjectLikes},
 	},
 	timeline::{
 		Timeline,

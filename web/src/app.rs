@@ -26,6 +26,7 @@ pub struct Feeds {
 	pub server: Timeline,
 	pub context: Timeline,
 	pub replies: Timeline,
+	pub object_likes: Timeline,
 	pub tag: Timeline,
 }
 
@@ -41,6 +42,7 @@ impl Feeds {
 			tag: Timeline::new(format!("{URL_BASE}/tags/upub/page")),
 			context: Timeline::new(format!("{URL_BASE}/outbox/page")), // TODO ehhh
 			replies: Timeline::new(format!("{URL_BASE}/outbox/page")), // TODO ehhh
+			object_likes: Timeline::new(format!("{URL_BASE}/outbox/page")), // TODO ehhh
 		}
 	}
 
@@ -205,7 +207,7 @@ pub fn App() -> impl IntoView {
 										<Route path="objects/:id" view=ObjectView >
 											<Route path="" view=ObjectContext />
 											<Route path="replies" view=ObjectReplies />
-											// <Route path="liked" view=ObjectLiked />
+											<Route path="likes" view=ObjectLikes />
 											// <Route path="announced" view=ObjectAnnounced />
 										</Route>
 
@@ -230,7 +232,7 @@ pub fn App() -> impl IntoView {
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum FeedRoute {
-	Home, Global, Server, Notifications, User, Following, Followers, Likes, Replies, Context
+	Home, Global, Server, Notifications, User, Following, Followers, ActorLikes, ObjectLikes, Replies, Context
 }
 
 #[component]
@@ -268,7 +270,7 @@ fn Scrollable() -> impl IntoView {
 					None
 				},
 				Some("likes") => {
-					set_route.set(FeedRoute::Likes);
+					set_route.set(FeedRoute::ActorLikes);
 					Some(feeds.user_likes)
 				},
 				_ => {
@@ -277,12 +279,19 @@ fn Scrollable() -> impl IntoView {
 				},
 			}
 		} else if path.starts_with("/web/objects") {
-			if matches!(path.split('/').nth(4), Some("replies")) {
-				set_route.set(FeedRoute::Replies);
-				Some(feeds.replies)
-			} else {
-				set_route.set(FeedRoute::Context);
-				Some(feeds.context)
+			match path.split('/').nth(4) {
+				Some("likes") => {
+					set_route.set(FeedRoute::ObjectLikes);
+					Some(feeds.object_likes)
+				},
+				Some("replies") => {
+					set_route.set(FeedRoute::Replies);
+					Some(feeds.replies)
+				},
+				_ => {
+					set_route.set(FeedRoute::Context);
+					Some(feeds.context)
+				},
 			}
 		} else {
 			None
