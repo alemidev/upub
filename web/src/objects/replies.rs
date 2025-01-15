@@ -38,7 +38,7 @@ pub fn ObjectLikes() -> impl IntoView {
 	});
 	view! {
 		<div class="mr-1-r ml-1-r">
-			<Feed tl=feeds.object_likes />
+			<Feed tl=feeds.object_likes ignore_filters=true />
 		</div>
 	}
 }
