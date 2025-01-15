@@ -38,6 +38,7 @@ pub enum Activities {
 	Actor,
 	Object,
 	Target,
+	Content, // added with migration m20250115_000001
 	Cc,
 	Bcc,
 	To,

@@ -245,6 +245,7 @@ impl AP {
 			actor: activity.actor().id()?.to_string(),
 			object: activity.object().id().ok(),
 			target: activity.target().id().ok(),
+			content: activity.content().ok(),
 			published: activity.published().unwrap_or(chrono::Utc::now()),
 			to: activity.to().all_ids().into(),
 			bto: activity.bto().all_ids().into(),

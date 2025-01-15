@@ -14,6 +14,7 @@ pub struct Model {
 	pub actor: String,
 	pub object: Option<String>,
 	pub target: Option<String>,
+	pub content: Option<String>,
 	pub to: JsonVec<String>,
 	pub bto: JsonVec<String>,
 	pub cc: JsonVec<String>,
@@ -111,6 +112,7 @@ impl crate::ext::IntoActivityPub for Model {
 			.set_actor(apb::Node::link(self.actor))
 			.set_object(apb::Node::maybe_link(self.object))
 			.set_target(apb::Node::maybe_link(self.target))
+			.set_content(self.content)
 			.set_published(Some(self.published))
 			.set_to(apb::Node::links(self.to.0.clone()))
 			.set_bto(apb::Node::Empty)
