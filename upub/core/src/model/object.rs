@@ -162,6 +162,7 @@ impl Entity {
 
 impl crate::ext::IntoActivityPub for Model {
 	fn into_activity_pub_json(self, ctx: &crate::Context) -> serde_json::Value {
+		let is_local = ctx.is_local(&self.id);
 		apb::new()
 			.set_object_type(Some(self.object_type))
 			.set_attributed_to(apb::Node::maybe_link(self.attributed_to))
@@ -188,18 +189,22 @@ impl crate::ext::IntoActivityPub for Model {
 			.set_sensitive(Some(self.sensitive))
 			.set_shares(apb::Node::object(
 				apb::new()
+					.set_id(if is_local { Some(format!("{}/shares", self.id)) } else { None })
+					.set_first(if is_local { apb::Node::link(format!("{}/shares/page", self.id)) } else { apb::Node::Empty })
 					.set_collection_type(Some(apb::CollectionType::OrderedCollection))
 					.set_total_items(Some(self.announces as u64))
 			))
 			.set_likes(apb::Node::object(
 				apb::new()
+					.set_id(if is_local { Some(format!("{}/likes", self.id)) } else { None })
+					.set_first(if is_local { apb::Node::link(format!("{}/likes/page", self.id)) } else { apb::Node::Empty })
 					.set_collection_type(Some(apb::CollectionType::OrderedCollection))
 					.set_total_items(Some(self.likes as u64))
 			))
 			.set_replies(apb::Node::object(
 				apb::new()
-					.set_id(if ctx.is_local(&self.id) { Some(format!("{}/replies", self.id)) } else { None })
-					.set_first( if ctx.is_local(&self.id) { apb::Node::link(format!("{}/replies/page", self.id)) } else { apb::Node::Empty })
+					.set_id(if is_local { Some(format!("{}/replies", self.id)) } else { None })
+					.set_first( if is_local { apb::Node::link(format!("{}/replies/page", self.id)) } else { apb::Node::Empty })
 					.set_collection_type(Some(apb::CollectionType::OrderedCollection))
 					.set_total_items(Some(self.replies as u64))
 			))

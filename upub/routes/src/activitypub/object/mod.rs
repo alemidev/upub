@@ -1,5 +1,7 @@
 pub mod replies;
 pub mod context;
+pub mod likes;
+pub mod shares;
 
 use apb::LD;
 use axum::extract::{Path, Query, State};

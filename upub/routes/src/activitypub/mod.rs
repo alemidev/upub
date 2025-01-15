@@ -72,6 +72,10 @@ impl ActivityPubRouter for Router<upub::Context> {
 			.route("/objects/{id}/replies/page", get(ap::object::replies::page))
 			.route("/objects/{id}/context", get(ap::object::context::get))
 			.route("/objects/{id}/context/page", get(ap::object::context::page))
+			.route("/objects/{id}/likes", get(ap::object::likes::get))
+			.route("/objects/{id}/likes/page", get(ap::object::likes::page))
+			.route("/objects/{id}/shares", get(ap::object::shares::get))
+			.route("/objects/{id}/shares/page", get(ap::object::shares::page))
 			// file routes
 			.route("/file", post(ap::file::upload))
 			.route("/file/{id}", get(ap::file::download))
