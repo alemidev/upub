@@ -1,6 +1,6 @@
 use apb::{BaseMut, CollectionMut, LD};
 use axum::extract::{Path, Query, State};
-use sea_orm::{ColumnTrait, EntityName, EntityTrait, Iden, Iterable, QueryFilter, QueryOrder, QuerySelect, RelationTrait, SelectColumns};
+use sea_orm::{sea_query::IntoColumnRef, ColumnTrait, EntityName, EntityTrait, Iden, Iterable, QueryFilter, QueryOrder, QuerySelect, RelationTrait, SelectColumns};
 use upub::{selector::{RichActivity, RichFillable}, Context};
 
 use crate::{activitypub::Pagination, builders::JsonLD, AuthIdentity};
@@ -39,11 +39,16 @@ pub async fn page(
 
 	let (limit, offset) = page.pagination();
 	let mut select = upub::model::announce::Entity::find()
+		.distinct_on([
+			(upub::model::announce::Entity, upub::model::announce::Column::Published).into_column_ref(),
+			(upub::model::activity::Entity, upub::model::activity::Column::Internal).into_column_ref(),
+		])
 		.join(sea_orm::JoinType::InnerJoin, upub::model::announce::Relation::Activities.def())
 		.join(sea_orm::JoinType::InnerJoin, upub::model::activity::Relation::Addressing.def())
 		.filter(auth.filter_activities())
 		.filter(upub::model::announce::Column::Object.eq(internal))
 		.order_by_desc(upub::model::announce::Column::Published)
+		.order_by_desc(upub::model::activity::Column::Internal)
 		.limit(limit)
 		.offset(offset)
 		.select_only();
