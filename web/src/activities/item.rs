@@ -15,6 +15,7 @@ pub fn ActivityLine(activity: crate::Object, children: Children) -> impl IntoVie
 	});
 	let actor_id = activity.actor().id().unwrap_or_default();
 	let actor = cache::OBJECTS.get_or(&actor_id, serde_json::Value::String(actor_id.clone()).into());
+	let content = activity.content().unwrap_or_default();
 	let kind = activity.activity_type().unwrap_or(apb::ActivityType::Activity);
 	let href = match kind {
 		apb::ActivityType::Follow => Uri::web(U::Actor, &object_id),
@@ -28,6 +29,7 @@ pub fn ActivityLine(activity: crate::Object, children: Children) -> impl IntoVie
 					<ActorStrip object=actor />
 				</td>
 				<td class="rev">
+					{content}" "
 					<code class="color" title={activity.published().ok().map(|x| x.to_rfc2822())} >
 						{children()}
 						<a class="upub-title clean" title={object_id} href={href} >
