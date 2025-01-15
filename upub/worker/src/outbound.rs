@@ -1,4 +1,4 @@
-use apb::{target::Addressed, Activity, ActivityMut, Base, BaseMut, Object, ObjectMut, Shortcuts};
+use apb::{target::Addressed, Activity, ActivityMut, ActorMut, Base, BaseMut, Object, ObjectMut, Shortcuts};
 use sea_orm::{prelude::Expr, ColumnTrait, DbErr, EntityTrait, QueryFilter, QueryOrder, QuerySelect, SelectColumns, TransactionTrait};
 use upub::{model::{self, actor::Field}, traits::{process::ProcessorError, Addresser, Processor}, Context};
 
@@ -101,7 +101,15 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 						.into();
 				}
 
-				updated = ctx.ap(prev);
+				// TODO ughhh since following/followers count are sensitive we hide them inside the .ap()
+				//      method, but this means here we end up with these set to 0 here! every time any
+				//      local user updates their profile, they also reset their followers/following
+				//      counters... not great! so we have to overwrite _back_ the counts here so that they
+				//      don't get set to 0 later. this is a ridicolous design and a comically bad botch....
+				let (following_count, followers_count) = (prev.following_count as u64, prev.followers_count as u64);
+				updated = ctx.ap(prev)
+					.set_following_count(Some(following_count))
+					.set_followers_count(Some(followers_count));
 			},
 			apb::ObjectType::Note => {
 				let mut prev = model::object::Entity::find_by_ap_id(&updated.id()?)
