@@ -1,6 +1,6 @@
 use apb::{BaseMut, CollectionMut, LD};
 use axum::extract::{Path, Query, State};
-use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait};
+use sea_orm::{ColumnTrait, EntityName, EntityTrait, Iden, Iterable, QueryFilter, QueryOrder, QuerySelect, RelationTrait, SelectColumns};
 use upub::{selector::{RichActivity, RichFillable}, Context};
 
 use crate::{activitypub::Pagination, builders::JsonLD, AuthIdentity};
@@ -38,7 +38,7 @@ pub async fn page(
 		.ok_or_else(crate::ApiError::not_found)?;
 
 	let (limit, offset) = page.pagination();
-	let items = upub::model::announce::Entity::find()
+	let mut select = upub::model::announce::Entity::find()
 		.distinct()
 		.join(sea_orm::JoinType::InnerJoin, upub::model::announce::Relation::Activities.def())
 		.join(sea_orm::JoinType::InnerJoin, upub::model::activity::Relation::Addressing.def())
@@ -47,6 +47,18 @@ pub async fn page(
 		.order_by_desc(upub::model::announce::Column::Published)
 		.limit(limit)
 		.offset(offset)
+		.select_only();
+
+	for col in upub::model::activity::Column::iter() {
+		select = select.select_column_as(col, format!("{}{}", upub::model::activity::Entity.table_name(), col.to_string()));
+	}
+
+	select = select.select_column_as(
+		upub::model::addressing::Column::Published,
+		format!("{}{}", upub::model::addressing::Entity.table_name(), upub::model::addressing::Column::Published.to_string())
+	);
+
+	let items = select
 		.into_model::<RichActivity>()
 		.all(ctx.db())
 		.await?
