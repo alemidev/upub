@@ -54,9 +54,9 @@ pub fn ObjectView() -> impl IntoView {
 		}}
 
 		<p>
-			<span class:tab-active=move || matches!(matched_route.get(), FeedRoute::Context)><a class="clean" href=move || format!("/web/objects/{}", id.get())><span class="emoji ml-2">"🕸️ "</span>"context"</a></span>
-			<span class:tab-active=move || matches!(matched_route.get(), FeedRoute::Replies)><a class="clean" href=move || format!("/web/objects/{}/replies", id.get())><span class="emoji ml-2">"📫 "</span>"replies"</a></span>
-			<span class:tab-active=move || matches!(matched_route.get(), FeedRoute::ObjectLikes)><a class="clean" href=move || format!("/web/objects/{}/likes", id.get())><span class="emoji ml-2">"⭐ "</span>"likes"</a></span>
+			<span class:tab-active=move || matches!(matched_route.get(), FeedRoute::Context)><a class="clean" href=move || format!("/web/objects/{}", id.get())><span class="emoji ml-2">"🕸️"</span><span class:hidden-on-mobile=move || !matches!(matched_route.get(), FeedRoute::Context)>" context"</span></a></span>
+			<span class:tab-active=move || matches!(matched_route.get(), FeedRoute::Replies)><a class="clean" href=move || format!("/web/objects/{}/replies", id.get())><span class="emoji ml-2">"📫"</span><span class:hidden-on-mobile=move || !matches!(matched_route.get(), FeedRoute::Replies)>" replies"</span></a></span>
+			<span class:tab-active=move || matches!(matched_route.get(), FeedRoute::ObjectLikes)><a class="clean" href=move || format!("/web/objects/{}/likes", id.get())><span class="emoji ml-2">"⭐"</span><span class:hidden-on-mobile=move || !matches!(matched_route.get(), FeedRoute::ObjectLikes)>" likes"</span></a></span>
 			{move || if auth.present() {
 				if loading.get() {
 					Some(view! {
