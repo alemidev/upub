@@ -106,6 +106,7 @@ pub async fn faker(ctx: upub::Context, count: i64) -> Result<(), sea_orm::DbErr>
 			actor: Set(format!("{domain}/actors/test")),
 			object: Set(Some(format!("{domain}/objects/{oid}"))),
 			target: Set(None),
+			content: Set(None),
 			published: Set(chrono::Utc::now() - std::time::Duration::from_secs(60*i as u64)),
 			to: Set(JsonVec(vec![apb::target::PUBLIC.to_string()])),
 			bto: Set(JsonVec::default()),
