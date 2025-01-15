@@ -39,7 +39,6 @@ pub async fn page(
 
 	let (limit, offset) = page.pagination();
 	let mut select = upub::model::like::Entity::find()
-		.distinct()
 		.join(sea_orm::JoinType::InnerJoin, upub::model::like::Relation::Activities.def())
 		.join(sea_orm::JoinType::InnerJoin, upub::model::activity::Relation::Addressing.def())
 		.filter(auth.filter_activities())
