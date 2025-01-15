@@ -4900,7 +4900,7 @@ checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
 
 [[package]]
 name = "upub"
-version = "0.4.2"
+version = "0.4.3"
 dependencies = [
  "apb",
  "async-recursion",
@@ -4931,7 +4931,7 @@ dependencies = [
 
 [[package]]
 name = "upub-bin"
-version = "0.4.2"
+version = "0.4.3"
 dependencies = [
  "clap",
  "futures",
