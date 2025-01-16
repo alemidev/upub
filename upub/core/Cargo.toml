@@ -31,7 +31,6 @@ httpsign = { path = "../../utils/httpsign/" }
 mdhtml = { path = "../../utils/mdhtml/" }
 jrd = "0.1"
 tracing = "0.1"
-tokio = "1.43"
 sea-orm = { version = "1.1", features = ["macros"] }
 reqwest = { version = "0.12", features = ["json"] }
 apb = { path = "../../apb", features = ["unstructured", "orm", "did-core", "activitypub-miscellaneous-terms", "activitypub-fe", "activitypub-counters", "litepub", "ostatus", "toot"] }

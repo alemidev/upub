@@ -22,5 +22,4 @@ openssl = "0.10" # TODO handle pubkeys with a smaller crate
 clap = { version = "4.5", features = ["derive"] }
 sea-orm = "1.1"
 futures = "0.3"
-mdhtml = { path = "../../utils/mdhtml/" }
 reqwest = { version = "0.12", features = ["json"] }
