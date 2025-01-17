@@ -12,10 +12,9 @@ pub fn ActorHeader() -> impl IntoView {
 	let relevant_tl = use_context::<Signal<Option<Timeline>>>().expect("missing relevant timeline context");
 	let matched_route = use_context::<ReadSignal<crate::app::FeedRoute>>().expect("missing route context");
 	let (loading, set_loading) = signal(false);
-	// TODO this was a LocalResource!
-	let actor = Resource::new(
-		move || params.get().ok().and_then(|x| x.id).unwrap_or_default(),
-		move |id| {
+	let actor = LocalResource::new(
+		move || {
+			let id = params.get().ok().and_then(|x| x.id).unwrap_or_default();
 			async move {
 				match cache::OBJECTS.get(&Uri::full(U::Actor, &id)) {
 					Some(x) => Some(x.clone()),
@@ -27,7 +26,7 @@ pub fn ActorHeader() -> impl IntoView {
 			}
 		}
 	);
-	move || match actor.get() {
+	move || match actor.get().map(|x| x.take()) {
 		None => view! { <Loader /> }.into_any(),
 		Some(None) => view! { <code class="center cw color">"could not resolve user"</code> }.into_any(),
 		Some(Some(actor)) => {
