@@ -1,5 +1,5 @@
 use apb::{Activity, Base, Object};
-use leptos::*;
+use leptos::prelude::*;
 use crate::prelude::*;
 use super::Timeline;
 
@@ -8,7 +8,7 @@ pub fn Thread(tl: Timeline, root: String) -> impl IntoView {
 	let auth = use_context::<Auth>().expect("missing auth context");
 	let config = use_context::<Signal<crate::Config>>().expect("missing config context");
 	if let Some(auto_scroll) = use_context::<Signal<bool>>() {
-		let _ = leptos::watch(
+		let _ = Effect::watch(
 			move || auto_scroll.get(),
 			move |new, old, _| {
 				match old {
@@ -72,5 +72,5 @@ fn FeedRecursive(tl: Timeline, root: String) -> impl IntoView {
 					</div>
 				}
 		/ >
-	}
+	}.into_any()
 }

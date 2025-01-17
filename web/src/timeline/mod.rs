@@ -4,7 +4,7 @@ pub mod thread;
 use std::{collections::BTreeSet, pin::Pin, sync::Arc};
 
 use apb::{Activity, ActivityMut, Base, Object};
-use leptos::*;
+use leptos::prelude::*;
 use crate::prelude::*;
 
 #[derive(Debug, Clone, Copy)]
@@ -17,10 +17,10 @@ pub struct Timeline {
 
 impl Timeline {
 	pub fn new(url: String) -> Self {
-		let feed = create_rw_signal(vec![]);
-		let next = create_rw_signal(url);
-		let over = create_rw_signal(false);
-		let loading = create_rw_signal(false);
+		let feed = RwSignal::new(vec![]);
+		let next = RwSignal::new(url);
+		let over = RwSignal::new(false);
+		let loading = RwSignal::new(false);
 		Timeline { feed, next, over, loading }
 	}
 
@@ -53,7 +53,7 @@ impl Timeline {
 
 	pub fn spawn_more(&self, auth: Auth, config: Signal<crate::Config>) {
 		let _self = *self;
-		spawn_local(async move {
+		leptos::task::spawn_local(async move {
 			_self.more(auth, config).await
 		});
 	}

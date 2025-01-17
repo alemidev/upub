@@ -1,4 +1,4 @@
-use leptos::*;
+use leptos::prelude::*;
 use reqwest::Method;
 use crate::{components::AuthResponse, URL_BASE};
 
@@ -28,7 +28,7 @@ impl Auth {
 	}
 
 	pub fn present(&self) -> bool {
-		self.token.get().map_or(false, |x| !x.is_empty())
+		self.token.get().is_some_and(|x| !x.is_empty())
 	}
 
 	pub fn outbox(&self) -> String {

@@ -1,6 +1,7 @@
-use ev::MouseEvent;
-use leptos::*;
-use leptos_router::*;
+use leptos::{either::Either, ev::MouseEvent};
+use leptos::prelude::*;
+use leptos_router::components::Outlet;
+use leptos_router::hooks::use_params_map;
 use crate::{app::FeedRoute, prelude::*, Config};
 
 use apb::Object;
@@ -12,44 +13,46 @@ pub fn ObjectView() -> impl IntoView {
 	let auth = use_context::<Auth>().expect("missing auth context");
 	let config = use_context::<Signal<Config>>().expect("missing config context");
 	let relevant_tl = use_context::<Signal<Option<Timeline>>>().expect("missing relevant timeline context");
-	let (loading, set_loading) = create_signal(false);
-	let id = Signal::derive(move || params.get().get("id").cloned().unwrap_or_default());
-	let object = create_local_resource(
-		move || (id.get(), loading.get()),
-		move |(oid, _loading)| async move {
-			tracing::info!("rerunning fetcher");
-			let obj = cache::OBJECTS.resolve(&oid, U::Object, auth).await?;
+	let (loading, set_loading) = signal(false);
+	let id = Signal::derive(move || params.get().get("id").unwrap_or_default());
+	let object = LocalResource::new(
+		move || {
+			let (oid, _loading) = (id.get(), loading.get());
+			async move {
+				tracing::info!("rerunning fetcher");
+				let obj = cache::OBJECTS.resolve(&oid, U::Object, auth).await?;
 
-			// TODO these two can be parallelized
-			if let Ok(author) = obj.attributed_to().id() {
-				cache::OBJECTS.resolve(&author, U::Actor, auth).await;
+				// TODO these two can be parallelized
+				if let Ok(author) = obj.attributed_to().id() {
+					cache::OBJECTS.resolve(&author, U::Actor, auth).await;
+				}
+				if let Ok(quote) = obj.quote_url().id() {
+					cache::OBJECTS.resolve(&quote, U::Object, auth).await;
+				}
+
+				Some(obj)
+
+				// if let Ok(ctx) = obj.context().id() {
+				// 	let tl_url = format!("{}/context/page", Uri::api(U::Object, ctx, false));
+				// 	if !feeds.context.next.get_untracked().starts_with(&tl_url) {
+				// 		feeds.context.reset(Some(tl_url));
+				// 	}
+				// }
 			}
-			if let Ok(quote) = obj.quote_url().id() {
-				cache::OBJECTS.resolve(&quote, U::Object, auth).await;
-			}
-
-			Some(obj)
-
-			// if let Ok(ctx) = obj.context().id() {
-			// 	let tl_url = format!("{}/context/page", Uri::api(U::Object, ctx, false));
-			// 	if !feeds.context.next.get_untracked().starts_with(&tl_url) {
-			// 		feeds.context.reset(Some(tl_url));
-			// 	}
-			// }
 		}
 	);
 
 	view! {
-		{move || match object.get() {
-			None => view! { <Loader /> }.into_view(),
+		{move || match object.get().map(|x| x.take()) {
+			None => view! { <Loader /> }.into_any(),
 			Some(None) => {
-				let raw_id = params.get().get("id").cloned().unwrap_or_default();
+				let raw_id = params.get().get("id").unwrap_or_default();
 				let uid =  uriproxy::uri(URL_BASE, uriproxy::UriClass::Object, &raw_id);
-				view! { <p class="center"><code>loading failed</code><sup><small><a class="clean" href={uid} target="_blank">"↗"</a></small></sup></p> }.into_view()
+				view! { <p class="center"><code>loading failed</code><sup><small><a class="clean" href={uid} target="_blank">"↗"</a></small></sup></p> }.into_any()
 			},
 			Some(Some(o)) => {
 				tracing::info!("redrawing object");
-				view! { <Object object=o.clone() /> }.into_view()
+				view! { <Object object=o.clone() /> }.into_any()
 			},
 		}}
 
@@ -59,13 +62,13 @@ pub fn ObjectView() -> impl IntoView {
 			<span class:tab-active=move || matches!(matched_route.get(), FeedRoute::ObjectLikes)><a class="clean" href=move || format!("/web/objects/{}/likes", id.get())><span class="emoji ml-2">"⭐"</span><span class:hidden-on-mobile=move || !matches!(matched_route.get(), FeedRoute::ObjectLikes)>" likes"</span></a></span>
 			{move || if auth.present() {
 				if loading.get() {
-					Some(view! {
+					Some(Either::Left(view! {
 						<span style="float: right">
 							"fetching "<span class="dots"></span>
 						</span>
-					})
+					}))
 				} else {
-					Some(view! {
+					Some(Either::Right(view! {
 						<span style="float: right">
 							<a
 								class="clean"
@@ -75,7 +78,7 @@ pub fn ObjectView() -> impl IntoView {
 								<span class="emoji ml-2">"↺ "</span>"fetch"
 							</a>
 						</span>
-					})
+					}))
 				}
 			} else {
 				None
@@ -96,7 +99,7 @@ fn fetch_cb(ev: MouseEvent, set_loading: WriteSignal<bool>, oid: String, auth: A
 	let api = Uri::api(U::Object, &oid, false);
 	ev.prevent_default();
 	set_loading.set(true);
-	spawn_local(async move {
+	leptos::task::spawn_local(async move {
 		if let Err(e) = Http::fetch::<serde_json::Value>(&format!("{api}/replies?fetch=true"), auth).await {
 			tracing::error!("failed crawling replies for {oid}: {e}");
 		}

@@ -1,9 +1,8 @@
 use apb::Collection;
-use leptos::*;
-use leptos_router::*;
+use leptos::{either::Either, prelude::*};
+use leptos_router::{components::*, hooks::use_location, path};
 use crate::prelude::*;
 
-use codee::string::{FromToStringCodec, JsonSerdeCodec};
 use leptos_use::{
 	signal_debounced, storage::use_local_storage, use_cookie_with_options, use_element_size, use_window_scroll,
 	UseCookieOptions, UseElementSizeReturn
@@ -59,31 +58,30 @@ impl Feeds {
 	}
 }
 
-
 #[component]
 pub fn App() -> impl IntoView {
-	let (token, set_token) = use_cookie_with_options::<String, FromToStringCodec>(
+	let (token, set_token) = use_cookie_with_options::<String, codee::string::FromToStringCodec>(
 		"token",
 		UseCookieOptions::default()
 			.same_site(cookie::SameSite::Strict)
 			// .secure(true)
 			.path("/")
 	);
-	let (userid, set_userid) = use_cookie_with_options::<String, FromToStringCodec>(
+	let (userid, set_userid) = use_cookie_with_options::<String, codee::string::FromToStringCodec>(
 		"user_id",
 		UseCookieOptions::default()
 			.same_site(cookie::SameSite::Strict)
 			// .secure(true)
 			.path("/")
 	);
-	let (config, set_config, _) = use_local_storage::<crate::Config, JsonSerdeCodec>("config");
+	let (config, set_config, _) = use_local_storage::<crate::Config, codee::string::JsonSerdeCodec>("config");
 
-	let (privacy, set_privacy) = create_signal(Privacy::Private);
+	let (privacy, set_privacy) = signal(Privacy::Private);
 
 	let auth = Auth { token, userid };
 
-	let (be_version, set_be_version) = create_signal("?.?.?".to_string());
-	spawn_local(async move {
+	let (be_version, set_be_version) = signal("?.?.?".to_string());
+	leptos::task::spawn_local(async move {
 		match Http::fetch::<serde_json::Value>(&format!("{URL_BASE}/nodeinfo/2.0.json"), auth).await {
 			Err(e) => tracing::error!("failed fetching backend version: {e} - {e:?}"),
 			Ok(nodeinfo) => {
@@ -115,19 +113,19 @@ pub fn App() -> impl IntoView {
 	let screen_width = document().body().map(|x| x.client_width()).unwrap_or_default();
 	tracing::info!("detected width of {screen_width}");
 
-	let (menu, set_menu) = create_signal(screen_width < 768);
-	let (advanced, set_advanced) = create_signal(false);
+	let (menu, set_menu) = signal(screen_width < 768);
+	let (advanced, set_advanced) = signal(false);
 
 	let title_target = move || if auth.present() { "/web/home" } else { "/web/global" };
 
 	// refresh token immediately and  every hour
-	let refresh_token = move || spawn_local(async move { Auth::refresh(auth.token, set_token, set_userid).await; });
+	let refresh_token = move || leptos::task::spawn_local(async move { Auth::refresh(auth.token, set_token, set_userid).await; });
 	refresh_token();
 	set_interval(refresh_token, std::time::Duration::from_secs(3600));
 
 	// refresh notifications
-	let (notifications, set_notifications) = create_signal(0);
-	let fetch_notifications = move || spawn_local(async move {
+	let (notifications, set_notifications) = signal(0);
+	let fetch_notifications = move || leptos::task::spawn_local(async move {
 		let actor_id = userid.get_untracked().unwrap_or_default();
 		let notif_url = format!("{actor_id}/notifications");
 		match Http::fetch::<serde_json::Value>(&notif_url, auth).await {
@@ -162,60 +160,57 @@ pub fn App() -> impl IntoView {
 					<div class:hidden=move || !auth.present() >
 						<PrivacySelector setter=set_privacy />
 						<hr class="mt-1 mb-1" />
-						{move || if advanced.get() { view! {
+						{move || if advanced.get() { Either::Left(view! {
 							<AdvancedPostBox advanced=set_advanced/>
-						}} else { view! {
+						})} else { Either::Right(view! {
 							<PostBox advanced=set_advanced/>
-						}}}
+						})}}
 						<hr class="only-on-mobile sep mb-0 pb-0" />
 					</div>
 				</div>
 				<div class="col-main" class:w-100=menu >
-					<Router // TODO maybe set base="/web" ?
-						trailing_slash=TrailingSlash::Redirect
-						fallback=|| view! { <NotFound /> }
-					>
+					<Router>
 						<main>
-								<Routes>
-									<Route path="/" view=move || view! { <Redirect path="/web" /> } />
-									<Route path="/web" view=Scrollable >
-										<Route path="" view=move ||
+								<Routes fallback=NotFound>
+									<Route path=path!("/") view=move || view! { <Redirect path="/web" /> } />
+									<ParentRoute path=path!("/web") view=Scrollable >
+										<Route path=path!("") view=move ||
 											if auth.present() {
 												view! { <Redirect path="home" /> }
 											} else {
 												view! { <Redirect path="global" /> }
 											}
 										/>
-										<Route path="home" view=move || view! { <Feed tl=feeds.home /> } />
-										<Route path="global" view=move || view! { <Feed tl=feeds.global /> } />
-										<Route path="local" view=move || view! { <Feed tl=feeds.server /> } />
-										<Route path="notifications" view=move || view! { <Feed tl=feeds.notifications ignore_filters=true /> } />
-										<Route path="tags/:id" view=move || view! { <HashtagFeed tl=feeds.tag /> } />
+										<Route path=path!("home") view=move || view! { <Feed tl=feeds.home /> } />
+										<Route path=path!("global") view=move || view! { <Feed tl=feeds.global /> } />
+										<Route path=path!("local") view=move || view! { <Feed tl=feeds.server /> } />
+										<Route path=path!("notifications") view=move || view! { <Feed tl=feeds.notifications ignore_filters=true /> } />
+										<Route path=path!("tags/:id") view=move || view! { <HashtagFeed tl=feeds.tag /> } />
 
-										<Route path="about" view=AboutPage />
-										<Route path="config" view=move || view! { <ConfigPage setter=set_config /> } />
-										<Route path="explore" view=DebugPage />
+										<Route path=path!("about") view=AboutPage />
+										<Route path=path!("config") view=move || view! { <ConfigPage setter=set_config /> } />
+										<Route path=path!("explore") view=DebugPage />
 
-										<Route path="actors/:id" view=ActorHeader > // TODO can we avoid this?
-											<Route path="" view=ActorPosts />
-											<Route path="likes" view=ActorLikes />
-											<Route path="following" view=move || view! { <FollowList outgoing=true /> } />
-											<Route path="followers" view=move || view! { <FollowList outgoing=false /> } />
-										</Route>
+										<ParentRoute path=path!("actors/:id") view=ActorHeader > // TODO can we avoid this?
+											<Route path=path!("") view=ActorPosts />
+											<Route path=path!("likes") view=ActorLikes />
+											<Route path=path!("following") view=move || view! { <FollowList outgoing=true /> } />
+											<Route path=path!("followers") view=move || view! { <FollowList outgoing=false /> } />
+										</ParentRoute>
 
 
-										<Route path="objects/:id" view=ObjectView >
-											<Route path="" view=ObjectContext />
-											<Route path="replies" view=ObjectReplies />
-											<Route path="likes" view=ObjectLikes />
+										<ParentRoute path=path!("objects/:id") view=ObjectView >
+											<Route path=path!("") view=ObjectContext />
+											<Route path=path!("replies") view=ObjectReplies />
+											<Route path=path!("likes") view=ObjectLikes />
 											// <Route path="announced" view=ObjectAnnounced />
-										</Route>
+										</ParentRoute>
 
 										// <Route path="/web/activities/:id" view=move || view! { <ActivityPage tl=context_tl /> } />
 
-										<Route path="search" view=SearchPage />
-										<Route path="register" view=RegisterPage />
-									</Route>
+										<Route path=path!("search") view=SearchPage />
+										<Route path=path!("register") view=RegisterPage />
+									</ParentRoute>
 								</Routes>
 						</main>
 					</Router>
@@ -244,7 +239,7 @@ fn Scrollable() -> impl IntoView {
 	// TODO this is terrible!! omg maybe it should receive from context current timeline?? idk this
 	//      is awful and i patched it another time instead of doing it properly...
 	//      at least im going to provide a route enum to use in other places
-	let (route, set_route) = create_signal(FeedRoute::Home);
+	let (route, set_route) = signal(FeedRoute::Home);
 	let relevant_timeline = Signal::derive(move || {
 		let path = location.pathname.get();
 		if path.contains("/web/home") {
@@ -325,7 +320,7 @@ fn Scrollable() -> impl IntoView {
 			None => "?".to_string(),
 		}
 	});
-	let element = create_node_ref();
+	let element = NodeRef::new();
 	let should_load = use_scroll_limit(element, 500.0);
 	provide_context(should_load);
 	view! {
@@ -361,21 +356,23 @@ pub fn Loader() -> impl IntoView {
 	}
 }
 
-pub fn use_scroll_limit<El, T>(el: El, offset: f64) -> Signal<bool>
-where 
-	El: Into<leptos_use::core::ElementMaybeSignal<T, web_sys::Element>> + Clone + 'static,
-	T: Into<web_sys::Element> + Clone + 'static,
+pub fn use_scroll_limit<T, Marker>(el: NodeRef<T>, offset: f64) -> Signal<bool>
+where
+	T: leptos::html::ElementType,
+	NodeRef<T>: leptos_use::core::IntoElementMaybeSignal<web_sys::Element, Marker>,
 {
-	let (load, set_load) = create_signal(false);
+	let (load, set_load) = signal(false);
 	let (_x, y) = use_window_scroll();
-	let UseElementSizeReturn { height: screen_height, .. } = use_element_size("html");
+	let html_node_ref = NodeRef::new();
+	leptos::html::html().node_ref(html_node_ref);
+	let UseElementSizeReturn { height: screen_height, .. } = use_element_size(html_node_ref);
 	let UseElementSizeReturn { height, .. } = use_element_size(el);
 	let scroll_state = Signal::derive(move || (y.get(), height.get(), screen_height.get()));
 	let scroll_state_throttled = signal_debounced(
 		scroll_state,
 		50.
 	);
-	let _ = watch(
+	let _ = Effect::watch(
 		move || scroll_state_throttled.get(),
 		move |(y, height, screen), _, _| {
 			let before = load.get();

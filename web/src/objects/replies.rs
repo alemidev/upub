@@ -1,5 +1,5 @@
-use leptos::*;
-use leptos_router::*;
+use leptos::prelude::*;
+use leptos_router::hooks::use_params;
 use crate::prelude::*;
 
 
@@ -10,7 +10,7 @@ pub fn ObjectReplies() -> impl IntoView {
 	let id = Signal::derive(move ||
 		params.with(|p| p.as_ref().ok().and_then(|x| x.id.as_ref()).cloned()).unwrap_or_default()
 	);
-	create_effect(move |_| {
+	Effect::new(move |_| {
 		let tl_url = format!("{}/replies/page", Uri::api(U::Object, &id.get(), false));
 		if !feeds.replies.next.get_untracked().starts_with(&tl_url) {
 			feeds.replies.reset(Some(tl_url));
@@ -30,7 +30,7 @@ pub fn ObjectLikes() -> impl IntoView {
 	let id = Signal::derive(move ||
 		params.with(|p| p.as_ref().ok().and_then(|x| x.id.as_ref()).cloned()).unwrap_or_default()
 	);
-	create_effect(move |_| {
+	Effect::new(move |_| {
 		let tl_url = format!("{}/likes/page", Uri::api(U::Object, &id.get(), false));
 		if !feeds.object_likes.next.get_untracked().starts_with(&tl_url) {
 			feeds.object_likes.reset(Some(tl_url));

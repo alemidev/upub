@@ -1,4 +1,4 @@
-use leptos::*;
+use leptos::prelude::*;
 use crate::{prelude::*, FALLBACK_IMAGE_URL};
 
 use apb::{Activity, ActivityMut, Actor, Base, Object, ObjectMut, Shortcuts};
@@ -25,7 +25,7 @@ pub fn ActorBanner(object: crate::Object) -> impl IntoView {
 	match object.as_ref() {
 		serde_json::Value::String(id) => view! {
 			<div><b>?</b>" "<a class="clean hover" href={Uri::web(U::Actor, id)}>{Uri::pretty(id, 50)}</a></div>
-		},
+		}.into_any(),
 		serde_json::Value::Object(_) => {
 			let uid = object.id().unwrap_or_default().to_string();
 			let uri = Uri::web(U::Actor, &uid);
@@ -45,11 +45,11 @@ pub fn ActorBanner(object: crate::Object) -> impl IntoView {
 					</tr>
 					</table>
 				</div>
-			}
+			}.into_any()
 		},
 		_ => view! {
 			<div><b>invalid actor</b></div>
-		}
+		}.into_any()
 	}
 }
 
@@ -78,7 +78,7 @@ pub fn FollowRequestButtons(activity_id: String, actor_id: String) -> impl IntoV
 				on:click=move |_| {
 					let activity_id = _activity_id.clone();
 					let actor_id = _from_actor.clone();
-					spawn_local(async move {
+					leptos::task::spawn_local(async move {
 						send_follow_response(
 							apb::ActivityType::Accept(apb::AcceptType::Accept),
 							activity_id,
@@ -93,7 +93,7 @@ pub fn FollowRequestButtons(activity_id: String, actor_id: String) -> impl IntoV
 				on:click=move |_| {
 					let activity_id = activity_id.clone();
 					let actor_id = from_actor.clone();
-					spawn_local(async move {
+					leptos::task::spawn_local(async move {
 						send_follow_response(
 							apb::ActivityType::Reject(apb::RejectType::Reject),
 							activity_id,

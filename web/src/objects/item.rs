@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use leptos::*;
+use leptos::{either::Either, prelude::*};
 use crate::{prelude::*, URL_SENSITIVE};
 
 use apb::{ActivityMut, Base, Collection, CollectionMut, Object, ObjectMut, Shortcuts};
@@ -38,8 +38,9 @@ pub fn Object(object: crate::Object, #[prop(default = true)] controls: bool) -> 
 		.map(|x| {
 			// TODO this isn't guaranteed to work every time...
 			let name = x.split('/').last().unwrap_or_default().to_string();
+			let uri = Uri::web(U::Actor, &x);
 			view! {
-				<a class="clean dim" href={Uri::web(U::Actor, &x)}>
+				<a class="clean dim" href={uri}>
 					<span class="border-button ml-s" title={x}>
 						<code class="color mr-s">&</code>
 						<small class="mr-s">
@@ -90,7 +91,7 @@ pub fn Object(object: crate::Object, #[prop(default = true)] controls: bool) -> 
 				Ok(apb::LinkType::Hashtag) => {
 					let name = apb::Link::name(link.as_ref()).unwrap_or_default().replace('#', "");
 					let href = Uri::web(U::Hashtag, &name);
-					Some(view! {
+					Some(Either::Left(view! {
 						<a class="clean dim" href={href}>
 							<span class="border-button ml-s" >
 								<code class="color mr-s">#</code>
@@ -99,7 +100,7 @@ pub fn Object(object: crate::Object, #[prop(default = true)] controls: bool) -> 
 								</small>
 							</span>
 						</a>" "
-					})
+					}))
 				},
 				Ok(apb::LinkType::Mention) => {
 					let uid = apb::Link::href(link.as_ref()).unwrap_or_default();
@@ -113,23 +114,24 @@ pub fn Object(object: crate::Object, #[prop(default = true)] controls: bool) -> 
 						)
 					};
 					let href = Uri::web(U::Actor, &uid);
-					Some(view! {
+					let title = format!("@{username}@{domain}");
+					Some(Either::Right(view! {
 						<a class="clean dim" href={href}>
-							<span class="border-button ml-s" title={format!("@{username}@{domain}")} >
+							<span class="border-button ml-s" title={title} >
 								<code class="color mr-s">@</code>
 								<small class="mr-s">
 									{username}
 								</small>
 							</span>
 						</a>" "
-					})
+					}))
 				},
 				_ => None,
 			}
 		}).collect_view();
 
 	let post_image = object.image().inner().and_then(|x| x.url().id()).ok().map(|x| {
-		let (expand, set_expand) = create_signal(false);
+		let (expand, set_expand) = signal(false);
 		view! {
 			<img
 				class="flex-pic box cursor"
@@ -158,7 +160,7 @@ pub fn Object(object: crate::Object, #[prop(default = true)] controls: bool) -> 
 				{post_inner}
 				{quote_block}
 			</article>
-		}.into_view(),
+		}.into_any(),
 		// lemmy with Page, peertube with Video
 		Ok(apb::ObjectType::Document(t)) => view! {
 			<article class="float-container ml-1 mr-1" >
@@ -171,7 +173,7 @@ pub fn Object(object: crate::Object, #[prop(default = true)] controls: bool) -> 
 					{quote_block}
 				</div>
 			</article>
-		}.into_view(),
+		}.into_any(),
 		// wordpress, ... ?
 		Ok(apb::ObjectType::Article) => view! {
 			<article>
@@ -180,15 +182,15 @@ pub fn Object(object: crate::Object, #[prop(default = true)] controls: bool) -> 
 				{post_inner}
 				{quote_block}
 			</article>
-		}.into_view(),
+		}.into_any(),
 		// everything else
 		Ok(t) => view! {
 			<h3>{t.as_ref().to_string()}</h3>
 			{post_inner}
 			{quote_block}
-		}.into_view(),
+		}.into_any(),
 		// object without type?
-		Err(_) => view! { <code>missing object type</code> }.into_view(),
+		Err(_) => view! { <code>missing object type</code> }.into_any(),
 	};
 	view! {
 		<table class="align w-100 ml-s mr-s">
@@ -198,7 +200,7 @@ pub fn Object(object: crate::Object, #[prop(default = true)] controls: bool) -> 
 					{object.in_reply_to().id().ok().map(|reply| view! {
 							<small><i><a class="clean" href={Uri::web(U::Object, &reply)} title={reply}>reply</a></i></small> 
 					})}
-					<PrivacyMarker privacy=privacy to=&to cc=&cc />
+					<PrivacyMarker privacy=privacy to=to cc=cc />
 					<a class="clean hover ml-s" href={Uri::web(U::Object, &object.id().unwrap_or_default())}>
 						<DateTime t=object.published().ok() />
 					</a>
@@ -228,7 +230,7 @@ pub fn Object(object: crate::Object, #[prop(default = true)] controls: bool) -> 
 pub fn Summary(summary: Option<String>, children: Children) -> impl IntoView {
 	let config = use_context::<Signal<crate::Config>>().expect("missing config context");
 	match summary.filter(|x| !x.is_empty()) {
-		None => children().into_view(),
+		None => children().into_any(),
 		Some(summary) => view! {
 			<details class="pa-s" prop:open=move || !config.get().collapse_content_warnings>
 				<summary>
@@ -236,7 +238,7 @@ pub fn Summary(summary: Option<String>, children: Children) -> impl IntoView {
 				</summary>
 				{children()}
 			</details>
-		}.into_view(),
+		}.into_any(),
 	}
 }
 
@@ -249,8 +251,8 @@ pub fn LikeButton(
 	#[prop(optional)]
 	private: bool,
 ) -> impl IntoView {
-	let (count, set_count) = create_signal(n);
-	let (clicked, set_clicked) = create_signal(!liked);
+	let (count, set_count) = signal(n);
+	let (clicked, set_clicked) = signal(!liked);
 	let auth = use_context::<Auth>().expect("missing auth context");
 	let privacy = use_context::<PrivacyControl>().expect("missing privacy context");
 	view! {
@@ -274,7 +276,7 @@ pub fn LikeButton(
 					.set_to(apb::Node::links(to))
 					.set_cc(apb::Node::links(cc));
 				let target = target.clone();
-				spawn_local(async move {
+				leptos::task::spawn_local(async move {
 					match Http::post(&auth.outbox(), &payload, auth).await {
 						Ok(()) => {
 							set_clicked.set(false);
@@ -327,8 +329,8 @@ pub fn ReplyButton(n: i32, target: String) -> impl IntoView {
 
 #[component]
 pub fn RepostButton(n: i32, target: String, author: String) -> impl IntoView {
-	let (count, set_count) = create_signal(n);
-	let (clicked, set_clicked) = create_signal(true);
+	let (count, set_count) = signal(n);
+	let (clicked, set_clicked) = signal(true);
 	let auth = use_context::<Auth>().expect("missing auth context");
 	let privacy = use_context::<PrivacyControl>().expect("missing privacy context");
 	view! {
@@ -348,7 +350,7 @@ pub fn RepostButton(n: i32, target: String, author: String) -> impl IntoView {
 					.set_object(apb::Node::link(target.clone()))
 					.set_to(apb::Node::links(to))
 					.set_cc(apb::Node::links(cc));
-				spawn_local(async move {
+				leptos::task::spawn_local(async move {
 					match Http::post(&auth.outbox(), &payload, auth).await {
 						Ok(()) => set_count.set(count.get() + 1),
 						Err(e) => tracing::error!("failed sending like: {e}"),

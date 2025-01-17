@@ -1,4 +1,4 @@
-use leptos::*;
+use leptos::prelude::*;
 use crate::prelude::*;
 
 #[component]
@@ -8,8 +8,8 @@ pub fn LoginBox(
 ) -> impl IntoView {
 	let auth = use_context::<Auth>().expect("missing auth context");
 	let config = use_context::<Signal<crate::Config>>().expect("missing config context");
-	let username_ref: NodeRef<html::Input> = create_node_ref();
-	let password_ref: NodeRef<html::Input> = create_node_ref();
+	let username_ref: NodeRef<leptos::html::Input> = NodeRef::new();
+	let password_ref: NodeRef<leptos::html::Input> = NodeRef::new();
 	let feeds = use_context::<Feeds>().expect("missing feeds context");
 	view! {
 		<div>
@@ -25,10 +25,10 @@ pub fn LoginBox(
 			<div class:hidden=move || auth.present() >
 				<form on:submit=move|ev| {
 					ev.prevent_default();
-					logging::log!("logging in...");
+					tracing::info!("logging in...");
 					let email = username_ref.get().map(|x| x.value()).unwrap_or("".into());
 					let password = password_ref.get().map(|x| x.value()).unwrap_or("".into());
-					spawn_local(async move {
+					leptos::task::spawn_local(async move {
 						let Ok(res) = reqwest::Client::new()
 							.post(format!("{URL_BASE}/auth"))
 							.json(&LoginForm { email, password })
@@ -39,7 +39,7 @@ pub fn LoginBox(
 							.json::<AuthResponse>()
 							.await
 						else { if let Some(rf) = password_ref.get() { rf.set_value("") }; return };
-						logging::log!("logged in until {}", auth_response.expires);
+						tracing::info!("logged in until {}", auth_response.expires);
 						// update our username and token cookies
 						let username = auth_response.user.split('/').last().unwrap_or_default().to_string();
 						userid_tx.set(Some(auth_response.user));

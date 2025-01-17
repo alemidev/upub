@@ -1,5 +1,5 @@
 use apb::{ActivityMut, DocumentMut, Object, ObjectMut};
-use leptos::*;
+use leptos::prelude::*;
 use crate::{prelude::*, DEFAULT_COLOR};
 
 #[component]
@@ -15,10 +15,10 @@ pub fn ConfigPage(setter: WriteSignal<crate::Config>) -> impl IntoView {
 	set_color_rgb.set(parse_hex(&previous_color));
 	set_color.set(previous_color);
 
-	let display_name_ref: NodeRef<html::Input> = create_node_ref();
-	let summary_ref: NodeRef<html::Textarea> = create_node_ref();
-	let avatar_url_ref: NodeRef<html::Input> = create_node_ref();
-	let banner_url_ref: NodeRef<html::Input> = create_node_ref();
+	let display_name_ref: NodeRef<leptos::html::Input> = NodeRef::new();
+	let summary_ref: NodeRef<leptos::html::Textarea> = NodeRef::new();
+	let avatar_url_ref: NodeRef<leptos::html::Input> = NodeRef::new();
+	let banner_url_ref: NodeRef<leptos::html::Input> = NodeRef::new();
 
 	let myself = cache::OBJECTS.get(&auth.userid.get_untracked().unwrap_or_default());
 	let (curr_display_name, curr_summary, curr_icon, curr_banner) = match myself.as_ref() {
@@ -187,7 +187,7 @@ pub fn ConfigPage(setter: WriteSignal<crate::Config>) -> impl IntoView {
 									.set_published(Some(chrono::Utc::now()))
 							));
 
-						spawn_local(async move {
+						leptos::task::spawn_local(async move {
 							if let Err(e) = Http::post(&format!("{id}/outbox"), &payload, auth).await {
 								tracing::error!("could not send update activity: {e}");
 							}

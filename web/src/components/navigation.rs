@@ -1,4 +1,4 @@
-use leptos::*;
+use leptos::prelude::*;
 use crate::prelude::*;
 
 #[component]
@@ -20,7 +20,7 @@ pub fn Breadcrumb(
 #[component]
 pub fn Navigator(notifications: ReadSignal<u64>) -> impl IntoView {
 	let auth = use_context::<Auth>().expect("missing auth context");
-	let (query, set_query) = create_signal("".to_string());
+	let (query, set_query) = signal("".to_string());
 	view! {
 		<form action={move|| format!("/web/search?q={}", query.get())}>
 			<table class="align">

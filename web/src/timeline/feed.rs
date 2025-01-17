@@ -1,5 +1,5 @@
-use leptos::*;
-use leptos_router::use_params;
+use leptos::{either::Either, prelude::*};
+use leptos_router::hooks::use_params;
 use crate::prelude::*;
 use super::Timeline;
 
@@ -12,7 +12,7 @@ pub fn Feed(
 	let auth = use_context::<Auth>().expect("missing auth context");
 	let config = use_context::<Signal<crate::Config>>().expect("missing config context");
 	if let Some(auto_scroll) = use_context::<Signal<bool>>() {
-		let _ = leptos::watch(
+		let _ = Effect::watch(
 			move || auto_scroll.get(),
 			move |at_end, _, _| if *at_end { tl.spawn_more(auth, config) },
 			true,
@@ -26,13 +26,13 @@ pub fn Feed(
 				let:id
 			>
 				{match cache::OBJECTS.get(&id) {
-					Some(i) => view! {
+					Some(i) => Either::Left(view! {
 						<Item item=i sep=true always=ignore_filters />
-					}.into_view(),
-					None => view! {
+					}),
+					None => Either::Right(view! {
 						<p><code>{id}</code>" "[<a href={uri}>go</a>]</p>
 						<hr />
-					}.into_view(),
+					}),
 				}}
 			</For>
 		</div>
@@ -43,7 +43,7 @@ pub fn Feed(
 #[component]
 pub fn HashtagFeed(tl: Timeline) -> impl IntoView {
 	let params = use_params::<IdParam>();
-	create_effect(move |_| {
+	Effect::new(move |_| {
 		let current_tag = tl.next.get_untracked()
 			.split('/')
 			.last()

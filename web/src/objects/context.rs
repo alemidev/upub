@@ -1,6 +1,6 @@
 use apb::Object;
-use leptos::*;
-use leptos_router::*;
+use leptos::prelude::*;
+use leptos_router::hooks::use_params;
 use crate::prelude::*;
 
 
@@ -17,7 +17,7 @@ pub fn ObjectContext() -> impl IntoView {
 			.and_then(|x| x.context().id().ok())
 			.unwrap_or_default()
 	);
-	create_effect(move |_| {
+	Effect::new(move |_| {
 		let tl_url = format!("{}/context/page", Uri::api(U::Object, &context_id.get(), false));
 		if !feeds.context.next.get_untracked().starts_with(&tl_url) {
 			feeds.context.reset(Some(tl_url));

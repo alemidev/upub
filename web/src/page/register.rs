@@ -1,4 +1,4 @@
-use leptos::*;
+use leptos::prelude::*;
 use reqwest::Method;
 use crate::prelude::*;
 
@@ -28,13 +28,13 @@ pub struct RegisterForm {
 #[component]
 pub fn RegisterPage() -> impl IntoView {
 	let auth = use_context::<Auth>().expect("missing auth context");
-	let username_ref: NodeRef<html::Input> = create_node_ref();
-	let password_ref: NodeRef<html::Input> = create_node_ref();
-	let display_name_ref: NodeRef<html::Input> = create_node_ref();
-	let summary_ref: NodeRef<html::Input> = create_node_ref();
-	let avatar_url_ref: NodeRef<html::Input> = create_node_ref();
-	let banner_url_ref: NodeRef<html::Input> = create_node_ref();
-	let (error, set_error) = create_signal(None);
+	let username_ref: NodeRef<leptos::html::Input> = NodeRef::new();
+	let password_ref: NodeRef<leptos::html::Input> = NodeRef::new();
+	let display_name_ref: NodeRef<leptos::html::Input> = NodeRef::new();
+	let summary_ref: NodeRef<leptos::html::Input> = NodeRef::new();
+	let avatar_url_ref: NodeRef<leptos::html::Input> = NodeRef::new();
+	let banner_url_ref: NodeRef<leptos::html::Input> = NodeRef::new();
+	let (error, set_error) = signal(None);
 	view! {
 		<div class="two-col">
 			<div class="border ma-2 pa-1">
@@ -49,26 +49,20 @@ pub fn RegisterPage() -> impl IntoView {
 					let banner_url = get_ref!(banner_url_ref);
 
 					if email.is_none() || password.is_none() {
-						set_error.set(Some(
-							view! { <blockquote>no credentials provided</blockquote> }
-						));
+						set_error.set(Some("no credentials provided".to_string()));
 						return;
 					}
 
-					spawn_local(async move {
+					leptos::task::spawn_local(async move {
 						let payload = RegisterForm {
 							username: email.unwrap_or_default(),
 							password: password.unwrap_or_default(),
 							display_name, summary, avatar_url, banner_url
 						};
 						match Http::request(Method::PUT, &format!("{URL_BASE}/auth"), Some(&payload), auth).await {
-							Err(e) => set_error.set(Some(
-								view! { <blockquote>{e.to_string()}</blockquote> }
-							)),
+							Err(e) => set_error.set(Some(e.to_string())),
 							Ok(res) => match res.error_for_status() {
-								Err(e) => set_error.set(Some(
-									view! { <blockquote>{e.to_string()}</blockquote> }
-								)),
+								Err(e) => set_error.set(Some(e.to_string())),
 								Ok(_) => {
 									reset_ref!(username_ref);
 									reset_ref!(password_ref);
@@ -76,9 +70,7 @@ pub fn RegisterPage() -> impl IntoView {
 									reset_ref!(summary_ref);
 									reset_ref!(avatar_url_ref);
 									reset_ref!(banner_url_ref);
-									set_error.set(Some(
-										view! { <blockquote>registration successful! your user may need to be approved by an administrator before you can login</blockquote> }
-									));
+									set_error.set(Some("registration successful! your user may need to be approved by an administrator before you can login".to_string()));
 								},
 							},
 						}
@@ -123,7 +115,7 @@ pub fn RegisterPage() -> impl IntoView {
 					<input class="w-100" type="submit" value="register" />
 				</form>
 			</div>
-			<p>{error}</p>
+			<p>{error.get().map(|msg| view! { <blockquote>{msg}</blockquote> })}</p>
 		</div>
 	}
 }

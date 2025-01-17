@@ -1,4 +1,4 @@
-use leptos::*;
+use leptos::prelude::*;
 use crate::prelude::*;
 
 use apb::{Activity, ActivityMut, Base, Object};
@@ -36,7 +36,7 @@ pub fn ActivityLine(activity: crate::Object, children: Children) -> impl IntoVie
 							{kind.as_ref().to_string()}
 						</a>
 						{activity_url}
-						<PrivacyMarker privacy=privacy to=&to cc=&cc />
+						<PrivacyMarker privacy=privacy to=to cc=cc />
 					</code>
 				</td>
 			</tr>
@@ -62,7 +62,7 @@ pub fn Item(
 		match item.object_type().unwrap_or(apb::ObjectType::Object) {
 			// special case for placeholder activities
 			apb::ObjectType::Note | apb::ObjectType::Document(_) =>
-				Some(view! { <Object object=item.clone() />{sep.clone()} }.into_view()),
+				Some(view! { <Object object=item.clone() />{sep.clone()} }.into_any()),
 			// everything else
 			apb::ObjectType::Activity(t) => {
 				let object_id = item.object().id().unwrap_or_default();
@@ -70,7 +70,7 @@ pub fn Item(
 					apb::ActivityType::Create | apb::ActivityType::Announce => 
 						cache::OBJECTS.get(&object_id).map(|obj| {
 							view! { <Object object=obj /> }
-						}.into_view()),
+						}.into_any()),
 					apb::ActivityType::Follow =>
 						cache::OBJECTS.get(&object_id).map(|obj| {
 							view! {
@@ -79,11 +79,11 @@ pub fn Item(
 									<FollowRequestButtons activity_id=id.clone() actor_id=object_id />
 								</div>
 							}
-						}.into_view()),
+						}.into_any()),
 					_ => None,
 				};
 				if !seen {
-					let (not_seen, not_seen_tx) = create_signal(!seen);
+					let (not_seen, not_seen_tx) = signal(!seen);
 					let id = id.clone();
 					Some(view! {
 						<div class:notification=not_seen>
@@ -97,7 +97,7 @@ pub fn Item(
 							{object}
 						</div>
 						{sep.clone()}
-					}.into_view())
+					}.into_any())
 				} else {
 					Some(view! {
 						<div>
@@ -105,11 +105,11 @@ pub fn Item(
 							{object}
 						</div>
 						{sep.clone()}
-					}.into_view())
+					}.into_any())
 				}
 			},
 			// should never happen
-			t => Some(view! { <p><code>type not implemented : {t.as_ref().to_string()}</code></p> }.into_view()),
+			t => Some(view! { <p><code>type not implemented : {t.as_ref().to_string()}</code></p> }.into_any()),
 		}
 	}
 }
@@ -128,7 +128,7 @@ fn AckBtn(id: String, tx: WriteSignal<bool>) -> impl IntoView {
 					.set_activity_type(Some(apb::ActivityType::View))
 					.set_object(apb::Node::link(id.clone()));
 				let id = id.clone();
-				spawn_local(async move {
+				leptos::task::spawn_local(async move {
 					if let Err(e) = Http::post(&auth.outbox(), &payload, auth).await {
 						tracing::error!("failed marking notification as seen: {e}");
 					} else {

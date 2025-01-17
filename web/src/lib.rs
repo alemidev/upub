@@ -146,7 +146,7 @@ impl DashmapCache<String> {
 	pub fn resolve(&self, user: &str, domain: &str) -> Option<String> {
 		if let Some(x) = self.resource(user, domain) { return Some(x); }
 		let (_self, user, domain) = (self.clone(), user.to_string(), domain.to_string());
-		leptos::spawn_local(async move { _self.fetch(&user, &domain).await });
+		leptos::task::spawn_local(async move { _self.fetch(&user, &domain).await });
 		None
 	}
 
@@ -186,7 +186,7 @@ impl DashmapCache<String> {
 	}
 }
 
-use leptos_router::Params; // TODO can i remove this?
+use leptos_router::params::Params; // TODO can i remove this?
 #[derive(Clone, leptos::Params, PartialEq)]
 pub struct IdParam {
 	id: Option<String>,
@@ -201,7 +201,7 @@ impl Http {
 		data: Option<&T>,
 		auth: Auth,
 	) -> reqwest::Result<reqwest::Response> {
-		use leptos::SignalGetUntracked;
+		use leptos::prelude::GetUntracked;
 
 		let mut req = reqwest::Client::new()
 			.request(method, url);

@@ -1,6 +1,6 @@
 use apb::{ActivityMut, Base, BaseMut, Object, ObjectMut};
 
-use leptos::*;
+use leptos::prelude::*;
 use crate::prelude::*;
 
 #[derive(Debug, Clone, Copy, Default)]
@@ -135,7 +135,7 @@ pub fn PrivacySelector(setter: WriteSignal<Privacy>) -> impl IntoView {
 						let p = privacy.get();
 						let (to, cc) = p.address(&auth.username());
 						view! {
-							<PrivacyMarker privacy=p to=&to cc=&cc big=true />
+							<PrivacyMarker privacy=p to=to cc=cc big=true />
 						}
 					}}
 				</td>
@@ -149,16 +149,16 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 	let auth = use_context::<Auth>().expect("missing auth context");
 	let privacy = use_context::<PrivacyControl>().expect("missing privacy context");
 	let reply = use_context::<ReplyControls>().expect("missing reply controls");
-	let (posting, set_posting) = create_signal(false);
-	let (error, set_error) = create_signal(None);
-	let (content, set_content) = create_signal("".to_string());
-	let summary_ref: NodeRef<html::Input> = create_node_ref();
+	let (posting, set_posting) = signal(false);
+	let (error, set_error) = signal(None);
+	let (content, set_content) = signal("".to_string());
+	let summary_ref: NodeRef<leptos::html::Input> = NodeRef::new();
 
 	// TODO is this too abusive with resources? im even checking if TLD exists...
 	// TODO debounce this!
-	let mentions = create_local_resource(
-		move || content.get(),
-		move |c| async move {
+	let mentions = LocalResource::new(
+		move || async move {
+			let c  = content.get();
 			let mut out = Vec::new();
 			for word in c.split(' ') {
 				if word.starts_with('@') {
@@ -203,13 +203,14 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 			{move ||
 				mentions.get()
 					.map(|x| x
+						.take()
 						.into_iter()
 						.map(|u| match u {
-							TextMatch::Mention { href, .. } => match cache::OBJECTS.get(&href) {
-								Some(u) => view! { <span class="nowrap"><span class="emoji mr-s ml-s">"📨"</span><ActorStrip object=u /></span> }.into_view(),
-								None => view! { <span class="nowrap"><span class="emoji mr-s ml-s">"📨"</span><a href={Uri::web(U::Actor, &href)}>{href}</a></span> }.into_view(),
+							TextMatch::Mention { href: ref h, .. } => match cache::OBJECTS.get(h) {
+								Some(u) => view! { <span class="nowrap"><span class="emoji mr-s ml-s">"📨"</span><ActorStrip object=u /></span> }.into_any(),
+								None => view! { <span class="nowrap"><span class="emoji mr-s ml-s">"📨"</span><a href={Uri::web(U::Actor, h)}>{h.to_string()}</a></span> }.into_any(),
 							},
-							TextMatch::Hashtag { name } => view! { <code class="color">#{name}</code> }.into_view(),
+							TextMatch::Hashtag { name } => view! { <code class="color">#{name}</code> }.into_any(),
 						})
 						.collect_view()
 					)
@@ -233,10 +234,11 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 					return;
 				}
 				set_posting.set(true);
-				spawn_local(async move {
+				leptos::task::spawn_local(async move {
 					let summary = get_if_some(summary_ref);
 					let (mut to_vec, cc_vec) = privacy.get().address(&auth.username());
 					let mut mention_tags : Vec<serde_json::Value> = mentions.get()
+						.map(|x| x.take())
 						.unwrap_or_default()
 						.into_iter()
 						.map(|x| match x {
@@ -272,7 +274,7 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 							}
 						}
 					}
-					for mention in mentions.get().as_deref().unwrap_or(&[]) {
+					for mention in mentions.get().map(|x| x.take()).as_deref().unwrap_or(&[]) {
 						if let TextMatch::Mention { href, .. } = mention {
 							to_vec.push(href.clone());
 						}
@@ -306,21 +308,21 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 #[component]
 pub fn AdvancedPostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 	let auth = use_context::<Auth>().expect("missing auth context");
-	let (posting, set_posting) = create_signal(false);
-	let (error, set_error) = create_signal(None);
-	let (value, set_value) = create_signal("Like".to_string());
-	let (embedded, set_embedded) = create_signal(false);
-	let sensitive_ref: NodeRef<html::Input> = create_node_ref();
-	let summary_ref: NodeRef<html::Input> = create_node_ref();
-	let content_ref: NodeRef<html::Textarea> = create_node_ref();
-	let context_ref: NodeRef<html::Input> = create_node_ref();
-	let name_ref: NodeRef<html::Input> = create_node_ref();
-	let reply_ref: NodeRef<html::Input> = create_node_ref();
-	let to_ref: NodeRef<html::Input> = create_node_ref();
-	let object_id_ref: NodeRef<html::Input> = create_node_ref();
-	let bto_ref: NodeRef<html::Input> = create_node_ref();
-	let cc_ref: NodeRef<html::Input> = create_node_ref();
-	let bcc_ref: NodeRef<html::Input> = create_node_ref();
+	let (posting, set_posting) = signal(false);
+	let (error, set_error) = signal(None);
+	let (value, set_value) = signal("Like".to_string());
+	let (embedded, set_embedded) = signal(false);
+	let sensitive_ref: NodeRef<leptos::html::Input> = NodeRef::new();
+	let summary_ref: NodeRef<leptos::html::Input> = NodeRef::new();
+	let content_ref: NodeRef<leptos::html::Textarea> = NodeRef::new();
+	let context_ref: NodeRef<leptos::html::Input> = NodeRef::new();
+	let name_ref: NodeRef<leptos::html::Input> = NodeRef::new();
+	let reply_ref: NodeRef<leptos::html::Input> = NodeRef::new();
+	let to_ref: NodeRef<leptos::html::Input> = NodeRef::new();
+	let object_id_ref: NodeRef<leptos::html::Input> = NodeRef::new();
+	let bto_ref: NodeRef<leptos::html::Input> = NodeRef::new();
+	let cc_ref: NodeRef<leptos::html::Input> = NodeRef::new();
+	let bcc_ref: NodeRef<leptos::html::Input> = NodeRef::new();
 	view! {
 		<div>
 							 
@@ -385,7 +387,7 @@ pub fn AdvancedPostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 
 				<button class="w-100" type="button" prop:disabled=posting on:click=move |_| {
 					set_posting.set(true);
-					spawn_local(async move {
+					leptos::task::spawn_local(async move {
 						let content = content_ref.get().filter(|x| !x.value().is_empty()).map(|x| x.value());
 						let summary = get_if_some(summary_ref);
 						let name = get_if_some(name_ref);
@@ -435,13 +437,13 @@ pub fn AdvancedPostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 	}
 }
 
-fn get_if_some(node: NodeRef<html::Input>) -> Option<String> {
+fn get_if_some(node: NodeRef<leptos::html::Input>) -> Option<String> {
 	node.get()
 		.map(|x| x.value())
 		.filter(|x| !x.is_empty())
 }
 
-fn get_vec_if_some(node: NodeRef<html::Input>) -> Vec<String> {
+fn get_vec_if_some(node: NodeRef<leptos::html::Input>) -> Vec<String> {
 	node.get()
 		.map(|x| x.value())
 		.filter(|x| !x.is_empty())
@@ -453,7 +455,7 @@ fn get_vec_if_some(node: NodeRef<html::Input>) -> Vec<String> {
 }
 
 #[allow(unused)]
-fn get_checked(node: NodeRef<html::Input>) -> bool {
+fn get_checked(node: NodeRef<leptos::html::Input>) -> bool {
 	node.get()
 		.map(|x| x.checked())
 		.unwrap_or_default()

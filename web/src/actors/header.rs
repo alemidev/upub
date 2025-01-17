@@ -1,5 +1,5 @@
-use leptos::*;
-use leptos_router::*;
+use leptos::{either::Either, prelude::*, reactive::signal::signal};
+use leptos_router::{components::Outlet, hooks::use_params};
 use crate::{app::FeedRoute, prelude::*, FALLBACK_IMAGE_URL};
 
 use apb::{ActivityMut, Actor, Base, Object, ObjectMut, Shortcuts};
@@ -11,8 +11,9 @@ pub fn ActorHeader() -> impl IntoView {
 	let config = use_context::<Signal<crate::Config>>().expect("missing config context");
 	let relevant_tl = use_context::<Signal<Option<Timeline>>>().expect("missing relevant timeline context");
 	let matched_route = use_context::<ReadSignal<crate::app::FeedRoute>>().expect("missing route context");
-	let (loading, set_loading) = create_signal(false);
-	let actor = create_local_resource(
+	let (loading, set_loading) = signal(false);
+	// TODO this was a LocalResource!
+	let actor = Resource::new(
 		move || params.get().ok().and_then(|x| x.id).unwrap_or_default(),
 		move |id| {
 			async move {
@@ -27,8 +28,8 @@ pub fn ActorHeader() -> impl IntoView {
 		}
 	);
 	move || match actor.get() {
-		None => view! { <Loader /> }.into_view(),
-		Some(None) => view! { <code class="center cw color">"could not resolve user"</code> }.into_view(),
+		None => view! { <Loader /> }.into_any(),
+		Some(None) => view! { <code class="center cw color">"could not resolve user"</code> }.into_any(),
 		Some(Some(actor)) => {
 			let avatar_url = actor.icon_url().unwrap_or(FALLBACK_IMAGE_URL.into());
 			let background_url = actor.image_url().unwrap_or(FALLBACK_IMAGE_URL.into());
@@ -104,7 +105,7 @@ pub fn ActorHeader() -> impl IntoView {
 											<small class="mr-s">following</small>
 										</span>
 									</a>
-								}.into_view()
+								}.into_any()
 							} else {
 								view! {
 									<a class="clean dim" href="#follow" on:click=move |_| send_follow_request(_uid.clone())>
@@ -113,7 +114,7 @@ pub fn ActorHeader() -> impl IntoView {
 											<small class="mr-s">follow</small>
 										</span>
 									</a>
-								}.into_view()
+								}.into_any()
 							}}
 						</div>
 					</div>
@@ -137,14 +138,14 @@ pub fn ActorHeader() -> impl IntoView {
 					</span>
 					{move || if auth.present() {
 						if loading.get() {
-							Some(view! {
+							Some(Either::Left(view! {
 								<span style="float: right">
 									<span class="hidden-on-mobile">"fetching "</span><span class="dots"></span>
 								</span>
-							})
+							}))
 						} else {
 							let uid = __uid.clone();
-							Some(view! {
+							Some(Either::Right(view! {
 								<span style="float: right">
 									<a
 										class="clean"
@@ -154,7 +155,7 @@ pub fn ActorHeader() -> impl IntoView {
 										<span class="emoji ml-2">"↺ "</span><span class="hidden-on-mobile">"fetch"</span>
 									</a>
 								</span>
-							})
+							}))
 						}
 					} else {
 						None
@@ -162,7 +163,7 @@ pub fn ActorHeader() -> impl IntoView {
 				</p>
 				<hr class="color" />
 				<Outlet />
-			}.into_view()
+			}.into_any()
 		},
 	}
 }
@@ -180,7 +181,7 @@ async fn send_follow_response(kind: apb::ActivityType, target: String, to: Strin
 
 fn send_follow_request(target: String) {
 	let auth = use_context::<Auth>().expect("missing auth context");
-	spawn_local(async move {
+	leptos::task::spawn_local(async move {
 		let payload = apb::new() 
 			.set_activity_type(Some(apb::ActivityType::Follow))
 			.set_object(apb::Node::link(target.clone()))
@@ -193,7 +194,7 @@ fn send_follow_request(target: String) {
 
 fn unfollow(target: String) {
 	let auth = use_context::<Auth>().expect("missing auth context");
-	spawn_local(async move {
+	leptos::task::spawn_local(async move {
 		let payload = apb::new() 
 			.set_activity_type(Some(apb::ActivityType::Undo))
 			.set_to(apb::Node::links(vec![target.clone()]))
@@ -208,11 +209,11 @@ fn unfollow(target: String) {
 	})
 }
 
-fn fetch_cb(ev: ev::MouseEvent, set_loading: WriteSignal<bool>, uid: String, auth: Auth, config: Signal<crate::Config>, relevant_tl: Signal<Option<Timeline>>) {
+fn fetch_cb(ev: leptos::ev::MouseEvent, set_loading: WriteSignal<bool>, uid: String, auth: Auth, config: Signal<crate::Config>, relevant_tl: Signal<Option<Timeline>>) {
 	let api = Uri::api(U::Actor, &uid, false);
 	ev.prevent_default();
 	set_loading.set(true);
-	spawn_local(async move {
+	leptos::task::spawn_local(async move {
 		if let Err(e) = Http::fetch::<serde_json::Value>(&format!("{api}/outbox?fetch=true"), auth).await {
 			tracing::error!("failed fetching outbox for {uid}: {e}");
 		}

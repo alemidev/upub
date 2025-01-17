@@ -1,4 +1,4 @@
-use leptos::*;
+use leptos::prelude::*;
 use crate::{prelude::*, URL_SENSITIVE};
 
 use base64::prelude::*;
@@ -16,7 +16,7 @@ pub fn Attachment(
 	sensitive: bool
 ) -> impl IntoView {
 	let config = use_context::<Signal<crate::Config>>().expect("missing config context");
-	let (expand, set_expand) = create_signal(false);
+	let (expand, set_expand) = signal(false);
 	let href = object.url().id().ok().unwrap_or_default();
 	let uncloaked = uncloak(href.split('/').last()).unwrap_or_default();
 	let media_type = object.media_type()
@@ -53,7 +53,7 @@ pub fn Attachment(
 						on:click=move |_| set_expand.set(!expand.get())
 					/>
 				</p>
-			}.into_view(),
+			}.into_any(),
 
 		"video" => {
 			let _href = href.clone();
@@ -67,7 +67,7 @@ pub fn Attachment(
 						<a href={href.clone()} target="_blank">video clip</a>
 					</video>
 				</div>
-			}.into_view()
+			}.into_any()
 		},
 
 		"audio" =>
@@ -78,7 +78,7 @@ pub fn Attachment(
 						<a href={href} target="_blank">audio clip</a>
 					</audio>
 				</p>
-			}.into_view(),
+			}.into_any(),
 
 		"link" | "text" =>
 			view! {
@@ -87,7 +87,7 @@ pub fn Attachment(
 						{Uri::pretty(&uncloaked, 50)}
 					</a>
 				</p>
-			}.into_view(),
+			}.into_any(),
 
 		_ => 
 			view! {
@@ -99,7 +99,7 @@ pub fn Attachment(
 						view! { <p class="tiny-text"><small>{name.to_string()}</small></p> }
 					})}
 				</p>
-			}.into_view(),
+			}.into_any(),
 	}
 }
 

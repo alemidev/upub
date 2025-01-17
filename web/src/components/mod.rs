@@ -10,7 +10,7 @@ pub use user::*;
 mod post;
 pub use post::*;
 
-use leptos::*;
+use leptos::prelude::*;
 
 #[component]
 pub fn DateTime(t: Option<chrono::DateTime<chrono::Utc>>) -> impl IntoView {
@@ -38,10 +38,10 @@ pub fn DateTime(t: Option<chrono::DateTime<chrono::Utc>>) -> impl IntoView {
 }
 
 #[component]
-pub fn PrivacyMarker<'a>(
+pub fn PrivacyMarker(
 	privacy: Privacy,
-	#[prop(optional)] to: &'a [String],
-	#[prop(optional)] cc: &'a [String],
+	#[prop(optional)] to: Vec<String>,
+	#[prop(optional)] cc: Vec<String>,
 	#[prop(optional)] big: bool,
 ) -> impl IntoView {
 	let to_txt = if to.is_empty() { String::new() } else { format!("to: {}", to.join(", ")) };

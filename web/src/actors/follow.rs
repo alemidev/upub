@@ -1,5 +1,5 @@
-use leptos::*;
-use leptos_router::*;
+use leptos::prelude::*;
+use leptos_router::hooks::use_params;
 use crate::prelude::*;
 
 use std::sync::Arc;
@@ -11,7 +11,8 @@ pub fn FollowList(outgoing: bool) -> impl IntoView {
 	let follow___ = if outgoing { "following" } else { "followers" };
 	let params = use_params::<IdParam>();
 	let auth = use_context::<Auth>().expect("missing auth context");
-	let resource = create_local_resource(
+	// TODO this was a LocalResource!
+	let resource = Resource::new(
 		move || params.get().ok().and_then(|x| x.id).unwrap_or_default(),
 		move |id| {
 			async move {
@@ -28,10 +29,10 @@ pub fn FollowList(outgoing: bool) -> impl IntoView {
 	view! {
 		<div class="tl ml-3-r mr-3-r pl-1 pt-1 pb-1">
 			{move || match resource.get() {
-				None => view! { <Loader /> }.into_view(),
+				None => view! { <Loader /> }.into_any(),
 				Some(Err(e)) => {
 					tracing::error!("could not load followers: {e}");
-					view! { <code class="cw center color">{follow___}" unavailable"</code> }.into_view()
+					view! { <code class="cw center color">{follow___}" unavailable"</code> }.into_any()
 				},
 				Some(Ok(mut arr)) => {
 					// TODO cheap fix: server gives us follows from oldest to newest
@@ -50,10 +51,10 @@ pub fn FollowList(outgoing: bool) -> impl IntoView {
 								view! {
 									<ActorBanner object=actor />
 									<hr />
-								}.into_view()
+								}.into_any()
 							}
 						/ >
-					}.into_view()
+					}.into_any()
 				},
 			}}
 		</div>

@@ -10,5 +10,5 @@ fn main() {
 		.without_time()
 		.init();
 
-	leptos::mount_to_body(upub_web::App);
+	leptos::mount::mount_to_body(upub_web::App);
 }

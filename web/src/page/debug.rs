@@ -1,41 +1,44 @@
-use leptos::*;
-use leptos_router::*;
+use leptos::prelude::*;
+use leptos_router::{hooks::{use_navigate, use_query_map}, NavigateOptions};
 use crate::prelude::*;
 
 #[component]
 pub fn DebugPage() -> impl IntoView {
 	let query_params = use_query_map();
 	let auth = use_context::<Auth>().expect("missing auth context");
-	let (cached, set_cached) = create_signal(false);
-	let (error, set_error) = create_signal(false);
-	let (plain, set_plain) = create_signal(false);
-	let (text, set_text) = create_signal("".to_string());
+	let (cached, set_cached) = signal(false);
+	let (error, set_error) = signal(false);
+	let (plain, set_plain) = signal(false);
+	let (text, set_text) = signal("".to_string());
 	let navigate = use_navigate();
 
 	let cached_query = move || (
-		query_params.with(|params| params.get("q").cloned().unwrap_or_default()),
+		query_params.with(|params| params.get("q").unwrap_or_default()),
 		cached.get(),
 	);
-	let object = create_local_resource(
-		cached_query,
-		move |(query, cached)| async move {
-			set_text.set(query.clone());
-			set_error.set(false);
-			if query.is_empty() { return serde_json::Value::Null };
-			if cached {
-				match cache::OBJECTS.get(&query) {
-					Some(x) => (*x).clone(),
-					None => {
-						set_error.set(true);
-						serde_json::Value::Null
-					},
+
+	let object = LocalResource::new(
+		move || {
+			let (query, cached) = cached_query();
+			async move {
+				set_text.set(query.clone());
+				set_error.set(false);
+				if query.is_empty() { return serde_json::Value::Null };
+				if cached {
+					match cache::OBJECTS.get(&query) {
+						Some(x) => (*x).clone(),
+						None => {
+							set_error.set(true);
+							serde_json::Value::Null
+						},
+					}
+				} else {
+					debug_fetch(&format!("{URL_BASE}/fetch?uri={query}"), auth, set_error).await
 				}
-			} else {
-				debug_fetch(&format!("{URL_BASE}/fetch?uri={query}"), auth, set_error).await
 			}
 		}
 	);
-	let loading = object.loading();
+	let loading = true; // object.loading(); // TODO no longer exists?
 
 
 	view! {
@@ -69,12 +72,12 @@ pub fn DebugPage() -> impl IntoView {
 				</form>
 			</div>
 			<pre class="ma-1" class:striped=error>
-				{move || match object.get() {
-					None => view! { <p class="center"><span class="dots"></span></p> }.into_view(),
+				{move || match object.get().map(|x| x.take()) {
+					None => view! { <p class="center"><span class="dots"></span></p> }.into_any(),
 					Some(o) => if plain.get() {
-						serde_json::to_string_pretty(&o).unwrap_or_else(|e| e.to_string()).into_view()
+						serde_json::to_string_pretty(&o).unwrap_or_else(|e| e.to_string()).into_any()
 					} else {
-						view! { <DocumentNode obj=o /> }.into_view()
+						view! { <DocumentNode obj=o /> }.into_any()
 					},
 				}}
 			</pre>
@@ -91,7 +94,7 @@ pub fn DebugPage() -> impl IntoView {
 						onclick={move ||
 							format!(
 								"javascript:navigator.clipboard.writeText(`{}`)",
-								object.get().map(|x| serde_json::to_string(&x).unwrap_or_default()).unwrap_or_default()
+								object.get().map(|x| serde_json::to_string(&x.take()).unwrap_or_default()).unwrap_or_default()
 							)
 					} >copy</a>
 			</p>
@@ -132,14 +135,15 @@ fn DocumentNode(obj: serde_json::Value, #[prop(optional)] depth: usize) -> impl 
 	let prefix = "  ".repeat(depth);
 	let newline_replace = format!("\n{prefix}  ");
 	match obj {
-		serde_json::Value::Null => view! { <b>null</b> }.into_view(),
-		serde_json::Value::Bool(x) => view! { <b>{x}</b> }.into_view(),
-		serde_json::Value::Number(n) => view! { <b>{n.to_string()}</b> }.into_view(),
+		serde_json::Value::Null => view! { <b>null</b> }.into_any(),
+		serde_json::Value::Bool(x) => view! { <b>{x}</b> }.into_any(),
+		serde_json::Value::Number(n) => view! { <b>{n.to_string()}</b> }.into_any(),
 		serde_json::Value::String(s) => {
 			if s.starts_with("https://") || s.starts_with("http://") {
+				let href = format!("/web/explore?q={s}");
 				view! {
-					<a href=format!("/web/explore?q={s}")>{s}</a>
-				}.into_view()
+					<a href=href>{s}</a>
+				}.into_any()
 			} else {
 				let pretty_string = s
 					.replace("<br/>", "<br/>\n")
@@ -147,11 +151,11 @@ fn DocumentNode(obj: serde_json::Value, #[prop(optional)] depth: usize) -> impl 
 					.replace('\n', &newline_replace);
 				view! {
 					"\""<span class="json-text"><i>{pretty_string}</i></span>"\""
-				}.into_view()
+				}.into_any()
 			}
 		},
 		serde_json::Value::Array(arr) => if arr.is_empty() { 
-			view! { "[]" }.into_view()
+			view! { "[]" }.into_any()
 		} else {
 			view! {
 				"[\n"
@@ -159,10 +163,10 @@ fn DocumentNode(obj: serde_json::Value, #[prop(optional)] depth: usize) -> impl 
 						{prefix.clone()}"  "<DocumentNode obj=x depth=depth+1 />"\n"
 					}).collect_view()}
 				{prefix.clone()}"]"
-			}.into_view()
+			}.into_any()
 		},
 		serde_json::Value::Object(map) => if map.is_empty() {
-			view! { "{}" }.into_view()
+			view! { "{}" }.into_any()
 		} else {
 			view! {
 				"{\n"
@@ -174,7 +178,7 @@ fn DocumentNode(obj: serde_json::Value, #[prop(optional)] depth: usize) -> impl 
 							.collect_view()
 					}
 				{prefix.clone()}"}"
-			}.into_view()
+			}.into_any()
 		},
 	}
 }
