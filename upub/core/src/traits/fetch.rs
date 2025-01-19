@@ -436,6 +436,20 @@ impl Fetcher for crate::Context {
 		// crawl replies collection
 		let replies = object.replies().resolve(self).await?;
 
+		// first flat out items in bare collection
+		for obj in replies.items().flat() {
+			if let Err(e) = self.fetch_object(&obj.id()?, tx).await {
+				tracing::warn!("error fetching reply: {e}");
+			}
+		}
+
+		for obj in replies.ordered_items().flat() {
+			if let Err(e) = self.fetch_object(&obj.id()?, tx).await {
+				tracing::warn!("error fetching reply: {e}");
+			}
+		}
+
+		// then try cycling thru pagination
 		let mut page;
 		let mut next = replies.first();
 
