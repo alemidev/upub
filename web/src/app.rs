@@ -363,9 +363,7 @@ where
 {
 	let (load, set_load) = signal(false);
 	let (_x, y) = use_window_scroll();
-	let html_node_ref = NodeRef::new();
-	leptos::html::html().node_ref(html_node_ref);
-	let UseElementSizeReturn { height: screen_height, .. } = use_element_size(html_node_ref);
+	let UseElementSizeReturn { height: screen_height, .. } = use_element_size(document().document_element().expect("could not get DOM"));
 	let UseElementSizeReturn { height, .. } = use_element_size(el);
 	let scroll_state = Signal::derive(move || (y.get(), height.get(), screen_height.get()));
 	let scroll_state_throttled = signal_debounced(
@@ -375,7 +373,7 @@ where
 	let _ = Effect::watch(
 		move || scroll_state_throttled.get(),
 		move |(y, height, screen), _, _| {
-			let before = load.get();
+			let before = load.get_untracked();
 			let after = *height <= *screen || y + screen + offset >= *height;
 			let force = *y + screen >= *height;
 			if force || after != before || *height < *screen {
