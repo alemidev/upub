@@ -56,7 +56,7 @@ fn FeedRecursive(tl: Timeline, root: String) -> impl IntoView {
 				None
 			}
 		})
-		.collect::<Vec<(String, crate::Object)>>();
+		.collect::<Vec<(String, crate::Doc)>>();
 
 	view! {
 		<For

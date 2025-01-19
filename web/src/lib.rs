@@ -26,12 +26,12 @@ pub const VERSION: &str = env!("CARGO_PKG_VERSION");
 use std::{ops::Deref, sync::Arc};
 use uriproxy::UriClass;
 
-pub type Object = Arc<serde_json::Value>;
+pub type Doc = Arc<serde_json::Value>;
 
 pub mod cache {
 	use super::DashmapCache;
 	lazy_static::lazy_static! {
-		pub static ref OBJECTS: DashmapCache<super::Object> = DashmapCache::default();
+		pub static ref OBJECTS: DashmapCache<super::Doc> = DashmapCache::default();
 		pub static ref WEBFINGER: DashmapCache<String> = DashmapCache::default();
 	}
 }
@@ -92,8 +92,8 @@ impl<T> Cache for DashmapCache<T> {
 	}
 }
 
-impl DashmapCache<Object> {
-	pub async fn resolve(&self, key: &str, kind: UriClass, auth: Auth) -> Option<Object> {
+impl DashmapCache<Doc> {
+	pub async fn resolve(&self, key: &str, kind: UriClass, auth: Auth) -> Option<Doc> {
 		let full_key = Uri::full(kind, key);
 		tracing::info!("resolving {key} -> {full_key}");
 		match self.get(&full_key) {
@@ -120,8 +120,8 @@ impl DashmapCache<Object> {
 
 // TODO would be cool unifying a bit the fetch code too
 
-impl DashmapCache<Object> {
-	pub async fn fetch(&self, k: &str, kind: UriClass) -> reqwest::Result<Object> {
+impl DashmapCache<Doc> {
+	pub async fn fetch(&self, k: &str, kind: UriClass) -> reqwest::Result<Doc> {
 		match self.get(k) {
 			Some(x) => Ok(x),
 			None => {

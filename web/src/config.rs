@@ -47,7 +47,7 @@ pub struct FiltersConfig {
 }
 
 impl FiltersConfig {
-	pub fn visible(&self, item: &crate::Object) -> bool {
+	pub fn visible(&self, item: &crate::Doc) -> bool {
 		use apb::{Object, Activity};
 		use crate::Cache;
 

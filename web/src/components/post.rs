@@ -23,7 +23,7 @@ impl ReplyControls {
 	}
 }
 
-fn post_author(post_id: &str) -> Option<crate::Object> {
+fn post_author(post_id: &str) -> Option<crate::Doc> {
 	let usr = cache::OBJECTS.get(post_id)?.attributed_to().id().ok()?;
 	cache::OBJECTS.get(&usr)
 }

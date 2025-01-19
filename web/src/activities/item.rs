@@ -5,7 +5,7 @@ use apb::{Activity, ActivityMut, Base, Object};
 
 
 #[component]
-pub fn ActivityLine(activity: crate::Object, children: Children) -> impl IntoView {
+pub fn ActivityLine(activity: crate::Doc, children: Children) -> impl IntoView {
 	let object_id = activity.object().id().unwrap_or_default();
 	let to = activity.to().all_ids();
 	let cc = activity.cc().all_ids();
@@ -46,7 +46,7 @@ pub fn ActivityLine(activity: crate::Object, children: Children) -> impl IntoVie
 
 #[component]
 pub fn Item(
-	item: crate::Object,
+	item: crate::Doc,
 	#[prop(optional)] sep: bool,
 	#[prop(optional)] slim: bool,
 	#[prop(optional)] always: bool,

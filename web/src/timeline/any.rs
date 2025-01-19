@@ -12,7 +12,7 @@ pub fn Loadable<El, V>(
 	children: Children,
 ) -> impl IntoView
 where
-	El: Send + Sync + Fn(crate::Object) -> V + 'static,
+	El: Send + Sync + Fn(crate::Doc) -> V + 'static,
 	V: IntoView + 'static
 {
 
