@@ -9,7 +9,7 @@ pub fn Loadable<El, V>(
 	base: String,
 	element: El,
 	#[prop(optional)] convert: Option<UriClass>,
-	children: Children,
+	#[prop(default = true)] prefetch: bool,
 ) -> impl IntoView
 where
 	El: Send + Sync + Fn(crate::Doc) -> V + 'static,
@@ -20,14 +20,19 @@ where
 	let auth = use_context::<crate::Auth>().expect("missing auth context");
 	let fun = std::sync::Arc::new(element);
 
-	let (next, set_next) = signal(Some(base));
-	let (items, set_items) = signal(vec![]);
+	let (older_next, older_items) = crate::cache::TIMELINES.get(&base)
+		.unwrap_or((Some(base.clone()), vec![]));
+
+	let (next, set_next) = signal(older_next);
+	let (items, set_items) = signal(older_items);
 	let (loading, set_loading) = signal(false);
 
-	// TODO having it just once would be a great optimization, but then it becomes FnMut...
+	// TODO having the seen set just once would be a great optimization, but then it becomes FnMut...
 	// let mut seen: std::collections::HashSet<String> = std::collections::HashSet::default();
 
-	let load = move || leptos::task::spawn_local(async move {
+	// TODO it's a bit wasteful to clone the key for every load() invocation, but capturing it in the
+	//      closure opens an industrial pipeline of worms so this will do for now
+	let load = move |key: String| leptos::task::spawn_local(async move {
 		// this concurrency is rather fearful honestly
 		if loading.get_untracked() { return }
 		set_loading.set(true);
@@ -46,15 +51,14 @@ where
 			},
 		};
 
-		if let Ok(n) = object.next().id() {
-			set_next.set(Some(n));
-		} else {
-			set_next.set(None);
-		}
+		let new_next = object.next().id().ok();
+
+		set_next.set(new_next.clone());
 
 		let mut previous = items.get_untracked();
 		let mut seen: std::collections::HashSet<String> = std::collections::HashSet::from_iter(previous.clone());
-		let mut sub_tasks = Vec::new();
+		let mut sub_tasks_a = Vec::new();
+		let mut sub_tasks_b = Vec::new();
 
 		for node in object.ordered_items().flat() {
 			let Ok(id) = node.id() else {
@@ -62,13 +66,21 @@ where
 				continue
 			};
 
+			let _id = id.clone();
 			match node.into_inner() {
 				Ok(doc) => { // we got it embedded, store it right away!
-					crate::cache::OBJECTS.store(&id, std::sync::Arc::new(doc));
+					crate::cache::OBJECTS.include(std::sync::Arc::new(doc));
+					if prefetch {
+						sub_tasks_a.push(crate::cache::OBJECTS.prefetch(_id, class, auth));
+					}
 				},
 				Err(_) => { // we just got the id, try dereferencing it right now
 					let id = id.clone();
-					sub_tasks.push(async move { crate::cache::OBJECTS.resolve(&id, class, auth).await });
+					if prefetch {
+						sub_tasks_a.push(crate::cache::OBJECTS.prefetch(_id, class, auth));
+					} else {
+						sub_tasks_b.push(async move { crate::cache::OBJECTS.resolve(&_id, class, auth).await });
+					};
 				},
 			};
 
@@ -76,46 +88,57 @@ where
 				seen.insert(id.clone());
 				previous.push(id);
 			}
+
 		}
 
-		futures::future::join_all(sub_tasks).await;
+		futures::future::join_all(sub_tasks_a).await;
+		futures::future::join_all(sub_tasks_b).await;
+
+		crate::cache::TIMELINES.store(&key, (new_next, previous.clone()));
 
 		set_items.set(previous);
 		set_loading.set(false);
 	});
 
+	let _base = base.clone();
 	if let Some(auto_scroll) = use_context::<Signal<bool>>() {
 		let _ = Effect::watch(
 			move || auto_scroll.get(),
-			move |at_end, _, _| if *at_end { load() },
+			move |at_end, _, _| if *at_end { load(_base.clone()) },
 			false,
 		);
 	}
 
-	load();
+	load(base.clone());
 
+	let _base = base.clone();
 	view! {
-		{children()}
-		<For
-			each=move || items.get()
-			key=|id: &String| id.clone()
-			children=move |id: String| crate::cache::OBJECTS.get(&id).map(|obj| fun(obj))
-		/>
+		<div>
+			<For
+				each=move || items.get()
+				key=|id: &String| id.clone()
+				children=move |id: String| match crate::cache::OBJECTS.get(&id) {
+					Some(obj) => Either::Left(fun(obj)),
+					None => Either::Right(view!{ <p>{id}</p> }),
+				}
+			/>
 
-		{move || if loading.get() {
-			Some(Either::Left(view! {
-				<div class="center mt-1 mb-1" >
-					<button type="button" disabled>"loading "<span class="dots"></span></button>
-				</div>
-			}))
-		} else if next.get().is_some() {
-			Some(Either::Right(view! {
-				<div class="center mt-1 mb-1" >
-					<button type="button" on:click=move |_| load() >"load more"</button>
-				</div>
-			}))
-		} else {
-			None
-		}}
+			{move || if loading.get() {
+				Some(Either::Left(view! {
+					<div class="center mt-1 mb-1" >
+						<button type="button" disabled>"loading "<span class="dots"></span></button>
+					</div>
+				}))
+			} else if next.with(|x| x.is_some()) {
+				let _base = base.clone();
+				Some(Either::Right(view! {
+					<div class="center mt-1 mb-1" >
+						<button type="button" on:click=move |_| load(_base.clone()) >"load more"</button>
+					</div>
+				}))
+			} else {
+				None
+			}}
+		</div>
 	}
 }

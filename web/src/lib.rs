@@ -9,6 +9,7 @@ mod activities;
 mod objects;
 mod timeline;
 
+use apb::{Activity, Object, Actor, Base};
 pub use app::App;
 pub use config::Config;
 pub use auth::Auth;
@@ -33,6 +34,7 @@ pub mod cache {
 	lazy_static::lazy_static! {
 		pub static ref OBJECTS: DashmapCache<super::Doc> = DashmapCache::default();
 		pub static ref WEBFINGER: DashmapCache<String> = DashmapCache::default();
+		pub static ref TIMELINES: DashmapCache<(Option<String>, Vec<String>)> = DashmapCache::default();
 	}
 }
 
@@ -99,22 +101,65 @@ impl DashmapCache<Doc> {
 		match self.get(&full_key) {
 			Some(x) => Some(x),
 			None => {
-				let obj = match Http::fetch::<serde_json::Value>(&Uri::api(kind, key, true), auth).await {
-					Ok(obj) => Arc::new(obj),
+				match Http::fetch::<serde_json::Value>(&Uri::api(kind, key, true), auth).await {
+					Ok(obj) => {
+						let obj = Arc::new(obj);
+						self.include(obj.clone());
+						Some(obj)
+					},
 					Err(e) => {
 						tracing::error!("failed loading object from backend: {e}");
-						return None;
+						None
 					},
-				};
-				cache::OBJECTS.store(&full_key, obj.clone());
-				if matches!(kind, UriClass::Actor) {
-					if let Ok(url) = apb::Object::url(&*obj).id() { // TODO name clashes
-						cache::WEBFINGER.store(&url, full_key);
-					}
 				}
-				Some(obj)
 			},
 		}
+	}
+
+	pub fn include(&self, obj: Doc) {
+		let Ok(id) = obj.id() else { return };
+		tracing::debug!("storing object {id}: {obj}");
+		cache::OBJECTS.store(&id, obj.clone());
+		if obj.actor_type().is_ok() {
+			if let Ok(url) = obj.url().id() {
+				cache::WEBFINGER.store(&url, id);
+			}
+		}
+		if let Ok(sub_obj) = obj.object().into_inner() {
+			if let Ok(sub_id) = sub_obj.id() {
+				tracing::debug!("storing sub object {sub_id}: {sub_obj}");
+				cache::OBJECTS.store(&sub_id, Arc::new(sub_obj));
+			}
+		}
+	}
+
+	pub async fn prefetch(&self, key: String, kind: UriClass, auth: Auth) -> Option<Doc> {
+		let doc = self.resolve(&key, kind, auth).await?;
+		let mut sub_tasks = Vec::new();
+
+		match kind {
+			UriClass::Activity => {
+				if let Ok(actor) = doc.actor().id() {
+					sub_tasks.push(self.prefetch(actor, UriClass::Actor, auth));
+				}
+				if let Ok(object) = doc.object().id() {
+					sub_tasks.push(self.prefetch(object, UriClass::Object, auth));
+				}
+			},
+			UriClass::Object => {
+				if let Ok(actor) = doc.attributed_to().id() {
+					sub_tasks.push(self.prefetch(actor, UriClass::Actor, auth));
+				}
+				if let Ok(quote) = doc.quote_url().id() {
+					sub_tasks.push(self.prefetch(quote, UriClass::Object, auth));
+				}
+			},
+			_ => {},
+		}
+
+		futures::future::join_all(sub_tasks).await;
+
+		Some(doc)
 	}
 }
 

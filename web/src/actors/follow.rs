@@ -13,9 +13,7 @@ pub fn FollowList(outgoing: bool) -> impl IntoView {
 				base=format!("{URL_BASE}/actors/{id}/{follow___}/page")
 				convert=U::Actor
 				element=|obj| view! { <ActorBanner object=obj /><hr/> }
-			>
-				""
-			</Loadable>
+			/>
 		</div>
 	}
 }
