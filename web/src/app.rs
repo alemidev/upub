@@ -1,7 +1,7 @@
 use apb::Collection;
 use leptos::{either::Either, prelude::*};
 use leptos_router::{components::*, hooks::use_location, path};
-use crate::prelude::*;
+use crate::{groups::GroupList, prelude::*};
 
 use leptos_use::{
 	signal_debounced, storage::use_local_storage, use_cookie_with_options, use_element_size, use_window_scroll,
@@ -186,6 +186,7 @@ pub fn App() -> impl IntoView {
 										<Route path=path!("local") view=move || view! { <Feed tl=feeds.server /> } />
 										<Route path=path!("notifications") view=move || view! { <Feed tl=feeds.notifications ignore_filters=true /> } />
 										<Route path=path!("tags/:id") view=move || view! { <HashtagFeed tl=feeds.tag /> } />
+										<Route path=path!("groups") view=GroupList />
 
 										<Route path=path!("about") view=AboutPage />
 										<Route path=path!("config") view=move || view! { <ConfigPage setter=set_config /> } />

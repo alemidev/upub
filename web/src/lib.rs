@@ -3,6 +3,7 @@ mod app;
 mod components;
 mod page;
 mod config;
+mod groups;
 
 mod actors;
 mod activities;
