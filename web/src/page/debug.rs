@@ -9,6 +9,7 @@ pub fn DebugPage() -> impl IntoView {
 	let (cached, set_cached) = signal(false);
 	let (error, set_error) = signal(false);
 	let (plain, set_plain) = signal(false);
+	let (loading, set_loading) = signal(false);
 	let (text, set_text) = signal("".to_string());
 	let navigate = use_navigate();
 
@@ -21,10 +22,14 @@ pub fn DebugPage() -> impl IntoView {
 		move || {
 			let (query, cached) = cached_query();
 			async move {
+				set_loading.set(true);
 				set_text.set(query.clone());
 				set_error.set(false);
-				if query.is_empty() { return serde_json::Value::Null };
-				if cached {
+				if query.is_empty() {
+					set_loading.set(false);
+					return serde_json::Value::Null
+				};
+				let res = if cached {
 					match cache::OBJECTS.get(&query) {
 						Some(x) => (*x).clone(),
 						None => {
@@ -34,12 +39,12 @@ pub fn DebugPage() -> impl IntoView {
 					}
 				} else {
 					debug_fetch(&format!("{URL_BASE}/fetch?uri={query}"), auth, set_error).await
-				}
+				};
+				set_loading.set(false);
+				res
 			}
 		}
 	);
-	let loading = true; // object.loading(); // TODO no longer exists?
-
 
 	view! {
 		<div>
