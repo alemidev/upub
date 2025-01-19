@@ -2,6 +2,7 @@ pub mod actor;
 pub mod inbox;
 pub mod outbox;
 pub mod object;
+pub mod groups;
 pub mod activity;
 pub mod application;
 pub mod auth;
@@ -59,6 +60,8 @@ impl ActivityPubRouter for Router<upub::Context> {
 			.route("/actors/{id}/following/page", get(ap::actor::following::page::<true>))
 			.route("/actors/{id}/likes", get(ap::actor::likes::get))
 			.route("/actors/{id}/likes/page", get(ap::actor::likes::page))
+			.route("/groups", get(ap::groups::get))
+			.route("/groups/page", get(ap::groups::page))
 			// .route("/actors/{id}/audience", get(ap::actor::audience::get))
 			// .route("/actors/{id}/audience/page", get(ap::actor::audience::page))
 			// activities
