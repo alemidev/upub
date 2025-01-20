@@ -26,13 +26,13 @@ serde_json = "1.0"
 serde_default = "0.2"
 serde-inline-default = "0.2"
 toml = "0.8"
-uriproxy = { path = "../../utils/uriproxy" }
-httpsign = { path = "../../utils/httpsign/" }
-mdhtml = { path = "../../utils/mdhtml/" }
+uriproxy = { path = "../utils/uriproxy" }
+httpsign = { path = "../utils/httpsign/" }
+mdhtml = { path = "../utils/mdhtml/" }
 jrd = "0.1"
 tracing = "0.1"
 sea-orm = { version = "1.1", features = ["macros"] }
 reqwest = { version = "0.12", features = ["json"] }
-apb = { path = "../../apb", features = ["unstructured", "orm", "did-core", "activitypub-miscellaneous-terms", "activitypub-fe", "activitypub-counters", "litepub", "ostatus", "toot"] }
+apb = { path = "../apb", features = ["unstructured", "orm", "did-core", "activitypub-miscellaneous-terms", "activitypub-fe", "activitypub-counters", "litepub", "ostatus", "toot"] }
 # nodeinfo = "0.0.2" # the version on crates.io doesn't re-export necessary types to build the struct!!!
 nodeinfo = { git = "https://codeberg.org/thefederationinfo/nodeinfo-rs", rev = "e865094804" }

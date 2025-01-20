@@ -11,7 +11,7 @@ readme = "README.md"
 [lib]
 
 [dependencies]
-apb = { path = "../../apb/" }
+apb = { path = "../apb/" }
 upub = { path = "../core" }
 tracing = "0.1"
 serde_json = "1.0"

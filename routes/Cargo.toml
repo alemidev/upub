@@ -24,16 +24,27 @@ tokio = "1.43"
 reqwest = { version = "0.12", features = ["json"] }
 axum = { version = "0.8", features = ["multipart"] }
 tower-http = { version = "0.6", features = ["cors", "trace"] }
-httpsign = { path = "../../utils/httpsign/", features = ["axum"] }
-apb = { path = "../../apb", features = ["unstructured", "orm", "activitypub-fe", "activitypub-counters", "litepub", "ostatus", "toot", "jsonld"] }
+httpsign = { path = "../utils/httpsign/", features = ["axum"] }
+apb = { path = "../apb", features = ["unstructured", "orm", "activitypub-fe", "activitypub-counters", "litepub", "ostatus", "toot", "jsonld"] }
 sea-orm = "1.1"
 # nodeinfo = "0.0.2" # the version on crates.io doesn't re-export necessary types to build the struct!!!
 nodeinfo = { git = "https://codeberg.org/thefederationinfo/nodeinfo-rs", rev = "e865094804" }
 # mastodon
 mastodon-async-entities = { version = "1.1.0", optional = true }
 time = { version = "0.3", features = ["serde"], optional = true }
+# frontend
+leptos = { version = "0.7", optional = true }
+leptos_router = { version = "0.7", optional = true }
+leptos_axum = { version = "0.7", optional = true }
+leptos_meta = { version = "0.7", optional = true }
 
 [features]
-default = []
+default = ["activitypub", "web"]
+activitypub = []
 mastodon = ["dep:mastodon-async-entities"]
-web = []
+web = [
+	"dep:leptos",
+	"dep:leptos_router",
+	"dep:leptos_axum",
+	"dep:leptos_meta"
+]

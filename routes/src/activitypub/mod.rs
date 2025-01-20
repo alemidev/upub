@@ -12,11 +12,7 @@ pub mod well_known;
 
 use axum::{http::StatusCode, response::IntoResponse, routing::{get, patch, post, put}, Router};
 
-pub trait ActivityPubRouter {
-	fn ap_routes(self) -> Self;
-}
-
-impl ActivityPubRouter for Router<upub::Context> {
+impl super::ActivityPubRouter for Router<upub::Context> {
 	fn ap_routes(self) -> Self {
 		use crate::activitypub as ap; // TODO use self ?
 	

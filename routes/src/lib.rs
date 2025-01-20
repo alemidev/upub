@@ -6,28 +6,45 @@ pub use auth::{AuthIdentity, Identity};
 pub mod error;
 pub use error::{ApiError, ApiResult};
 
+pub mod builders;
+
+
+pub trait ActivityPubRouter {
+	fn ap_routes(self) -> Self where Self: Sized { self }
+}
+
+#[cfg(feature = "activitypub")]
 pub mod activitypub;
+
+#[cfg(not(feature = "activitypub"))]
+pub mod activitypub { impl super::ActivityPubRouter for axum::Router<upub::Context> {} }
+
+
+pub trait MastodonRouter {
+	fn mastodon_routes(self) -> Self where Self: Sized { self }
+}
 
 #[cfg(feature = "mastodon")]
 pub mod mastodon;
 
+#[cfg(not(feature = "mastodon"))]
+pub mod mastodon { impl super::MastodonRouter for axum::Router<upub::Context> {} }
+
+
+pub trait WebRouter {
+	fn web_routes(self) -> Self where Self: Sized { self }
+}
+
 #[cfg(feature = "web")]
 pub mod web;
 
-pub mod builders;
-
-#[cfg(not(feature = "mastodon"))]
-pub mod mastodon {
-	pub trait MastodonRouter {
-		fn mastodon_routes(self) -> Self where Self: Sized { self }
-	}
-	
-	impl MastodonRouter for axum::Router<upub::Context> {}
+#[cfg(not(feature = "web"))]
+pub mod web {
+	impl super::WebRouter for axum::Router<upub::Context> {}
 }
 
+
 pub async fn serve(ctx: upub::Context, bind: String, shutdown: impl ShutdownToken) -> Result<(), std::io::Error> {
-	use activitypub::ActivityPubRouter;
-	use mastodon::MastodonRouter;
 	use tower_http::{cors::CorsLayer, trace::TraceLayer};
 
 	let router = axum::Router::new()
@@ -46,6 +63,7 @@ pub async fn serve(ctx: upub::Context, bind: String, shutdown: impl ShutdownToke
 		)
 		.ap_routes()
 		.mastodon_routes() // no-op if mastodon feature is disabled
+		.web_routes() // no-op if web feature is disabled
 		.layer(CorsLayer::permissive())
 		.with_state(ctx);
 
@@ -58,6 +76,7 @@ pub async fn serve(ctx: upub::Context, bind: String, shutdown: impl ShutdownToke
 
 	Ok(())
 }
+
 
 pub trait ShutdownToken: Sync + Send + 'static {
 	//                TODO this is bs...

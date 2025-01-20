@@ -19,6 +19,6 @@ regex = "1.11"
 chrono = { version = "0.4", features = ["serde"] }
 tokio = { version = "1.43", features = ["time"] }
 reqwest = { version = "0.12", features = ["json"] }
-apb = { path = "../../apb", features = ["unstructured", "orm", "activitypub-fe", "activitypub-counters", "litepub", "ostatus", "toot"] }
-mdhtml = { path = "../../utils/mdhtml/" }
+apb = { path = "../apb", features = ["unstructured", "orm", "activitypub-fe", "activitypub-counters", "litepub", "ostatus", "toot"] }
+mdhtml = { path = "../utils/mdhtml/" }
 upub = { path = "../core/" }

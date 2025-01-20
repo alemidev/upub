@@ -1,4 +1,4 @@
-use apb::{target::Addressed, Activity, Base, Object};
+use apb::{target::Addressed, Activity, Actor, Base, Object};
 use sea_orm::{sea_query::Expr, ActiveModelTrait, ActiveValue::{NotSet, Set}, ColumnTrait, Condition, DatabaseTransaction, EntityTrait, QueryFilter, QuerySelect, SelectColumns};
 use crate::{ext::{AnyQuery, LoggableError}, model, traits::{fetch::Pull, Addresser, Cloaker, Fetcher, Normalizer}};
 
@@ -49,6 +49,8 @@ impl Processor for crate::Context {
 			apb::ActivityType::Undo => Ok(process_undo(self, activity, tx).await?),
 			apb::ActivityType::Delete => Ok(process_delete(self, activity, tx).await?),
 			apb::ActivityType::Update => Ok(process_update(self, activity, tx).await?),
+			apb::ActivityType::Flag => Ok(process_flag(self, activity, tx).await?),
+			apb::ActivityType::Move => Ok(process_move(self, activity, tx).await?),
 			_ => Err(ProcessorError::Unprocessable(activity.id()?.to_string())),
 		}
 	}
@@ -604,5 +606,31 @@ pub async fn process_announce(ctx: &crate::Context, activity: impl apb::Activity
 	}
 
 	tracing::debug!("{} shared {}", actor.id, announced_id);
+	Ok(())
+}
+
+pub async fn process_flag(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
+	let actor = ctx.fetch_user(&activity.actor().id()?, tx).await?;
+	let message = activity.content().ok();
+	let reports = activity.object().all_ids();
+	tracing::warn!("{} flagged {:?} ({message:?})", actor.id, reports);
+
+	// TODO store report
+
+	Ok(())
+}
+
+pub async fn process_move(ctx: &crate::Context, activity: impl apb::Activity, _tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
+	// can't use ctx.fetch_user because we may have an old cached version here
+	// TODO maybe store also-known-as? maybe allow us to mark users as "out of date"?
+	let old_actor_id = activity.actor().id()?;
+	let new_actor_id = activity.target().id()?;
+	let actor_document = ctx.pull(&old_actor_id).await?.actor()?;
+	if !actor_document.also_known_as().all_ids().contains(&new_actor_id) {
+		return Err(ProcessorError::Unauthorized);
+	}
+
+	// TODO move all follows
+
 	Ok(())
 }

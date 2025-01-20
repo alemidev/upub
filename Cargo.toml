@@ -1,11 +1,11 @@
 [workspace]
 members = [
 	"apb",
-	"upub/core",
-	"upub/cli",
-	"upub/migrations",
-	"upub/routes",
-	"upub/worker",
+	"core",
+	"cli",
+	"migrations",
+	"routes",
+	"worker",
 	"web",
 	"utils/httpsign",
 	"utils/mdhtml",
@@ -38,11 +38,11 @@ tokio = { version = "1.43", features = ["rt-multi-thread", "macros"] }
 sea-orm = { version = "1.1", features = ["sqlx-sqlite", "sqlx-postgres", "runtime-tokio-rustls"] }
 futures = "0.3"
 
-upub = { path = "upub/core" }
-upub-cli = { path = "upub/cli", optional = true }
-upub-migrations = { path = "upub/migrations", optional = true }
-upub-routes = { path = "upub/routes", optional = true }
-upub-worker = { path = "upub/worker", optional = true }
+upub = { path = "core" }
+upub-cli = { path = "cli", optional = true }
+upub-migrations = { path = "migrations", optional = true }
+upub-routes = { path = "routes", optional = true }
+upub-worker = { path = "worker", optional = true }
 
 [features]
 default = ["serve", "migrate", "cli", "worker"]
