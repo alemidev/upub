@@ -51,7 +51,7 @@ pub fn SearchPage() -> impl IntoView {
 	view! {
 
 		<blockquote class="mt-3 mb-3">
-			<details open>
+			<details class="cw" open>
 				<summary class="mb-2">
 					<code class="cw center color ml-s w-100">actor</code>
 				</summary>
@@ -66,7 +66,7 @@ pub fn SearchPage() -> impl IntoView {
 		</blockquote>
 
 		<blockquote class="mt-3 mb-3">
-			<details open>
+			<details class="cw" open>
 				<summary class="mb-2">
 					<code class="cw center color ml-s w-100">object</code>
 				</summary>
@@ -81,7 +81,7 @@ pub fn SearchPage() -> impl IntoView {
 		</blockquote>
 
 		<blockquote>
-			<details open>
+			<details class="cw" open>
 				<summary class="mb-2">
 					<code class="cw center color ml-s w-100">hashtags</code>
 				</summary>
@@ -95,7 +95,7 @@ pub fn SearchPage() -> impl IntoView {
 
 
 		<blockquote class="mt-3 mb-3">
-			<details open>
+			<details class="cw" open>
 				<summary class="mb-2">
 					<code class="cw center color ml-s w-100">full text</code>
 				</summary>

@@ -198,12 +198,14 @@ where
 			key=|(id, _obj)| id.clone()
 			children=move |(id, obj)|
 				view! {
-					<div class="context depth-r">
-						{element(obj)}
+					<details class="thread context depth-r" open>
+						<summary>
+							{element(obj)}
+						</summary>
 						<div class="depth-r">
 							<FeedRecursive items=items root=id element=element.clone() />
 						</div>
-					</div>
+					</details>
 				}
 		/ >
 	}.into_any()

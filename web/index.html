@@ -317,8 +317,17 @@
 			list-style: none;
 			cursor: pointer;
 		}
-		details>summary:hover {
+		details.cw>summary:hover {
 			font-weight: bold;
+		}
+		details.thread>summary {
+			background-color: var(--background-dim);
+		}
+		details.thread[open]>summary {
+			background-color: var(--background);
+		}
+		details.thread>summary:hover {
+			background-color: var(--background-dim);
 		}
 		code.cw {
 			display: block;
@@ -403,7 +412,7 @@
 		span.big-emoji {
 			font-size: 1.5em;
 		}
-		div.context {
+		details.context {
 			border-left: 1px solid var(--background-dim);
 			padding-left: 1px;
 		}

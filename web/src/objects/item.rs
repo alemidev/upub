@@ -232,7 +232,7 @@ pub fn Summary(summary: Option<String>, children: Children) -> impl IntoView {
 	match summary.filter(|x| !x.is_empty()) {
 		None => children().into_any(),
 		Some(summary) => view! {
-			<details class="pa-s" prop:open=move || !config.get().collapse_content_warnings>
+			<details class="cw pa-s" prop:open=move || !config.get().collapse_content_warnings>
 				<summary>
 					<code class="cw center color ml-s w-100 bb">{summary}</code>
 				</summary>
