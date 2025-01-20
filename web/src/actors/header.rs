@@ -8,8 +8,7 @@ use apb::{ActivityMut, Actor, Base, Object, ObjectMut, Shortcuts};
 pub fn ActorHeader() -> impl IntoView {
 	let params = use_params::<IdParam>();
 	let auth = use_context::<Auth>().expect("missing auth context");
-	let config = use_context::<Signal<crate::Config>>().expect("missing config context");
-	let relevant_tl = use_context::<Signal<Option<Timeline>>>().expect("missing relevant timeline context");
+	let refresh = use_context::<WriteSignal<()>>().expect("missing refresh context");
 	let matched_route = use_context::<ReadSignal<crate::app::FeedRoute>>().expect("missing route context");
 	let (loading, set_loading) = signal(false);
 	let actor = LocalResource::new(
@@ -19,7 +18,7 @@ pub fn ActorHeader() -> impl IntoView {
 				match cache::OBJECTS.get(&Uri::full(U::Actor, &id)) {
 					Some(x) => Some(x.clone()),
 					None => {
-						let user = cache::OBJECTS.resolve(&id, U::Actor, auth).await?;
+						let user = cache::OBJECTS.fetch(&id, U::Actor, auth).await?;
 						Some(user)
 					},
 				}
@@ -148,7 +147,7 @@ pub fn ActorHeader() -> impl IntoView {
 								<span style="float: right">
 									<a
 										class="clean"
-										on:click=move |ev| fetch_cb(ev, set_loading, uid.clone(), auth, config, relevant_tl)
+										on:click=move |ev| fetch_cb(ev, set_loading, uid.clone(), auth, refresh)
 										href="#"
 									>
 										<span class="emoji ml-2">"↺ "</span><span class="hidden-on-mobile">"fetch"</span>
@@ -208,7 +207,7 @@ fn unfollow(target: String) {
 	})
 }
 
-fn fetch_cb(ev: leptos::ev::MouseEvent, set_loading: WriteSignal<bool>, uid: String, auth: Auth, config: Signal<crate::Config>, relevant_tl: Signal<Option<Timeline>>) {
+fn fetch_cb(ev: leptos::ev::MouseEvent, set_loading: WriteSignal<bool>, uid: String, auth: Auth, refresh: WriteSignal<()>) {
 	let api = Uri::api(U::Actor, &uid, false);
 	ev.prevent_default();
 	set_loading.set(true);
@@ -217,6 +216,6 @@ fn fetch_cb(ev: leptos::ev::MouseEvent, set_loading: WriteSignal<bool>, uid: Str
 			tracing::error!("failed fetching outbox for {uid}: {e}");
 		}
 		set_loading.set(false);
-		relevant_tl.get().inspect(|x| x.refresh(auth, config));
+		refresh.set(());
 	});
 }

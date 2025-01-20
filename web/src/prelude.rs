@@ -3,7 +3,7 @@ pub use crate::{
 	Http, Uri,
 	IdParam,
 	Cache, cache, // TODO move Cache under cache
-	app::{Feeds, Loader},
+	app::Loader,
 	auth::Auth,
 	page::*,
 	components::*,
@@ -12,21 +12,13 @@ pub use crate::{
 		follow::FollowList,
 		posts::{ActorPosts, ActorLikes},
 	},
-	activities::{
-		item::Item,
-	},
+	activities::item::Item,
 	objects::{
 		view::ObjectView,
 		attachment::Attachment,
 		item::{Object, Summary, LikeButton, RepostButton, ReplyButton},
-		context::ObjectContext,
-		replies::{ObjectReplies, ObjectLikes},
 	},
-	timeline::{
-		Timeline,
-		feed::{Feed, HashtagFeed},
-		thread::Thread,
-	},
+	timeline::Loadable,
 };
 
 pub use uriproxy::UriClass as U;

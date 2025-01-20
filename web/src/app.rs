@@ -1,62 +1,12 @@
-use apb::Collection;
+use apb::{Collection, Object};
 use leptos::{either::Either, prelude::*};
-use leptos_router::{components::*, hooks::use_location, path};
-use crate::{groups::GroupList, prelude::*};
+use leptos_router::{components::*, hooks::{use_location, use_params}, path};
+use crate::prelude::*;
 
 use leptos_use::{
 	signal_debounced, storage::use_local_storage, use_cookie_with_options, use_element_size, use_window_scroll,
 	UseCookieOptions, UseElementSizeReturn
 };
-
-// TODO this is getting out of hand
-//      when we will add lists there will have to potentially be multiple timelines (one per list)
-//      per user, which doesn't scale with this model. we should either take the "go back to where
-//      you were" into our own hands (maybe with timeline "segments"? would also solve slow load,
-//      but infinite-scroll upwards too may be hard to do) or understand how it works (with page
-//      stacks?) and keep timelines local to views.
-#[derive(Clone, Copy)]
-pub struct Feeds {
-	pub home: Timeline,
-	pub global: Timeline,
-	pub notifications: Timeline,
-	// exploration feeds
-	pub user: Timeline,
-	pub user_likes: Timeline,
-	pub server: Timeline,
-	pub context: Timeline,
-	pub replies: Timeline,
-	pub object_likes: Timeline,
-	pub tag: Timeline,
-}
-
-impl Feeds {
-	pub fn new(username: &str) -> Self {
-		Feeds {
-			home: Timeline::new(format!("{URL_BASE}/actors/{username}/inbox/page")),
-			notifications: Timeline::new(format!("{URL_BASE}/actors/{username}/notifications/page")),
-			global: Timeline::new(format!("{URL_BASE}/inbox/page")),
-			user: Timeline::new(format!("{URL_BASE}/actors/{username}/outbox/page")),
-			user_likes: Timeline::new(format!("{URL_BASE}/actors/{username}/likes")),
-			server: Timeline::new(format!("{URL_BASE}/outbox/page")),
-			tag: Timeline::new(format!("{URL_BASE}/tags/upub/page")),
-			context: Timeline::new(format!("{URL_BASE}/outbox/page")), // TODO ehhh
-			replies: Timeline::new(format!("{URL_BASE}/outbox/page")), // TODO ehhh
-			object_likes: Timeline::new(format!("{URL_BASE}/outbox/page")), // TODO ehhh
-		}
-	}
-
-	pub fn reset(&self) {
-		self.home.reset(None);
-		self.notifications.reset(None);
-		self.global.reset(None);
-		self.user.reset(None);
-		self.user_likes.reset(None);
-		self.server.reset(None);
-		self.context.reset(None);
-		self.replies.reset(None);
-		self.tag.reset(None);
-	}
-}
 
 #[component]
 pub fn App() -> impl IntoView {
@@ -96,15 +46,8 @@ pub fn App() -> impl IntoView {
 		}
 	});
 
-	let username = auth.userid.get_untracked()
-		.map(|x| x.split('/').last().unwrap_or_default().to_string())
-		.unwrap_or_default();
-
-	let feeds = Feeds::new(&username);
-
 	provide_context(auth);
 	provide_context(config);
-	provide_context(feeds);
 	provide_context(privacy);
 
 	let reply_controls = ReplyControls::default();
@@ -178,20 +121,74 @@ pub fn App() -> impl IntoView {
 											if auth.present() {
 												view! { <Redirect path="home" /> }
 											} else {
-												view! { <Redirect path="global" /> }
+												view! { <Redirect path="local" /> }
 											}
 										/>
-										<Route path=path!("home") view=move || view! { <Feed tl=feeds.home /> } />
-										<Route path=path!("global") view=move || view! { <Feed tl=feeds.global /> } />
-										<Route path=path!("local") view=move || view! { <Feed tl=feeds.server /> } />
-										<Route path=path!("notifications") view=move || view! { <Feed tl=feeds.notifications ignore_filters=true /> } />
-										<Route path=path!("tags/:id") view=move || view! { <HashtagFeed tl=feeds.tag /> } />
-										<Route path=path!("groups") view=GroupList />
 
+										// main timelines
+										<Route path=path!("home") view=move || if auth.present() {
+											Either::Left(view! {
+												<Loadable
+													base=format!("{URL_BASE}/actors/{}/inbox/page", auth.username())
+													element=move |obj| view! { <Item item=obj sep=true /> }
+												/>
+											}) 
+										} else {
+											Either::Right(view! { <Unauthorized /> })
+										} />
+
+										<Route path=path!("global") view=move || view! {
+											<Loadable
+												base=format!("{URL_BASE}/inbox/page")
+												element=move |obj| view! { <Item item=obj sep=true /> }
+											/>
+										} />
+
+										<Route path=path!("local") view=move || view! {
+											<Loadable
+												base=format!("{URL_BASE}/outbox/page")
+												element=move |obj| view! { <Item item=obj sep=true /> }
+											/>
+										} />
+
+										<Route path=path!("notifications") view=move || if auth.present() {
+											Either::Left(view! {
+												<Loadable
+													base=format!("{URL_BASE}/actors/{}/notifications/page", auth.username())
+													element=move |obj| view! { <Item item=obj sep=true always=true /> }
+												/>
+											})
+										} else {
+											Either::Right(view! { <Unauthorized /> })
+										} />
+
+										<Route path=path!("tags/:id") view=move || {
+											let params = use_params::<IdParam>();
+											let tag = params.get().ok().and_then(|x| x.id).unwrap_or_default();
+											view! {
+												<Loadable
+													base=format!("{URL_BASE}/tag/{tag}/page", )
+													element=move |obj| view! { <Item item=obj sep=true always=true /> }
+												/>
+											}
+										} />
+
+										<Route path=path!("groups") view=move || view! {
+											<Loadable
+												base=format!("{URL_BASE}/groups/page")
+												convert=U::Actor
+												element=|obj| view! { <ActorBanner object=obj /><hr/> }
+											/>
+										} />
+
+										// static pages, configs and tools
 										<Route path=path!("about") view=AboutPage />
 										<Route path=path!("config") view=move || view! { <ConfigPage setter=set_config /> } />
 										<Route path=path!("explore") view=DebugPage />
+										<Route path=path!("search") view=SearchPage />
+										<Route path=path!("register") view=RegisterPage />
 
+										// actors
 										<ParentRoute path=path!("actors/:id") view=ActorHeader > // TODO can we avoid this?
 											<Route path=path!("") view=ActorPosts />
 											<Route path=path!("likes") view=ActorLikes />
@@ -199,18 +196,52 @@ pub fn App() -> impl IntoView {
 											<Route path=path!("followers") view=move || view! { <FollowList outgoing=false /> } />
 										</ParentRoute>
 
-
+										// objects
 										<ParentRoute path=path!("objects/:id") view=ObjectView >
-											<Route path=path!("") view=ObjectContext />
-											<Route path=path!("replies") view=ObjectReplies />
-											<Route path=path!("likes") view=ObjectLikes />
+											<Route path=path!("") view=move || {
+												let params = use_params::<IdParam>();
+												let id = params.get().ok().and_then(|x| x.id).unwrap_or_default();
+												let oid = Uri::full(U::Object, &id);
+												let context_id = crate::cache::OBJECTS.get(&oid)
+													.and_then(|obj| obj.context().id().ok())
+													.unwrap_or(oid.clone());
+												view! {
+													<Loadable
+														base=format!("{}/context/page", Uri::api(U::Object, &context_id, false))
+														convert=U::Object
+														element=move |obj| view! { <Item item=obj always=true slim=true /> }
+														thread=oid
+													/>
+												}
+											} />
+											<Route path=path!("replies") view=move || {
+												let params = use_params::<IdParam>();
+												let id = params.get().ok().and_then(|x| x.id).unwrap_or_default();
+												let oid = Uri::full(U::Object, &id);
+												view! {
+													<Loadable
+														base=format!("{}/replies/page", Uri::api(U::Object, &oid, false))
+														convert=U::Object
+														element=move |obj| view! { <Item item=obj always=true slim=true /> }
+													/>
+												}
+											} />
+											<Route path=path!("likes") view=move || {
+												let params = use_params::<IdParam>();
+												let id = params.get().ok().and_then(|x| x.id).unwrap_or_default();
+												let oid = Uri::full(U::Object, &id);
+												view! {
+													<Loadable
+														base=format!("{}/likes/page", Uri::api(U::Object, &oid, false))
+														element=move |obj| view! { <Item item=obj always=true /> }
+													/>
+												}
+											} />
 											// <Route path="announced" view=ObjectAnnounced />
 										</ParentRoute>
 
+										// TODO a standalone way to view activities?
 										// <Route path="/web/activities/:id" view=move || view! { <ActivityPage tl=context_tl /> } />
-
-										<Route path=path!("search") view=SearchPage />
-										<Route path=path!("register") view=RegisterPage />
 									</ParentRoute>
 								</Routes>
 						</main>
@@ -228,73 +259,70 @@ pub fn App() -> impl IntoView {
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum FeedRoute {
-	Home, Global, Server, Notifications, User, Following, Followers, ActorLikes, ObjectLikes, Replies, Context
+	Unknown, Home, Global, Server, Notifications, User, Following, Followers, ActorLikes, ObjectLikes, Replies, Context
+}
+
+impl FeedRoute {
+	fn is_refreshable(&self) -> bool {
+		!matches!(self, Self::Unknown)
+	}
 }
 
 #[component]
 fn Scrollable() -> impl IntoView {
 	let location = use_location();
-	let feeds = use_context::<Feeds>().expect("missing feeds context");
-	let auth = use_context::<Auth>().expect("missing auth context");
-	let config = use_context::<Signal<crate::Config>>().expect("missing config context");
 	// TODO this is terrible!! omg maybe it should receive from context current timeline?? idk this
 	//      is awful and i patched it another time instead of doing it properly...
 	//      at least im going to provide a route enum to use in other places
-	let (route, set_route) = signal(FeedRoute::Home);
-	let relevant_timeline = Signal::derive(move || {
-		let path = location.pathname.get();
-		if path.contains("/web/home") {
-			set_route.set(FeedRoute::Home);
-			Some(feeds.home)
-		} else if path.contains("/web/global") {
-			set_route.set(FeedRoute::Global);
-			Some(feeds.global)
-		} else if path.contains("/web/local") {
-			set_route.set(FeedRoute::Server);
-			Some(feeds.server)
-		} else if path.starts_with("/web/notifications") {
-			set_route.set(FeedRoute::Notifications);
-			Some(feeds.notifications)
-		} else if path.starts_with("/web/actors") {
-			match path.split('/').nth(4) {
-				Some("following") => {
-					set_route.set(FeedRoute::Following);
-					None
-				},
-				Some("followers") => {
-					set_route.set(FeedRoute::Followers);
-					None
-				},
-				Some("likes") => {
-					set_route.set(FeedRoute::ActorLikes);
-					Some(feeds.user_likes)
-				},
-				_ => {
-					set_route.set(FeedRoute::User);
-					Some(feeds.user)
-				},
+	// UPDATE it's a bit less terrible since now we just update an enum but still probs should do
+	//        something fancier than this string stuff... now leptos has path segments as structs,
+	//        maybe maybe maybe it's accessible to us??
+	let (route, set_route) = signal(FeedRoute::Unknown);
+	let _ = Effect::watch(
+		move || location.pathname.get(),
+		move |path, _path_prev, _| {
+			if path.contains("/web/home") {
+				set_route.set(FeedRoute::Home);
+			} else if path.contains("/web/global") {
+				set_route.set(FeedRoute::Global);
+			} else if path.contains("/web/local") {
+				set_route.set(FeedRoute::Server);
+			} else if path.starts_with("/web/notifications") {
+				set_route.set(FeedRoute::Notifications);
+			} else if path.starts_with("/web/actors") {
+				match path.split('/').nth(4) {
+					Some("following") => {
+						set_route.set(FeedRoute::Following);
+					},
+					Some("followers") => {
+						set_route.set(FeedRoute::Followers);
+					},
+					Some("likes") => {
+						set_route.set(FeedRoute::ActorLikes);
+					},
+					_ => {
+						set_route.set(FeedRoute::User);
+					},
+				}
+			} else if path.starts_with("/web/objects") {
+				match path.split('/').nth(4) {
+					Some("likes") => {
+						set_route.set(FeedRoute::ObjectLikes);
+					},
+					Some("replies") => {
+						set_route.set(FeedRoute::Replies);
+					},
+					_ => {
+						set_route.set(FeedRoute::Context);
+					},
+				}
+			} else {
+				set_route.set(FeedRoute::Unknown);
 			}
-		} else if path.starts_with("/web/objects") {
-			match path.split('/').nth(4) {
-				Some("likes") => {
-					set_route.set(FeedRoute::ObjectLikes);
-					Some(feeds.object_likes)
-				},
-				Some("replies") => {
-					set_route.set(FeedRoute::Replies);
-					Some(feeds.replies)
-				},
-				_ => {
-					set_route.set(FeedRoute::Context);
-					Some(feeds.context)
-				},
-			}
-		} else {
-			None
-		}
-	});
+		},
+		true
+	);
 	provide_context(route);
-	provide_context(relevant_timeline);
 	let breadcrumb = Signal::derive(move || {
 		let path = location.pathname.get();
 		let mut path_iter = path.split('/').skip(2);
@@ -324,14 +352,21 @@ fn Scrollable() -> impl IntoView {
 	let element = NodeRef::new();
 	let should_load = use_scroll_limit(element, 500.0);
 	provide_context(should_load);
+	let (refresh, set_refresh) = signal(());
+	provide_context(refresh);
+	provide_context(set_refresh);
 	view! {
 		<div class="mb-1" node_ref=element>
 			<div class="tl-header w-100 center mb-1">
 				<a class="breadcrumb mr-1" href="javascript:history.back()" ><b>"<<"</b></a>
 				<b>{crate::NAME}</b>" :: "{breadcrumb}
-				{move || relevant_timeline.get().map(|tl| view! {
-					<a class="breadcrumb ml-1" href="#" on:click=move|_| tl.refresh(auth, config)  ><b>"↺"</b></a>
-				})}
+				{move || if route.get().is_refreshable() {
+					Some(view! {
+						<a class="breadcrumb ml-1" href="#" on:click=move|_| set_refresh.set(())  ><b>"↺"</b></a>
+					})
+				} else {
+					None
+				}}
 			</div>
 			<Outlet />
 		</div>
@@ -349,6 +384,16 @@ pub fn NotFound() -> impl IntoView {
 }
 
 #[component]
+pub fn Unauthorized() -> impl IntoView {
+	view! {
+		<p>
+			<code class="color center cw">please log in first</code>
+		</p>
+	}
+}
+
+#[component]
+//#[deprecated = "should not be displaying this directly"]
 pub fn Loader() -> impl IntoView {
 	view! {
 		<div class="center mt-1 mb-1" >

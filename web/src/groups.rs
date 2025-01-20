@@ -1,5 +1,5 @@
 use leptos::prelude::*;
-use crate::{prelude::*, timeline::any::Loadable, FALLBACK_IMAGE_URL};
+use crate::prelude::*;
 
 #[component]
 pub fn GroupList() -> impl IntoView {

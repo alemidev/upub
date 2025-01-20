@@ -314,7 +314,7 @@ pub fn ReplyButton(n: i32, target: String) -> impl IntoView {
 	let _target = target.clone(); // TODO ughhhh useless clones
 	view! {
 		<span
-			class:emoji=move || !reply.reply_to.get().map_or(false, |x| x == _target)
+			class:emoji=move || !reply.reply_to.get().map(|x| x == _target).unwrap_or_default()
 			// TODO can we merge these two classes conditions?
 			class:emoji-btn=move || auth.present()
 			class:cursor=move || auth.present()

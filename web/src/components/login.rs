@@ -7,19 +7,17 @@ pub fn LoginBox(
 	userid_tx: WriteSignal<Option<String>>,
 ) -> impl IntoView {
 	let auth = use_context::<Auth>().expect("missing auth context");
-	let config = use_context::<Signal<crate::Config>>().expect("missing config context");
 	let username_ref: NodeRef<leptos::html::Input> = NodeRef::new();
 	let password_ref: NodeRef<leptos::html::Input> = NodeRef::new();
-	let feeds = use_context::<Feeds>().expect("missing feeds context");
 	view! {
 		<div>
 			<div class="w-100" class:hidden=move || !auth.present() >
 				"hi "<a href={move || Uri::web(U::Actor, &auth.username() )} >{move || auth.username() }</a>
 				<input style="float:right" type="submit" value="logout" on:click=move |_| {
 					token_tx.set(None);
-					feeds.reset();
-					feeds.global.spawn_more(auth, config);
-					feeds.server.spawn_more(auth, config);
+					crate::cache::OBJECTS.clear();
+					crate::cache::TIMELINES.clear();
+					crate::cache::WEBFINGER.clear();
 				} />
 			</div>
 			<div class:hidden=move || auth.present() >
@@ -41,19 +39,12 @@ pub fn LoginBox(
 						else { if let Some(rf) = password_ref.get() { rf.set_value("") }; return };
 						tracing::info!("logged in until {}", auth_response.expires);
 						// update our username and token cookies
-						let username = auth_response.user.split('/').last().unwrap_or_default().to_string();
 						userid_tx.set(Some(auth_response.user));
 						token_tx.set(Some(auth_response.token));
-						// reset home feed and point it to our user's inbox
-						feeds.home.reset(Some(format!("{URL_BASE}/actors/{username}/inbox/page")));
-						feeds.home.spawn_more(auth, config);
-						feeds.notifications.reset(Some(format!("{URL_BASE}/actors/{username}/notifications/page")));
-						feeds.notifications.spawn_more(auth, config);
-						// reset server feed: there may be more content now that we're authed
-						feeds.global.reset(Some(format!("{URL_BASE}/inbox/page")));
-						feeds.global.spawn_more(auth, config);
-						feeds.server.reset(Some(format!("{URL_BASE}/outbox/page")));
-						feeds.server.spawn_more(auth, config);
+						// clear caches: we may see things differently now that we're logged in!
+						crate::cache::OBJECTS.clear();
+						crate::cache::TIMELINES.clear();
+						crate::cache::WEBFINGER.clear();
 					});
 				} >
 					<table class="w-100 align">

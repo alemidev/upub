@@ -1,206 +1,261 @@
-pub mod feed;
-pub mod thread;
-pub mod any;
+use std::sync::Arc;
 
-use std::{collections::BTreeSet, pin::Pin, sync::Arc};
+use apb::{Activity, Base, Collection, CollectionPage, Object};
+use leptos::{either::Either, prelude::*};
+use uriproxy::UriClass;
 
-use apb::{Activity, ActivityMut, Base, Object};
-use leptos::prelude::*;
-use crate::prelude::*;
+use crate::{Auth, Cache};
 
-#[derive(Debug, Clone, Copy)]
-pub struct Timeline {
-	pub feed: RwSignal<Vec<String>>,
-	pub next: RwSignal<String>,
-	pub over: RwSignal<bool>,
-	pub loading: RwSignal<bool>,
-}
 
-impl Timeline {
-	pub fn new(url: String) -> Self {
-		let feed = RwSignal::new(vec![]);
-		let next = RwSignal::new(url);
-		let over = RwSignal::new(false);
-		let loading = RwSignal::new(false);
-		Timeline { feed, next, over, loading }
-	}
+// TODO would be cool if "element" was passed as children() somehow
+// TODO "thread" is a bit weird, maybe better to make two distinct components?
+#[component]
+pub fn Loadable<El, V>(
+	base: String,
+	element: El,
+	#[prop(default = UriClass::Activity)] convert: UriClass,
+	#[prop(default = true)] preload: bool,
+	#[prop(default = false)] replies: bool,
+	#[prop(optional)] thread: Option<String>,
+) -> impl IntoView
+where
+	El: Send + Sync + Fn(crate::Doc) -> V + 'static,
+	V: IntoView + 'static
+{
 
-	pub fn len(&self) -> usize {
-		self.feed.get().len()
-	}
+	let config = use_context::<Signal<crate::Config>>().expect("missing config context");
+	let auth = use_context::<crate::Auth>().expect("missing auth context");
+	let fun = Arc::new(element);
 
-	pub fn is_empty(&self) -> bool {
-		self.feed.get().is_empty()
-	}
+	let (older_next, older_items) = crate::cache::TIMELINES.get(&base)
+		.unwrap_or((Some(base.clone()), vec![]));
 
-	pub fn reset(&self, url: Option<String>) {
-		self.feed.set(vec![]);
-		self.over.set(false);
-		let url = url.unwrap_or_else(||
-			self.next
-				.get_untracked()
-				.split('?')
-				.next()
-				.map(|x| x.to_string())
-				.unwrap_or("".to_string())
-		);
-		self.next.set(url);
-	}
+	let (next, set_next) = signal(older_next);
+	let (items, set_items) = signal(older_items);
+	let (loading, set_loading) = signal(false);
 
-	pub fn refresh(&self, auth: Auth, config: Signal<crate::Config>) {
-		self.reset(None);
-		self.spawn_more(auth, config);
-	}
+	// TODO having the seen set just once would be a great optimization, but then it becomes FnMut...
+	// let mut seen: std::collections::HashSet<String> = std::collections::HashSet::default();
 
-	pub fn spawn_more(&self, auth: Auth, config: Signal<crate::Config>) {
-		let _self = *self;
+	// TODO it's a bit wasteful to clone the key for every load() invocation, but capturing it in the
+	//      closure opens an industrial pipeline of worms so this will do for now
+	let load = move |key: String| {
+		if loading.get_untracked() { return }
+		set_loading.set(true);
 		leptos::task::spawn_local(async move {
-			_self.more(auth, config).await
-		});
-	}
-
-	pub fn loading(&self) -> bool {
-		self.loading.get_untracked()
-	}
-
-	pub async fn more(&self, auth: Auth, config: Signal<crate::Config>) {
-		if self.loading.get_untracked() { return }
-		if self.over.get_untracked() { return }
-		self.loading.set(true);
-		let res = self.load_more(auth, config).await;
-		self.loading.set(false);
-		if let Err(e) = res {
-			tracing::error!("failed loading posts for timeline: {e}");
-		}
-	}
-
-	pub async fn load_more(&self, auth: Auth, config: Signal<crate::Config>) -> reqwest::Result<()> {
-		use apb::{Collection, CollectionPage};
-
-		let mut feed_url = self.next.get_untracked();
-		if !config.get_untracked().filters.replies {
-			feed_url = if feed_url.contains('?') {
-				feed_url + "&replies=false"
-			} else {
-				feed_url + "?replies=false"
+			// this concurrency is rather fearful honestly
+			let Some(mut url) = next.get_untracked() else {
+				set_loading.set(false);
+				return
 			};
-		}
-		let collection : serde_json::Value = Http::fetch(&feed_url, auth).await?;
-		let activities : Vec<serde_json::Value> = collection
-			.ordered_items()
-			.flat()
-			.into_iter()
-			.filter_map(|x| x.into_inner().ok())
-			.collect();
-	
-		let mut feed = self.feed.get_untracked();
-		let mut older = process_activities(activities, auth)
-			.await
-			.into_iter()
-			.filter(|x| !feed.contains(x))
-			.collect();
-		feed.append(&mut older);
-		self.feed.set(feed);
 
-		if let Ok(next) = collection.next().id() {
-			self.next.set(next.to_string());
-		} else {
-			self.over.set(true);
-		}
+			// TODO a more elegant way to do this!!
+			if !replies && !config.get_untracked().filters.replies {
+				if url.contains('?') {
+					url += "&replies=false";
+				} else {
+					url += "?replies=false";
+				}
+			}
 
-		Ok(())
+			let object = match crate::Http::fetch::<serde_json::Value>(&url, auth).await {
+				Ok(x) => x,
+				Err(e) => {
+					tracing::error!("could not fetch items ({url}): {e} -- {e:?}");
+					set_next.set(None);
+					set_loading.set(false);
+					return;
+				},
+			};
+
+			let new_next = object.next().id().ok();
+
+			set_next.set(new_next.clone());
+
+			let store = process_activities(
+				object,
+				items.get_untracked(),
+				preload,
+				convert,
+				auth
+			).await;
+
+			crate::cache::TIMELINES.store(&key, (new_next, store.clone()));
+
+			set_items.set(store);
+			set_loading.set(false);
+		})
+	};
+
+	let auto_scroll = use_context::<Signal<bool>>().expect("missing auto-scroll signal");
+	let _base = base.clone();
+	let _ = Effect::watch(
+		move || auto_scroll.get(),
+		move |at_end, _, _| if *at_end && config.get_untracked().infinite_scroll {
+			load(_base.clone())
+		},
+		false,
+	);
+
+	let reload = use_context::<ReadSignal<()>>().expect("missing reload signal");
+	let _base = base.clone();
+	let _ = Effect::watch(
+		move || reload.get(),
+		move |_, _, _| {
+			set_items.set(vec![]);
+			set_next.set(Some(_base.clone()));
+			crate::cache::TIMELINES.invalidate(&_base);
+			load(_base.clone());
+		},
+		false
+	);
+
+	if items.get_untracked().is_empty() {
+		load(base.clone());
+	}
+
+	let _base = base.clone();
+	view! {
+		<div>
+			{if let Some(root) = thread {
+				Either::Left(view! { <FeedRecursive items=items root=root element=fun /> })
+			} else {
+				Either::Right(view! { <FeedLinear items=items element=fun /> })
+			}}
+
+			{move || if loading.get() {
+				Some(Either::Left(view! {
+					<div class="center mt-1 mb-1" >
+						<button type="button" disabled>"loading "<span class="dots"></span></button>
+					</div>
+				}))
+			} else if next.with(|x| x.is_some()) {
+				let _base = base.clone();
+				Some(Either::Right(view! {
+					<div class="center mt-1 mb-1" >
+						<button type="button" on:click=move |_| load(_base.clone()) >"load more"</button>
+					</div>
+				}))
+			} else {
+				None
+			}}
+		</div>
 	}
 }
 
-// TODO fetching stuff is quite centralized in upub BE but FE has this mess of three functions
-//      which interlock and are supposed to prime the global cache with everything coming from a
-//      tl. can we streamline it a bit like in our BE? maybe some traits?? maybe reuse stuff???
-
-// TODO ughhh this shouldn't be here if its pub!!!
-pub async fn process_activities(activities: Vec<serde_json::Value>, auth: Auth) -> Vec<String> {
-	let mut sub_tasks : Vec<Pin<Box<dyn futures::Future<Output = ()>>>> = Vec::new();
-	let mut gonna_fetch = BTreeSet::new();
-	let mut actors_seen = BTreeSet::new();
-	let mut out = Vec::new();
-
-	for activity in activities {
-		let activity_type = activity.activity_type().unwrap_or(apb::ActivityType::Activity);
-		// save embedded object if present
-		if let Ok(object) = activity.object().inner() {
-			// also fetch actor attributed to
-			if let Ok(attributed_to) = object.attributed_to().id() {
-				actors_seen.insert(attributed_to);
+#[component]
+fn FeedLinear<El, V>(items: ReadSignal<Vec<String>>, element: Arc<El>) -> impl IntoView
+where
+	El: Send + Sync + Fn(crate::Doc) -> V + 'static,
+	V: IntoView + 'static
+{
+	view! {
+		<For
+			each=move || items.get()
+			key=|id: &String| id.clone()
+			children=move |id: String| match crate::cache::OBJECTS.get(&id) {
+				Some(obj) => Either::Left(element(obj)),
+				None => Either::Right(view!{ <p><code class="center color cw">{id}</code></p> }),
 			}
-			if let Ok(quote_id) = object.quote_url().id() {
-				if !gonna_fetch.contains(&quote_id) {
-					gonna_fetch.insert(quote_id.clone());
-					sub_tasks.push(Box::pin(deep_fetch_and_update(U::Object, quote_id, auth)));
-				}
-			}
-			if let Ok(object_uri) = object.id() {
-				cache::OBJECTS.store(&object_uri, Arc::new(object.clone()));
-			} else {
-				tracing::warn!("embedded object without id: {object:?}");
-			}
-		} else { // try fetching it
-			if let Ok(object_id) = activity.object().id() {
-				if !gonna_fetch.contains(&object_id) {
-					let fetch_kind = match activity_type {
-						apb::ActivityType::Follow => U::Actor,
-						_ => U::Object,
-					};
-					gonna_fetch.insert(object_id.clone());
-					sub_tasks.push(Box::pin(deep_fetch_and_update(fetch_kind, object_id, auth)));
-				}
-			}
-		}
-	
-		// save activity, removing embedded object
-		let object_id = activity.object().id().ok();
-		if let Ok(activity_id) = activity.id() {
-			out.push(activity_id.to_string());
-			cache::OBJECTS.store(
-				&activity_id,
-				Arc::new(activity.clone().set_object(apb::Node::maybe_link(object_id)))
-			);
-		} else if let Ok(object_id) = activity.object().id() {
-			out.push(object_id);
-		}
-
-		if let Ok(uid) = activity.attributed_to().id() {
-			if cache::OBJECTS.get(&uid).is_none() && !gonna_fetch.contains(&uid) {
-				gonna_fetch.insert(uid.clone());
-				sub_tasks.push(Box::pin(deep_fetch_and_update(U::Actor, uid, auth)));
-			}
-		}
-	
-		if let Ok(uid) = activity.actor().id() {
-			if cache::OBJECTS.get(&uid).is_none() && !gonna_fetch.contains(&uid) {
-				gonna_fetch.insert(uid.clone());
-				sub_tasks.push(Box::pin(deep_fetch_and_update(U::Actor, uid, auth)));
-			}
-		}
+		/>
 	}
+}
 
-	for user in actors_seen {
-		sub_tasks.push(Box::pin(deep_fetch_and_update(U::Actor, user, auth)));
+#[component]
+fn FeedRecursive<El, V>(items: ReadSignal<Vec<String>>, root: String, element: Arc<El>) -> impl IntoView
+where
+	El: Send + Sync + Fn(crate::Doc) -> V + 'static,
+	V: IntoView + 'static
+{
+	let root_values = move || items.get()
+		.into_iter()
+		.filter_map(|x| {
+			let document = crate::cache::OBJECTS.get(&x)?;
+			let (oid, reply) = match document.object_type().ok()? {
+				// if it's a create, get and check created object: does it reply to root?
+				apb::ObjectType::Activity(apb::ActivityType::Create) => {
+					let object = crate::cache::OBJECTS.get(&document.object().id().ok()?)?;
+					(object.id().ok()?, object.in_reply_to().id().ok()?)
+				},
+
+				// if it's a raw note, directly check if it replies to root
+				apb::ObjectType::Note => (document.id().ok()?, document.in_reply_to().id().ok()?),
+
+				// if it's anything else, check if it relates to root, maybe like or announce?
+				_ => (document.id().ok()?, document.object().id().ok()?),
+			};
+			if reply == root {
+				Some((oid, document))
+			} else {
+				None
+			}
+		})
+		.collect::<Vec<(String, crate::Doc)>>();
+
+	view! {
+		<For
+			each=root_values
+			key=|(id, _obj)| id.clone()
+			children=move |(id, obj)|
+				view! {
+					<div class="context depth-r">
+						{element(obj)}
+						<div class="depth-r">
+							<FeedRecursive items=items root=id element=element.clone() />
+						</div>
+					</div>
+				}
+		/ >
+	}.into_any()
+}
+
+pub async fn process_activities(
+	object: serde_json::Value,
+	mut store: Vec<String>,
+	preload: bool,
+	convert: UriClass,
+	auth: Auth,
+) -> Vec<String> {
+	let mut seen: std::collections::HashSet<String> = std::collections::HashSet::from_iter(store.clone());
+	let mut sub_tasks = Vec::new();
+
+	for node in object.ordered_items().flat() {
+		let mut added_something = false;
+		if let Ok(id) = node.id() {
+			added_something = true;
+			if !seen.contains(&id) {
+				seen.insert(id.clone());
+				store.push(id.clone());
+			}
+
+			if preload {
+				sub_tasks.push(crate::cache::OBJECTS.preload(id, convert, auth));
+			}
+		}
+
+		if let Ok(doc) = node.into_inner() {
+			// TODO this is weird because we manually go picking up the inner object
+			//      worse: objects coming from fetches get stitched in timelines with empty shell
+			//      "View" activities which don't have an id. in such cases we want the inner object to
+			//      appear on our timelines, so we must do what we would do for the activity (but we
+			//      didn't do) for our inner object, and also we can be pretty sure it's an object so
+			//      override class
+			if let Ok(sub_doc) = doc.object().into_inner() {
+				if let Ok(sub_id) = sub_doc.id() {
+					if !added_something && !seen.contains(&sub_id) {
+						seen.insert(sub_id.clone());
+						store.push(sub_id.clone());
+					}
+					if preload {
+						sub_tasks.push(crate::cache::OBJECTS.preload(sub_id, UriClass::Object, auth));
+					}
+				}
+			}
+			crate::cache::OBJECTS.include(Arc::new(doc));
+		};
 	}
 
 	futures::future::join_all(sub_tasks).await;
 
-	out
-}
-
-async fn deep_fetch_and_update(kind: U, id: String, auth: Auth) {
-	if let Some(obj) = cache::OBJECTS.resolve(&id, kind, auth).await {
-		if let Ok(quote) = obj.quote_url().id() {
-			cache::OBJECTS.resolve(&quote, U::Object, auth).await;
-		}
-		if let Ok(actor) = obj.actor().id() {
-			cache::OBJECTS.resolve(&actor, U::Actor, auth).await;
-		}
-		if let Ok(attributed_to) = obj.attributed_to().id() {
-			cache::OBJECTS.resolve(&attributed_to, U::Actor, auth).await;
-		}
-	}
+	store
 }

@@ -61,6 +61,7 @@ pub trait Cache {
 	fn lookup(&self, key: &str) -> Option<impl Deref<Target = LookupStatus<Self::Item>>>;
 	fn store(&self, key: &str, value: Self::Item) -> Option<Self::Item>;
 	fn invalidate(&self, key: &str);
+	fn clear(&self);
 
 	fn get(&self, key: &str) -> Option<Self::Item> where Self::Item : Clone {
 		Some(self.lookup(key)?.deref().inner()?.clone())
@@ -93,12 +94,16 @@ impl<T> Cache for DashmapCache<T> {
 	fn invalidate(&self, key: &str) {
 		self.0.remove(key);
 	}
+
+	fn clear(&self) {
+		self.0.clear();
+	}
 }
 
 impl DashmapCache<Doc> {
-	pub async fn resolve(&self, key: &str, kind: UriClass, auth: Auth) -> Option<Doc> {
+	pub async fn fetch(&self, key: &str, kind: UriClass, auth: Auth) -> Option<Doc> {
 		let full_key = Uri::full(kind, key);
-		tracing::info!("resolving {key} -> {full_key}");
+		tracing::debug!("resolving {key} -> {full_key}");
 		match self.get(&full_key) {
 			Some(x) => Some(x),
 			None => {
@@ -118,12 +123,13 @@ impl DashmapCache<Doc> {
 	}
 
 	pub fn include(&self, obj: Doc) {
-		let Ok(id) = obj.id() else { return };
-		tracing::debug!("storing object {id}: {obj}");
-		cache::OBJECTS.store(&id, obj.clone());
-		if obj.actor_type().is_ok() {
-			if let Ok(url) = obj.url().id() {
-				cache::WEBFINGER.store(&url, id);
+		if let Ok(id) = obj.id() {
+			tracing::debug!("storing object {id}: {obj}");
+			cache::OBJECTS.store(&id, obj.clone());
+			if obj.actor_type().is_ok() {
+				if let Ok(url) = obj.url().id() {
+					cache::WEBFINGER.store(&url, id);
+				}
 			}
 		}
 		if let Ok(sub_obj) = obj.object().into_inner() {
@@ -134,25 +140,33 @@ impl DashmapCache<Doc> {
 		}
 	}
 
-	pub async fn prefetch(&self, key: String, kind: UriClass, auth: Auth) -> Option<Doc> {
-		let doc = self.resolve(&key, kind, auth).await?;
+	pub async fn preload(&self, key: String, kind: UriClass, auth: Auth) -> Option<Doc> {
+		let doc = self.fetch(&key, kind, auth).await?;
 		let mut sub_tasks = Vec::new();
 
 		match kind {
 			UriClass::Activity => {
 				if let Ok(actor) = doc.actor().id() {
-					sub_tasks.push(self.prefetch(actor, UriClass::Actor, auth));
+					sub_tasks.push(self.preload(actor, UriClass::Actor, auth));
 				}
+				let clazz = match doc.activity_type().unwrap_or(apb::ActivityType::Activity) {
+					// TODO activities like Announce or Update may be multiple things, we can't know before
+					apb::ActivityType::Accept(_) => UriClass::Activity,
+					apb::ActivityType::Reject(_) => UriClass::Activity,
+					apb::ActivityType::Undo => UriClass::Activity,
+					apb::ActivityType::Follow => UriClass::Actor,
+					_ => UriClass::Object,
+				};
 				if let Ok(object) = doc.object().id() {
-					sub_tasks.push(self.prefetch(object, UriClass::Object, auth));
+					sub_tasks.push(self.preload(object, clazz, auth));
 				}
 			},
 			UriClass::Object => {
 				if let Ok(actor) = doc.attributed_to().id() {
-					sub_tasks.push(self.prefetch(actor, UriClass::Actor, auth));
+					sub_tasks.push(self.preload(actor, UriClass::Actor, auth));
 				}
 				if let Ok(quote) = doc.quote_url().id() {
-					sub_tasks.push(self.prefetch(quote, UriClass::Object, auth));
+					sub_tasks.push(self.preload(quote, UriClass::Object, auth));
 				}
 			},
 			_ => {},
@@ -161,24 +175,6 @@ impl DashmapCache<Doc> {
 		futures::future::join_all(sub_tasks).await;
 
 		Some(doc)
-	}
-}
-
-// TODO would be cool unifying a bit the fetch code too
-
-impl DashmapCache<Doc> {
-	pub async fn fetch(&self, k: &str, kind: UriClass) -> reqwest::Result<Doc> {
-		match self.get(k) {
-			Some(x) => Ok(x),
-			None => {
-				let obj = reqwest::get(Uri::api(kind, k, true))
-					.await?
-					.json::<serde_json::Value>()
-					.await?;
-				self.store(k, Arc::new(obj));
-				Ok(self.get(k).expect("not found in cache after insertion"))
-			}
-		}
 	}
 }
 

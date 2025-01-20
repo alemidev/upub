@@ -48,7 +48,7 @@ pub struct FiltersConfig {
 
 impl FiltersConfig {
 	pub fn visible(&self, item: &crate::Doc) -> bool {
-		use apb::{Object, Activity};
+		use apb::{Object, Base};
 		use crate::Cache;
 
 		let type_filter = match item.object_type().unwrap_or(apb::ObjectType::Object) {
@@ -65,7 +65,7 @@ impl FiltersConfig {
 		};
 		let mut reply_filter = true;
 
-		if let Ok(obj_id) = item.object().id() {
+		if let Ok(obj_id) = item.id() {
 			if let Some(obj) = crate::cache::OBJECTS.get(&obj_id) {
 				if obj.in_reply_to().id().is_ok() {
 					reply_filter = self.replies;

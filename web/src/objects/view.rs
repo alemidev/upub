@@ -2,7 +2,7 @@ use leptos::{either::Either, ev::MouseEvent};
 use leptos::prelude::*;
 use leptos_router::components::Outlet;
 use leptos_router::hooks::use_params_map;
-use crate::{app::FeedRoute, prelude::*, Config};
+use crate::{app::FeedRoute, prelude::*};
 
 use apb::Object;
 
@@ -11,8 +11,7 @@ pub fn ObjectView() -> impl IntoView {
 	let params = use_params_map();
 	let matched_route = use_context::<ReadSignal<crate::app::FeedRoute>>().expect("missing route context");
 	let auth = use_context::<Auth>().expect("missing auth context");
-	let config = use_context::<Signal<Config>>().expect("missing config context");
-	let relevant_tl = use_context::<Signal<Option<Timeline>>>().expect("missing relevant timeline context");
+	let refresh = use_context::<WriteSignal<()>>().expect("missing refresh context");
 	let (loading, set_loading) = signal(false);
 	let id = Signal::derive(move || params.get().get("id").unwrap_or_default());
 	let object = LocalResource::new(
@@ -20,14 +19,14 @@ pub fn ObjectView() -> impl IntoView {
 			let (oid, _loading) = (id.get(), loading.get());
 			async move {
 				tracing::info!("rerunning fetcher");
-				let obj = cache::OBJECTS.resolve(&oid, U::Object, auth).await?;
+				let obj = cache::OBJECTS.fetch(&oid, U::Object, auth).await?;
 
 				// TODO these two can be parallelized
 				if let Ok(author) = obj.attributed_to().id() {
-					cache::OBJECTS.resolve(&author, U::Actor, auth).await;
+					cache::OBJECTS.fetch(&author, U::Actor, auth).await;
 				}
 				if let Ok(quote) = obj.quote_url().id() {
-					cache::OBJECTS.resolve(&quote, U::Object, auth).await;
+					cache::OBJECTS.fetch(&quote, U::Object, auth).await;
 				}
 
 				Some(obj)
@@ -72,7 +71,7 @@ pub fn ObjectView() -> impl IntoView {
 						<span style="float: right">
 							<a
 								class="clean"
-								on:click=move |ev| fetch_cb(ev, set_loading, id.get(), auth, config, relevant_tl)
+								on:click=move |ev| fetch_cb(ev, set_loading, id.get(), auth, refresh)
 								href="#"
 							>
 								<span class="emoji ml-2">"↺ "</span>"fetch"
@@ -95,7 +94,7 @@ pub fn ObjectView() -> impl IntoView {
 	}
 }
 
-fn fetch_cb(ev: MouseEvent, set_loading: WriteSignal<bool>, oid: String, auth: Auth, config: Signal<Config>, relevant_tl: Signal<Option<Timeline>>) {
+fn fetch_cb(ev: MouseEvent, set_loading: WriteSignal<bool>, oid: String, auth: Auth, refresh: WriteSignal<()>) {
 	let api = Uri::api(U::Object, &oid, false);
 	ev.prevent_default();
 	set_loading.set(true);
@@ -106,6 +105,6 @@ fn fetch_cb(ev: MouseEvent, set_loading: WriteSignal<bool>, oid: String, auth: A
 		cache::OBJECTS.invalidate(&Uri::full(U::Object, &oid));
 		tracing::info!("invalidated {}", Uri::full(U::Object, &oid));
 		set_loading.set(false);
-		relevant_tl.get().inspect(|x| x.refresh(auth, config));
+		refresh.set(());
 	});
 }

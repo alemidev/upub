@@ -45,7 +45,7 @@ pub fn Navigator(notifications: ReadSignal<u64>) -> impl IntoView {
 				<td class="w-50"><a href="/web/about"><input class="w-100" type="submit" value="about" /></a></td>
 				<td class="w-50"><a href="/web/config"><input class="w-100" type="submit" value="config" /></a></td>
 			</tr>
-			<tr><td colspan="2"><a href="/web/groups"><input class="w-100" type="submit" value="groups" /></a></td></tr>
+			// <tr><td colspan="2"><a href="/web/groups"><input class="w-100" type="submit" value="groups" /></a></td></tr> // still too crude, don't include in navigation
 			<tr><td colspan="2"><a href="/web/explore"><input class="w-100" type="submit" class:hidden=move || !auth.present() value="explore" /></a></td></tr>
 		</table>
 	}

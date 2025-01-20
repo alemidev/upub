@@ -1,6 +1,6 @@
 use leptos::prelude::*;
 use leptos_router::hooks::use_params;
-use crate::{prelude::*, timeline::any::Loadable};
+use crate::prelude::*;
 
 #[component]
 pub fn FollowList(outgoing: bool) -> impl IntoView {

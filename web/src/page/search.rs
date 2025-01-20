@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use apb::Collection;
 use leptos::prelude::*;
 use leptos_router::hooks::use_query_map;
 use crate::prelude::*;
@@ -34,16 +33,14 @@ pub fn SearchPage() -> impl IntoView {
 			let q = use_query_map().get().get("q").unwrap_or_default();
 			let search = format!("{URL_BASE}/search?q={q}");
 			async move {
-				let items = Http::fetch::<serde_json::Value>(&search, auth).await.ok()?;
+				let document = Http::fetch::<serde_json::Value>(&search, auth).await.ok()?;
 				Some(
 					crate::timeline::process_activities(
-						items
-							.ordered_items()
-							.flat()
-							.into_iter()
-							.filter_map(|x| x.into_inner().ok())
-							.collect(),
-						auth
+						document,
+						Vec::new(),
+						true,
+						uriproxy::UriClass::Object,
+						auth,
 					).await
 				)
 			}
