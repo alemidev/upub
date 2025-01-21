@@ -1,5 +1,7 @@
 use sea_orm_migration::prelude::*;
 
+use crate::m20240524_000001_create_actor_activity_object_tables::Instances;
+
 use super::m20240524_000001_create_actor_activity_object_tables::{Activities, Actors, Objects};
 
 #[derive(DeriveIden)]
@@ -10,8 +12,8 @@ pub enum Relations {
 	Following,
 	Activity,
 	Accept,
-	FollowerInstance, // ADDED AFTERWARDS
-	FollowingInstance, // ADDED AFTERWARDS
+	FollowerInstance,
+	FollowingInstance,
 }
 
 #[derive(DeriveIden)]
@@ -81,6 +83,22 @@ impl MigrationTrait for Migration {
 							.to(Activities::Table, Activities::Internal)
 							.on_update(ForeignKeyAction::Cascade)
 					)
+					.col(ColumnDef::new(Relations::FollowerInstance).big_integer().not_null())
+					.foreign_key(
+						ForeignKey::create()
+							.name("fkey-relations-follower-instance")
+							.from(Relations::Table, Relations::FollowerInstance)
+							.to(Instances::Table, Instances::Internal)
+							.on_update(ForeignKeyAction::Cascade)
+					)
+					.col(ColumnDef::new(Relations::FollowingInstance).big_integer().not_null())
+					.foreign_key(
+						ForeignKey::create()
+							.name("fkey-relations-following-instance")
+							.from(Relations::Table, Relations::FollowingInstance)
+							.to(Instances::Table, Instances::Internal)
+							.on_update(ForeignKeyAction::Cascade)
+					)
 					.col(ColumnDef::new(Relations::Activity).big_integer().not_null())
 					.foreign_key(
 						ForeignKey::create()
@@ -135,7 +153,7 @@ impl MigrationTrait for Migration {
 							.on_update(ForeignKeyAction::Cascade)
 							.on_delete(ForeignKeyAction::Cascade)
 					)
-					.col(ColumnDef::new(Likes::Activity).big_integer().not_null())
+					.col(ColumnDef::new(Likes::Activity).big_integer().null())
 					.foreign_key(
 						ForeignKey::create()
 							.name("fkey-likes-activity")
@@ -195,6 +213,15 @@ impl MigrationTrait for Migration {
 							.name("fkey-announces-object")
 							.from(Announces::Table, Announces::Object)
 							.to(Objects::Table, Objects::Internal)
+							.on_update(ForeignKeyAction::Cascade)
+							.on_delete(ForeignKeyAction::Cascade)
+					)
+					.col(ColumnDef::new(Announces::Activity).big_integer().null())
+					.foreign_key(
+						ForeignKey::create()
+							.name("fkey-announces-activity")
+							.from(Announces::Table, Announces::Activity)
+							.to(Activities::Table, Activities::Internal)
 							.on_update(ForeignKeyAction::Cascade)
 							.on_delete(ForeignKeyAction::Cascade)
 					)

@@ -12,3 +12,7 @@ readme = "README.md"
 
 [dependencies]
 sea-orm-migration = "1.1"
+
+[features]
+default = []
+not-simplified = []

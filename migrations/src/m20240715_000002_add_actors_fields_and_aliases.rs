@@ -13,7 +13,23 @@ impl MigrationTrait for Migration {
 				Table::alter()
 					.table(Actors::Table)
 					.add_column(ColumnDef::new(Actors::MovedTo).string().null())
+					.to_owned()
+			)
+			.await?;
+
+		manager
+			.alter_table(
+				Table::alter()
+					.table(Actors::Table)
 					.add_column(ColumnDef::new(Actors::AlsoKnownAs).json_binary().null())
+					.to_owned()
+			)
+			.await?;
+
+		manager
+			.alter_table(
+				Table::alter()
+					.table(Actors::Table)
 					.add_column(ColumnDef::new(Actors::Fields).json_binary().null())
 					.to_owned()
 			)
@@ -28,7 +44,23 @@ impl MigrationTrait for Migration {
 				Table::alter()
 					.table(Actors::Table)
 					.drop_column(Actors::MovedTo)
+					.to_owned()
+			)
+			.await?;
+
+		manager
+			.alter_table(
+				Table::alter()
+					.table(Actors::Table)
 					.drop_column(Actors::AlsoKnownAs)
+					.to_owned()
+			)
+			.await?;
+
+		manager
+			.alter_table(
+				Table::alter()
+					.table(Actors::Table)
 					.drop_column(Actors::Fields)
 					.to_owned()
 			)
