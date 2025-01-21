@@ -32,7 +32,7 @@ pub mod mastodon { impl super::MastodonRouter for axum::Router<upub::Context> {}
 
 
 pub trait WebRouter {
-	fn web_routes(self) -> Self where Self: Sized { self }
+	fn web_routes(self, _ctx: &upub::Context) -> Self where Self: Sized { self }
 }
 
 #[cfg(feature = "web")]
@@ -42,7 +42,6 @@ pub mod web;
 pub mod web {
 	impl super::WebRouter for axum::Router<upub::Context> {}
 }
-
 
 pub async fn serve(ctx: upub::Context, bind: String, shutdown: impl ShutdownToken) -> Result<(), std::io::Error> {
 	use tower_http::{cors::CorsLayer, trace::TraceLayer};
@@ -62,8 +61,8 @@ pub async fn serve(ctx: upub::Context, bind: String, shutdown: impl ShutdownToke
 				})
 		)
 		.ap_routes()
-		.mastodon_routes() // no-op if mastodon feature is disabled
-		.web_routes() // no-op if web feature is disabled
+		.mastodon_routes()
+		.web_routes(&ctx)
 		.layer(CorsLayer::permissive())
 		.with_state(ctx);
 

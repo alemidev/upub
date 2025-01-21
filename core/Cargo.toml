@@ -36,3 +36,9 @@ reqwest = { version = "0.12", features = ["json"] }
 apb = { path = "../apb", features = ["unstructured", "orm", "did-core", "activitypub-miscellaneous-terms", "activitypub-fe", "activitypub-counters", "litepub", "ostatus", "toot"] }
 # nodeinfo = "0.0.2" # the version on crates.io doesn't re-export necessary types to build the struct!!!
 nodeinfo = { git = "https://codeberg.org/thefederationinfo/nodeinfo-rs", rev = "e865094804" }
+leptos_config = { version = "0.7", optional = true }
+axum = { version = "0.7", optional = true }
+
+[features]
+default = []
+web = ["dep:leptos_config", "dep:axum"]

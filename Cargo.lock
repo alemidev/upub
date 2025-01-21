@@ -270,36 +270,8 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "edca88bc138befd0323b20752846e6587272d3b03b0343c8ea28a6f819e6e71f"
 dependencies = [
  "async-trait",
- "axum-core 0.4.5",
+ "axum-core",
  "bytes",
- "futures-util",
- "http 1.2.0",
- "http-body",
- "http-body-util",
- "itoa",
- "matchit 0.7.3",
- "memchr",
- "mime",
- "multer",
- "percent-encoding",
- "pin-project-lite",
- "rustversion",
- "serde",
- "sync_wrapper",
- "tower",
- "tower-layer",
- "tower-service",
-]
-
-[[package]]
-name = "axum"
-version = "0.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d6fd624c75e18b3b4c6b9caf42b1afe24437daaee904069137d8bab077be8b8"
-dependencies = [
- "axum-core 0.5.0",
- "bytes",
- "form_urlencoded",
  "futures-util",
  "http 1.2.0",
  "http-body",
@@ -307,7 +279,7 @@ dependencies = [
  "hyper",
  "hyper-util",
  "itoa",
- "matchit 0.8.4",
+ "matchit",
  "memchr",
  "mime",
  "multer",
@@ -333,25 +305,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "09f2bd6146b97ae3359fa0cc6d6b376d9539582c7b4220f041a33ec24c226199"
 dependencies = [
  "async-trait",
- "bytes",
- "futures-util",
- "http 1.2.0",
- "http-body",
- "http-body-util",
- "mime",
- "pin-project-lite",
- "rustversion",
- "sync_wrapper",
- "tower-layer",
- "tower-service",
-]
-
-[[package]]
-name = "axum-core"
-version = "0.5.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "df1362f362fd16024ae199c1970ce98f9661bf5ef94b9808fee734bc3698b733"
-dependencies = [
  "bytes",
  "futures-util",
  "http 1.2.0",
@@ -1710,7 +1663,7 @@ checksum = "df3b46402a9d5adb4c86a0cf463f42e19994e3ee891101b1841f30a545cb49a9"
 name = "httpsign"
 version = "0.1.0"
 dependencies = [
- "axum 0.8.1",
+ "axum",
  "base64",
  "openssl",
  "thiserror 2.0.11",
@@ -2137,7 +2090,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "43b613d5784037baee42a11d21bc263adfc1a55e416556a3d5bfe39c7b87fadf"
 dependencies = [
  "any_spawner",
- "axum 0.7.9",
+ "axum",
  "dashmap",
  "futures",
  "hydration_context",
@@ -2451,12 +2404,6 @@ name = "matchit"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0e7465ac9959cc2b1404e8e2367b43684a6d13790fe23056cc8c6c5a6b7bcb94"
-
-[[package]]
-name = "matchit"
-version = "0.8.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "47e1ffaa40ddd1f3ed91f717a33c8c0ee23fff369e3aa8772b9605cc1d22f4c3"
 
 [[package]]
 name = "md-5"
@@ -3881,7 +3828,7 @@ version = "0.7.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f5dd7fcccd3ef2081da086c1f8595b506627abbbbc9f64be0141d2251219570e"
 dependencies = [
- "axum 0.7.9",
+ "axum",
  "bytes",
  "const_format",
  "dashmap",
@@ -5124,11 +5071,13 @@ dependencies = [
  "apb",
  "async-recursion",
  "async-trait",
+ "axum",
  "base64",
  "chrono",
  "hmac",
  "httpsign",
  "jrd",
+ "leptos_config",
  "mdhtml",
  "nodeinfo",
  "openssl",
@@ -5197,14 +5146,12 @@ name = "upub-routes"
 version = "0.3.0"
 dependencies = [
  "apb",
- "axum 0.8.1",
+ "axum",
  "chrono",
  "httpsign",
  "jrd",
- "leptos",
  "leptos_axum",
- "leptos_meta",
- "leptos_router",
+ "leptos_config",
  "mastodon-async-entities",
  "nodeinfo",
  "rand",
@@ -5219,6 +5166,7 @@ dependencies = [
  "tower-http",
  "tracing",
  "upub",
+ "upub-web",
 ]
 
 [[package]]

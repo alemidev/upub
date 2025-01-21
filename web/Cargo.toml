@@ -9,6 +9,9 @@ keywords = ["activitypub", "upub", "json", "web", "wasm"]
 repository = "https://git.alemi.dev/upub.git"
 #readme = "README.md"
 
+[lib]
+crate-type = ["rlib", "cdylib"]
+
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
@@ -24,7 +27,7 @@ serde_json = "1.0"
 serde_default = "0.2"
 serde-inline-default = "0.2"
 dashmap = "6.1"
-leptos = { version = "0.7", features = ["csr", "tracing"] }
+leptos = { version = "0.7", features = ["tracing"] }
 leptos_router = { version = "0.7", features = ["tracing"] }
 leptos-use = "0.15"
 codee = { version = "0.2", features = ["json_serde"] } # WHYYY LEPTOS-USE AKSJFOASHGOAEG
@@ -38,3 +41,9 @@ jrd = "0.1"
 tld = "2.36"
 web-sys = { version = "0.3", features = ["Screen"] }
 regex = "1.11"
+
+[features]
+default = ["leptos-csr"]
+leptos-ssr = ["leptos/ssr"]
+leptos-csr = ["leptos/csr"]
+leptos-hydrate = ["leptos/hydrate"]

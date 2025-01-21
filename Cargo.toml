@@ -24,7 +24,7 @@ repository = "https://git.alemi.dev/upub.git"
 readme = "README.md"
 
 [[bin]]
-name = "upub"
+name = "upub-bin"
 path = "main.rs"
 
 [dependencies]
@@ -50,8 +50,14 @@ serve = ["dep:upub-routes"]
 migrate = ["dep:upub-migrations"]
 cli = ["dep:upub-cli"]
 worker = ["dep:upub-worker"]
-web = []
-web-build-fe = []
+web = ["upub/web", "upub-routes?/web"]
+
+[[workspace.metadata.leptos]]
+name = "upub"
+bin-package = "upub-bin"
+bin-features = ["serve", "migrate", "cli", "worker", "web"]
+lib-package = "upub-web"
+lib-features = ["leptos-hydrate"]
 
 [profile.wasm-release]
 inherits = "release"

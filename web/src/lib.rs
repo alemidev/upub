@@ -1,3 +1,5 @@
+#![recursion_limit = "256"] // oh nooo leptos...
+
 mod auth;
 mod app;
 mod components;

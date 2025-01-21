@@ -193,3 +193,30 @@ pub enum Internal {
 	Activity(i64),
 	Actor(i64),
 }
+
+#[cfg(feature = "web")]
+mod leptos_state {
+	impl axum::extract::FromRef<super::Context> for leptos_config::LeptosOptions {
+		fn from_ref(_ctx: &super::Context) -> leptos_config::LeptosOptions {
+			static CONF: std::sync::OnceLock<leptos_config::LeptosOptions> = std::sync::OnceLock::new();
+			CONF.get_or_init(||
+				leptos_config::LeptosOptions {
+					env: {
+						#[cfg(debug_assertions)]{ leptos_config::Env::DEV }
+						#[cfg(not(debug_assertions))] { leptos_config::Env::PROD }
+					},
+					output_name: "upub_web".into(),
+					site_root: "web/dist".into(),
+					site_pkg_dir: "pkg".into(),
+					site_addr: "127.0.0.1:3000/web".parse().expect("could not create socket addr"), // TODO we don't want to serve? what is this for??
+					reload_port: 3001,
+					reload_external_port: None,
+					reload_ws_protocol: leptos_config::ReloadWSProtocol::WS,
+					not_found_path: "web/404.html".into(),
+					hash_file: "hash.txt".into(),
+					hash_files: true,
+				}
+			).clone()
+		}
+	}
+}
