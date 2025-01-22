@@ -157,14 +157,19 @@ async fn init(args: Args, config: upub::Config) {
 		.await.expect("error connecting to db");
 
 	#[cfg(feature = "migrate")]
-	if matches!(args.command, Mode::Migrate) {
+	if matches!(args.command, Mode::Migrate | Mode::Monolith { bind: _, tasks: _, poll: _ }) {
+		// note that, if running in monolith mode, we want to apply migrations before starting, as a
+		// convenience for quickly spinning up new test instances and to prevent new server admins from
+		// breaking stuff by forgetting to migrate
 		use migrations::MigratorTrait;
 
 		migrations::Migrator::up(&db, None)
 			.await
 			.expect("error applying migrations");
 
-		return;
+		if matches!(args.command, Mode::Migrate) {
+			return; // if migrate, we're done! otherwise keep going
+		}
 	}
 
 	let (tx_wake, rx_wake) = tokio::sync::mpsc::unbounded_channel();
@@ -180,7 +185,6 @@ async fn init(args: Args, config: upub::Config) {
 
 		return;
 	}
-
 
 	// register signal handler only for long-lasting modes, such as server or worker
 	let (tx, rx) = tokio::sync::watch::channel(false);
