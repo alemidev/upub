@@ -175,8 +175,8 @@ pub async fn run(ctx: upub::Context, command: CliCommand) -> Result<(), Box<dyn 
 			Ok(nuke(ctx, for_real, delete_objects).await?),
 		CliCommand::Thread { } =>
 			Ok(thread(ctx).await?),
-		CliCommand::Cloak { objects, actors, contents } =>
-			Ok(cloak(ctx, contents, objects, actors).await?),
+		CliCommand::Cloak { objects, actors, contents, re_cloak } =>
+			Ok(cloak(ctx, contents, objects, actors, re_cloak).await?),
 		CliCommand::FixActivities { likes, announces } =>
 			Ok(fix_activities(ctx, likes, announces).await?),
 	}
