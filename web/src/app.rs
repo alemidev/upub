@@ -69,14 +69,15 @@ pub fn App() -> impl IntoView {
 	// refresh notifications
 	let (notifications, set_notifications) = signal(0);
 	let fetch_notifications = move || leptos::task::spawn_local(async move {
-		let actor_id = userid.get_untracked().unwrap_or_default();
-		let notif_url = format!("{actor_id}/notifications");
-		match Http::fetch::<serde_json::Value>(&notif_url, auth).await {
-			Err(e) => tracing::error!("failed fetching notifications: {e}"),
-			Ok(doc) => if let Ok(count) = doc.total_items() {
-				set_notifications.set(count);
-			},
-		} 
+		if let Some(actor_id) = userid.get_untracked() {
+			let notif_url = format!("{actor_id}/notifications");
+			match Http::fetch::<serde_json::Value>(&notif_url, auth).await {
+				Err(e) => tracing::error!("failed fetching notifications: {e}"),
+				Ok(doc) => if let Ok(count) = doc.total_items() {
+					set_notifications.set(count);
+				},
+			} 
+		}
 	});
 	fetch_notifications();
 	set_interval(fetch_notifications, std::time::Duration::from_secs(60));
