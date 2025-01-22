@@ -2,7 +2,7 @@
 
 echo "building frontend bundle"
 cd web
-CARGO_BUILD_JOBS=4 /opt/bin/trunk build --release --public-url 'https://dev.upub.social/web/assets/'
+UPUB_BASE_URL="https://dev.upub.social" CARGO_BUILD_JOBS=4 /opt/bin/trunk build --release --public-url 'https://dev.upub.social/web/assets/'
 cd ..
 echo "building release binary"
 cargo build --release --features=web -j 4
