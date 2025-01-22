@@ -12,9 +12,9 @@ pub async fn cloak(ctx: upub::Context, post_contents: bool, objects: bool, actor
 
 		while let Some(attachment) = stream.try_next().await? {
 			tracing::info!("cloaking {}", attachment.url);
-			let (sig, url) = ctx.cloak(&attachment.url);
+			let url = ctx.cloaked(&attachment.url);
 			let mut model = attachment.into_active_model();
-			model.url = Set(upub::url!(ctx, "/proxy/{sig}/{url}"));
+			model.url = Set(url);
 			model.update(ctx.db()).await?;
 		}
 	}

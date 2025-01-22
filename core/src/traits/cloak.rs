@@ -51,6 +51,12 @@ impl Cloaker for crate::Context {
 			}
 		}
 
+		// local: don't cloak
+		if self.is_local(url) {
+			return url.to_string();
+		}
+
+		// everything else
 		let (sig, url) = self.cloak(url);
 		crate::url!(self, "/proxy/{sig}/{url}")
 	}
@@ -60,15 +66,6 @@ impl Cloaker for crate::Context {
 impl crate::Context {
 	pub fn sanitize(&self, text: &str) -> String {
 		let _ctx = self.clone();
-		mdhtml::Sanitizer::new(
-			Box::new(move |txt| {
-				if _ctx.is_local(txt) {
-					txt.to_string()
-				} else {
-					_ctx.cloaked(txt)
-				}
-			})
-		)
-			.html(text)
+		mdhtml::Sanitizer::new(Box::new(move |txt| _ctx.cloaked(txt))).html(text)
 	}
 }
