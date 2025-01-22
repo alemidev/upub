@@ -296,18 +296,28 @@ details>summary::marker {
 details>summary {
 	list-style: none;
 	cursor: pointer;
+	text-align: center;
 }
 details.cw>summary:hover {
 	font-weight: bold;
 }
 details.thread>summary {
+	line-height: .75rem;
+	color: var(--background-secondary);
 	background-color: var(--background-dim);
 }
+
 details.thread[open]>summary {
 	background-color: var(--background);
 }
 details.thread>summary:hover {
 	background-color: var(--background-dim);
+}
+details.thread>summary::before {
+	content: ' + + + ';
+}
+details.thread[open]>summary::before {
+	content: ' - - -';
 }
 code.cw {
 	display: block;

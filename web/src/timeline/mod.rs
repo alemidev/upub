@@ -199,9 +199,8 @@ where
 			children=move |(id, obj)|
 				view! {
 					<details class="thread context depth-r" open>
-						<summary>
-							{element(obj)}
-						</summary>
+						<summary></summary>
+						{element(obj)}
 						<div class="depth-r">
 							<FeedRecursive items=items root=id element=element.clone() />
 						</div>
