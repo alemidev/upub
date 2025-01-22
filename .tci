@@ -1,7 +1,11 @@
 #!/bin/bash
 
+echo "building frontend bundle"
+cd web
+CARGO_BUILD_JOBS=4 /opt/bin/trunk build --release --public-url 'https://dev.upub.social/web/assets/'
+cd ..
 echo "building release binary"
-cargo build --release --all-features -j 4
+cargo build --release --features=web -j 4
 echo "stopping service"
 systemctl --user stop upub
 echo "installing new binary"
@@ -10,10 +14,4 @@ echo "migrating database"
 /opt/bin/upub -c /etc/upub/config.toml migrate
 echo "restarting service"
 systemctl --user start upub
-echo "rebuilding frontend"
-cd web
-CARGO_BUILD_JOBS=4 /opt/bin/trunk build --release --public-url 'https://dev.upub.social/web'
-echo "deploying frontend"
-rm /srv/http/upub/dev/web/*
-mv ./dist/* /srv/http/upub/dev/web/
 echo "done"
