@@ -36,15 +36,17 @@ impl Auth {
 	}
 
 	pub async fn refresh(
-		token: Signal<Option<String>>,
+		auth: Auth,
 		set_token: WriteSignal<Option<String>>,
-		set_userid: WriteSignal<Option<String>>
+		set_userid: WriteSignal<Option<String>>,
 	) -> bool {
-		if let Some(tok) = token.get_untracked() {
-			match reqwest::Client::new()
-				.request(Method::PATCH, format!("{URL_BASE}/auth"))
-				.json(&serde_json::json!({"token": tok}))
-				.send()
+		if let Some(tok) = auth.token.get_untracked() {
+			match crate::Http::request::<>(
+				Method::PATCH,
+				&format!("{URL_BASE}/auth"),
+				Some(&serde_json::json!({"token": tok})),
+				auth,
+			)
 				.await
 			{
 				Err(e) => tracing::error!("could not refresh token: {e}"),

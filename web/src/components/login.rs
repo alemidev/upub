@@ -27,16 +27,31 @@ pub fn LoginBox(
 					let email = username_ref.get().map(|x| x.value()).unwrap_or("".into());
 					let password = password_ref.get().map(|x| x.value()).unwrap_or("".into());
 					leptos::task::spawn_local(async move {
-						let Ok(res) = reqwest::Client::new()
-							.post(format!("{URL_BASE}/auth"))
-							.json(&LoginForm { email, password })
-							.send()
-							.await
-						else { if let Some(rf) = password_ref.get() { rf.set_value("") }; return };
-						let Ok(auth_response) = res
-							.json::<AuthResponse>()
-							.await
-						else { if let Some(rf) = password_ref.get() { rf.set_value("") }; return };
+						let res = match crate::Http::request::<LoginForm>(
+							reqwest::Method::POST,
+							&format!("{URL_BASE}/auth"),
+							Some(&LoginForm { email, password }),
+							auth,
+						).await {
+							Ok(res) => res,
+							Err(e) => {
+								tracing::warn!("could not login: {e}");
+								if let Some(rf) = password_ref.get() {
+									rf.set_value("")
+								};
+								return
+							}
+						};
+						let auth_response = match res.json::<AuthResponse>().await {
+							Ok(r) => r,
+							Err(e) => {
+								tracing::warn!("could not deserialize token response: {e}");
+								if let Some(rf) = password_ref.get() {
+									rf.set_value("")
+								};
+								return
+							},
+						};
 						tracing::info!("logged in until {}", auth_response.expires);
 						// update our username and token cookies
 						userid_tx.set(Some(auth_response.user));

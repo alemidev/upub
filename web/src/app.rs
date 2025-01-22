@@ -62,7 +62,7 @@ pub fn App() -> impl IntoView {
 	let title_target = move || if auth.present() { "/web/home" } else { "/web/global" };
 
 	// refresh token immediately and  every hour
-	let refresh_token = move || leptos::task::spawn_local(async move { Auth::refresh(auth.token, set_token, set_userid).await; });
+	let refresh_token = move || leptos::task::spawn_local(async move { Auth::refresh(auth, set_token, set_userid).await; });
 	refresh_token();
 	set_interval(refresh_token, std::time::Duration::from_secs(3600));
 
