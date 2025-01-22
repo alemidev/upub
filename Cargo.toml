@@ -45,7 +45,7 @@ upub-routes = { path = "routes", optional = true }
 upub-worker = { path = "worker", optional = true }
 
 [features]
-default = ["serve", "migrate", "cli", "worker", "web"]
+default = ["serve", "migrate", "cli", "worker"]
 serve = ["dep:upub-routes"]
 migrate = ["dep:upub-migrations"]
 cli = ["dep:upub-cli"]
