@@ -1,0 +1,15 @@
+{
+  "short_name": "upub",
+  "name": "μpub",
+  "icons": [
+    {
+      "src": "/web/assets/icon.png",
+      "sizes": "500x500",
+      "type": "image/png"
+    }
+  ],
+  "start_url": "/web",
+  "display": "standalone",
+  "theme_color": "#BF616A",
+  "background_color": "#201F29"
+}

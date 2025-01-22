@@ -38,3 +38,8 @@ jrd = "0.1"
 tld = "2.36"
 web-sys = { version = "0.3", features = ["Screen"] }
 regex = "1.11"
+
+[package.metadata.trunk.build]
+public_url = "/web/assets/"
+filehash = false
+offline = true
