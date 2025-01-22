@@ -35,7 +35,7 @@ pub struct InstanceConfig {
 	/// description, shown in nodeinfo and instance actor
 	pub description: String,
 
-	#[serde_inline_default("http://127.0.0.1:300".into())]
+	#[serde_inline_default("http://127.0.0.1:3000".into())]
 	/// domain of current instance, must change this for prod
 	pub domain: String,
 
