@@ -122,7 +122,7 @@ pub async fn process_like(ctx: &crate::Context, activity: impl apb::Activity, tx
 		//      force set the like-receiver as a `to` target, so that they can see this like regardless
 		//      of the empty addressing. as side effect, we know when we get "upvoted" from lemmy,
 		//      which instead would expect likes to be anonymous. oh well...
-		if likes_local_object {
+		if ctx.cfg().compat.add_explicit_target_to_likes_if_local && likes_local_object {
 			activity_model.to.0.push(obj.attributed_to.clone().unwrap_or_default());
 		}
 		ctx.address(Some(&activity_model), None, tx).await?;
