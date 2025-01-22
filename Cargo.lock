@@ -5119,7 +5119,7 @@ checksum = "8ecb6da28b8a351d773b68d5825ac39017e680750f980f3a1a85cd8dd28a47c1"
 
 [[package]]
 name = "upub"
-version = "0.4.3"
+version = "0.5.0"
 dependencies = [
  "apb",
  "async-recursion",
@@ -5149,7 +5149,7 @@ dependencies = [
 
 [[package]]
 name = "upub-bin"
-version = "0.4.3"
+version = "0.5.0"
 dependencies = [
  "clap",
  "futures",
@@ -5194,7 +5194,7 @@ dependencies = [
 
 [[package]]
 name = "upub-routes"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "apb",
  "axum 0.8.1",
@@ -5223,7 +5223,7 @@ dependencies = [
 
 [[package]]
 name = "upub-web"
-version = "0.4.3"
+version = "0.5.0"
 dependencies = [
  "apb",
  "base64",
