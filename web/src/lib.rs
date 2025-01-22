@@ -17,7 +17,7 @@ pub use auth::Auth;
 
 pub mod prelude;
 
-pub const URL_BASE: &str = "https://dev.upub.social";
+pub const URL_BASE: &str = match std::option_env!("UPUB_BASE_URL") { Some(x) => x, None => "" };
 pub const URL_PREFIX: &str = "/web";
 pub const URL_SENSITIVE: &str = "https://cdn.alemi.dev/social/nsfw.png";
 pub const FALLBACK_IMAGE_URL: &str = "https://cdn.alemi.dev/social/gradient.png";
@@ -244,6 +244,24 @@ impl Http {
 		auth: Auth,
 	) -> reqwest::Result<reqwest::Response> {
 		use leptos::prelude::GetUntracked;
+
+		// TODO while in web environments it's ok (and i'd say good!) to fetch with relative urls,
+		//      rust-url crate doesn't allow it throwing errors while constructing the url object
+		//      itself. GET /nodeinfo/2.0.json is perfectly valid, but we have to convert it to
+		//      something like GET http://127.0.0.1:3000/nodeinfo/2.0.json (or actual instance url for
+		//      prod deployments). relevant issue: https://github.com/seanmonstar/reqwest/issues/1433
+		let mut url = url.to_string();
+		if !url.starts_with("http") {
+			static LOCATION: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+			let base = LOCATION.get_or_init(||
+				web_sys::window()
+					.expect("could not access window element")
+					.location()
+					.origin()
+					.expect("could not access location origin")
+			);
+			url = format!("{base}{url}");
+		}
 
 		let mut req = reqwest::Client::new()
 			.request(method, url);
