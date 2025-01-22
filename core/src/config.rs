@@ -35,23 +35,23 @@ pub struct InstanceConfig {
 	/// description, shown in nodeinfo and instance actor
 	pub description: String,
 
-	#[serde_inline_default("upub.social".into())]
-	/// domain of current instance
+	#[serde_inline_default("http://127.0.0.1:300".into())]
+	/// domain of current instance, must change this for prod
 	pub domain: String,
 
 	#[serde(default)]
 	/// contact information for an administrator, currently unused
-	pub contact: Option<String>,
+	pub contact: String,
 
 	#[serde(default)]
 	/// base url for frontend, will be used to compose pretty urls
-	pub frontend: Option<String>,
+	pub frontend: String,
 }
 
 #[serde_inline_default::serde_inline_default]
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize, serde_default::DefaultFromSerde)]
 pub struct DatasourceConfig {
-	#[serde_inline_default("sqlite://./upub.db".into())]
+	#[serde_inline_default("sqlite://./upub.db?mode=rwc".into())]
 	pub connection_string: String,
 
 	#[serde_inline_default(32)]
@@ -94,7 +94,7 @@ pub struct SecurityConfig {
 	/// allow anonymous users to perform full-text searches
 	pub allow_public_search: bool,
 
-	#[serde_inline_default("changeme".to_string())]
+	#[serde_inline_default("definitely-change-this-in-prod".to_string())]
 	/// secret for media proxy, set this to something random
 	pub proxy_secret: String,
 
@@ -126,15 +126,15 @@ pub struct SecurityConfig {
 #[serde_inline_default::serde_inline_default]
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize, serde_default::DefaultFromSerde)]
 pub struct CompatibilityConfig {
-	#[serde(default)]
+	#[serde_inline_default(true)]
 	/// compatibility with almost everything: set image attachments as images
 	pub fix_attachment_images_media_type: bool,
 
-	#[serde(default)]
-	/// compatibility with lemmy and mastodon: notify like receiver
+	#[serde_inline_default(true)]
+	/// compatibility with mastodon and misskey (and somewhat lemmy?): notify like receiver
 	pub add_explicit_target_to_likes_if_local: bool,
 
-	#[serde(default)]
+	#[serde_inline_default(true)]
 	/// compatibility with lemmy: avoid showing images twice
 	pub skip_single_attachment_if_image_is_set: bool,
 }
@@ -194,7 +194,13 @@ impl Config {
 		Config::default()
 	}
 
+	// TODO this is very magic... can we do better? maybe formalize frontend url as an attribute of
+	//      our application?
 	pub fn frontend_url(&self, url: &str) -> Option<String> {
-		Some(format!("{}{}", self.instance.frontend.as_deref()?, url))
+		if !self.instance.frontend.is_empty() {
+			Some(format!("{}{url}", self.instance.frontend))
+		} else {
+			None
+		}
 	}
 }
