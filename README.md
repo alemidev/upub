@@ -1,42 +1,131 @@
 # μpub
-> [micro social network, federated](https://join.upub.social)
+> ## [micro social network, federated](https://join.upub.social)
+>
+> - [about](#about)
+>   - [features](#features)
+>   - [security](#security)
+>   - [caching](#caching)
+> - [deploy](#deploy)
+>   - [install](#install)
+>   - [run](#run)
+>   - [configure](#configure)
+> - [development](#development)
+>   - [contacts](#contacts)
+>   - [contributing](#contributing)
 
-![screenshot of upub simple frontend](https://cdn.alemi.dev/proj/upub/fe/20240704.png)
+![upub logo: greep mu letter with blue and pink-reddish gradient](https://dev.upub.social/web/assets/icon.png)
 
+# about
 μpub aims to be a private, lightweight, modular and **secure** [ActivityPub](https://www.w3.org/TR/activitypub/) server
 
- * follow development [in the dedicated matrix room](https://matrix.to/#/#upub:moonlit.technology)
+μpub is modeled around timelines but tries to be unopinionated in its implementation, allowing representing multiple different fediverse "modalities" together
 
-μpub is usable as a very simple ActivityPub project: it has a home and server timeline, it allows to browse threads, star notes and leave replies, it renders remote media of any kind and can be used to browse and follow remote users
+all client interactions happen with ActivityPub's client-server methods (basically POST your activities to your outbox), with [appropriate extensions](https://ns.alemi.dev/as): **μpub doesn't want to invent another API**!
 
-all interactions happen with ActivityPub's client-server methods (basically POST your activities to your outbox), with [appropriate extensions](https://ns.alemi.dev/as): **μpub doesn't want to invent another API**!
+> [!NOTE]
+> a test instance is available at [dev.upub.social](https://dev.upub.social)
 
-development is still active, so expect more stuff to come! since most fediverse software uses Mastodon's API, μpub plans to implement it as an optional feature, becoming eventually compatible with most existing frontends and mobile applications, but focus right now is on producing something specific to μpub needs
+## features
+μpub boasts both known features and new experimental ideas:
+ * quote posts, groups, 
+ * media proxy: minimal local storage impact
+ * AP explorer: navigate underlying AP documents
+ * on-demand thread fetching: get missing remote replies on-demand
+ * granular activity privacy: control who gets to see each of your likes and shares
+ * actor liked feeds: browse all publicly likes content from users, as "curated timelines"
 
-a test instance is available at [dev.upub.social](https://dev.upub.social)
-
-## about security
+## security
 most activitypub implementations don't really validate fetches: knowing an activity/object id will allow anyone to resolve it on most fedi software. this is of course unacceptable: "security through obscurity" just doesn't work
 
 μpub correctly and rigorously implements and enforces access control on each object based on its addressing
 
-most instances will have "authorized fetch" which kind of makes the issue less bad, but anyone can host an actor, have any server download their pubkey and then start fetching
+> [!WARNING]
+> most instances will have "authorized fetch" which kind of makes the issue less bad, but anyone can host an actor, have any server download their pubkey and then start fetching
 
 μpub may be considered to have "authorized fetch" permanently on, except it depends on each post:
- * all posts marked public (meaning, addressed to "https://www.w3.org/ns/activitystreams#Public"), will be fetchable without any authorization
+ * all posts marked public (meaning, addressed to `https://www.w3.org/ns/activitystreams#Public`), will be fetchable without any authorization
  * all posts not public will require explicit addressing and authentication: for example if post A is addressed to example.net/actor
    * anonymous fetchers will receive 404 on GET /posts/A
    * local users must authenticate and will be given said post only if it's addressed to them
    * remote servers will be given access to all posts from any of their users once they have authenticated themselves (with http signing)
 
-note that followers get expanded: addressing to example.net/actor/followers will address to anyone following actor that the server knows of, at that time
+> [!IMPORTANT]
+> note that followers get expanded: addressing to example.net/actor/followers will address to anyone following actor that the server knows of, **at that time**
 
-## media caching
-μpub doesn't download remote media to both minimize local resources requirement and avoid storing media that remotes want gone. to prevent leaking local user ip addresses, all media links are cloaked and proxied.
+## caching
+μpub **doesn't download remote media** to both minimize local resources requirement and avoid storing media that remotes want gone. to prevent leaking local user ip addresses, all media links are cloaked and proxied.
 
-while this just works for small instances, larger servers should set up aggressive caching on `/proxy/...` path
+while this just works for small instances, larger servers should set up aggressive caching on `/proxy/...` path: more info [in coming sections](#media-proxy-cache)
 
-for example, on `nginx`:
+# deploy
+μpub is built with the needs of small deployments in mind: getting a dev instance up is as easy as running one command, and setting up for production just requires some config tweaking
+
+## install
+> [!CAUTION]
+> official releases are being automated, available very soon
+
+latest μpub build can be downloaded from [moonlit.technology releases page](todo add link!!)
+
+```sh
+$ curl -s https://moonlit.technology/alemi/upub/releases/.... > upub; chmod +x upub
+```
+> [!IMPORTANT]
+> automated builds by GitHub are planned and will follow
+
+### from source
+building μpub from source is also possible without too much effort. it will also allow to customize the resulting binary to your specific use case
+
+if you just want to build the backend (or some of its components), a simple `$ cargo build` will do
+
+---
+
+to also build upub-web, some extra tooling must be installed:
+ * rust `wasm32-unknown-unknown` target (`$ rustup target add wasm32-unknown-unknown`)
+ * wasm-bindgen (`$ cargo install wasm-bindgen-cli`)
+ * trunk (`$ cargo install trunk`)
+ 
+from inside `web` project directory, run `trunk build --release`. once it finishes, a `dist` directory should appear inside `web` project. it is now possible to build μpub with the `web` feature flag enabled, which will include upub-web frontend
+
+```sh
+cd web
+trunk build --release
+cd ..
+cargo build --release --features=web
+```
+
+## run
+μpub includes its maintenance tooling and different operation modes, all documented in its extensive command line interface.
+
+> [!TIP]
+> make sure to use `--help` if you're lost! subcommands have different help screens
+
+all modes share `-c`, `--db` and `--domain` options, which will set respectively config path, database connection string and instance domain url
+
+neither is necessary: by default a sqlite database `upub.db` will be created in current directory, default config will be used and domain will be a localhost http url
+
+there is no default config path: point explicitly with `-c` flag
+
+bring up a complete instance with `monolith` mode: `$ upub monolith`
+
+to view μpub full default config, use `$ upub config`
+
+most maintenance tasks can be done with `$ upub cli`
+
+---
+
+a proper deployment will require:
+ * a migrated database (run `$ upub migrate --db <your-db-connection-string>` once)
+ * core activitypub routes (feature flag `routes`, cli `$ upub serve`)
+ * a job worker (feature flag `worker`, cli `$ upub work`)
+
+running `$ upub` monolith will do all of these
+
+## configure
+
+### media proxy cache
+caching proxied media is quite important for performance, as it keeps proxying load away from μpub itself
+
+for example, caching `nginx` could be achieved this way:
 ```nginx
 proxy_cache_path /tmp/upub/cache levels=1:2 keys_zone=upub_cache:100m max_size=50g inactive=168h use_temp_path=off;
 
@@ -58,44 +147,21 @@ server {
 
 ```
 
+# development
+development is still active, so expect more stuff to come! since most fediverse software uses Mastodon's API, μpub plans to implement it as an optional feature, becoming eventually compatible with most existing frontends and mobile applications, but focus right now is on producing something specific to μpub needs
+
+## contacts
+ * new features or releases are announced [directly on the fediverse](https://dev.upub.social/actors/upub)
+ * direct questions about deployment or development, or general chatter around this project, [happens on matrix](https://matrix.to/#/#upub:moonlit.technology)
+ * development mainly happens on [moonlit.technology](https://moonlit.technology/alemi/upub), but a [github mirror](https://github.com/alemidev/upub) is also available. if you prefer a forge-less development you can browse the repo on [my cgit](https://git.alemi.dev/upub.git), and send me patches on any contact listed on [my site](https://alemi.dev/about/contacts)
+
 ## contributing
+μpub can always use more dev time!
 
-all help is extremely welcome! development mostly happens on [moonlit.technology](https://moonlit.technology/alemi/upub.git), but there's a [github mirror](https://github.com/alemidev/upub) available too
+if you want to contribute you will need to be somewhat familiar with [rust](https://www.rust-lang.org/): even the frontend is built with it!
 
-if you prefer a forge-less development you can browse the repo on [my cgit](https://git.alemi.dev/upub.git), and send me patches on any contact listed on [my site](https://alemi.dev/about/contacts)
+reading a bit of the [ActivityPub](https://www.w3.org/TR/activitypub/) specification can be useful but not really required
 
-don't hesitate to get in touch, i'd be thrilled to showcase the project to you!
+hanging out in the relevant matrix room will probably be useful, as you can ask questions while familiarizing with the codebase
 
-## progress
-
- - [x] barebone actors
- - [x] barebone activities and objects
- - [x] activitystreams/activitypub compliance (well mostly)
- - [x] process barebones feeds
- - [x] process barebones inbox
- - [x] process barebones outbox
- - [x] http signatures
- - [x] privacy, targets, scopes
- - [x] simple web client
- - [x] announce (boosts)
- - [x] threads
- - [x] remote media
- - [x] editing via api
- - [x] advanced composer
- - [x] api for fetching
- - [x] like, share, reply via frontend
- - [x] backend config
- - [x] frontend config
- - [x] optimize `addressing` database schema
- - [x] mentions, notifications
- - [x] hashtags
- - [x] remote media proxy
- - [x] user fields
- - [ ] better editing via web frontend
- - [ ] upload media
- - [ ] public vs unlisted for discovery
- - [ ] mastodon-like search bar
- - [ ] polls
- - [ ] lists
- - [ ] full mastodon api
- - [ ] get rid of internal ids from code
+once you feel ready to tackle some development, head over to [the issues tab](https://moonlit.technology/alemi/upub/issues) and look around for something that needs to be done!
