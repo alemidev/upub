@@ -53,7 +53,20 @@ worker = ["dep:upub-worker"]
 web = []
 web-build-fe = []
 
-[profile.wasm-release]
+# upub: ~38M
+# upub-web: ~9M
+# [profile.release] # without any tweak
+
+# upub: ~22M
+# upub-web.wasm: ~5.8M
+[profile.release]
+opt-level = 'z'
+lto = true
+codegen-units = 1
+
+# upub: ~18M
+# upub-web.wasm: ~4.1M
+[profile.release-tiny]
 inherits = "release"
 opt-level = 'z'
 lto = true
