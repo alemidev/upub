@@ -138,6 +138,10 @@ pub enum CliCommand {
 		/// also replace urls inside post contents
 		#[arg(long, default_value_t = false)]
 		contents: bool,
+
+		/// also re-cloak already cloaked urls, useful if changing cloak secret
+		#[arg(long, default_value_t = false)]
+		re_cloak: bool,
 	},
 
 	/// restore activities links, only needed for very old installs

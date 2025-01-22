@@ -5169,7 +5169,7 @@ dependencies = [
 
 [[package]]
 name = "upub-cli"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "apb",
  "chrono",

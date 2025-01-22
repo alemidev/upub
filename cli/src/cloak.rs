@@ -2,11 +2,15 @@ use futures::TryStreamExt;
 use sea_orm::{ActiveModelTrait, ActiveValue::{NotSet, Set, Unchanged}, ColumnTrait, Condition, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect, SelectColumns};
 use upub::traits::{fetch::RequestError, Cloaker};
 
-pub async fn cloak(ctx: upub::Context, post_contents: bool, objects: bool, actors: bool) -> Result<(), RequestError> {
+pub async fn cloak(ctx: upub::Context, post_contents: bool, objects: bool, actors: bool, re_cloak: bool) -> Result<(), RequestError> {
 	let local_base = format!("{}%", ctx.base());
 	{
-		let mut stream = upub::model::attachment::Entity::find()
-			.filter(upub::model::attachment::Column::Url.not_like(&local_base))
+		let mut select = upub::model::attachment::Entity::find();
+		if !re_cloak {
+			select = select.filter(upub::model::attachment::Column::Url.not_like(&local_base));
+		}
+
+		let mut stream = select
 			.stream(ctx.db())
 			.await?;
 
@@ -20,9 +24,14 @@ pub async fn cloak(ctx: upub::Context, post_contents: bool, objects: bool, actor
 	}
 
 	if objects {
-		let mut stream = upub::model::object::Entity::find()
-			.filter(upub::model::object::Column::Image.is_not_null())
-			.filter(upub::model::object::Column::Image.not_like(&local_base))
+		let mut select = upub::model::object::Entity::find()
+			.filter(upub::model::object::Column::Image.is_not_null());
+
+		if !re_cloak {
+			select = select.filter(upub::model::object::Column::Image.not_like(&local_base));
+		}
+		
+		let mut stream = select
 			.select_only()
 			.select_column(upub::model::object::Column::Internal)
 			.select_column(upub::model::object::Column::Image)
@@ -42,12 +51,18 @@ pub async fn cloak(ctx: upub::Context, post_contents: bool, objects: bool, actor
 	}
 
 	if actors {
-		let mut stream = upub::model::actor::Entity::find()
-			.filter(
-				Condition::any()
-					.add(upub::model::actor::Column::Image.not_like(&local_base))
-					.add(upub::model::actor::Column::Icon.not_like(&local_base))
-			)
+		let mut select = upub::model::actor::Entity::find();
+
+		if !re_cloak {
+			select = select
+				.filter(
+					Condition::any()
+						.add(upub::model::actor::Column::Image.not_like(&local_base))
+						.add(upub::model::actor::Column::Icon.not_like(&local_base))
+				);
+		}
+
+		let mut stream = select
 			.select_only()
 			.select_column(upub::model::actor::Column::Internal)
 			.select_column(upub::model::actor::Column::Image)
