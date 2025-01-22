@@ -38,6 +38,19 @@ impl Cloaker for crate::Context {
 	}
 
 	fn cloaked(&self, url: &str) -> String {
+		// pre-cloaked: uncloak without validating and re-cloak
+		let cloak_base = crate::url!(self, "/proxy/");
+		if url.starts_with(&cloak_base) {
+			if let Some((_sig, url_b64)) = url.replace(&cloak_base, "").split_once("/") {
+				if let Some(actual_url) = BASE64_URL_SAFE.decode(url_b64).ok()
+					.and_then(|x| std::str::from_utf8(&x).ok().map(|x| x.to_string()))
+				{
+					let (sig, url) = self.cloak(&actual_url);
+					return crate::url!(self, "/proxy/{sig}/{url}");
+				}
+			}
+		}
+
 		let (sig, url) = self.cloak(url);
 		crate::url!(self, "/proxy/{sig}/{url}")
 	}
