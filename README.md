@@ -1,4 +1,9 @@
 # μpub
+
+<p align="center">
+  <img src="https://dev.upub.social/web/assets/icon.png" alt="upub logo: greep mu letter with blue and pink-reddish gradient" height="150" />
+</p>
+
 > ## [micro social network, federated](https://join.upub.social)
 >
 > - [about](#about)
@@ -12,8 +17,6 @@
 > - [development](#development)
 >   - [contacts](#contacts)
 >   - [contributing](#contributing)
-
-![upub logo: greep mu letter with blue and pink-reddish gradient](https://dev.upub.social/web/assets/icon.png)
 
 # about
 μpub aims to be a private, lightweight, modular and **secure** [ActivityPub](https://www.w3.org/TR/activitypub/) server
