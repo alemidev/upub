@@ -267,7 +267,7 @@ pub fn LikeButton(
 				let (mut to, cc) = if private {
 					(vec![], vec![])
 				} else {
-					privacy.get().address(&auth.username())
+					privacy.get().address(&auth.user_id())
 				};
 				to.push(author.clone());
 				let payload = serde_json::Value::Object(serde_json::Map::default())
@@ -343,7 +343,7 @@ pub fn RepostButton(n: i32, target: String, author: String) -> impl IntoView {
 				if !auth.present() { return; }
 				if !clicked.get() { return; }
 				set_clicked.set(false);
-				let (mut to, cc) = privacy.get().address(&auth.username());
+				let (mut to, cc) = privacy.get().address(&auth.user_id());
 				to.push(author.clone());
 				let payload = serde_json::Value::Object(serde_json::Map::default())
 					.set_activity_type(Some(apb::ActivityType::Announce))

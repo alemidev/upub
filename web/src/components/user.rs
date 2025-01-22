@@ -31,7 +31,7 @@ pub fn ActorBanner(object: crate::Doc) -> impl IntoView {
 			let uri = Uri::web(U::Actor, &uid);
 			let avatar_url = object.icon_url().unwrap_or(FALLBACK_IMAGE_URL.into());
 			let username = object.preferred_username().unwrap_or_default().to_string();
-			let domain = object.id().unwrap_or_default().replace("https://", "").split('/').next().unwrap_or_default().to_string();
+			let domain = object.id().unwrap_or_default().replace("https://", "").replace("http://", "").split('/').next().unwrap_or_default().to_string();
 			let display_name = object.name().unwrap_or_default().to_string();
 			view! {
 				<div>

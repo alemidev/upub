@@ -130,7 +130,7 @@ pub fn App() -> impl IntoView {
 										<Route path=path!("home") view=move || if auth.present() {
 											Either::Left(view! {
 												<Loadable
-													base=format!("{URL_BASE}/actors/{}/inbox/page", auth.username())
+													base=format!("{}/inbox/page", auth.user_id())
 													element=move |obj| view! { <Item item=obj sep=true /> }
 												/>
 											}) 
@@ -155,7 +155,7 @@ pub fn App() -> impl IntoView {
 										<Route path=path!("notifications") view=move || if auth.present() {
 											Either::Left(view! {
 												<Loadable
-													base=format!("{URL_BASE}/actors/{}/notifications/page", auth.username())
+													base=format!("{}/notifications/page", auth.user_id())
 													element=move |obj| view! { <Item item=obj sep=true always=true /> }
 												/>
 											})

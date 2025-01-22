@@ -89,19 +89,20 @@ impl Privacy {
 		}
 	}
 
-	pub fn address(&self, user: &str) -> (Vec<String>, Vec<String>) {
+	// TODO this is weird... should probably come from core or apb
+	pub fn address(&self, user_id: &str) -> (Vec<String>, Vec<String>) {
 		match self {
 			Self::Broadcast => (
 				vec![apb::target::PUBLIC.to_string()],
-				vec![format!("{URL_BASE}/actors/{user}/followers")],
+				vec![format!("{user_id}/followers")],
 			),
 			Self::Public => (
 				vec![],
-				vec![apb::target::PUBLIC.to_string(), format!("{URL_BASE}/actors/{user}/followers")],
+				vec![apb::target::PUBLIC.to_string(), format!("{user_id}/followers")],
 			),
 			Self::Private => (
 				vec![],
-				vec![format!("{URL_BASE}/actors/{user}/followers")],
+				vec![format!("{user_id}/followers")],
 			),
 			Self::Direct => (
 				vec![],
@@ -133,7 +134,7 @@ pub fn PrivacySelector(setter: WriteSignal<Privacy>) -> impl IntoView {
 				<td>
 					{move || {
 						let p = privacy.get();
-						let (to, cc) = p.address(&auth.username());
+						let (to, cc) = p.address(&auth.user_id());
 						view! {
 							<PrivacyMarker privacy=p to=to cc=cc big=true />
 						}
@@ -166,7 +167,7 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 					if let Some((name, domain)) = stripped.split_once('@') {
 						if let Some(tld) = domain.split('.').last() {
 							if tld::exist(tld) {
-								if let Some(uid) = cache::WEBFINGER.blocking_resolve(name, domain).await {
+								if let Some(uid) = cache::WEBFINGER.blocking_resolve(name, domain, auth).await {
 									out.push(TextMatch::Mention { name: name.to_string(), domain: domain.to_string(), href: uid });
 								}
 							}
@@ -236,7 +237,7 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 				set_posting.set(true);
 				leptos::task::spawn_local(async move {
 					let summary = get_if_some(summary_ref);
-					let (mut to_vec, cc_vec) = privacy.get().address(&auth.username());
+					let (mut to_vec, cc_vec) = privacy.get().address(&auth.user_id());
 					let mut mention_tags : Vec<serde_json::Value> = mentions.get()
 						.map(|x| x.take())
 						.unwrap_or_default()
@@ -380,7 +381,7 @@ pub fn AdvancedPostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 						<td class="w-66"><input class="w-100" type="text" node_ref=bto_ref title="bto" placeholder="bto" /></td>
 					</tr>
 					<tr>
-						<td class="w-33"><input class="w-100" type="text" node_ref=cc_ref title="cc" placeholder="cc" value=format!("{URL_BASE}/actors/{}/followers", auth.username()) /></td>
+						<td class="w-33"><input class="w-100" type="text" node_ref=cc_ref title="cc" placeholder="cc" value=format!("{}/followers", auth.user_id()) /></td>
 						<td class="w-33"><input class="w-100" type="text" node_ref=bcc_ref title="bcc" placeholder="bcc" /></td>
 					</tr>
 				</table>
@@ -424,7 +425,7 @@ pub fn AdvancedPostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 									apb::Node::maybe_link(object_id)
 								}
 							);
-						let target_url = format!("{URL_BASE}/actors/{}/outbox", auth.username());
+						let target_url = auth.outbox();
 						match Http::post(&target_url, &payload, auth).await {
 							Err(e) => set_error.set(Some(e.to_string())),
 							Ok(()) => set_error.set(None),

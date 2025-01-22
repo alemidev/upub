@@ -187,7 +187,7 @@ pub fn ConfigPage(setter: WriteSignal<crate::Config>) -> impl IntoView {
 							));
 
 						leptos::task::spawn_local(async move {
-							if let Err(e) = Http::post(&format!("{id}/outbox"), &payload, auth).await {
+							if let Err(e) = Http::post(&auth.outbox(), &payload, auth).await {
 								tracing::error!("could not send update activity: {e}");
 							}
 						});

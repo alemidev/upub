@@ -179,16 +179,16 @@ impl DashmapCache<Doc> {
 }
 
 impl DashmapCache<String> {
-	pub async fn blocking_resolve(&self, user: &str, domain: &str) -> Option<String> {
+	pub async fn blocking_resolve(&self, user: &str, domain: &str, auth: Auth) -> Option<String> {
 		if let Some(x) = self.resource(user, domain) { return Some(x); }
-		self.fetch(user, domain).await;
+		self.fetch(user, domain, auth).await;
 		self.resource(user, domain)
 	}
 
-	pub fn resolve(&self, user: &str, domain: &str) -> Option<String> {
+	pub fn resolve(&self, user: &str, domain: &str, auth: Auth) -> Option<String> {
 		if let Some(x) = self.resource(user, domain) { return Some(x); }
 		let (_self, user, domain) = (self.clone(), user.to_string(), domain.to_string());
-		leptos::task::spawn_local(async move { _self.fetch(&user, &domain).await });
+		leptos::task::spawn_local(async move { _self.fetch(&user, &domain, auth).await });
 		None
 	}
 
@@ -197,32 +197,20 @@ impl DashmapCache<String> {
 		self.get(&query)
 	}
 
-	async fn fetch(&self, user: &str, domain: &str) {
+	async fn fetch(&self, user: &str, domain: &str, auth: Auth) {
 		let query = format!("{user}@{domain}");
 		self.0.insert(query.to_string(), LookupStatus::Resolving);
-		match reqwest::get(format!("{URL_BASE}/.well-known/webfinger?resource=acct:{query}")).await {
-			Ok(res) => match res.error_for_status() {
-				Ok(res) => match res.json::<jrd::JsonResourceDescriptor>().await {
-					Ok(doc) => {
-						if let Some(uid) = doc.links.into_iter().find(|x| x.rel == "self").and_then(|x| x.href) {
-							self.0.insert(query, LookupStatus::Found(uid));
-						} else {
-							self.0.insert(query, LookupStatus::NotFound);
-						}
-					},
-					Err(e) => {
-						tracing::error!("invalid webfinger response: {e:?}");
-						self.0.remove(&query);
-					},
-				},
-				Err(e) => {
-					tracing::error!("could not resolve webfinbger: {e:?}");
+		match crate::Http::fetch::<jrd::JsonResourceDescriptor>(&format!("{URL_BASE}/.well-known/webfinger?resource=acct:{query}"), auth).await {
+			Ok(doc) => {
+				if let Some(uid) = doc.links.into_iter().find(|x| x.rel == "self").and_then(|x| x.href) {
+					self.0.insert(query, LookupStatus::Found(uid));
+				} else {
 					self.0.insert(query, LookupStatus::NotFound);
-				},
+				}
 			},
 			Err(e) => {
-				tracing::error!("failed accessing webfinger server: {e:?}");
-				self.0.remove(&query);
+				tracing::error!("could not resolve webfinbger: {e:?}");
+				self.0.insert(query, LookupStatus::NotFound);
 			},
 		}
 	}
@@ -237,12 +225,25 @@ pub struct IdParam {
 pub struct Http;
 
 impl Http {
+	// TODO not really great.... also checked only once
+	pub fn location() -> &'static str {
+		static LOCATION: std::sync::OnceLock<String> = std::sync::OnceLock::new();
+		LOCATION.get_or_init(||
+			web_sys::window()
+				.expect("could not access window element")
+				.location()
+				.origin()
+				.expect("could not access location origin")
+		).as_str()
+	}
+
 	pub async fn request<T: serde::ser::Serialize>(
 		method: reqwest::Method,
 		url: &str,
 		data: Option<&T>,
 		auth: Auth,
 	) -> reqwest::Result<reqwest::Response> {
+		tracing::info!("making request to {url}");
 		use leptos::prelude::GetUntracked;
 
 		// TODO while in web environments it's ok (and i'd say good!) to fetch with relative urls,
@@ -252,15 +253,7 @@ impl Http {
 		//      prod deployments). relevant issue: https://github.com/seanmonstar/reqwest/issues/1433
 		let mut url = url.to_string();
 		if !url.starts_with("http") {
-			static LOCATION: std::sync::OnceLock<String> = std::sync::OnceLock::new();
-			let base = LOCATION.get_or_init(||
-				web_sys::window()
-					.expect("could not access window element")
-					.location()
-					.origin()
-					.expect("could not access location origin")
-			);
-			url = format!("{base}{url}");
+			url = format!("{}{url}", Self::location());
 		}
 
 		let mut req = reqwest::Client::new()
@@ -311,7 +304,7 @@ impl Uri {
 	}
 
 	pub fn short(url: &str) -> String {
-		if url.starts_with(URL_BASE) || url.starts_with('/') {
+		if url.starts_with(Http::location()) || url.starts_with('/') {
 			uriproxy::decompose(url)
 		} else if url.starts_with("https://") || url.starts_with("http://") {
 			uriproxy::compact(url)

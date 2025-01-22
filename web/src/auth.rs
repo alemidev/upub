@@ -32,7 +32,7 @@ impl Auth {
 	}
 
 	pub fn outbox(&self) -> String {
-		format!("{URL_BASE}/actors/{}/outbox", self.username())
+		format!("{}/outbox", self.user_id())
 	}
 
 	pub async fn refresh(
