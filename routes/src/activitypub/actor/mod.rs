@@ -75,8 +75,8 @@ pub async fn view(
 			}
 
 			// TODO this is known "magically" !! very tight coupling ouchhh
-			if let Some(ref fe) = ctx.cfg().instance.frontend {
-				user = user.set_url(Node::link(format!("{fe}/actors/{id}")));
+			if !ctx.cfg().instance.frontend.is_empty() {
+				user = user.set_url(Node::link(format!("{}/actors/{id}", ctx.cfg().instance.frontend)));
 			}
 
 			Ok(JsonLD(user.ld_context()))
