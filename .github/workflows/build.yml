@@ -2,6 +2,6 @@ on: [push]
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: global-docker-runner
     steps:
       - run: echo All Good
