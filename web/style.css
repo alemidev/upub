@@ -81,7 +81,9 @@ article.tl h3 {
 	margin-bottom: .1em;
 }
 article p {
-	margin: 0 0 0 .5em;
+	line-height: 1.2rem;
+	text-indent: -.25em;
+	margin: .3em 0 .3em .5em;
 }
 article.float-container {
 	overflow-y: auto;
