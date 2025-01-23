@@ -1,5 +1,7 @@
 # upub-web
 
+![screenshot of upub frontend](https://cdn.alemi.dev/proj/upub/fe/20240704.png)
+
 this is μpub main frontend: it's a single wasm bundle doing clientside routing for faster navigation between objects
 
 it has the drawback of not being search-engine friendly, but machines should process data for machines themselves (aka: the AP documents), so it's probably fine to have a "js"-heavy frontend
