@@ -1,8 +1,8 @@
-# μpub
-
 <p align="center">
   <img src="https://dev.upub.social/web/assets/icon.png" alt="upub logo: greep mu letter with blue and pink-reddish gradient" height="150" />
 </p>
+
+# μpub
 
 > ## [micro social network, federated](https://join.upub.social)
 >
@@ -42,7 +42,7 @@ most activitypub implementations don't really validate fetches: knowing an activ
 
 μpub correctly and rigorously implements and enforces access control on each object based on its addressing
 
-> [!WARNING]
+> [!IMPORTANT]
 > most instances will have "authorized fetch" which kind of makes the issue less bad, but anyone can host an actor, have any server download their pubkey and then start fetching
 
 μpub may be considered to have "authorized fetch" permanently on, except it depends on each post:
@@ -52,7 +52,7 @@ most activitypub implementations don't really validate fetches: knowing an activ
    * local users must authenticate and will be given said post only if it's addressed to them
    * remote servers will be given access to all posts from any of their users once they have authenticated themselves (with http signing)
 
-> [!IMPORTANT]
+> [!TIP]
 > note that followers get expanded: addressing to example.net/actor/followers will address to anyone following actor that the server knows of, **at that time**
 
 ## caching
@@ -64,16 +64,13 @@ while this just works for small instances, larger servers should set up aggressi
 μpub is built with the needs of small deployments in mind: getting a dev instance up is as easy as running one command, and setting up for production just requires some config tweaking
 
 ## install
-> [!CAUTION]
-> official releases are being automated, available very soon
-
-latest μpub build can be downloaded from [moonlit.technology releases page](todo add link!!)
+latest μpub build can be downloaded from [moonlit.technology releases page](https://moonlit.technology/alemi/upub/releases)
 
 ```sh
-$ curl -s https://moonlit.technology/alemi/upub/releases/.... > upub; chmod +x upub
+curl -s https://moonlit.technology/alemi/upub/releases/download/v0.5.0/upub > ~/.local/bin/upub; chmod +x ~/.local/bin/upub
 ```
 > [!IMPORTANT]
-> automated builds by GitHub are planned and will follow
+> automated cross-platform builds by GitHub are planned and will be made available soon
 
 ### from source
 building μpub from source is also possible without too much effort. it will also allow to customize the resulting binary to your specific use case
@@ -168,3 +165,4 @@ reading a bit of the [ActivityPub](https://www.w3.org/TR/activitypub/) specifica
 hanging out in the relevant matrix room will probably be useful, as you can ask questions while familiarizing with the codebase
 
 once you feel ready to tackle some development, head over to [the issues tab](https://moonlit.technology/alemi/upub/issues) and look around for something that needs to be done!
+
