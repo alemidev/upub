@@ -103,7 +103,7 @@ cargo build --release --features=web
 all modes share `-c`, `--db` and `--domain` options, which will set respectively config path, database connection string and instance domain url.
 none of these is necessary: by default a sqlite database `upub.db` will be created in current directory, default config will be used and domain will be a localhost http url
 
-bring up a complete instance with `monolith` mode: `$ upub monolith`: it will:
+bring up a complete instance with `monolith` mode: `$ upub monolith` will
  * run migrations
  * setup frontend and routes
  * spawn a background worker
