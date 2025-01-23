@@ -18,7 +18,10 @@ pub mod web;
 
 
 pub async fn serve(ctx: upub::Context, bind: String, shutdown: impl ShutdownToken) -> Result<(), std::io::Error> {
-	use tower_http::{cors::CorsLayer, trace::TraceLayer, timeout::TimeoutLayer, classify::{SharedClassifier, StatusInRangeAsFailures}};
+	use tower_http::{
+		cors::CorsLayer, trace::TraceLayer, timeout::TimeoutLayer,
+		classify::{SharedClassifier, StatusInRangeAsFailures}
+	};
 
 	let mut router = axum::Router::new();
 
@@ -36,7 +39,7 @@ pub async fn serve(ctx: upub::Context, bind: String, shutdown: impl ShutdownToke
 				// TODO 4xx errors aren't really failures but since upub is in development it's useful to log
 				//      these too, in case something's broken
 				.layer(
-					TraceLayer::new(SharedClassifier::new(StatusInRangeAsFailures::new(300..=999)))
+					TraceLayer::new(SharedClassifier::new(StatusInRangeAsFailures::new(400..=999)))
 						.make_span_with(|req: &axum::http::Request<_>| {
 							tracing::span!(
 								tracing::Level::INFO,
