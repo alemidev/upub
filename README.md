@@ -30,7 +30,7 @@ all client interactions happen with ActivityPub's client-server methods (basical
 
 ## features
 μpub boasts both known features and new experimental ideas:
- * quote posts, groups, 
+ * quote posts, groups, tree view
  * media proxy: minimal local storage impact
  * AP explorer: navigate underlying AP documents
  * on-demand thread fetching: get missing remote replies on-demand
