@@ -20,7 +20,7 @@ use upub_worker as worker;
 
 
 #[derive(Parser)]
-/// all names were taken
+/// micro social network, federated
 struct Args {
 	#[clap(subcommand)]
 	/// command to run
