@@ -146,8 +146,8 @@ pub trait Fetcher {
 
 		let response = Self::client(domain)
 			.request(method, url)
-			.header(ACCEPT, "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"")
-			.header(CONTENT_TYPE, "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"")
+			.header(ACCEPT, apb::jsonld::CONTENT_TYPE_LD_JSON_ACTIVITYPUB)
+			.header(CONTENT_TYPE, apb::jsonld::CONTENT_TYPE_LD_JSON_ACTIVITYPUB)
 			.header("Host", host.clone())
 			.header("Date", date.clone())
 			.header("Digest", digest)

@@ -39,7 +39,7 @@ pub struct JsonLD<T>(pub T);
 impl<T: serde::Serialize> IntoResponse for JsonLD<T> {
 	fn into_response(self) -> Response {
 		(
-			[("Content-Type", "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"")],
+			[("Content-Type", apb::jsonld::CONTENT_TYPE_LD_JSON_ACTIVITYPUB)],
 			axum::Json(self.0)
 		).into_response()
 	}

@@ -110,7 +110,7 @@ pub mod shortcuts;
 pub use shortcuts::Shortcuts;
 
 #[cfg(feature = "jsonld")]
-mod jsonld;
+pub mod jsonld;
 
 #[cfg(feature = "jsonld")]
 pub use jsonld::LD;

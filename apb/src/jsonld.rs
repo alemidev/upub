@@ -1,5 +1,21 @@
 use crate::Object;
 
+/// recommended content-type header value for AP fetches and responses
+pub const CONTENT_TYPE_LD_JSON_ACTIVITYPUB: &str = "application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"";
+/// alternative content-type header value for AP fetches and responses
+pub const CONTENT_TYPE_ACTIVITY_JSON: &str = "application/activity+json";
+/// uncommon and not officially supported content-type header value for AP fetches and responses
+#[deprecated = "use CONTENT_TYPE_LD_JSON_ACTIVITYPUB: 'application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"'"]
+pub const CONTENT_TYPE_LD_JSON: &str = "application/ld+json";
+
+#[allow(deprecated)]
+pub fn is_activity_pub_content_type<T: AsRef<str>>(txt: T) -> bool {
+	let r = txt.as_ref();
+	r == CONTENT_TYPE_LD_JSON_ACTIVITYPUB
+	|| r == CONTENT_TYPE_ACTIVITY_JSON
+	|| r == CONTENT_TYPE_LD_JSON
+}
+
 pub trait LD {
 	fn ld_context(self) -> Self;
 }
