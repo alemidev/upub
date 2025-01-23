@@ -85,25 +85,12 @@ async fn redirect_to_web(
 
 	#[cfg(any(feature = "web", feature = "web-redirect"))]
 	{
-		let accepts_activity_pub = request.headers()
-			.get_all(axum::http::header::CONTENT_TYPE)
-			.iter()
-			.any(|x|
-				x.to_str().map_or(false, |x| apb::jsonld::is_activity_pub_content_type(x))
-			);
-
-		let accepts_html = request.headers()
-			.get_all(axum::http::header::CONTENT_TYPE)
-			.iter()
-			.any(|x|
-				x.to_str().map_or(false, |x| x.starts_with("text/html"))
-			);
-
+		let (accepts_activity_pub, accepts_html) = crate::builders::accepts_activitypub_html(request.headers());
 		if !accepts_activity_pub && accepts_html {
 			let uri = request.uri().clone();
 			let new_uri = format!(
-				"{}://{}/web{}",
-				uri.scheme().unwrap_or(&axum::http::uri::Scheme::HTTP),
+				"{}{}/web{}",
+				uri.scheme().map(|x| format!("{}://", x.as_str())).unwrap_or_default(),
 				uri.authority().map(|x| x.as_str()).unwrap_or_default(),
 				uri.path_and_query().map(|x| x.as_str()).unwrap_or_default(),
 			);

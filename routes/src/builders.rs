@@ -44,3 +44,23 @@ impl<T: serde::Serialize> IntoResponse for JsonLD<T> {
 		).into_response()
 	}
 }
+
+pub fn accepts_activitypub_html(headers: &axum::http::HeaderMap) -> (bool, bool) {
+	let mut accepts_activity_pub = false;
+	let mut accepts_html = false;
+
+	for h in headers
+		.get_all(axum::http::header::ACCEPT)
+		.iter()
+	{
+		tracing::info!("inspecting header: {}", h.to_str().unwrap_or("ERROR DECODING"));
+		if h.to_str().is_ok_and(apb::jsonld::is_activity_pub_content_type) {
+			accepts_activity_pub = true;
+		}
+
+		if h.to_str().is_ok_and(|x| x.starts_with("text/html")) {
+			accepts_html = true;
+		}
+	}
+	(accepts_activity_pub, accepts_html)
+}

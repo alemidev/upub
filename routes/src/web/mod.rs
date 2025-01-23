@@ -26,20 +26,7 @@ async fn redirect_to_ap(
 
 	#[cfg(any(feature = "activitypub", feature = "activitypub-redirect"))]
 	{
-		let accepts_activity_pub = request.headers()
-			.get_all(axum::http::header::CONTENT_TYPE)
-			.iter()
-			.any(|x|
-				x.to_str().map_or(false, |x| apb::jsonld::is_activity_pub_content_type(x))
-			);
-
-		let accepts_html = request.headers()
-			.get_all(axum::http::header::CONTENT_TYPE)
-			.iter()
-			.any(|x|
-				x.to_str().map_or(false, |x| x.starts_with("text/html"))
-			);
-
+		let (accepts_activity_pub, accepts_html) = crate::builders::accepts_activitypub_html(request.headers());
 		if !accepts_html && accepts_activity_pub {
 			let new_uri = request.uri().to_string().replacen("/web", "", 1);
 			return axum::response::Redirect::temporary(&new_uri).into_response();
