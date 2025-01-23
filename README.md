@@ -98,19 +98,17 @@ cargo build --release --features=web
 μpub includes its maintenance tooling and different operation modes, all documented in its extensive command line interface.
 
 > [!TIP]
-> make sure to use `--help` if you're lost! subcommands have different help screens
+> make sure to use `--help` if you're lost! each subcommands has its own help screen
 
-all modes share `-c`, `--db` and `--domain` options, which will set respectively config path, database connection string and instance domain url
+all modes share `-c`, `--db` and `--domain` options, which will set respectively config path, database connection string and instance domain url.
+none of these is necessary: by default a sqlite database `upub.db` will be created in current directory, default config will be used and domain will be a localhost http url
 
-neither is necessary: by default a sqlite database `upub.db` will be created in current directory, default config will be used and domain will be a localhost http url
+bring up a complete instance with `monolith` mode: `$ upub monolith`: it will:
+ * run migrations
+ * setup frontend and routes
+ * spawn a background worker
 
-there is no default config path: point explicitly with `-c` flag
-
-bring up a complete instance with `monolith` mode: `$ upub monolith`
-
-to view μpub full default config, use `$ upub config`
-
-most maintenance tasks can be done with `$ upub cli`
+most maintenance tasks can be done with `$ upub cli`: register a test user with `$ upub cli register user password`
 
 ---
 
@@ -122,6 +120,41 @@ a proper deployment will require:
 running `$ upub` monolith will do all of these
 
 ## configure
+all configuration lives under a `.toml` file. there is no default config path: point to it explicitly with `-c` flag while starting `upub`
+
+> [!TIP]
+> to view μpub full default config, use `$ upub config`
+
+### moderation
+> [!CAUTION]
+> currently there aren't many moderation tools and tasks will require querying db directly
+
+interactions with remote instances can be finetuned using the `[reject]` table:
+
+```
+# discard incoming activities from these instances
+incoming = []
+
+# prevent fetching content from these instances
+fetch = []
+
+# prevent content from these instances from being displayed publicly
+# this effectively removes the public (aka NULL) addressing = only other addressees (followers,
+# mentions) will be able to see content from these instances on timelines and directly
+public = []
+
+# prevent proxying media coming from these instances
+media = []
+
+# skip delivering to these instances
+delivery = []
+
+# prevent fetching private content from these instances
+access = []
+
+# reject any request from these instances (ineffective as they can still fetch anonymously)
+requests = []
+```
 
 ### media proxy cache
 caching proxied media is quite important for performance, as it keeps proxying load away from μpub itself
@@ -147,6 +180,16 @@ server {
 }
 
 ```
+
+### polylith
+it's also possible to deploy μpub as multiple smaller services, but this process will require some expertise as the setup is experimental and poorly documented
+
+multiple specific binaries can be compiled with various feature flags:
+ - `cli` and `migrations` are only required at maintenance time
+ - `worker` processes jobs, only interacts with database
+ - `serve` answers http requests, can also queue jobs POSTed on inboxes, can be further split into
+   - `activitypub` with core AP routes
+   - `web` serving static frontend
 
 # development
 development is still active, so expect more stuff to come! since most fediverse software uses Mastodon's API, μpub plans to implement it as an optional feature, becoming eventually compatible with most existing frontends and mobile applications, but focus right now is on producing something specific to μpub needs
