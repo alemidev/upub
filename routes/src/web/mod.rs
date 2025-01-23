@@ -1,17 +1,22 @@
 use axum::{response::IntoResponse, routing, Router, http};
 
-impl super::WebRouter for Router<upub::Context> {
-	fn web_routes(self) -> Self {
-		self
-			.route("/web/assets/upub-web.js", routing::get(upub_web_js))
-			.route("/web/assets/upub-web_bg.wasm", routing::get(upub_web_wasm))
-			.route("/web/assets/style.css", routing::get(upub_style_css))
-			.route("/web/assets/favicon.ico", routing::get(upub_favicon))
-			.route("/web/assets/icon.png", routing::get(upub_pwa_icon))
-			.route("/web/assets/manifest.json", routing::get(upub_pwa_manifest))
-			.route("/web", routing::get(upub_web_index))
-			.route("/web/", routing::get(upub_web_index))
-			.route("/web/{*any}", routing::get(upub_web_index))
+pub fn web_routes(ctx: upub::Context) -> Router {
+	Router::new()
+		.nest("/web", Router::new()
+			.nest("/assets", Router::new()
+				.route("/upub-web.js", routing::get(upub_web_js))
+				.route("/upub-web_bg.wasm", routing::get(upub_web_wasm))
+				.route("/style.css", routing::get(upub_style_css))
+				.route("/favicon.ico", routing::get(upub_favicon))
+				.route("/icon.png", routing::get(upub_pwa_icon))
+				.route("/manifest.json", routing::get(upub_pwa_manifest))
+			)
+			.route("", routing::get(upub_web_index))
+			.route("/", routing::get(upub_web_index))
+			.route("/{*any}", routing::get(upub_web_index))
+		)
+		.with_state(ctx)
+}
 	}
 }
 

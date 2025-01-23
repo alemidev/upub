@@ -1,5 +1,3 @@
-use tower_http::classify::{SharedClassifier, StatusInRangeAsFailures};
-
 pub mod auth;
 pub use auth::{AuthIdentity, Identity};
 
@@ -9,63 +7,47 @@ pub use error::{ApiError, ApiResult};
 pub mod builders;
 
 
-pub trait ActivityPubRouter {
-	fn ap_routes(self) -> Self where Self: Sized { self }
-}
-
 #[cfg(feature = "activitypub")]
 pub mod activitypub;
-
-#[cfg(not(feature = "activitypub"))]
-pub mod activitypub { impl super::ActivityPubRouter for axum::Router<upub::Context> {} }
-
-
-pub trait MastodonRouter {
-	fn mastodon_routes(self) -> Self where Self: Sized { self }
-}
 
 #[cfg(feature = "mastodon")]
 pub mod mastodon;
 
-#[cfg(not(feature = "mastodon"))]
-pub mod mastodon { impl super::MastodonRouter for axum::Router<upub::Context> {} }
-
-
-pub trait WebRouter {
-	fn web_routes(self) -> Self where Self: Sized { self }
-}
-
 #[cfg(feature = "web")]
 pub mod web;
 
-#[cfg(not(feature = "web"))]
-pub mod web {
-	impl super::WebRouter for axum::Router<upub::Context> {}
-}
-
 
 pub async fn serve(ctx: upub::Context, bind: String, shutdown: impl ShutdownToken) -> Result<(), std::io::Error> {
-	use tower_http::{cors::CorsLayer, trace::TraceLayer};
+	use tower_http::{cors::CorsLayer, trace::TraceLayer, timeout::TimeoutLayer, classify::{SharedClassifier, StatusInRangeAsFailures}};
 
-	let router = axum::Router::new()
+	let mut router = axum::Router::new();
+
+	#[cfg(all(not(feature = "activitypub"), not(feature = "mastodon"), not(feature = "web")))] {
+		compile_error!("at least one feature from ['activitypub', 'mastodon', 'web'] must be enabled");
+	}
+
+	#[cfg(feature = "activitypub")] { router = router.merge(activitypub::ap_routes(ctx.clone())); }
+	#[cfg(feature = "mastodon")] { router = router.merge(mastodon::masto_routes(ctx.clone())); }
+	#[cfg(feature = "web")] { router = router.merge(web::web_routes(ctx.clone())); }
+
+	router = router
 		.layer(
-			// TODO 4xx errors aren't really failures but since upub is in development it's useful to log
-			//      these too, in case something's broken
-			TraceLayer::new(SharedClassifier::new(StatusInRangeAsFailures::new(300..=999)))
-				.make_span_with(|req: &axum::http::Request<_>| {
-					tracing::span!(
-						tracing::Level::INFO,
-						"request",
-						uri = %req.uri(),
-						status_code = tracing::field::Empty,
-					)
-				})
-		)
-		.ap_routes()
-		.mastodon_routes() // no-op if mastodon feature is disabled
-		.web_routes() // no-op if web feature is disabled
-		.layer(CorsLayer::permissive())
-		.with_state(ctx);
+			tower::ServiceBuilder::new()
+				// TODO 4xx errors aren't really failures but since upub is in development it's useful to log
+				//      these too, in case something's broken
+				.layer(
+					TraceLayer::new(SharedClassifier::new(StatusInRangeAsFailures::new(300..=999)))
+						.make_span_with(|req: &axum::http::Request<_>| {
+							tracing::span!(
+								tracing::Level::INFO,
+								"request",
+								uri = %req.uri(),
+								status_code = tracing::field::Empty,
+							)
+						})
+				)
+				.layer(CorsLayer::permissive())
+		);
 
 	tracing::info!("serving api routes on {bind}");
 
