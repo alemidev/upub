@@ -54,7 +54,7 @@ most activitypub implementations don't really validate fetches: knowing an activ
    * remote servers will be given access to all posts from any of their users once they have authenticated themselves (with http signing)
 
 > [!TIP]
-> note that followers get expanded: addressing to example.net/actor/followers will address to anyone following actor that the server knows of, **at that time**
+> note that followers get expanded: addressing to `example.net/actor/followers` will address to anyone following actor that the server knows of, **at that time**
 
 ## caching
 μpub **doesn't download remote media** to both minimize local resources requirement and avoid storing media that remotes want gone. to prevent leaking local user ip addresses, all media links are cloaked and proxied.
