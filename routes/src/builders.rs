@@ -53,7 +53,6 @@ pub fn accepts_activitypub_html(headers: &axum::http::HeaderMap) -> (bool, bool)
 		.get_all(axum::http::header::ACCEPT)
 		.iter()
 	{
-		tracing::info!("inspecting header: {}", h.to_str().unwrap_or("ERROR DECODING"));
 		if h.to_str().is_ok_and(apb::jsonld::is_activity_pub_content_type) {
 			accepts_activity_pub = true;
 		}
