@@ -46,6 +46,7 @@ most activitypub implementations don't really validate fetches: knowing an activ
 > most instances will have "authorized fetch" which kind of makes the issue less bad, but anyone can host an actor, have any server download their pubkey and then start fetching
 
 μpub may be considered to have "authorized fetch" permanently on, except it depends on each post:
+ * all incoming activities must be signed or will be rejected
  * all posts marked public (meaning, addressed to `https://www.w3.org/ns/activitystreams#Public`), will be fetchable without any authorization
  * all posts not public will require explicit addressing and authentication: for example if post A is addressed to example.net/actor
    * anonymous fetchers will receive 404 on GET /posts/A
