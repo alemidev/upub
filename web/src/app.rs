@@ -168,7 +168,7 @@ pub fn App() -> impl IntoView {
 											let tag = params.get().ok().and_then(|x| x.id).unwrap_or_default();
 											view! {
 												<Loadable
-													base=format!("{URL_BASE}/tag/{tag}/page", )
+													base=format!("{URL_BASE}/tags/{tag}/page", )
 													element=move |obj| view! { <Item item=obj sep=true always=true /> }
 												/>
 											}
