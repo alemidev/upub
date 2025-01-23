@@ -11,7 +11,6 @@ pub fn web_routes(ctx: upub::Context) -> Router {
 				.route("/icon.png", routing::get(upub_pwa_icon))
 				.route("/manifest.json", routing::get(upub_pwa_manifest))
 			)
-			.route("", routing::get(upub_web_index))
 			.route("/", routing::get(upub_web_index))
 			.route("/{*any}", routing::get(upub_web_index))
 		)
