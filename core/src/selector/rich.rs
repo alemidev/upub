@@ -24,11 +24,12 @@ pub struct RichHashtag {
 }
 
 impl IntoActivityPub for RichHashtag {
-	fn into_activity_pub_json(self, _ctx: &crate::Context) -> serde_json::Value {
+	fn into_activity_pub_json(self, ctx: &crate::Context) -> serde_json::Value {
 		use apb::LinkMut;
 		apb::new()
 			.set_name(Some(format!("#{}", self.hash.name)))
 			.set_link_type(Some(apb::LinkType::Hashtag))
+			.set_href(Some(crate::url!(ctx, "/tags/{}", self.hash.name)))
 	}
 }
 
