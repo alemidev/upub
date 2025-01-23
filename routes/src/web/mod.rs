@@ -2,6 +2,7 @@ use axum::{response::IntoResponse, routing, Router, http};
 
 pub fn web_routes(ctx: upub::Context) -> Router {
 	Router::new()
+		.route("/web/", routing::get(|| async { axum::response::Redirect::permanent("/web") }))
 		.nest("/web", Router::new()
 			.nest("/assets", Router::new()
 				.route("/upub-web.js", routing::get(upub_web_js))
