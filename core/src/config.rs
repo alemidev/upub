@@ -1,5 +1,3 @@
-
-
 #[serde_inline_default::serde_inline_default]
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize, serde_default::DefaultFromSerde)]
 pub struct Config {
@@ -93,6 +91,10 @@ pub struct SecurityConfig {
 	#[serde(default)]
 	/// allow anonymous users to perform full-text searches
 	pub allow_public_search: bool,
+
+	#[serde_inline_default(30)]
+	/// max time, in seconds, before requests fail with timeout
+	pub request_timeout: u64,
 
 	#[serde_inline_default("definitely-change-this-in-prod".to_string())]
 	/// secret for media proxy, set this to something random
