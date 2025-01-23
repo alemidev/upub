@@ -49,3 +49,5 @@ web = [
 	"dep:leptos_axum",
 	"dep:leptos_meta"
 ]
+web-redirect = []
+activitypub-redirect = []

@@ -1,5 +1,5 @@
 use apb::{LD, ActorMut, BaseMut, ObjectMut, PublicKeyMut};
-use axum::{extract::{Path, Query, State}, http::HeaderMap, response::{IntoResponse, Redirect, Response}};
+use axum::{extract::{Path, Query, State}, response::{IntoResponse, Response}};
 use reqwest::Method;
 use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter, QueryOrder, QuerySelect};
 use upub::{selector::{RichFillable, RichObject}, traits::{Cloaker, Fetcher}, Context};
@@ -9,17 +9,7 @@ use crate::{builders::JsonLD, ApiError, AuthIdentity};
 use super::{PaginatedSearch, Pagination};
 
 
-pub async fn view(
-	headers: HeaderMap,
-	State(ctx): State<Context>,
-) -> crate::ApiResult<Response> {
-	if let Some(accept) = headers.get("Accept") {
-		if let Ok(accept) = accept.to_str() {
-			if accept.contains("text/html") && !accept.contains("application/ld+json") {
-				return Ok(Redirect::to("/web").into_response());
-			}
-		}
-	}
+pub async fn view(State(ctx): State<Context>) -> crate::ApiResult<Response> {
 	Ok(JsonLD(
 		apb::new()
 			.set_id(Some(upub::url!(ctx, "")))
