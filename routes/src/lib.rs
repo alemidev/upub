@@ -44,6 +44,7 @@ pub async fn serve(ctx: upub::Context, bind: String, shutdown: impl ShutdownToke
 							tracing::span!(
 								tracing::Level::INFO,
 								"request",
+								agent = req.headers().get(axum::http::header::USER_AGENT).and_then(|x| x.to_str().ok()).unwrap_or_default(),
 								uri = %req.uri(),
 								status_code = tracing::field::Empty,
 							)
