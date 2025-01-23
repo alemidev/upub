@@ -54,12 +54,12 @@ most activitypub implementations don't really validate fetches: knowing an activ
    * remote servers will be given access to all posts from any of their users once they have authenticated themselves (with http signing)
 
 > [!TIP]
-> note that followers get expanded: addressing to `example.net/actor/followers` will address to anyone following actor that the server knows of, **at that time**
+> note that followers get expanded at insertion time: addressing to `example.net/actor/followers` will address to anyone following actor that the server knows of, **at that time**
 
 ## caching
 μpub **doesn't download remote media** to both minimize local resources requirement and avoid storing media that remotes want gone. to prevent leaking local user ip addresses, all media links are cloaked and proxied.
 
-while this just works for small instances, larger servers should set up aggressive caching on `/proxy/...` path: more info [in coming sections](#media-proxy-cache)
+while this just works for small instances, larger servers should set up aggressive caching on `/proxy/...` path: more info [in following sections](#media-proxy-cache)
 
 # deploy
 μpub is built with the needs of small deployments in mind: getting a dev instance up is as easy as running one command, and setting up for production just requires some config tweaking
@@ -110,20 +110,27 @@ bring up a complete instance with `monolith` mode: `$ upub monolith`: it will:
 
 most maintenance tasks can be done with `$ upub cli`: register a test user with `$ upub cli register user password`
 
----
-
-a proper deployment will require:
- * a migrated database (run `$ upub migrate --db <your-db-connection-string>` once)
- * core activitypub routes (feature flag `routes`, cli `$ upub serve`)
- * a job worker (feature flag `worker`, cli `$ upub work`)
-
-running `$ upub` monolith will do all of these
+done! try connecting to http://127.0.0.1:3000/web
 
 ## configure
 all configuration lives under a `.toml` file. there is no default config path: point to it explicitly with `-c` flag while starting `upub`
 
 > [!TIP]
 > to view μpub full default config, use `$ upub config`
+
+a super minimal config may look like this
+
+```toml
+[instance]
+name = "my-upub-instance"
+domain = "https://my.domain.social"
+
+[datasource]
+connection_string = "postgres://localhost/upub"
+
+[security]
+allow_registration = true
+```
 
 ### moderation
 > [!CAUTION]
@@ -190,6 +197,8 @@ multiple specific binaries can be compiled with various feature flags:
  - `serve` answers http requests, can also queue jobs POSTed on inboxes, can be further split into
    - `activitypub` with core AP routes
    - `web` serving static frontend
+
+remember to prepare config file and run migrations!
 
 # development
 development is still active, so expect more stuff to come! since most fediverse software uses Mastodon's API, μpub plans to implement it as an optional feature, becoming eventually compatible with most existing frontends and mobile applications, but focus right now is on producing something specific to μpub needs
