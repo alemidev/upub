@@ -1,7 +1,24 @@
 on: [push]
 
 jobs:
-  build:
+  test:
     runs-on: ubuntu-latest
     steps:
-      - run: echo All Good
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - run: cargo test
+
+  build:
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - run: rustup target add wasm32-unknown-unknown
+      - run: cargo install --locked trunk
+      - run: trunk build --release
+        working-directory: web/
+      - run: cargo build --release --features=web
+      - uses: actions/upload-artifact@v4
+        with:
+          path: target/release/upub
