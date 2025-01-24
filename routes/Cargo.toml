@@ -40,7 +40,7 @@ leptos_axum = { version = "0.7", optional = true }
 leptos_meta = { version = "0.7", optional = true }
 
 [features]
-default = ["activitypub", "web"]
+default = ["activitypub"]
 activitypub = []
 mastodon = ["dep:mastodon-async-entities"]
 web = [
