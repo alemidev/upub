@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use leptos::prelude::*;
+use leptos::{either::Either, prelude::*};
 use leptos_router::hooks::use_query_map;
 use crate::prelude::*;
 
@@ -101,9 +101,9 @@ pub fn SearchPage() -> impl IntoView {
 				</summary>
 				<div class="pb-1">
 					{move || match text_search.get().map(|x| x.take()) {
-						None => Some(view! { <p class="center"><small>searching...</small></p> }.into_any()),
+						None => Some(Either::Left(view! { <p class="center"><small>searching...</small></p> })),
 						Some(None) => None,
-						Some(Some(items)) => Some(view! {
+						Some(Some(items)) => Some(Either::Right(view! {
 							// TODO ughhh too many clones
 							<For
 								each=move || items.clone()
@@ -113,7 +113,7 @@ pub fn SearchPage() -> impl IntoView {
 										.map(|x| view! { <Item item=x always=true /> }.into_any())
 								}
 							/ >
-						}.into_any())
+						}))
 					}}
 				</div>
 			</details>
