@@ -8,13 +8,12 @@ jobs:
          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > rustup-install.sh
          chmod +x rustup-install.sh
          ./rustup-install.sh -y
-         cp $HOME/.cargo/bin/* /usr/bin/ # UGHHH
-      - run: rustup target add wasm32-unknown-unknown
-      - run: cargo install --locked trunk
+      - run: $HOME/.cargo/bin/rustup target add wasm32-unknown-unknown
+      - run: $HOME/.cargo/bin/cargo install --locked trunk
       - uses: actions/checkout@v4
-      - run: trunk build --release
+      - run: $HOME/.cargo/bin/trunk build --release
         working-directory: web/
-      - run: cargo build --release --features=web
+      - run: $HOME/.cargo/bin/cargo build --release --features=web
       - uses: actions/upload-artifact@v4
         with:
           path: target/release/upub
