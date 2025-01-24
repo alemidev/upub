@@ -42,4 +42,4 @@ regex = "1.11"
 [package.metadata.trunk.build]
 public_url = "/web/assets/"
 filehash = false
-offline = true
+#offline = true # if you're looking in here, you may want to uncomment this and download wasm-bindgen-cli yourself

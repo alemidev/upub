@@ -8,7 +8,7 @@ it has the drawback of not being search-engine friendly, but machines should pro
 
 ## development
 
-it's probably possible to get `upub-web` to build with just `wasm-bindgen`, but i recommend just using `trunk` to keep your sanity. by default `upub-web` sets the "offline" option, so you'll still need to download `wasm-bindgen` yourself (or run with `TRUNK_OFFLINE=false` and let trunk download it itself once)
+it's probably possible to get `upub-web` to build with just `wasm-bindgen`, but i recommend just using `trunk` to keep your sanity. trunk will download by itself `wasm-bindgen-cli`.
 
 ```
 UPUB_BASE_URL=https://dev.upub.social trunk serve --public-url http://127.0.0.1:8080/web
