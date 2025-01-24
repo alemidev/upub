@@ -5,7 +5,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - run: |
+         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > rustup-install.sh
+         chmod +x rustup-install.sh
+         ./rustup-install.sh -y
       - run: cargo test
 
   build:
@@ -13,7 +16,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - run: |
+         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > rustup-install.sh
+         chmod +x rustup-install.sh
+         ./rustup-install.sh -y
       - run: rustup target add wasm32-unknown-unknown
       - run: cargo install --locked trunk
       - run: trunk build --release
