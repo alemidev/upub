@@ -26,7 +26,7 @@ pub fn Object(object: crate::Doc, #[prop(default = true)] controls: bool) -> imp
 	let likes = object.likes_count().unwrap_or_default();
 	let already_liked = object.liked_by_me().unwrap_or(false);
 
-	let attachments_padding = if object.attachment().is_empty() {
+	let attachments_padding = if object.attachment().flat().is_empty() {
 		None
 	} else {
 		Some(view! { <div class="pb-1"></div> })
@@ -230,15 +230,15 @@ pub fn Object(object: crate::Doc, #[prop(default = true)] controls: bool) -> imp
 pub fn Summary(summary: Option<String>, children: Children) -> impl IntoView {
 	let config = use_context::<Signal<crate::Config>>().expect("missing config context");
 	match summary.filter(|x| !x.is_empty()) {
-		None => children().into_any(),
-		Some(summary) => view! {
+		None => Either::Left(children()),
+		Some(summary) => Either::Right(view! {
 			<details class="cw pa-s" prop:open=move || !config.get().collapse_content_warnings>
 				<summary>
 					<code class="cw center color ml-s w-100 bb">{summary}</code>
 				</summary>
 				{children()}
 			</details>
-		}.into_any(),
+		}),
 	}
 }
 
