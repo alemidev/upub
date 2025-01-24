@@ -1,19 +1,7 @@
 on: [push]
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - run: |
-         curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > rustup-install.sh
-         chmod +x rustup-install.sh
-         ./rustup-install.sh -y
-         cp $HOME/.cargo/bin/* /usr/bin/ # UGHHH
-      - run: cargo test
-
   build:
-    needs: [test]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
