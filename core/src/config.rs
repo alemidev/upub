@@ -139,6 +139,13 @@ pub struct CompatibilityConfig {
 	#[serde_inline_default(true)]
 	/// compatibility with lemmy: avoid showing images twice
 	pub skip_single_attachment_if_image_is_set: bool,
+
+	#[serde_inline_default(false)]
+	/// compatibility with most relays: since they send us other server's activities, we must fetch
+	/// them to verify that they aren't falsified by the relay itself. this is quite expensive, as
+	/// relays send a lot of activities and we effectively end up fetching again all these, so this
+	/// defaults to false
+	pub verify_relayed_activities_by_fetching: bool,
 }
 
 #[serde_inline_default::serde_inline_default]

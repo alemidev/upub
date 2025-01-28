@@ -1,7 +1,7 @@
 use apb::{Activity, ActivityType, Base};
 use axum::{extract::{Query, State}, http::StatusCode, Json};
 use sea_orm::{sea_query::IntoCondition, ActiveValue::{NotSet, Set}, ColumnTrait, EntityTrait, QueryFilter, QueryOrder, QuerySelect};
-use upub::{model::job::JobType, selector::{RichActivity, RichFillable}, Context};
+use upub::{model::job::JobType, selector::{RichActivity, RichFillable}, traits::Fetcher, Context};
 
 use crate::{AuthIdentity, Identity, builders::JsonLD};
 
@@ -41,7 +41,7 @@ pub async fn page(
 pub async fn post(
 	State(ctx): State<Context>,
 	AuthIdentity(auth): AuthIdentity,
-	Json(activity): Json<serde_json::Value>
+	Json(mut activity): Json<serde_json::Value>
 ) -> crate::ApiResult<StatusCode> {
 	let Identity::Remote { domain, user: uid, .. } = auth else {
 		if matches!(activity.activity_type(), Ok(ActivityType::Delete)) {
@@ -72,7 +72,11 @@ pub async fn post(
 	let server = upub::Context::server(&aid);
 
 	if activity.actor().id()? != uid {
-		return Err(crate::ApiError::forbidden());
+		if ctx.cfg().compat.verify_relayed_activities_by_fetching {
+			activity = ctx.pull(&activity.id()?).await?.activity()?;
+		} else {
+			return Err(crate::ApiError::forbidden());
+		}
 	}
 
 	if let Some(_internal) = upub::model::activity::Entity::ap_to_internal(&aid, ctx.db()).await? {
