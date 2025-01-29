@@ -48,13 +48,13 @@ pub async fn search(
 	// TODO lmao rethink this all
 	//      still haven't redone this gg me
 	//      have redone it but didnt rethink it properly so we're stuck with this bahahaha
-	let page = Pagination {
+	let p = Pagination {
 		offset: page.offset,
 		batch: page.batch,
 		replies: Some(true),
 	};
 
-	let (limit, offset) = page.pagination();
+	let (limit, offset) = p.pagination();
 	let items = upub::Query::feed(auth.my_id(), true)
 		.filter(filter)
 		.limit(limit)
@@ -70,7 +70,7 @@ pub async fn search(
 		.map(|item| ctx.ap(item))
 		.collect();
 
-	crate::builders::collection_page(&upub::url!(ctx, "/search"), page, apb::Node::array(items))
+	crate::builders::collection_page(&upub::url!(ctx, "/search?q={}", page.q), p, apb::Node::array(items))
 }
 
 #[derive(Debug, serde::Deserialize)]
