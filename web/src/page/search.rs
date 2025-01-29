@@ -28,26 +28,6 @@ pub fn SearchPage() -> impl IntoView {
 		}
 	);
 
-	let text_search = LocalResource::new(
-		move || {
-			let q = use_query_map().get().get("q").unwrap_or_default();
-			let search = format!("{URL_BASE}/search?q={q}");
-			async move {
-				let document = Http::fetch::<serde_json::Value>(&search, auth).await.ok()?;
-				Some(
-					crate::timeline::process_activities(
-						document,
-						Vec::new(),
-						true,
-						uriproxy::UriClass::Object,
-						auth,
-					).await
-				)
-			}
-		}
-	);
-
-
 	view! {
 
 		<blockquote class="mt-3 mb-3">
@@ -100,21 +80,11 @@ pub fn SearchPage() -> impl IntoView {
 					<code class="cw center color ml-s w-100">full text</code>
 				</summary>
 				<div class="pb-1">
-					{move || match text_search.get().map(|x| x.take()) {
-						None => Some(Either::Left(view! { <p class="center"><small>searching...</small></p> })),
-						Some(None) => None,
-						Some(Some(items)) => Some(Either::Right(view! {
-							// TODO ughhh too many clones
-							<For
-								each=move || items.clone()
-								key=|id| id.clone()
-								children=move |item| {
-									cache::OBJECTS.get(&item)
-										.map(|x| view! { <Item item=x always=true /> }.into_any())
-								}
-							/ >
-						}))
-					}}
+					<Loadable
+						base=format!("{URL_BASE}/search?q={}", query.get())
+						convert=U::Object
+						element=|obj| view! { <Item item=obj sep=true /> }
+					/>
 				</div>
 			</details>
 		</blockquote>
