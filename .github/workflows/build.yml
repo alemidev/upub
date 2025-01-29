@@ -9,6 +9,9 @@ jobs:
          chmod +x rustup-install.sh
          ./rustup-install.sh -y
       - run: $HOME/.cargo/bin/rustup target add wasm32-unknown-unknown
+      - run: |
+         curl --proto '=https' --tlsv1.2 -sSfL https://github.com/trunk-rs/trunk/releases/download/v0.21.7/trunk-x86_64-unknown-linux-gnu.tar.gz > $HOME/.cargo/bin/trunk.tar.gz
+         tar --directory $HOME/.cargo/bin/ -xf $HOME/.cargo/bin/trunk.tar.gz
       - run: $HOME/.cargo/bin/cargo install --locked trunk
       - uses: actions/checkout@v4
       - run: $HOME/.cargo/bin/trunk build --release
