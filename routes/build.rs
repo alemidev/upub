@@ -75,6 +75,7 @@ fn main() {
 	}
 }
 
+#[cfg(feature = "web")]
 fn if_matches_set_env_path(var: &str, f: &std::fs::DirEntry, fname: &str, first: &str, last: &str) -> bool {
 	if fname.starts_with(first) && fname.ends_with(last) {
 		match f.path().canonicalize() {

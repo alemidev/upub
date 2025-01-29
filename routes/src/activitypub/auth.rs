@@ -19,8 +19,8 @@ pub struct AuthSuccess {
 
 fn token() -> String {
 	// TODO should probably use crypto-safe rng
-	rand::thread_rng()
-		.sample_iter(&rand::distributions::Alphanumeric)
+	rand::rng()
+		.sample_iter(&rand::distr::Alphanumeric)
 		.take(128)
 		.map(char::from)
 		.collect()
