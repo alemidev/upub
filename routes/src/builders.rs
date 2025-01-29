@@ -7,6 +7,8 @@ pub fn collection_page(id: &str, page: Pagination, items: apb::Node<serde_json::
 	let (limit, offset) = page.pagination();
 	let next = if items.len() < limit as usize {
 		apb::Node::Empty
+	} else if id.contains('?') {
+		apb::Node::link(format!("{id}&offset={}", offset+limit))
 	} else {
 		apb::Node::link(format!("{id}?offset={}", offset+limit))
 	};
