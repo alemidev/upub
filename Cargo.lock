@@ -5192,7 +5192,7 @@ dependencies = [
 
 [[package]]
 name = "upub-bin"
-version = "0.5.0"
+version = "0.5.1-dev"
 dependencies = [
  "clap",
  "futures",
@@ -5267,7 +5267,7 @@ dependencies = [
 
 [[package]]
 name = "upub-web"
-version = "0.5.0"
+version = "0.5.1-dev"
 dependencies = [
  "apb",
  "base64",
