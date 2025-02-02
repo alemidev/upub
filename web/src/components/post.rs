@@ -154,6 +154,7 @@ fn attachment_id() -> u64 {
 struct AttachmentInput {
 	id: u64,
 	url_ref: NodeRef<leptos::html::Input>,
+	summary_ref: NodeRef<leptos::html::Input>,
 	media_type_ref: NodeRef<leptos::html::Input>,
 }
 
@@ -257,11 +258,12 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 				children=move |x: AttachmentInput| view! {
 					<table class="align w-100 mb-1">
 						<tr>
-							<td colspan="2"><input type="text" class="w-100" node_ref=x.url_ref title="url" placeholder="attachment url" /></td>
+							<td colspan="3"><input type="text" class="w-100" node_ref=x.url_ref title="url" placeholder="attachment url" /></td>
 						</tr>
 						<tr>
 							<td><input type="button" title="remove attachment" on:click=move |_| set_attachments.set(attachments.get().into_iter().filter(|a| a.id != x.id).collect()) value="x" /></td>
 							<td><input type="text" class="w-100" node_ref=x.media_type_ref title="media type" placeholder="media type" /></td>
+							<td><input type="text" class="w-100" node_ref=x.summary_ref title="title" placeholder="summary" /></td>
 						</tr>
 					</table>
 				}
@@ -326,9 +328,9 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 						apb::Node::array(
 							attachments_vec
 								.into_iter()
-								.map(|x| (get_if_some(x.url_ref), get_if_some(x.media_type_ref)))
-								.filter_map(|(url, ty)| Some((url?, ty?)))
-								.map(|(url, ty)| {
+								.map(|x| (get_if_some(x.url_ref), get_if_some(x.media_type_ref), get_if_some(x.summary_ref)))
+								.filter_map(|(url, ty, sum)| Some((url?, ty?, sum)))
+								.map(|(url, ty, summary)| {
 									let document_type = if let Some((t, _mime)) = ty.split_once('/') {
 										match t {
 											"audio" => apb::DocumentType::Audio,
@@ -343,6 +345,7 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 									apb::new()
 										.set_url(apb::Node::link(url))
 										.set_media_type(Some(ty))
+										.set_summary(summary)
 										.set_document_type(Some(document_type))
 								})
 								.collect()
@@ -364,6 +367,7 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 							set_error.set(None);
 							if let Some(x) = summary_ref.get() { x.set_value("") }
 							set_content.set("".to_string());
+							set_attachments.set(vec![]);
 						},
 					}
 					set_posting.set(false);
