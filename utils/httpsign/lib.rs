@@ -85,16 +85,26 @@ impl HttpSignature {
 	#[cfg(feature = "axum")]
 	pub fn build_from_parts(&mut self, parts: &axum::http::request::Parts) -> &mut Self {
 		let mut out = Vec::new();
+
+		let method = parts.method.to_string().to_lowercase();
+
+		// since we're using nested routes, the request uri gets trimmed at each nesting
+		// this breaks http signatures! we need to maintain the original uri, so we try extracting it
+		let uri = match parts.extensions.get::<axum::extract::OriginalUri>() {
+			Some(original) => original.path_and_query(),
+			None =>  parts.uri.path_and_query(),
+		}
+			.map(|x| x.as_str())
+			.unwrap_or("/");
+
 		for header in self.headers.iter() {
 			match header.as_str() {
-				"(request-target)" => out.push(
-					format!(
-						"(request-target): {} {}",
-						parts.method.to_string().to_lowercase(),
-						parts.uri.path_and_query().map(|x| x.as_str()).unwrap_or("/")
-					)
-				),
-				// TODO other pseudo-headers,
+				// pseudo-headers
+				"(request-target)" => out.push(format!("(request-target): {method} {uri}")),
+
+				// TODO handle other pseudo-headers,
+
+				// normal headers
 				_ => out.push(format!("{}: {}",
 					header.to_lowercase(),
 					parts.headers.get(header).map(|x| x.to_str().unwrap_or("")).unwrap_or("")
