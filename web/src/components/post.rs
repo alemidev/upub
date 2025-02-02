@@ -268,9 +268,10 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 			/>
 
 			<button class="w-100" prop:disabled=posting type="button" style="height: 3em" on:click=move |_| {
-				let content = content.get();
-				if content.is_empty() {
-					set_error.set(Some("missing post body".to_string()));
+				let content = content.get_untracked();
+				let attachments_vec = attachments.get_untracked();
+				if content.is_empty() && attachments_vec.is_empty() {
+					set_error.set(Some("missing post body or attachments".to_string()));
 					return;
 				}
 				set_posting.set(true);
@@ -319,7 +320,6 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 							to_vec.push(href.clone());
 						}
 					}
-					let attachments_vec = attachments.get_untracked();
 					let attachments_node = if attachments_vec.is_empty() {
 						apb::Node::Empty
 					} else {
