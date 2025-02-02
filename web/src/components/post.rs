@@ -263,7 +263,7 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 						<tr>
 							<td><input type="button" title="remove attachment" on:click=move |_| set_attachments.set(attachments.get().into_iter().filter(|a| a.id != x.id).collect()) value="x" /></td>
 							<td><input type="text" class="w-100" node_ref=x.media_type_ref title="media type" placeholder="media type" /></td>
-							<td><input type="text" class="w-100" node_ref=x.summary_ref title="title" placeholder="summary" /></td>
+							<td><input type="text" class="w-100" node_ref=x.summary_ref title="name (media description)" placeholder="name" /></td>
 						</tr>
 					</table>
 				}
@@ -345,7 +345,7 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 									apb::new()
 										.set_url(apb::Node::link(url))
 										.set_media_type(Some(ty))
-										.set_summary(summary)
+										.set_name(summary)
 										.set_document_type(Some(document_type))
 								})
 								.collect()
