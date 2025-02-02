@@ -145,6 +145,18 @@ pub fn PrivacySelector(setter: WriteSignal<Privacy>) -> impl IntoView {
 	}
 }
 
+fn attachment_id() -> u64 {
+	static COUNTER: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+	COUNTER.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
+}
+
+#[derive(Default, Clone)]
+struct AttachmentInput {
+	id: u64,
+	url_ref: NodeRef<leptos::html::Input>,
+	media_type_ref: NodeRef<leptos::html::Input>,
+}
+
 #[component]
 pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 	let auth = use_context::<Auth>().expect("missing auth context");
@@ -154,6 +166,7 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 	let (error, set_error) = signal(None);
 	let (content, set_content) = signal("".to_string());
 	let summary_ref: NodeRef<leptos::html::Input> = NodeRef::new();
+	let (attachments, set_attachments) = signal(vec![]);
 
 	// TODO is this too abusive with resources? im even checking if TLD exists...
 	// TODO debounce this!
@@ -218,6 +231,16 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 			}
 			<table class="align w-100">
 				<tr>
+					<td>
+						<input type="button" value="+" on:click=move |_| {
+							let mut a = attachments.get();
+							a.push(AttachmentInput {
+								id: attachment_id(),
+								..Default::default()
+							});
+							set_attachments.set(a); 
+						} />
+					</td>
 					<td><input type="checkbox" on:input=move |ev| advanced.set(event_target_checked(&ev)) title="toggle advanced controls" /></td>
 					<td class="w-100"><input class="w-100" type="text" node_ref=summary_ref title="summary" /></td>
 				</tr>
@@ -227,6 +250,22 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 				prop:value=content
 				on:input=move |ev| set_content.set(event_target_value(&ev))
 			></textarea>
+
+			<For
+				each=move || attachments.get()
+				key=|x: &AttachmentInput| x.id
+				children=move |x: AttachmentInput| view! {
+					<table class="align w-100 mb-1">
+						<tr>
+							<td colspan="2"><input type="text" class="w-100" node_ref=x.url_ref title="url" placeholder="attachment url" /></td>
+						</tr>
+						<tr>
+							<td><input type="button" title="remove attachment" on:click=move |_| set_attachments.set(attachments.get().into_iter().filter(|a| a.id != x.id).collect()) value="x" /></td>
+							<td><input type="text" class="w-100" node_ref=x.media_type_ref title="media type" placeholder="media type" /></td>
+						</tr>
+					</table>
+				}
+			/>
 
 			<button class="w-100" prop:disabled=posting type="button" style="height: 3em" on:click=move |_| {
 				let content = content.get();
@@ -259,7 +298,7 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 						})
 						.collect();
 
-					if let Some(r) = reply.reply_to.get() {
+					if let Some(r) = reply.reply_to.get_untracked() {
 						if let Some(au) = post_author(&r) {
 							if let Ok(uid) = au.id() {
 								to_vec.push(uid.to_string());
@@ -275,13 +314,30 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 							}
 						}
 					}
-					for mention in mentions.get().map(|x| x.take()).as_deref().unwrap_or(&[]) {
+					for mention in mentions.get_untracked().map(|x| x.take()).as_deref().unwrap_or(&[]) {
 						if let TextMatch::Mention { href, .. } = mention {
 							to_vec.push(href.clone());
 						}
 					}
+					let attachments_vec = attachments.get_untracked();
+					let attachments_node = if attachments_vec.is_empty() {
+						apb::Node::Empty
+					} else {
+						apb::Node::array(
+							attachments_vec
+								.into_iter()
+								.map(|x| (get_if_some(x.url_ref), get_if_some(x.media_type_ref)))
+								.filter_map(|(url, ty)| Some((url?, ty?)))
+								.map(|(url, ty)| apb::new()
+									.set_url(apb::Node::link(url))
+									.set_media_type(Some(ty))
+								)
+								.collect()
+						)
+					};
 					let payload = apb::new()
 						.set_object_type(Some(apb::ObjectType::Note))
+						.set_attachment(attachments_node)
 						.set_summary(summary)
 						.set_content(Some(content))
 						.set_context(apb::Node::maybe_link(reply.context.get()))
@@ -330,6 +386,11 @@ pub fn AdvancedPostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 				<table class="align w-100">
 					<tr>
 						<td>
+							<input type="checkbox" title="embedded object" on:input=move |ev| {
+								set_embedded.set(event_target_checked(&ev)) 
+							}/>
+						</td>
+						<td>
 							<input type="checkbox" title="advanced" checked on:input=move |ev| {
 								advanced.set(event_target_checked(&ev)) 
 							}/>
@@ -346,11 +407,6 @@ pub fn AdvancedPostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 								<SelectOption value is="Delete" />
 								<SelectOption value is="Update" />
 							</select>
-						</td>
-						<td>
-							<input type="checkbox" title="embedded object" on:input=move |ev| {
-								set_embedded.set(event_target_checked(&ev)) 
-							}/>
 						</td>
 					</tr>
 				</table>
