@@ -268,9 +268,11 @@ impl AP {
 
 
 	pub fn attachment(document: &impl apb::Document, parent: i64) -> Result<crate::model::attachment::Model, NormalizerError> {
-		let t = document.base_type()?;
-		if !matches!(t, apb::BaseType::Object(apb::ObjectType::Document(_))) {
-			return Err(NormalizerError::WrongType(apb::BaseType::Object(apb::ObjectType::Document(apb::DocumentType::Document)), t));
+		let base_type = document.base_type().ok();
+		if let Some(t) = base_type {
+			if !matches!(t, apb::BaseType::Object(apb::ObjectType::Document(_))) {
+				return Err(NormalizerError::WrongType(apb::BaseType::Object(apb::ObjectType::Document(apb::DocumentType::Document)), t));
+			}
 		}
 
 		// if they gave us just url+mimetype, try detecting document type from mimetype
