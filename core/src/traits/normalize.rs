@@ -268,33 +268,16 @@ impl AP {
 
 
 	pub fn attachment(document: &impl apb::Document, parent: i64) -> Result<crate::model::attachment::Model, NormalizerError> {
-		let base_type = document.base_type().ok();
-		if let Some(t) = base_type {
-			if !matches!(t, apb::BaseType::Object(apb::ObjectType::Document(_))) {
-				return Err(NormalizerError::WrongType(apb::BaseType::Object(apb::ObjectType::Document(apb::DocumentType::Document)), t));
-			}
-		}
-
-		// if they gave us just url+mimetype, try detecting document type from mimetype
-		let mut document_type = document.document_type().ok();
-		if document_type.is_none() {
-			if let Ok(media_type) = document.media_type() {
-				if let Some((t, _mime)) = media_type.split_once('/') {
-					document_type = match t {
-						"audio" => Some(apb::DocumentType::Audio),
-						"image" => Some(apb::DocumentType::Image),
-						"video" => Some(apb::DocumentType::Video),
-						_ => None,
-					}
-				}
-			}
+		let base_type = document.base_type()?;
+		if !matches!(base_type, apb::BaseType::Object(apb::ObjectType::Document(_))) {
+			return Err(NormalizerError::WrongType(apb::BaseType::Object(apb::ObjectType::Document(apb::DocumentType::Document)), base_type));
 		}
 
 		Ok(crate::model::attachment::Model {
 			internal: 0,
 			url: document.url().id().unwrap_or_default(),
 			object: parent,
-			document_type: document_type.unwrap_or(apb::DocumentType::Page),
+			document_type: document.document_type().unwrap_or(apb::DocumentType::Page),
 			name: document.name().ok(),
 			media_type: document.media_type().unwrap_or("link".to_string()),
 		})

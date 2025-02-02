@@ -1,4 +1,4 @@
-use apb::{ActivityMut, Base, BaseMut, Object, ObjectMut};
+use apb::{ActivityMut, Base, BaseMut, DocumentMut, Object, ObjectMut};
 
 use leptos::prelude::*;
 use crate::prelude::*;
@@ -328,10 +328,23 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 								.into_iter()
 								.map(|x| (get_if_some(x.url_ref), get_if_some(x.media_type_ref)))
 								.filter_map(|(url, ty)| Some((url?, ty?)))
-								.map(|(url, ty)| apb::new()
-									.set_url(apb::Node::link(url))
-									.set_media_type(Some(ty))
-								)
+								.map(|(url, ty)| {
+									let document_type = if let Some((t, _mime)) = ty.split_once('/') {
+										match t {
+											"audio" => apb::DocumentType::Audio,
+											"image" => apb::DocumentType::Image,
+											"video" => apb::DocumentType::Video,
+											_ => apb::DocumentType::Document,
+										}
+									} else {
+										apb::DocumentType::Page
+									};
+
+									apb::new()
+										.set_url(apb::Node::link(url))
+										.set_media_type(Some(ty))
+										.set_document_type(Some(document_type))
+								})
 								.collect()
 						)
 					};
