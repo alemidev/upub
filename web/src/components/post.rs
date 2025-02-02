@@ -277,8 +277,8 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 				set_posting.set(true);
 				leptos::task::spawn_local(async move {
 					let summary = get_if_some(summary_ref);
-					let (mut to_vec, cc_vec) = privacy.get().address(&auth.user_id());
-					let mut mention_tags : Vec<serde_json::Value> = mentions.get()
+					let (mut to_vec, cc_vec) = privacy.get_untracked().address(&auth.user_id());
+					let mut mention_tags : Vec<serde_json::Value> = mentions.get_untracked()
 						.map(|x| x.take())
 						.unwrap_or_default()
 						.into_iter()
