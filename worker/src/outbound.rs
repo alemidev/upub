@@ -46,23 +46,14 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 		.set_published(Some(now));
 
 	if matches!(t, apb::ObjectType::Activity(apb::ActivityType::Undo)) {
-		let mut undone = activity.object().into_inner()?;
-		if undone.id().is_err() {
-			let undone_target = undone.object().id()?;
-			let undone_type = undone.activity_type().map_err(|_| crate::JobError::MissingPayload)?;
-			let undone_model = model::activity::Entity::find()
-				.filter(model::activity::Column::Object.eq(&undone_target))
-				.filter(model::activity::Column::Actor.eq(&job.actor))
-				.filter(model::activity::Column::ActivityType.eq(undone_type))
-				.order_by_desc(model::activity::Column::Published)
-				.one(&tx)
-				.await?
-				.ok_or_else(|| sea_orm::DbErr::RecordNotFound(format!("actor={},type={},object={}",job.actor, undone_type, undone_target)))?;
-			undone = undone
-				.set_id(Some(undone_model.id))
-				.set_actor(apb::Node::link(job.actor.clone()));
+		let undone = activity.object().id()?;
+		let activity = upub::model::activity::Entity::find_by_ap_id(&undone)
+			.one(&tx)
+			.await?
+			.ok_or_else(|| DbErr::RecordNotFound(undone))?;
+		if activity.actor != job.actor {
+			return Err(crate::JobError::Forbidden);
 		}
-		activity = activity.set_object(apb::Node::object(undone));
 	}
 
 	macro_rules! update {
