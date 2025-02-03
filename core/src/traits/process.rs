@@ -1,4 +1,4 @@
-use apb::{target::Addressed, Activity, Actor, Base, Object};
+use apb::{target::Addressed, Actor, Base, Object};
 use sea_orm::{sea_query::Expr, ActiveModelTrait, ActiveValue::{NotSet, Set}, ColumnTrait, Condition, DatabaseTransaction, EntityTrait, QueryFilter, QuerySelect, SelectColumns};
 use crate::{ext::{AnyQuery, LoggableError}, model, traits::{fetch::Pull, Addresser, Cloaker, Fetcher, Normalizer}};
 
@@ -434,21 +434,26 @@ pub async fn process_update(ctx: &crate::Context, activity: impl apb::Activity, 
 
 pub async fn process_undo(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 	// TODO in theory we could work with just object_id but right now only accept embedded
-	let undone_activity = activity.object().into_inner()?;
+	let undone_activity_id = activity.object().id()?;
 
 	let uid = activity.actor().id()?.to_string();
 	let internal_uid = crate::model::actor::Entity::ap_to_internal(&uid, tx)
 		.await?
 		.ok_or(ProcessorError::Incomplete)?;
 
-	if uid != undone_activity.as_activity()?.actor().id()? {
+	let undone_activity = crate::model::activity::Entity::find_by_ap_id(&undone_activity_id)
+		.one(tx)
+		.await?
+		.ok_or(ProcessorError::Incomplete)?;
+
+	if uid != undone_activity.actor {
 		return Err(ProcessorError::Unauthorized);
 	}
 
-	match undone_activity.as_activity()?.activity_type()? {
+	match undone_activity.activity_type {
 		apb::ActivityType::Like => {
 			let internal_oid = crate::model::object::Entity::ap_to_internal(
-				&undone_activity.as_activity()?.object().id()?,
+				&undone_activity.object.ok_or(apb::FieldErr("object"))?,
 				tx
 			)
 				.await?
@@ -469,7 +474,7 @@ pub async fn process_undo(ctx: &crate::Context, activity: impl apb::Activity, tx
 		},
 		apb::ActivityType::Follow => {
 			let internal_uid_following = crate::model::actor::Entity::ap_to_internal(
-				&undone_activity.as_activity()?.object().id()?,
+				&undone_activity.object.ok_or(apb::FieldErr("object"))?,
 				tx,
 			)
 				.await?
@@ -513,7 +518,7 @@ pub async fn process_undo(ctx: &crate::Context, activity: impl apb::Activity, tx
 		ctx.address(Some(&activity_model), None, tx).await?;
 	}
 
-	if let Some(internal) = crate::model::activity::Entity::ap_to_internal(&undone_activity.id()?, tx).await? {
+	if let Some(internal) = crate::model::activity::Entity::ap_to_internal(&undone_activity.id, tx).await? {
 		crate::model::notification::Entity::delete_many()
 			.filter(crate::model::notification::Column::Activity.eq(internal))
 			.exec(tx)

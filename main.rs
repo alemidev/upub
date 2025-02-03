@@ -168,7 +168,7 @@ async fn init(args: Args, config: upub::Config) {
 			.expect("error applying migrations");
 
 		if matches!(args.command, Mode::Migrate) {
-			return; // if migrate, we're done! otherwise keep going
+			return; // if mode == 'migrate', we're done! otherwise keep going
 		}
 	}
 
