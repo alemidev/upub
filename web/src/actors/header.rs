@@ -97,7 +97,7 @@ pub fn ActorHeader() -> impl IntoView {
 							}}
 							{if followed_by_me {
 								view! {
-									<a class="clean dim" href="#unfollow" on:click=move |_| unfollow(_uid.clone())>
+									<a class="clean dim" href="#unfollow" on:click=move |_| unfollow(_uid.clone(), auth)>
 										<span class="border-button ml-s" title="undo follow">
 											<code class="color mr-s">x</code>
 											<small class="mr-s">following</small>
@@ -106,7 +106,7 @@ pub fn ActorHeader() -> impl IntoView {
 								}.into_any()
 							} else {
 								view! {
-									<a class="clean dim" href="#follow" on:click=move |_| send_follow_request(_uid.clone())>
+									<a class="clean dim" href="#follow" on:click=move |_| send_follow_request(_uid.clone(), auth)>
 										<span class="border-button ml-s" title="send follow request">
 											<code class="color mr-s">+</code>
 											<small class="mr-s">follow</small>
@@ -177,8 +177,7 @@ async fn send_follow_response(kind: apb::ActivityType, target: String, to: Strin
 	}
 }
 
-fn send_follow_request(target: String) {
-	let auth = use_context::<Auth>().expect("missing auth context");
+fn send_follow_request(target: String, auth: Auth) {
 	leptos::task::spawn_local(async move {
 		let payload = apb::new() 
 			.set_activity_type(Some(apb::ActivityType::Follow))
@@ -190,8 +189,7 @@ fn send_follow_request(target: String) {
 	})
 }
 
-fn unfollow(target: String) {
-	let auth = use_context::<Auth>().expect("missing auth context");
+fn unfollow(target: String, auth: Auth) {
 	leptos::task::spawn_local(async move {
 		let payload = apb::new() 
 			.set_activity_type(Some(apb::ActivityType::Undo))
