@@ -466,9 +466,39 @@ pub async fn process_undo(ctx: &crate::Context, activity: impl apb::Activity, tx
 				)
 				.exec(tx)
 				.await?;
+			crate::model::activity::Entity::delete_many()
+				.filter(crate::model::activity::Column::Id.eq(undone_activity_id))
+				.exec(tx)
+				.await?;
 			crate::model::object::Entity::update_many()
 				.filter(crate::model::object::Column::Internal.eq(internal_oid))
 				.col_expr(crate::model::object::Column::Likes, Expr::col(crate::model::object::Column::Likes).sub(1))
+				.exec(tx)
+				.await?;
+		},
+		apb::ActivityType::Announce => {
+			let internal_oid = crate::model::object::Entity::ap_to_internal(
+				&undone_activity.object.ok_or(apb::FieldErr("object"))?,
+				tx
+			)
+				.await?
+				.ok_or(ProcessorError::Incomplete)?;
+			crate::model::announce::Entity::delete_many()
+				.filter(
+					Condition::all()
+						.add(crate::model::announce::Column::Actor.eq(internal_uid))
+						.add(crate::model::announce::Column::Object.eq(internal_oid))
+						.add(crate::model::announce::Column::Activity.eq(&undone_activity_id))
+				)
+				.exec(tx)
+				.await?;
+			crate::model::activity::Entity::delete_many()
+				.filter(crate::model::activity::Column::Id.eq(undone_activity_id))
+				.exec(tx)
+				.await?;
+			crate::model::object::Entity::update_many()
+				.filter(crate::model::object::Column::Internal.eq(internal_oid))
+				.col_expr(crate::model::object::Column::Announces, Expr::col(crate::model::object::Column::Announces).sub(1))
 				.exec(tx)
 				.await?;
 		},
@@ -518,12 +548,10 @@ pub async fn process_undo(ctx: &crate::Context, activity: impl apb::Activity, tx
 		ctx.address(Some(&activity_model), None, tx).await?;
 	}
 
-	if let Some(internal) = crate::model::activity::Entity::ap_to_internal(&undone_activity.id, tx).await? {
-		crate::model::notification::Entity::delete_many()
-			.filter(crate::model::notification::Column::Activity.eq(internal))
-			.exec(tx)
-			.await?;
-	}
+	crate::model::notification::Entity::delete_many()
+		.filter(crate::model::notification::Column::Activity.eq(undone_activity.internal))
+		.exec(tx)
+		.await?;
 
 	Ok(())
 }
