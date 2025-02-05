@@ -57,6 +57,7 @@ pub fn ActorHeader() -> impl IntoView {
 			// TODO what the fuck...
 			let _uid = uid.clone();
 			let __uid = uid.clone();
+			let ___uid = uid.clone();
 			view! {
 				<div class="ml-3 mr-3">
 					<div 
@@ -85,8 +86,8 @@ pub fn ActorHeader() -> impl IntoView {
 						<div class="mr-1 ml-1" class:hidden=move || !auth.present() || auth.user_id() == uid>
 							{if following_me {
 								Some(view! {
-									<a class="clean dim" href="#remove" on:click=move |_| tracing::error!("not yet implemented")>
-										<span class="border-button ml-s" title="remove follower (not yet implemented)">
+									<a class="clean dim" href="#remove" on:click=move |_| remove_follower(___uid.clone(), auth)>
+										<span class="border-button ml-s" title="remove follower">
 											<code class="color mr-s">"!"</code>
 											<small class="mr-s">follows you</small>
 										</span>
@@ -200,7 +201,24 @@ fn unfollow(target: String, auth: Auth) {
 					.set_object(apb::Node::link(target))
 			));
 		if let Err(e) = Http::post(&auth.outbox(), &payload, auth).await {
-			tracing::error!("failed sending follow request: {e}");
+			tracing::error!("failed sending unfollow: {e}");
+		}
+	})
+}
+
+fn remove_follower(target: String, auth: Auth) {
+	leptos::task::spawn_local(async move {
+		let payload = apb::new() 
+			.set_activity_type(Some(apb::ActivityType::Undo))
+			.set_to(apb::Node::links(vec![target.clone()]))
+			.set_object(apb::Node::object(
+				apb::new()
+					.set_activity_type(Some(apb::ActivityType::Follow))
+					.set_actor(apb::Node::link(target))
+					.set_object(apb::Node::link(auth.user_id()))
+			));
+		if let Err(e) = Http::post(&auth.outbox(), &payload, auth).await {
+			tracing::error!("failed sending follow removal request: {e}");
 		}
 	})
 }
