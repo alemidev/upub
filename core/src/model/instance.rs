@@ -66,7 +66,36 @@ impl Entity {
 
 	pub async fn nodeinfo(domain: &str) -> reqwest::Result<NodeInfoOwned> {
 		match reqwest::get(format!("https://{domain}/nodeinfo/2.0.json")).await {
-			Ok(res) => res.json().await,
+			Ok(res) => {
+				// oh my god gotosocial, the face of telling me that
+				//  * ah-hoc interop is not needed because "AP is a protocol and the whole point is not working around edge cases"
+				//  * you don't consider other AP instances fetching your nodeinfo "crawling"
+				// and then just treat us all like crawlers
+				// this isn't about user privacy, nodeinfo has that builtin with NULL. it JUST WORKS without workarounds
+				// this is about trolling crawlers
+				// you're trolling me too
+				// check below another example of "not working around edge cases"
+				// at least you gave me a way to not throw all gotosocial instances in the bin, so at least there's that
+				let noindex_nofollow: Vec<&str> = res.headers()
+					.get_all("X-Robots-Tag")
+					.iter()
+					.filter_map(|h| h.to_str().ok())
+					.filter(|h| *h == "noindex" || *h == "nofollow")
+					.collect();
+				let gotosocial_is_fucking_with_us = noindex_nofollow.contains(&"noindex") && noindex_nofollow.contains(&"nofollow");
+
+				let mut nodeinfo : NodeInfoOwned = res.json().await?;
+
+				if gotosocial_is_fucking_with_us {
+					nodeinfo.usage = nodeinfo::types::Usage {
+						users: None,
+						local_posts: None,
+						local_comments: None,
+					};
+				}
+
+				Ok(nodeinfo)
+			},
 			// ughhh pleroma wants with json, key without
 			Err(_) => reqwest::get(format!("https://{domain}/nodeinfo/2.0.json"))
 				.await?
