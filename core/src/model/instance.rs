@@ -97,7 +97,7 @@ impl Entity {
 				Ok(nodeinfo)
 			},
 			// ughhh pleroma wants with json, key without
-			Err(_) => reqwest::get(format!("https://{domain}/nodeinfo/2.0.json"))
+			Err(_) => reqwest::get(format!("https://{domain}/nodeinfo/2.0"))
 				.await?
 				.json()
 				.await,
