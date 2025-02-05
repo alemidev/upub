@@ -97,23 +97,23 @@ pub fn ActorHeader() -> impl IntoView {
 								None
 							}}
 							{if followed_by_me {
-								view! {
+								Either::Left(view! {
 									<a class="clean dim" href="#unfollow" on:click=move |_| unfollow(_uid.clone(), auth)>
 										<span class="border-button ml-s" title="undo follow">
 											<code class="color mr-s">x</code>
 											<small class="mr-s">following</small>
 										</span>
 									</a>
-								}.into_any()
+								})
 							} else {
-								view! {
+								Either::Right(view! {
 									<a class="clean dim" href="#follow" on:click=move |_| send_follow_request(_uid.clone(), auth)>
 										<span class="border-button ml-s" title="send follow request">
 											<code class="color mr-s">+</code>
 											<small class="mr-s">follow</small>
 										</span>
 									</a>
-								}.into_any()
+								})
 							}}
 						</div>
 					</div>
