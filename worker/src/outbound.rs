@@ -1,5 +1,5 @@
 use apb::{target::Addressed, Activity, ActivityMut, ActorMut, Base, BaseMut, Object, ObjectMut, Shortcuts};
-use sea_orm::{prelude::Expr, ColumnTrait, DbErr, EntityTrait, QueryFilter, QueryOrder, QuerySelect, SelectColumns, TransactionTrait};
+use sea_orm::{prelude::Expr, ColumnTrait, DbErr, EntityTrait, QueryFilter, QuerySelect, SelectColumns, TransactionTrait};
 use upub::{model::{self, actor::Field}, traits::{process::ProcessorError, Addresser, Processor}, Context};
 
 
@@ -46,13 +46,46 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 		.set_published(Some(now));
 
 	if matches!(t, apb::ObjectType::Activity(apb::ActivityType::Undo)) {
-		let undone = activity.object().id()?;
-		let activity = upub::model::activity::Entity::find_by_ap_id(&undone)
-			.one(&tx)
-			.await?
-			.ok_or_else(|| DbErr::RecordNotFound(undone))?;
-		if activity.actor != job.actor {
-			return Err(crate::JobError::Forbidden);
+		match activity.object().id() {
+			Ok(undone) => {
+				let activity = upub::model::activity::Entity::find_by_ap_id(&undone)
+					.one(&tx)
+					.await?
+					.ok_or_else(|| DbErr::RecordNotFound(undone))?;
+				if activity.actor != job.actor {
+					return Err(crate::JobError::Forbidden);
+				}
+			},
+			Err(_) => {
+				// frontend doesn't know the activity id, so we have to look it up
+				let undone = activity.object().into_inner()?; // if even this is missing, malformed
+				match undone.activity_type()? {
+					apb::ActivityType::Follow => {
+						let follower = undone.actor().id().unwrap_or(job.actor.clone());
+						let follower_internal = upub::model::actor::Entity::ap_to_internal(&follower, &tx)
+							.await?
+							.ok_or(sea_orm::DbErr::RecordNotFound(follower))?;
+						let following = undone.object().id()?;
+						let following_internal = upub::model::actor::Entity::ap_to_internal(&following, &tx)
+							.await?
+							.ok_or(sea_orm::DbErr::RecordNotFound(following))?;
+						let activity_id = upub::model::relation::Entity::find()
+							.filter(upub::model::relation::Column::Follower.eq(follower_internal))
+							.filter(upub::model::relation::Column::Following.eq(following_internal))
+							.select_only()
+							.select_column(upub::model::relation::Column::Activity)
+							.into_tuple::<String>()
+							.one(&tx)
+							.await?
+							.ok_or(crate::JobError::Forbidden)?;
+
+						activity = activity.set_object(apb::Node::link(activity_id));
+					},
+					t => return Err(crate::JobError::ProcessorError(
+						upub::traits::process::ProcessorError::Unprocessable(format!("can't normalize Undo({t})"))
+					)),
+				}
+			},
 		}
 	}
 
