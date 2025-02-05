@@ -488,7 +488,7 @@ pub async fn process_undo(ctx: &crate::Context, activity: impl apb::Activity, tx
 					Condition::all()
 						.add(crate::model::announce::Column::Actor.eq(internal_uid))
 						.add(crate::model::announce::Column::Object.eq(internal_oid))
-						.add(crate::model::announce::Column::Activity.eq(&undone_activity_id))
+						.add(crate::model::announce::Column::Activity.eq(undone_activity.internal))
 				)
 				.exec(tx)
 				.await?;

@@ -69,20 +69,27 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 						let following_internal = upub::model::actor::Entity::ap_to_internal(&following, &tx)
 							.await?
 							.ok_or(sea_orm::DbErr::RecordNotFound(following))?;
-						let activity_id = upub::model::relation::Entity::find()
+						let activity_id_internal = upub::model::relation::Entity::find()
 							.filter(upub::model::relation::Column::Follower.eq(follower_internal))
 							.filter(upub::model::relation::Column::Following.eq(following_internal))
 							.select_only()
 							.select_column(upub::model::relation::Column::Activity)
+							.into_tuple::<i64>()
+							.one(&tx)
+							.await?
+							.ok_or(crate::JobError::ProcessorError(ProcessorError::Incomplete))?;
+						let activity_id = upub::model::activity::Entity::find_by_id(activity_id_internal)
+							.select_only()
+							.select_column(upub::model::activity::Column::Id)
 							.into_tuple::<String>()
 							.one(&tx)
 							.await?
-							.ok_or(crate::JobError::Forbidden)?;
+							.ok_or(crate::JobError::ProcessorError(ProcessorError::Incomplete))?;
 
 						activity = activity.set_object(apb::Node::link(activity_id));
 					},
 					t => return Err(crate::JobError::ProcessorError(
-						upub::traits::process::ProcessorError::Unprocessable(format!("can't normalize Undo({t})"))
+						ProcessorError::Unprocessable(format!("can't normalize Undo({t})"))
 					)),
 				}
 			},
