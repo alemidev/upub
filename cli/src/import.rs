@@ -64,9 +64,14 @@ pub async fn import(
 			None => obj.attachment()
 		};
 
+		let normalized_summary = obj.summary()
+			.ok()
+			.filter(|x| !x.is_empty());
+
 		let normalized_object = obj
 			.set_id(Some(ctx.oid(&upub::Context::new_id())))
 			.set_attributed_to(apb::Node::link(to.clone()))
+			.set_summary(normalized_summary)
 			.set_attachment(normalized_attachments);
 
 		let activity = apb::new()
