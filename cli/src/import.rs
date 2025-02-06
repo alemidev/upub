@@ -78,7 +78,10 @@ pub async fn import(
 			None => obj.replies().flat().len() as u64,
 		};
 
-		let likes_count = obj.likes().flat().len() as u64;
+		let likes_count = match obj.get("like_count") {
+			Some(v) => v.as_u64().unwrap_or_default(),
+			None => obj.likes().flat().len() as u64,
+		};
 
 		let normalized_object = obj
 			.set_id(Some(ctx.oid(&upub::Context::new_id())))
