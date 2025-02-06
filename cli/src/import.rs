@@ -1,4 +1,4 @@
-use apb::{Activity, ActivityMut, Base, BaseMut, Document, DocumentMut, Object, ObjectMut};
+use apb::{Activity, ActivityMut, Base, BaseMut, CollectionMut, Document, DocumentMut, Object, ObjectMut};
 use sea_orm::TransactionTrait;
 
 
@@ -68,10 +68,34 @@ pub async fn import(
 			.ok()
 			.filter(|x| !x.is_empty());
 
+		let announces_count = match obj.get("announcement_count") {
+			Some(v) => v.as_u64().unwrap_or_default(),
+			None => obj.shares().flat().len() as u64,
+		};
+
+		let replies_count = match obj.get("repliesCount") {
+			Some(v) => v.as_u64().unwrap_or_default(),
+			None => obj.replies().flat().len() as u64,
+		};
+
+		let likes_count = obj.likes().flat().len() as u64;
+
 		let normalized_object = obj
 			.set_id(Some(ctx.oid(&upub::Context::new_id())))
 			.set_attributed_to(apb::Node::link(to.clone()))
 			.set_summary(normalized_summary)
+			.set_shares(apb::Node::object(
+				apb::new()
+					.set_total_items(Some(announces_count))
+			))
+			.set_likes(apb::Node::object(
+				apb::new()
+					.set_total_items(Some(likes_count))
+			))
+			.set_replies(apb::Node::object(
+				apb::new()
+						.set_total_items(Some(replies_count))
+			))
 			.set_attachment(normalized_attachments);
 
 		let activity = apb::new()
