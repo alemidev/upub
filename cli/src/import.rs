@@ -1,4 +1,4 @@
-use apb::{ActivityMut, Base, BaseMut, Document, DocumentMut, Object, ObjectMut};
+use apb::{Activity, ActivityMut, Base, BaseMut, Document, DocumentMut, Object, ObjectMut};
 use sea_orm::TransactionTrait;
 
 
@@ -15,15 +15,27 @@ pub async fn import(
 
 	let tx = ctx.db().begin().await?;
 
-	for obj in objects {
+	for mut obj in objects {
+		if let Some(data) = obj.get_mut("data") {
+			obj = data.take();
+		}
+
 		let Ok(oid) = obj.id() else {
 			tracing::warn!("skipping object without id : {obj}");
 			continue;
 		};
-		let Ok(attributed_to) = obj.attributed_to().id() else {
-			tracing::warn!("skipping object without author: {obj}");
-			continue;
+
+		let attributed_to = match obj.attributed_to().id() {
+			Ok(id) => id,
+			Err(_) => match obj.actor().id() {
+				Ok(id) => id,
+				Err(_) => {
+					tracing::warn!("skipping object without author: {obj}");
+					continue;
+				},
+			},
 		};
+
 		if attributed_to != from {
 			tracing::warn!("skipping object not belonging to requested user: {obj}");
 			continue;
