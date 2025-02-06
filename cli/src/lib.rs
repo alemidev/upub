@@ -170,6 +170,10 @@ pub enum CliCommand {
 		/// current actor id, will be replaced in all posts
 		#[arg(long)]
 		to: String,
+
+		/// base url where attachments are hosted now, if not given attachments will be kept unchanged
+		#[arg(short, long)]
+		attachment_base: Option<String>
 	}
 }
 
@@ -196,7 +200,7 @@ pub async fn run(ctx: upub::Context, command: CliCommand) -> Result<(), Box<dyn 
 			Ok(cloak(ctx, contents, objects, actors, re_cloak).await?),
 		CliCommand::FixActivities { likes, announces } =>
 			Ok(fix_activities(ctx, likes, announces).await?),
-		CliCommand::Import { file, from, to } =>
-			Ok(import(ctx, file, from, to).await?),
+		CliCommand::Import { file, from, to, attachment_base } =>
+			Ok(import(ctx, file, from, to, attachment_base).await?),
 	}
 }
