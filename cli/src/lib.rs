@@ -28,6 +28,9 @@ pub use thread::*;
 mod cloak;
 pub use cloak::*;
 
+mod import;
+pub use import::*;
+
 #[derive(Debug, Clone, clap::Subcommand)]
 pub enum CliCommand {
 	/// generate fake user, note and activity
@@ -154,6 +157,20 @@ pub enum CliCommand {
 		#[arg(long, default_value_t = false)]
 		announces: bool,
 	},
+
+	/// import posts coming from another instance: replay them as local
+	Import {
+		/// json backup file: must be an array of objects
+		file: std::path::PathBuf,
+
+		/// previous actor id, used in these posts
+		#[arg(long)]
+		from: String,
+
+		/// current actor id, will be replaced in all posts
+		#[arg(long)]
+		to: String,
+	}
 }
 
 pub async fn run(ctx: upub::Context, command: CliCommand) -> Result<(), Box<dyn std::error::Error>> {
@@ -179,5 +196,7 @@ pub async fn run(ctx: upub::Context, command: CliCommand) -> Result<(), Box<dyn 
 			Ok(cloak(ctx, contents, objects, actors, re_cloak).await?),
 		CliCommand::FixActivities { likes, announces } =>
 			Ok(fix_activities(ctx, likes, announces).await?),
+		CliCommand::Import { file, from, to } =>
+			Ok(import(ctx, file, from, to).await?),
 	}
 }
