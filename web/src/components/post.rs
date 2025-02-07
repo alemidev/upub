@@ -472,6 +472,10 @@ pub fn AdvancedPostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 						let bto = get_vec_if_some(bto_ref);
 						let cc = get_vec_if_some(cc_ref);
 						let bcc = get_vec_if_some(bcc_ref);
+						let audience = match reply {
+							Some(ref reply) => crate::cache::OBJECTS.get(reply).and_then(|x| x.audience().id().ok()),
+							None => None,
+						};
 						let payload = serde_json::Value::Object(serde_json::Map::default())
 							.set_activity_type(Some(value.get().as_str().try_into().unwrap_or(apb::ActivityType::Create)))
 							.set_to(apb::Node::links(to.clone()))
@@ -488,6 +492,7 @@ pub fn AdvancedPostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 											.set_summary(summary)
 											.set_content(content)
 											.set_in_reply_to(apb::Node::maybe_link(reply))
+											.set_audience(apb::Node::maybe_link(audience))
 											.set_context(apb::Node::maybe_link(context))
 											.set_to(apb::Node::links(to))
 											.set_bto(apb::Node::links(bto))
