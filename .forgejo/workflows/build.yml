@@ -2,25 +2,21 @@ on: [push]
 
 jobs:
   build:
-    runs-on: alpine
+    runs-on: ubuntu-latest
     steps:
-      - shell: sh
-        run: |
+      - run: |
          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs > rustup-install.sh
          chmod +x rustup-install.sh
          ./rustup-install.sh -y
-      - shell: sh
-        run: PATH="$PATH:$HOME/.cargo/bin" rustup target add wasm32-unknown-unknown
-      - shell: sh
-        run: |
+      - run: PATH="$PATH:$HOME/.cargo/bin" rustup target add wasm32-unknown-unknown
+      - run: |
          curl --proto '=https' --tlsv1.2 -sSfL https://github.com/trunk-rs/trunk/releases/download/v0.21.7/trunk-x86_64-unknown-linux-gnu.tar.gz > $HOME/.cargo/bin/trunk.tar.gz
          tar --directory $HOME/.cargo/bin/ -xf $HOME/.cargo/bin/trunk.tar.gz
       - uses: actions/checkout@v4
-      - shell: sh
-        run: PATH="$PATH:$HOME/.cargo/bin" trunk build --release
+      - run: PATH="$PATH:$HOME/.cargo/bin" trunk build --release
         working-directory: web/
-      - shell: sh
-        run: PATH="$PATH:$HOME/.cargo/bin" cargo build --release --features=web
+      - run: PATH="$PATH:$HOME/.cargo/bin" cargo build --release --features=web
+#      - uses: actions/upload-artifact@v4
       - uses: https://code.forgejo.org/forgejo/upload-artifact@v4
         with:
           path: target/release/upub
