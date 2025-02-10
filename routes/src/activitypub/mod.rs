@@ -88,13 +88,20 @@ async fn redirect_to_web(
 		let (accepts_activity_pub, accepts_html) = crate::builders::accepts_activitypub_html(request.headers());
 		if !accepts_activity_pub && accepts_html {
 			let uri = request.uri().clone();
-			let new_uri = format!(
-				"{}{}/web{}",
-				uri.scheme().map(|x| format!("{}://", x.as_str())).unwrap_or_default(),
-				uri.authority().map(|x| x.as_str()).unwrap_or_default(),
-				uri.path_and_query().map(|x| x.as_str()).unwrap_or_default(),
-			);
-			return axum::response::Redirect::temporary(&new_uri).into_response();
+			let path_and_query = uri.path_and_query().map(|x| x.as_str()).unwrap_or_default();
+			if path_and_query == "/"
+				|| path_and_query.starts_with("/objects")
+				|| path_and_query.starts_with("/tags")
+				|| path_and_query.starts_with("/actors")
+			{
+				let new_uri = format!(
+					"{}{}/web{}",
+					uri.scheme().map(|x| format!("{}://", x.as_str())).unwrap_or_default(),
+					uri.authority().map(|x| x.as_str()).unwrap_or_default(),
+					path_and_query,
+				);
+				return axum::response::Redirect::temporary(&new_uri).into_response();
+			}
 		}
 	}
 

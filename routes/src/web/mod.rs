@@ -28,8 +28,15 @@ async fn redirect_to_ap(
 	{
 		let (accepts_activity_pub, accepts_html) = crate::builders::accepts_activitypub_html(request.headers());
 		if !accepts_html && accepts_activity_pub {
-			let new_uri = request.uri().to_string().replacen("/web", "", 1);
-			return axum::response::Redirect::temporary(&new_uri).into_response();
+			let uri = request.uri().clone();
+			if path_and_query == "/web"
+				|| path_and_query.starts_with("/web/object")
+				|| path_and_query.starts_with("/web/tag")
+				|| path_and_query.starts_with("/web/actor")
+			{
+				let new_uri = uri.to_string().replacen("/web", "", 1);
+				return axum::response::Redirect::temporary(&new_uri).into_response();
+			}
 		}
 	}
 
