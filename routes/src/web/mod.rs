@@ -29,10 +29,11 @@ async fn redirect_to_ap(
 		let (accepts_activity_pub, accepts_html) = crate::builders::accepts_activitypub_html(request.headers());
 		if !accepts_html && accepts_activity_pub {
 			let uri = request.uri().clone();
+			let path_and_query = uri.path_and_query().map(|x| x.as_str()).unwrap_or_default();
 			if path_and_query == "/web"
-				|| path_and_query.starts_with("/web/object")
-				|| path_and_query.starts_with("/web/tag")
-				|| path_and_query.starts_with("/web/actor")
+				|| path_and_query.starts_with("/web/objects")
+				|| path_and_query.starts_with("/web/tags")
+				|| path_and_query.starts_with("/web/actors")
 			{
 				let new_uri = uri.to_string().replacen("/web", "", 1);
 				return axum::response::Redirect::temporary(&new_uri).into_response();
