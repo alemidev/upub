@@ -93,7 +93,7 @@ impl Normalizer for crate::Context {
 				Node::Link(l) => {
 					let url = l.href().unwrap_or_default();
 					if url == obj_image { continue };
-					let mut media_type = l.media_type().unwrap_or("link".to_string());
+					let mut media_type = l.media_type().unwrap_or("text/html".to_string());
 					let mut document_type = apb::DocumentType::Page;
 					let mut is_image = false;
 					if [".jpg", ".jpeg", ".png", ".webp", ".bmp"] // TODO more image types???
@@ -279,7 +279,7 @@ impl AP {
 			object: parent,
 			document_type: document.document_type().unwrap_or(apb::DocumentType::Page),
 			name: document.name().ok(),
-			media_type: document.media_type().unwrap_or("link".to_string()),
+			media_type: document.media_type().unwrap_or("text/html".to_string()),
 		})
 	}
 

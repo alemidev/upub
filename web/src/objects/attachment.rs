@@ -20,11 +20,11 @@ pub fn Attachment(
 	let href = object.url().id().ok().unwrap_or_default();
 	let uncloaked = uncloak(href.split('/').last()).unwrap_or_default();
 	let media_type = object.media_type()
-		.unwrap_or("link".to_string()); // TODO make it an Option rather than defaulting to link everywhere
+		.unwrap_or("text/html".to_string()); // TODO make it an Option rather than defaulting to link everywhere
 	let mut kind = media_type
 		.split('/')
 		.next()
-		.unwrap_or("link")
+		.unwrap_or("text")
 		.to_string();
 
 	// TODO in theory we should match on document_type, but mastodon and misskey send all attachments
@@ -33,7 +33,7 @@ pub fn Attachment(
 	//
 	// those who correctly send Image type objects without a media type get shown as links here, this
 	// is a dirty fix to properly display as images
-	if kind == "link" && matches!(object.document_type(), Ok(apb::DocumentType::Image)) {
+	if kind == "text" && matches!(object.document_type(), Ok(apb::DocumentType::Image)) {
 		kind = "image".to_string();
 	}
 
