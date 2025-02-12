@@ -1,9 +1,9 @@
+use std::sync::atomic::AtomicI64;
+
 use axum::{extract::{Path, Query, State}, http::StatusCode, response::{IntoResponse, Response}, Json};
 use jrd::{JsonResourceDescriptor, JsonResourceDescriptorLink};
-use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter};
+use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QuerySelect, SelectColumns};
 use upub::{model, Context};
-
-use crate::ApiError;
 
 #[derive(serde::Serialize)]
 pub struct NodeInfoDiscovery {
@@ -33,12 +33,81 @@ pub async fn nodeinfo_discovery(State(ctx): State<Context>) -> Json<NodeInfoDisc
 
 // TODO either vendor or fork nodeinfo-rs because it still represents "repository" and "homepage"
 // even if None! technically leads to invalid nodeinfo 2.0
-pub async fn nodeinfo(State(ctx): State<Context>, Path(version): Path<String>) -> Result<Json<nodeinfo::NodeInfoOwned>, StatusCode> {
-	// TODO it's unsustainable to count these every time, especially comments since it's a complex
-	// filter! keep these numbers caches somewhere, maybe db, so that we can just look them up
-	let total_users = model::actor::Entity::find().count(ctx.db()).await.ok();
-	let total_posts = None;
-	let total_comments = None; 
+pub async fn nodeinfo(State(ctx): State<Context>, Path(version): Path<String>) -> crate::ApiResult<Json<nodeinfo::NodeInfoOwned>> {
+	// keep these as statics so they get calculated once and then stay cached
+	// TODO this will cache them just once per runtime, maybe re-calculate them after some time?
+	static TOTAL_USERS: AtomicI64 = AtomicI64::new(i64::MIN);
+	static TOTAL_POSTS: AtomicI64 = AtomicI64::new(i64::MIN);
+	static TOTAL_COMMENTS: AtomicI64 = AtomicI64::new(i64::MIN);
+	static TOTAL_ACTIVE_USERS_MONTH: AtomicI64 = AtomicI64::new(i64::MIN);
+	static TOTAL_ACTIVE_USERS_HALFYEAR: AtomicI64 = AtomicI64::new(i64::MIN);
+
+	// TODO because we need to get the actual numbers with async operations we can't use OnceLocks...
+	//      can we make the following lines way more compact?? this is hell to maintain
+	let mut total_users = TOTAL_USERS.load(std::sync::atomic::Ordering::Relaxed);
+	if total_users == i64::MIN {
+		let actual_total_users = model::actor::Entity::find()
+			.filter(model::actor::Column::Domain.eq(ctx.domain()))
+			.count(ctx.db())
+			.await? as i64; // TODO safe cast
+		TOTAL_USERS.store(actual_total_users, std::sync::atomic::Ordering::Relaxed);
+		total_users = actual_total_users;
+	}
+
+	let mut total_posts = TOTAL_POSTS.load(std::sync::atomic::Ordering::Relaxed);
+	if total_posts == i64::MIN {
+		let actual_total_posts = model::object::Entity::find()
+			.inner_join(model::actor::Entity)
+			.filter(model::actor::Column::Domain.eq(ctx.domain()))
+			.filter(model::object::Column::InReplyTo.is_null())
+			.count(ctx.db())
+			.await? as i64; // TODO safe cast
+		TOTAL_POSTS.store(actual_total_posts, std::sync::atomic::Ordering::Relaxed);
+		total_posts = actual_total_posts;
+	}
+
+	let mut total_comments = TOTAL_COMMENTS.load(std::sync::atomic::Ordering::Relaxed);
+	if total_comments == i64::MIN {
+		let actual_total_comments = model::object::Entity::find()
+			.inner_join(model::actor::Entity)
+			.filter(model::actor::Column::Domain.eq(ctx.domain()))
+			.filter(model::object::Column::InReplyTo.is_not_null())
+			.count(ctx.db())
+			.await? as i64; // TODO safe cast
+		TOTAL_COMMENTS.store(actual_total_comments, std::sync::atomic::Ordering::Relaxed);
+		total_comments = actual_total_comments;
+	}
+
+	let mut total_active_users_month = TOTAL_ACTIVE_USERS_MONTH.load(std::sync::atomic::Ordering::Relaxed);
+	if total_active_users_month == i64::MIN {
+		let actual_total_active_users_month = model::actor::Entity::find()
+			.distinct()
+			.inner_join(model::object::Entity)
+			.select_only()
+			.select_column(model::actor::Column::Id)
+			.filter(model::actor::Column::Domain.eq(ctx.domain()))
+			.filter(model::object::Column::Published.gte(chrono::Utc::now() - std::time::Duration::from_secs(60 * 60 * 24 * 30)))
+			.count(ctx.db())
+			.await? as i64; // TODO safe cast
+		TOTAL_ACTIVE_USERS_MONTH.store(actual_total_active_users_month, std::sync::atomic::Ordering::Relaxed);
+		total_active_users_month = actual_total_active_users_month;
+	}
+
+	let mut total_active_users_halfyear = TOTAL_ACTIVE_USERS_HALFYEAR.load(std::sync::atomic::Ordering::Relaxed);
+	if total_active_users_halfyear == i64::MIN {
+		let actual_total_active_users_halfyear = model::actor::Entity::find()
+			.distinct()
+			.inner_join(model::object::Entity)
+			.select_only()
+			.select_column(model::actor::Column::Id)
+			.filter(model::actor::Column::Domain.eq(ctx.domain()))
+			.filter(model::object::Column::Published.gte(chrono::Utc::now() - std::time::Duration::from_secs(60 * 60 * 24 * 30 * 6)))
+			.count(ctx.db())
+			.await? as i64; // TODO safe cast
+		TOTAL_ACTIVE_USERS_HALFYEAR.store(actual_total_active_users_halfyear, std::sync::atomic::Ordering::Relaxed);
+		total_active_users_halfyear = actual_total_active_users_halfyear;
+	}
+
 	let (software, version) = match version.as_str() {
 		"2.0.json" | "2.0" => (
 			nodeinfo::types::Software {
@@ -53,30 +122,30 @@ pub async fn nodeinfo(State(ctx): State<Context>, Path(version): Path<String>) -
 			nodeinfo::types::Software {
 				name: "μpub".to_string(),
 				version: Some(upub::VERSION.into()),
-				repository: Some("https://git.alemi.dev/upub.git/".into()),
-				homepage: None,
+				repository: Some("https://moonlit.technology/alemi/upub".into()),
+				homepage: Some("https://join.upub.social".into()),
 			},
 			"2.1".to_string()
 		),
-		_ => return Err(StatusCode::NOT_IMPLEMENTED),
+		_ => return Err(crate::ApiError::Status(StatusCode::NOT_IMPLEMENTED)),
 	};
 	Ok(Json(
 		nodeinfo::NodeInfoOwned {
 			version,
 			software,
-			open_registrations: false,
+			open_registrations: ctx.cfg().security.allow_registration,
 			protocols: vec!["activitypub".into()],
 			services: nodeinfo::types::Services {
 				inbound: vec![],
 				outbound: vec![],
 			},
 			usage: nodeinfo::types::Usage {
-				local_posts: total_posts,
-				local_comments: total_comments,
+				local_posts: Some(total_posts),
+				local_comments: Some(total_comments),
 				users: Some(nodeinfo::types::Users {
-					active_month: None,
-					active_halfyear: None,
-					total: total_users.map(|x| x as i64),
+					active_month: Some(total_active_users_month),
+					active_halfyear: Some(total_active_users_halfyear),
+					total: Some(total_users),
 				}),
 			},
 			metadata: serde_json::Map::default(),
@@ -124,7 +193,7 @@ pub async fn webfinger(
 				.await?
 			{
 				Some(usr) => usr,
-				None => return Err(ApiError::not_found()),
+				None => return Err(crate::ApiError::not_found()),
 			}
 		} else {
 			return Err(StatusCode::UNPROCESSABLE_ENTITY.into());
