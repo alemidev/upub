@@ -129,8 +129,9 @@ pub struct SecurityConfig {
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize, serde_default::DefaultFromSerde)]
 pub struct CompatibilityConfig {
 	#[serde_inline_default(true)]
-	/// compatibility with almost everything: set image attachments as images
-	pub fix_attachment_images_media_type: bool,
+	/// compatibility with almost everything: set document type as image/video/audio according to
+	/// mediaType, because almost all software sends us `Document` attachments
+	pub fix_attachment_media_type: bool,
 
 	#[serde_inline_default(true)]
 	/// compatibility with mastodon and misskey (and somewhat lemmy?): notify like receiver

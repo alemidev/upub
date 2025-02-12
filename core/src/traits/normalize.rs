@@ -88,6 +88,18 @@ impl Normalizer for crate::Context {
 						if u == obj_image { continue };
 						model.url = Set(self.cloaked(&u));
 					}
+					// TODO this is the third time we do this check... can we somehow centralize it?
+					if self.cfg().compat.fix_attachment_media_type && model.document_type == Set(apb::DocumentType::Document) {
+						let media_type = model.media_type.clone().take().unwrap_or_default();
+						let (mime_kind, _mime_type) = media_type.split_once('/').unwrap_or_default();
+						model.document_type = Set(match mime_kind {
+							"image" => apb::DocumentType::Image,
+							"video" => apb::DocumentType::Video,
+							"audio" => apb::DocumentType::Audio,
+							"text"  => apb::DocumentType::Page,
+							_ => apb::DocumentType::Document,
+						});
+					}
 					model
 				},
 				Node::Link(l) => {
@@ -105,13 +117,14 @@ impl Normalizer for crate::Context {
 					};
 
 					// in case we get both broken media_type and document_type, try to fix images with url
+					// TODO is this still needed? above case with mediaType should solve most issues
 					let mut is_image = false;
 					if [".jpg", ".jpeg", ".png", ".webp", ".bmp"] // TODO more image types???
 						.iter()
 						.any(|x| url.ends_with(x))
 					{
 						is_image = true;
-						if self.cfg().compat.fix_attachment_images_media_type {
+						if self.cfg().compat.fix_attachment_media_type {
 							document_type = apb::DocumentType::Image;
 							media_type = format!("image/{}", url.split('.').last().unwrap_or_default());
 						}
