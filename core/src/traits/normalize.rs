@@ -93,8 +93,18 @@ impl Normalizer for crate::Context {
 				Node::Link(l) => {
 					let url = l.href().unwrap_or_default();
 					if url == obj_image { continue };
+
 					let mut media_type = l.media_type().unwrap_or("text/html".to_string());
-					let mut document_type = apb::DocumentType::Page;
+					let (mime_kind, _mime_type) = media_type.split_once('/').unwrap_or_default();
+					let mut document_type = match mime_kind {
+						"image" => apb::DocumentType::Image,
+						"video" => apb::DocumentType::Video,
+						"audio" => apb::DocumentType::Audio,
+						"text"  => apb::DocumentType::Page,
+						_ => apb::DocumentType::Document,
+					};
+
+					// in case we get both broken media_type and document_type, try to fix images with url
 					let mut is_image = false;
 					if [".jpg", ".jpeg", ".png", ".webp", ".bmp"] // TODO more image types???
 						.iter()
@@ -273,13 +283,22 @@ impl AP {
 			return Err(NormalizerError::WrongType(apb::BaseType::Object(apb::ObjectType::Document(apb::DocumentType::Document)), base_type));
 		}
 
+		let media_type = document.media_type().unwrap_or("text/html".to_string());
+		let (mime_kind, _mime_type) = media_type.split_once('/').unwrap_or_default();
+		let document_type = document.document_type().unwrap_or(match mime_kind {
+			"image" => apb::DocumentType::Image,
+			"video" => apb::DocumentType::Video,
+			"audio" => apb::DocumentType::Audio,
+			"text"  => apb::DocumentType::Page,
+			_ => apb::DocumentType::Document,
+		});
+
 		Ok(crate::model::attachment::Model {
 			internal: 0,
 			url: document.url().id().unwrap_or_default(),
 			object: parent,
-			document_type: document.document_type().unwrap_or(apb::DocumentType::Page),
 			name: document.name().ok(),
-			media_type: document.media_type().unwrap_or("text/html".to_string()),
+			media_type, document_type,
 		})
 	}
 
