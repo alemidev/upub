@@ -31,6 +31,11 @@ pub use cloak::*;
 mod import;
 pub use import::*;
 
+mod attachments;
+pub use attachments::*;
+
+// TODO naming is going kind of all over the place, should probably rename lot of these...
+
 #[derive(Debug, Clone, clap::Subcommand)]
 pub enum CliCommand {
 	/// generate fake user, note and activity
@@ -174,6 +179,11 @@ pub enum CliCommand {
 		/// base url where attachments are hosted now, if not given attachments will be kept unchanged
 		#[arg(short, long)]
 		attachment_base: Option<String>
+	},
+
+	/// fix attachments types based on mediaType
+	Attachments {
+
 	}
 }
 
@@ -202,5 +212,7 @@ pub async fn run(ctx: upub::Context, command: CliCommand) -> Result<(), Box<dyn 
 			Ok(fix_activities(ctx, likes, announces).await?),
 		CliCommand::Import { file, from, to, attachment_base } =>
 			Ok(import(ctx, file, from, to, attachment_base).await?),
+		CliCommand::Attachments {  } =>
+			Ok(fix_attachments_types(ctx).await?),
 	}
 }
