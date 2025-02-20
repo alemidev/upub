@@ -56,7 +56,7 @@ pub fn Object(object: crate::Doc, #[prop(default = true)] controls: bool) -> imp
 		.ok()
 		.and_then(|x| {
 			Some(view! {
-				<div class="quote">
+				<div class="quote mb-1">
 					<Object object=crate::cache::OBJECTS.get(&x)? controls=false />
 				</div>
 			})
@@ -148,6 +148,7 @@ pub fn Object(object: crate::Doc, #[prop(default = true)] controls: bool) -> imp
 
 	let post_inner = view! {
 		<Summary summary=object.summary().ok().map(|x| x.to_string()) >
+			{quote_block}
 			<p inner_html={content}></p>
 			{attachments_padding}
 			{attachments}
@@ -158,7 +159,6 @@ pub fn Object(object: crate::Doc, #[prop(default = true)] controls: bool) -> imp
 		Ok(apb::ObjectType::Note) => view! {
 			<article class="tl">
 				{post_inner}
-				{quote_block}
 			</article>
 		}.into_any(),
 		// lemmy with Page, peertube with Video
@@ -170,7 +170,6 @@ pub fn Object(object: crate::Doc, #[prop(default = true)] controls: bool) -> imp
 						<b>{object.name().unwrap_or_default().to_string()}</b>
 					</h4>
 					{post_inner}
-					{quote_block}
 				</div>
 			</article>
 		}.into_any(),
@@ -180,14 +179,12 @@ pub fn Object(object: crate::Doc, #[prop(default = true)] controls: bool) -> imp
 				<h3>{object.name().unwrap_or_default().to_string()}</h3>
 				<hr />
 				{post_inner}
-				{quote_block}
 			</article>
 		}.into_any(),
 		// everything else
 		Ok(t) => view! {
 			<h3>{t.as_ref().to_string()}</h3>
 			{post_inner}
-			{quote_block}
 		}.into_any(),
 		// object without type?
 		Err(_) => view! { <code>missing object type</code> }.into_any(),
