@@ -61,7 +61,7 @@ pub fn Item(
 		}
 		match item.object_type().unwrap_or(apb::ObjectType::Object) {
 			// special case for placeholder activities
-			apb::ObjectType::Note | apb::ObjectType::Document(_) =>
+			apb::ObjectType::Note | apb::ObjectType::Document(_) | apb::ObjectType::Article =>
 				Some(view! { <Object object=item.clone() />{sep.clone()} }.into_any()),
 			// everything else
 			apb::ObjectType::Activity(t) => {
