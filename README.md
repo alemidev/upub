@@ -1,10 +1,10 @@
 <p align="center">
-  <img src="https://dev.upub.social/web/assets/icon.png" alt="upub logo: greep mu letter with blue and pink-reddish gradient" height="150" />
+  <img src="https://cdn.alemi.dev/proj/upub/banner.png" alt="upub logo: greep mu letter with blue and pink-reddish gradient" height="150" />
 </p>
 
 # μpub
 
-> ## [micro social network, federated](https://join.upub.social)
+> ## micro social network, federated
 >
 > - [about](#about)
 >   - [features](#features)
@@ -24,9 +24,6 @@
 μpub is modeled around timelines but tries to be unopinionated in its implementation, allowing representing multiple different fediverse "modalities" together
 
 all client interactions happen with ActivityPub's client-server methods (basically POST your activities to your outbox), with [appropriate extensions](https://ns.alemi.dev/as): **μpub doesn't want to invent another API**!
-
-> [!NOTE]
-> a test instance is available at [dev.upub.social](https://dev.upub.social)
 
 ## features
 μpub boasts both known features and new experimental ideas:
@@ -65,13 +62,7 @@ while this just works for small instances, larger servers should set up aggressi
 μpub is built with the needs of small deployments in mind: getting a dev instance up is as easy as running one command, and setting up for production just requires some config tweaking
 
 ## install
-latest μpub build can be downloaded from [moonlit.technology releases page](https://moonlit.technology/alemi/upub/releases)
-
-```sh
-curl -s https://moonlit.technology/alemi/upub/releases/download/v0.5.0/upub > ~/.local/bin/upub; chmod +x ~/.local/bin/upub
-```
-> [!IMPORTANT]
-> automated cross-platform builds by GitHub are planned and will be made available soon
+latest μpub build can be downloaded from [the releases page](https://github.com/alemidev/upub/releases)
 
 ### from source
 building μpub from source is also possible without too much effort. it will also allow to customize the resulting binary to your specific use case
@@ -204,9 +195,8 @@ remember to prepare config file and run migrations!
 development is still active, so expect more stuff to come! since most fediverse software uses Mastodon's API, μpub plans to implement it as an optional feature, becoming eventually compatible with most existing frontends and mobile applications, but focus right now is on producing something specific to μpub needs
 
 ## contacts
- * new features or releases are announced [directly on the fediverse](https://dev.upub.social/actors/upub)
- * direct questions about deployment or development, or general chatter around this project, [happens on matrix](https://matrix.to/#/#upub:moonlit.technology)
- * development mainly happens on [moonlit.technology](https://moonlit.technology/alemi/upub), but a [github mirror](https://github.com/alemidev/upub) is also available. if you prefer a forge-less development you can browse the repo on [my cgit](https://git.alemi.dev/upub.git), and send me patches on any contact listed on [my site](https://alemi.dev/about/contacts)
+ * for direct questions about deployment or development [contact me directly](https://alemi.dev/about/contacts)
+ * development mainly happens on [github](https://github.com/alemidev/upub). if you prefer a forge-less development you can browse the repo on [my cgit](https://git.alemi.dev/upub.git), and send me patches on any contact listed on [my site](https://alemi.dev/about/contacts)
 
 ## contributing
 μpub can always use more dev time!
@@ -217,5 +207,5 @@ reading a bit of the [ActivityPub](https://www.w3.org/TR/activitypub/) specifica
 
 hanging out in the relevant matrix room will probably be useful, as you can ask questions while familiarizing with the codebase
 
-once you feel ready to tackle some development, head over to [the issues tab](https://moonlit.technology/alemi/upub/issues) and look around for something that needs to be done!
+once you feel ready to tackle some development, head over to [the issues tab](https://github.com/alemidev/upub/issues) and look around for something that needs to be done!
 

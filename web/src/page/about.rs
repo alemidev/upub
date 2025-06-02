@@ -9,7 +9,7 @@ pub fn AboutPage() -> impl IntoView {
 				<p><i>"the "<a href="https://en.wikipedia.org/wiki/Fediverse">fediverse</a>" is an ensemble of social networks, which, while independently hosted, can communicate with each other"</i></p>
 				<p>content is aggregated in timelines, logged out users can only access the global server timeline</p>
 				<hr />
-				<p>"more information on "<a href="https://join.upub.social" target="_blank">join.upub.social</a></p>
+				<p>"more information on "<a href="https://github.com/alemidev/upub" target="_blank">"μpub github page"</a></p>
 			</div>
 		</div>
 	}

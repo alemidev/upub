@@ -122,8 +122,8 @@ pub async fn nodeinfo(State(ctx): State<Context>, Path(version): Path<String>) -
 			nodeinfo::types::Software {
 				name: "μpub".to_string(),
 				version: Some(upub::VERSION.into()),
-				repository: Some("https://moonlit.technology/alemi/upub".into()),
-				homepage: Some("https://join.upub.social".into()),
+				repository: Some("https://github.com/alemidev/upub".into()),
+				homepage: None,
 			},
 			"2.1".to_string()
 		),

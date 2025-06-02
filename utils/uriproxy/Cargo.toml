@@ -6,7 +6,7 @@ authors = [ "alemi <me@alemi.dev>" ]
 description = "internal upub crate to handle remote uris"
 license = "MIT"
 keywords = ["upub", "uri", "base64"]
-repository = "https://moonlit.technology/alemi/upub"
+repository = "https://github.com/alemidev/upub"
 
 [lib]
 path = "lib.rs"

@@ -11,10 +11,10 @@ it has the drawback of not being search-engine friendly, but machines should pro
 it's probably possible to get `upub-web` to build with just `wasm-bindgen`, but i recommend just using `trunk` to keep your sanity. trunk will download by itself `wasm-bindgen-cli`.
 
 ```
-UPUB_BASE_URL=https://dev.upub.social trunk serve --public-url http://127.0.0.1:8080/web
+UPUB_BASE_URL=https://my.domain.net trunk serve --public-url http://127.0.0.1:8080/web
 ```
 
-will give you a local development server with auto-reload pointing to `dev.upub.social`, so you don't even need to spin up a local instance (omit `UPUB_BASE_URL` env variable to make frontend point to localhost instead)
+will give you a local development server with auto-reload pointing to `my.domain.net`, so you don't even need to spin up a local instance (omit `UPUB_BASE_URL` env variable to make frontend point to localhost instead)
 
 setting `public-url` is necessary: while deploying, axum will handle getting you to the correct pages, but in trunk dev env this has to be done by trunk itself. note also that resource urls will differ: on prod they will be `/web/assets/style.css`, while on dev `/assets` segment won't be present!
 
