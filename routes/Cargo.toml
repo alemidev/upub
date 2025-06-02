@@ -51,3 +51,4 @@ web = [
 ]
 web-redirect = []
 activitypub-redirect = []
+openssl-vendored = ["httpsign/openssl-vendored"]

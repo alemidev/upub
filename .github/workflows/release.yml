@@ -44,7 +44,7 @@ jobs:
       - uses: actions/checkout@v4
       - run: trunk build --release
         working-directory: web/
-      - run: cargo build --release --features=web
+      - run: cargo build --release --features=web,openssl-vendored
       - run: mv target/release/upub${{ matrix.platform.ext }} upub-${{ matrix.platform.target }}${{ matrix.platform.ext }}
       - uses: actions/upload-artifact@v4
         with:

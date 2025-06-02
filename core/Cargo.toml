@@ -36,3 +36,7 @@ reqwest = { version = "0.12", features = ["json"] }
 apb = { path = "../apb", features = ["unstructured", "orm", "did-core", "activitypub-miscellaneous-terms", "activitypub-fe", "activitypub-counters", "litepub", "ostatus", "toot"] }
 # nodeinfo = "0.0.2" # the version on crates.io doesn't re-export necessary types to build the struct!!!
 nodeinfo = { git = "https://codeberg.org/thefederationinfo/nodeinfo-rs", rev = "e865094804" }
+
+[features]
+default = []
+openssl-vendored = ["openssl/vendored", "httpsign/openssl-vendored"]
