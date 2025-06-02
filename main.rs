@@ -1,8 +1,6 @@
 use std::path::PathBuf;
 use clap::{Parser, Subcommand};
 use sea_orm::{ConnectOptions, Database};
-use signal_hook::consts::signal::*;
-use signal_hook_tokio::Signals;
 use futures::stream::StreamExt;
 use upub::{context, ext::LoggableError};
 
@@ -187,11 +185,7 @@ async fn init(args: Args, config: upub::Config) {
 	}
 
 	// register signal handler only for long-lasting modes, such as server or worker
-	let (tx, rx) = tokio::sync::watch::channel(false);
-	let signals = Signals::new([SIGTERM, SIGINT]).expect("failed registering signal handler");
-	let handle = signals.handle();
-	let signals_task = tokio::spawn(handle_signals(signals, tx));
-	let stop = CancellationToken(rx);
+	let stop = CancellationToken::default();
 
 	match args.command {
 		#[cfg(feature = "serve")]
@@ -218,9 +212,6 @@ async fn init(args: Args, config: upub::Config) {
 		#[cfg(feature = "cli")]
 		Mode::Cli { .. } => unreachable!(),
 	}
-
-	handle.close();
-	signals_task.await.expect("failed joining signal handler task");
 }
 
 struct WakerToken(tokio::sync::mpsc::UnboundedSender<()>);
@@ -241,6 +232,19 @@ impl worker::WakeToken for WakeToken {
 #[derive(Clone)]
 struct CancellationToken(tokio::sync::watch::Receiver<bool>);
 
+impl Default for CancellationToken {
+	fn default() -> Self {
+		let (tx, rx) = tokio::sync::watch::channel(false);
+		tokio::spawn(async move {
+			match tokio::signal::ctrl_c().await {
+				Ok(()) => { tx.send_replace(true); },
+				Err(e) => eprintln!("[!] error waiting for CTRL-C event: {e} - {e:?}"),
+			}
+		});
+		CancellationToken(rx)
+	}
+}
+
 impl worker::StopToken for CancellationToken {
 	fn stop(&self) -> bool {
 		*self.0.borrow()
@@ -250,21 +254,6 @@ impl worker::StopToken for CancellationToken {
 impl routes::ShutdownToken for CancellationToken {
 	async fn event(mut self) {
 		self.0.changed().await.warn_failed("cancellation token channel closed, stopping...");
-	}
-}
-
-async fn handle_signals(
-	mut signals: signal_hook_tokio::Signals,
-	tx: tokio::sync::watch::Sender<bool>,
-) {
-	while let Some(signal) = signals.next().await {
-		match signal {
-			SIGTERM | SIGINT => {
-				tracing::info!("received stop signal, closing tasks");
-				tx.send(true).info_failed("error sending stop signal to tasks")
-			},
-			_ => unreachable!(),
-		}
 	}
 }
 
