@@ -18,7 +18,7 @@ pub enum Pull<T> {
 
 #[derive(Debug, thiserror::Error)]
 pub enum RequestError {
-	#[error("dereferenced resource ({0:?}) doesn't match requested type ({1:?})")]
+	#[error("dereferenced resource ({1:?}) doesn't match requested type ({0:?})")]
 	Mismatch(apb::ObjectType, apb::ObjectType),
 
 	#[error("error fetching resource: {0:?}")]
