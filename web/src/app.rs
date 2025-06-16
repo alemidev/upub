@@ -195,6 +195,7 @@ pub fn App() -> impl IntoView {
 											<Route path=path!("likes") view=ActorLikes />
 											<Route path=path!("following") view=move || view! { <FollowList outgoing=true /> } />
 											<Route path=path!("followers") view=move || view! { <FollowList outgoing=false /> } />
+											<Route path=path!("communities") view=move || view! { <CommunitiesList /> } />
 										</ParentRoute>
 
 										// objects
@@ -260,7 +261,7 @@ pub fn App() -> impl IntoView {
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum FeedRoute {
-	Unknown, Home, Global, Server, Notifications, User, Following, Followers, ActorLikes, ObjectLikes, Replies, Context
+	Unknown, Home, Global, Server, Notifications, User, Following, Followers, Communities, ActorLikes, ObjectLikes, Replies, Context
 }
 
 impl FeedRoute {
@@ -297,6 +298,9 @@ fn Scrollable() -> impl IntoView {
 					},
 					Some("followers") => {
 						set_route.set(FeedRoute::Followers);
+					},
+					Some("communities") => {
+						set_route.set(FeedRoute::Communities);
 					},
 					Some("likes") => {
 						set_route.set(FeedRoute::ActorLikes);

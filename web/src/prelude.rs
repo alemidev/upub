@@ -11,6 +11,7 @@ pub use crate::{
 		header::ActorHeader,
 		follow::FollowList,
 		posts::{ActorPosts, ActorLikes},
+		communities::CommunitiesList,
 	},
 	activities::item::Item,
 	objects::{
