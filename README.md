@@ -84,7 +84,7 @@ from inside `web` project directory, run `trunk build --release`. once it finish
 
 ```sh
 cd web
-trunk build --release
+UPUB_BASE_URL="my.domain.net" trunk build --release --public-url 'https://my.domain.net/web/assets' --filehash=false
 cd ..
 cargo build --release --features=web
 ```

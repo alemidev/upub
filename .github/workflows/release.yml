@@ -42,7 +42,7 @@ jobs:
       - run: rustup target add wasm32-unknown-unknown
       - run: cargo install trunk
       - uses: actions/checkout@v4
-      - run: trunk build --release
+      - run: trunk build --release --public-url=/web/assets --filehash=false
         working-directory: web/
       - run: cargo build --release --features=web,openssl-vendored
       - run: mv target/release/upub${{ matrix.platform.ext }} upub-${{ github.ref_name }}-${{ matrix.platform.target }}${{ matrix.platform.ext }}
