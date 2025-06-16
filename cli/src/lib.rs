@@ -230,6 +230,8 @@ pub async fn run(ctx: upub::Context, command: CliCommand) -> Result<(), Box<dyn 
 			Ok(update_users(ctx, days, limit).await?),
 		CliCommand::Register { username, password, display_name, summary, avatar_url, banner_url } =>
 			Ok(register(ctx, username, password, display_name, summary, avatar_url, banner_url).await?),
+		CliCommand::Reset { login, password } =>
+			Ok(reset(ctx, login, password).await?),
 		CliCommand::Nuke { for_real, delete_objects } =>
 			Ok(nuke(ctx, for_real, delete_objects).await?),
 		CliCommand::Thread { } =>
