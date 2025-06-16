@@ -16,6 +16,9 @@ pub use relay::*;
 mod register;
 pub use register::*;
 
+mod reset;
+pub use reset::*;
+
 mod update;
 pub use update::*;
 
@@ -118,6 +121,15 @@ pub enum CliCommand {
 		/// url for banner image of new user
 		#[arg(long = "banner")]
 		banner_url: Option<String>,
+	},
+
+	/// reset password of a user
+	Reset {
+		/// user login
+		login: String,
+
+		/// new password
+		password: String,
 	},
 
 	/// break all user relations so that instance can be shut down
