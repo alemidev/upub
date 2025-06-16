@@ -42,7 +42,7 @@ pub fn ObjectView() -> impl IntoView {
 	);
 
 	view! {
-		{move || match object.get().map(|x| x.take()) {
+		{move || match object.get() {
 			None => view! { <Loader /> }.into_any(),
 			Some(None) => {
 				let raw_id = params.get().get("id").unwrap_or_default();

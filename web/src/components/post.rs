@@ -218,7 +218,6 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 			{move ||
 				mentions.get()
 					.map(|x| x
-						.take()
 						.into_iter()
 						.map(|u| match u {
 							TextMatch::Mention { href: ref h, .. } => match cache::OBJECTS.get(h) {
@@ -281,7 +280,6 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 					let summary = get_if_some(summary_ref);
 					let (mut to_vec, cc_vec) = privacy.get_untracked().address(&auth.user_id());
 					let mut mention_tags : Vec<serde_json::Value> = mentions.get_untracked()
-						.map(|x| x.take())
 						.unwrap_or_default()
 						.into_iter()
 						.map(|x| match x {
@@ -317,7 +315,7 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 							}
 						}
 					}
-					for mention in mentions.get_untracked().map(|x| x.take()).as_deref().unwrap_or(&[]) {
+					for mention in mentions.get_untracked().as_deref().unwrap_or(&[]) {
 						if let TextMatch::Mention { href, .. } = mention {
 							to_vec.push(href.clone());
 						}
