@@ -213,7 +213,7 @@ pub async fn process_follow(ctx: &crate::Context, activity: impl apb::Activity, 
 	ctx.address(Some(&activity_model), None, tx).await?;
 
 	if ctx.is_local(&target_actor.id) {
-		ctx.fetch_outbox(&target_actor.id, tx).await?;
+		ctx.fetch_outbox(&source_actor.id, tx).await?;
 		crate::Query::notify(activity_model.internal, target_actor.internal)
 			.exec(tx)
 			.await?;
