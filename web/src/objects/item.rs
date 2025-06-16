@@ -37,7 +37,7 @@ pub fn Object(object: crate::Doc, #[prop(default = true)] controls: bool) -> imp
 	let audience_badge = object.audience().id().ok()
 		.map(|x| {
 			// TODO this isn't guaranteed to work every time...
-			let name = x.split('/').last().unwrap_or_default().to_string();
+			let name = x.split('/').next_back().unwrap_or_default().to_string();
 			let uri = Uri::web(U::Actor, &x);
 			view! {
 				<a class="clean dim" href={uri}>

@@ -18,7 +18,7 @@ pub fn Attachment(
 	let config = use_context::<Signal<crate::Config>>().expect("missing config context");
 	let (expand, set_expand) = signal(false);
 	let href = object.url().id().ok().unwrap_or_default();
-	let uncloaked = uncloak(href.split('/').last()).unwrap_or_default();
+	let uncloaked = uncloak(href.split('/').next_back()).unwrap_or_default();
 	let media_type = object.media_type()
 		.unwrap_or("text/html".to_string()); // TODO make it an Option rather than defaulting to link everywhere
 	let mut kind = media_type

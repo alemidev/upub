@@ -126,7 +126,7 @@ impl Normalizer for crate::Context {
 						is_image = true;
 						if self.cfg().compat.fix_attachment_media_type {
 							document_type = apb::DocumentType::Image;
-							media_type = format!("image/{}", url.split('.').last().unwrap_or_default());
+							media_type = format!("image/{}", url.split('.').next_back().unwrap_or_default());
 						}
 					}
 
@@ -184,7 +184,7 @@ impl Normalizer for crate::Context {
 					},
 					Ok(apb::LinkType::Hashtag) => {
 						let hashtag = l.name()
-							.unwrap_or_else(|_| l.href().unwrap_or_default().split('/').last().unwrap_or_default().to_string()) // TODO maybe just fail?
+							.unwrap_or_else(|_| l.href().unwrap_or_default().split('/').next_back().unwrap_or_default().to_string()) // TODO maybe just fail?
 							.replace('#', "");
 						// TODO lemmy added a "fix" to make its communities kind of work with mastodon:
 						//      basically they include the community name as hashtag. ughhhh, since we handle
@@ -394,7 +394,7 @@ impl AP {
 				.replace("https://", "");
 			let mut splits = clean.split('/');
 			let first = splits.next().unwrap_or("");
-			let last = splits.last().unwrap_or(first);
+			let last = splits.next_back().unwrap_or(first);
 			(first.to_string(), last.to_string())
 		};
 		Ok(crate::model::actor::Model {

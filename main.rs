@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 use clap::{Parser, Subcommand};
 use sea_orm::{ConnectOptions, Database};
-use futures::stream::StreamExt;
 use upub::{context, ext::LoggableError};
 
 #[cfg(feature = "cli")]

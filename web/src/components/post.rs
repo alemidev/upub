@@ -179,7 +179,7 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 				if word.starts_with('@') {
 					let stripped = word.replacen('@', "", 1);
 					if let Some((name, domain)) = stripped.split_once('@') {
-						if let Some(tld) = domain.split('.').last() {
+						if let Some(tld) = domain.split('.').next_back() {
 							if tld::exist(tld) {
 								if let Some(uid) = cache::WEBFINGER.blocking_resolve(name, domain, auth).await {
 									out.push(TextMatch::Mention { name: name.to_string(), domain: domain.to_string(), href: uid });

@@ -22,7 +22,7 @@ impl Auth {
 		self.userid.get()
 			.unwrap_or_default()
 			.split('/')
-			.last()
+			.next_back()
 			.unwrap_or_default()
 			.to_string()
 	}
