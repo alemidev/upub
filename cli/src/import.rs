@@ -55,7 +55,7 @@ pub async fn import(
 							.set_name(doc.name().ok())
 							.set_media_type(doc.media_type().ok())
 							.set_url(apb::Node::link(
-								format!("{attachment_base}/{}", doc.url().id().unwrap_or_default().split('/').last().unwrap_or_default())
+								format!("{attachment_base}/{}", doc.url().id().unwrap_or_default().split('/').next_back().unwrap_or_default())
 							))
 					);
 				}
