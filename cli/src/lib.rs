@@ -31,6 +31,9 @@ pub use cloak::*;
 mod import;
 pub use import::*;
 
+mod export;
+pub use export::*;
+
 mod attachments;
 pub use attachments::*;
 
@@ -181,10 +184,22 @@ pub enum CliCommand {
 		attachment_base: Option<String>
 	},
 
+	Export {
+		/// local username of actor to export
+		actor: String,
+
+		/// json backup file: will be an array of objects
+		file: std::path::PathBuf,
+
+		/// serialize json in human-readable form
+		#[arg(long, default_value_t = false)]
+		pretty: bool,
+	},
+
 	/// fix attachments types based on mediaType
 	Attachments {
 
-	}
+	},
 }
 
 pub async fn run(ctx: upub::Context, command: CliCommand) -> Result<(), Box<dyn std::error::Error>> {
@@ -212,6 +227,8 @@ pub async fn run(ctx: upub::Context, command: CliCommand) -> Result<(), Box<dyn 
 			Ok(fix_activities(ctx, likes, announces).await?),
 		CliCommand::Import { file, from, to, attachment_base } =>
 			Ok(import(ctx, file, from, to, attachment_base).await?),
+		CliCommand::Export { actor, file, pretty } =>
+			Ok(export(ctx, actor, file, pretty).await?),
 		CliCommand::Attachments {  } =>
 			Ok(fix_attachments_types(ctx).await?),
 	}
