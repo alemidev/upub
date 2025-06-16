@@ -496,8 +496,10 @@ impl Fetcher for crate::Context {
 		//  2) fetching activities doesn't properly merge addressing, so we get orphan objects twice
 		for node in outbox.ordered_items().flat() {
 			if let Ok(activity) = node.into_inner() {
-				if let Ok(oid) = activity.object().id() {
-					self.fetch_object(&oid, tx).await?;
+				if matches!(activity.activity_type(), Ok(apb::ActivityType::Create)) {
+					if let Ok(oid) = activity.object().id() {
+						self.fetch_object(&oid, tx).await?;
+					}
 				}
 			}
 		}
