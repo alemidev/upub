@@ -1,3 +1,5 @@
+use std::hash::{Hash, Hasher};
+
 use leptos::prelude::*;
 use crate::{prelude::*, FALLBACK_IMAGE_URL};
 
@@ -29,19 +31,36 @@ pub fn ActorBanner(object: crate::Doc) -> impl IntoView {
 		serde_json::Value::Object(_) => {
 			let uid = object.id().unwrap_or_default().to_string();
 			let uri = Uri::web(U::Actor, &uid);
-			let avatar_url = object.icon_url().unwrap_or(FALLBACK_IMAGE_URL.into());
 			let username = object.preferred_username().unwrap_or_default().to_string();
 			let domain = object.id().unwrap_or_default().replace("https://", "").replace("http://", "").split('/').next().unwrap_or_default().to_string();
-			let display_name = object.name().unwrap_or_default().to_string();
+			let display_name = object.name().unwrap_or(username.clone());
+			let (avatar_url, avatar_style) = match object.icon_url() {
+				Ok(url) => (url, "".to_string()),
+				Err(_e) => {
+					let (from, to) = string_to_hex(&uid);
+					("".to_string(), format!("background: linear-gradient({from}, {to});"))
+				},
+			};
+
 			view! {
 				<div>
 					<table class="align" >
 					<tr>
-						<td rowspan="2" ><a href={uri.clone()} ><img class="avatar avatar-actor" src={avatar_url} onerror={format!("this.onerror=null; this.src='{FALLBACK_IMAGE_URL}';")} /></a></td>
-						<td><b class="displayname"><DisplayName name=display_name /></b></td>
+						<td rowspan="2" >
+							<a href={uri.clone()} >
+								<img class="avatar avatar-actor" src={avatar_url} style={avatar_style} />
+							</a>
+						</td>
+						<td>
+							<b class="displayname"><DisplayName name=display_name /></b>
+						</td>
 					</tr>
 					<tr>
-						<td class="top" ><a class="hover" href={uri} ><small>{username}@{domain}</small></a></td>
+						<td class="top" >
+							<a class="hover" href={uri} >
+								<small>{username}@{domain}</small>
+							</a>
+						</td>
 					</tr>
 					</table>
 				</div>
@@ -118,3 +137,22 @@ async fn send_follow_response(kind: apb::ActivityType, target: String, to: Strin
 		tracing::error!("failed posting follow response: {e}");
 	}
 }
+
+fn string_to_hex(inpt: &str) -> (String, String) {
+	let mut hasher = std::hash::DefaultHasher::new();
+	inpt.hash(&mut hasher);
+	let raw = hasher.finish();
+
+	let from = raw as u32;
+	let to = (raw >> 32) as u32;
+
+	let from_str = format!(
+		"#{:06x}", from >> 8
+	);
+
+	let to_str = format!(
+		"#{:06x}", to >> 8
+	);
+	(from_str, to_str)
+}
+
