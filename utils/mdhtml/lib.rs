@@ -21,6 +21,7 @@ const OPTIONS: comrak::Options<'static> = comrak::Options {
 		subscript: true,
 		spoiler: true,
 		greentext: true,
+		alerts: true,
 		// TODO use these two for cloaking?
 		image_url_rewriter: None,
 		link_url_rewriter: None,
@@ -44,7 +45,7 @@ const OPTIONS: comrak::Options<'static> = comrak::Options {
 		list_style: comrak::ListStyleType::Dash,
 		sourcepos: false,
 		escaped_char_spans: true,
-		experimental_inline_sourcepos: false,
+		experimental_minimize_commonmark: false,
 		ignore_setext: true,
 		ignore_empty_links: false,
 		gfm_quirks: false,
