@@ -25,7 +25,7 @@ pub fn ActorHeader() -> impl IntoView {
 			}
 		}
 	);
-	move || match actor.get().map(|x| x.take()) {
+	move || match actor.get() {
 		None => view! { <Loader /> }.into_any(),
 		Some(None) => view! { <code class="center cw color">"could not resolve user"</code> }.into_any(),
 		Some(Some(actor)) => {
