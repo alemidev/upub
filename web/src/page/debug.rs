@@ -77,7 +77,7 @@ pub fn DebugPage() -> impl IntoView {
 				</form>
 			</div>
 			<pre class="ma-1" class:striped=error>
-				{move || match object.get() {
+				{move || match object.get().map(|x| x.take()) {
 					None => view! { <p class="center"><span class="dots"></span></p> }.into_any(),
 					Some(o) => if plain.get() {
 						serde_json::to_string_pretty(&o).unwrap_or_else(|e| e.to_string()).into_any()
@@ -99,7 +99,7 @@ pub fn DebugPage() -> impl IntoView {
 						onclick={move ||
 							format!(
 								"javascript:navigator.clipboard.writeText(`{}`)",
-								object.get().map(|x| serde_json::to_string(&x).unwrap_or_default()).unwrap_or_default()
+								object.get().map(|x| serde_json::to_string(&x.take()).unwrap_or_default()).unwrap_or_default()
 							)
 					} >copy</a>
 			</p>

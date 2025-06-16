@@ -36,7 +36,7 @@ pub fn SearchPage() -> impl IntoView {
 					<code class="cw center color ml-s w-100">actor</code>
 				</summary>
 				<div class="pb-1">
-				{move || match user.get() {
+				{move || match user.get().map(|x| x.take()) {
 					None => view! { <p class="center"><small>searching...</small></p> }.into_any(),
 					Some(None) => view! { <p class="center"><code>N/A</code></p> }.into_any(),
 					Some(Some(u)) => view! { <p><ActorBanner object=u /></p> }.into_any(),
@@ -51,7 +51,7 @@ pub fn SearchPage() -> impl IntoView {
 					<code class="cw center color ml-s w-100">object</code>
 				</summary>
 				<div class="pb-1">
-				{move || match object.get() {
+				{move || match object.get().map(|x| x.take()) {
 					None => view! { <p class="center"><small>searching...</small></p> }.into_any(),
 					Some(None) => view!{ <p class="center"><code>N/A</code></p> }.into_any(),
 					Some(Some(o)) => view! { <p><Object object=o /></p> }.into_any(),
