@@ -41,15 +41,22 @@ pub fn ObjectView() -> impl IntoView {
 		}
 	);
 
+	// TODO since updating dependencies, this tries to get redrawn while it gets disposed, causing
+	//      panics. honestly this makes no sense: it's probably a race condition because i've done
+	//      something funky, but nonetheless i can't figure out what exactly right away. so we use
+	//      .try_get() instead, which makes this nested option hell, but allows us to catch the
+	//      "already disposed" case
+	//    + i think it may be due to the <Loadable> wrapper
 	view! {
-		{move || match object.get().map(|x| x.take()) {
-			None => view! { <Loader /> }.into_any(),
-			Some(None) => {
+		{move || match object.try_get() {
+			None => ().into_any(), // already disposed
+			Some(None) => view! { <Loader /> }.into_any(), // still loading
+			Some(Some(None)) => { // error loading
 				let raw_id = params.get().get("id").unwrap_or_default();
 				let uid =  uriproxy::uri(URL_BASE, uriproxy::UriClass::Object, &raw_id);
 				view! { <p class="center"><code>loading failed</code><sup><small><a class="clean" href={uid} target="_blank">"↗"</a></small></sup></p> }.into_any()
 			},
-			Some(Some(o)) => {
+			Some(Some(Some(o))) => { // loaded ok
 				tracing::info!("redrawing object");
 				view! { <Object object=o.clone() /> }.into_any()
 			},
@@ -85,7 +92,7 @@ pub fn ObjectView() -> impl IntoView {
 		</p>
 		<hr class="color" />
 
-		{move || if object.get().is_some() {
+		{move || if object.try_get().is_some_and(|x| x.is_some()) {
 			tracing::info!("redrawing outlet");
 			Some(view! { <Outlet /> })
 		} else {
