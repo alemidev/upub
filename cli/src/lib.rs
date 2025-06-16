@@ -184,6 +184,7 @@ pub enum CliCommand {
 		attachment_base: Option<String>
 	},
 
+	/// export posts from a local actor as a json array, like an outbox
 	Export {
 		/// local username of actor to export
 		actor: String,
