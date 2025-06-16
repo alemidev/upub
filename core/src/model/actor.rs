@@ -236,7 +236,7 @@ impl crate::ext::IntoActivityPub for Model {
 			.set_following_count(if is_local { None } else { Some(self.following_count as u64) })
 			.set_inbox(if is_local { apb::Node::link(crate::url!(ctx, "/actors/{id}/inbox")) } else { apb::Node::maybe_link(self.inbox) })
 			.set_outbox(if is_local { apb::Node::link(crate::url!(ctx, "/actors/{id}/outbox")) } else { apb::Node::maybe_link(self.outbox) })
-			.set_following(if is_local { apb::Node::link(crate::url!(ctx, "/actors{id}/following")) } else { apb::Node::maybe_link(self.following) })
+			.set_following(if is_local { apb::Node::link(crate::url!(ctx, "/actors/{id}/following")) } else { apb::Node::maybe_link(self.following) })
 			.set_followers(if is_local { apb::Node::link(crate::url!(ctx, "/actors/{id}/followers")) } else { apb::Node::maybe_link(self.followers) })
 			.set_public_key(apb::Node::object(
 				apb::new()
