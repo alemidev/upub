@@ -61,7 +61,7 @@ pub fn AboutPage() -> impl IntoView {
 				<div class="col-side">
 					<h2 class="mt-1">cons</h2>
 					<ul>
-						<li><b>unfinished</b>": "<u>"this project is still under development"</u>"! notable missing features are "<b>media uploads</b>", bookmarks, lists,edit UI and "<b>button undos</b></li>
+						<li><b>unfinished</b>": "<u>"this project is still under development"</u>"! notable missing features are "<b>media uploads</b>", bookmarks, lists, edit UI and "<b>button undos</b></li>
 						<li><b>technical</b>": "<code>μpub</code>" uses many activitypub-native terminology and directly exposes protocol concepts, meaning it may be less intuitive for new users"</li>
 						<li><b>moderation</b>": there are no moderation tools available as of now, admins will need to carry out most tasks directly interacting with the database"</li>
 						<li><b>zealous</b>": ActivityPub concepts are respected "<span class="moreinfo" title="for example, likes without public addressing won't be shown">as closely as possible</span>", which may lead to small differences from other software's behaviour"</li>
