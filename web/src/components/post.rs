@@ -162,6 +162,7 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 	let auth = use_context::<Auth>().expect("missing auth context");
 	let privacy = use_context::<PrivacyControl>().expect("missing privacy context");
 	let reply = use_context::<ReplyControls>().expect("missing reply controls");
+	let (reply_is_quote, set_reply_is_quote) = signal(false);
 	let (posting, set_posting) = signal(false);
 	let (error, set_error) = signal(None);
 	let (content, set_content) = signal("".to_string());
@@ -209,7 +210,11 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 								"✒️"
 							</span>
 							{actor_strip}
-							<small class="tiny ml-1">"["<a class="clean" title="remove reply" href="#" on:click=move |_| reply.clear() >reply</a>"]"</small>
+							<small class="tiny ml-1">"["
+								<a class="clean cursor" title="reply/quote control" on:click=move |_| set_reply_is_quote.set(!reply_is_quote.get()) >
+									{move || if reply_is_quote.get() { "quote" } else { "reply" }}
+								</a>
+							"]"</small>
 						</span>
 					}
 				})
@@ -353,8 +358,9 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 						.set_attachment(attachments_node)
 						.set_summary(summary)
 						.set_content(Some(content))
-						.set_context(apb::Node::maybe_link(reply.context.get()))
-						.set_in_reply_to(apb::Node::maybe_link(reply.reply_to.get()))
+						.set_context(apb::Node::maybe_link(if reply_is_quote.get() { None } else { reply.context.get() }))
+						.set_in_reply_to(apb::Node::maybe_link(if reply_is_quote.get() { None } else { reply.reply_to.get()}))
+						.set_quote_url(apb::Node::maybe_link(if reply_is_quote.get() { reply.reply_to.get() } else { None }))
 						.set_to(apb::Node::links(to_vec))
 						.set_cc(apb::Node::links(cc_vec))
 						.set_tag(apb::Node::array(mention_tags));
