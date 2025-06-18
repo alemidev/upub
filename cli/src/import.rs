@@ -1,4 +1,4 @@
-use apb::{Activity, ActivityMut, Base, BaseMut, CollectionMut, Document, DocumentMut, Object, ObjectMut};
+use apb::{Activity, ActivityMut, Base, BaseMut, Collection, CollectionMut, Document, DocumentMut, Object, ObjectMut};
 use sea_orm::TransactionTrait;
 
 
@@ -70,17 +70,17 @@ pub async fn import(
 
 		let announces_count = match obj.get("announcement_count") {
 			Some(v) => v.as_u64().unwrap_or_default(),
-			None => obj.shares().flat().len() as u64,
+			None => obj.shares().inner().map_or(0, |x| x.total_items().unwrap_or(0)),
 		};
 
 		let replies_count = match obj.get("repliesCount") {
 			Some(v) => v.as_u64().unwrap_or_default(),
-			None => obj.replies().flat().len() as u64,
+			None => obj.replies().inner().map_or(0, |x| x.total_items().unwrap_or(0)),
 		};
 
 		let likes_count = match obj.get("like_count") {
 			Some(v) => v.as_u64().unwrap_or_default(),
-			None => obj.likes().flat().len() as u64,
+			None => obj.likes().inner().map_or(0, |x| x.total_items().unwrap_or(0)),
 		};
 
 		let normalized_object = obj
