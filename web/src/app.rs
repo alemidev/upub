@@ -152,32 +152,7 @@ pub fn App() -> impl IntoView {
 											/>
 										} />
 
-										<Route path=path!("threads") view=move || view! {
-											{move || if auth.present() {
-												Either::Left(view! {
-													<blockquote class="mb-3">
-														<details class="cw">
-															<summary>
-																<code class="cw center color ml-s w-100">subscriptions</code>
-															</summary>
-															<div class="ml-2 mt-1 mb-1">
-																<Loadable
-																	base=format!("{URL_BASE}/actors/{}/groups/page", auth.username())
-																	convert=U::Actor
-																	element=|obj| view! { <ActorBanner object=obj /><hr /> }
-																/>
-															</div>
-														</details>
-													</blockquote>
-												})
-											} else {
-												Either::Right(())
-											}}
-											<Loadable
-												base=format!("{URL_BASE}/threads/page")
-												element=move |obj| view! { <Item item=obj sep=true /> }
-											/>
-										} />
+										<Route path=path!("threads") view=ThreadsPage />
 
 										<Route path=path!("notifications") view=move || if auth.present() {
 											Either::Left(view! {

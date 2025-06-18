@@ -12,3 +12,6 @@ pub use register::RegisterPage;
 
 mod search;
 pub use search::SearchPage;
+
+mod threads;
+pub use threads::ThreadsPage;
