@@ -18,7 +18,8 @@ pub async fn page(
 		.add(upub::model::actor::Column::Domain.eq(ctx.domain().to_string()));
 	
 	let (limit, offset) = page.pagination();
-	let items = upub::Query::feed(auth.my_id(), page.replies.unwrap_or(true))
+	let feed_opts = upub::selector::QueryFeedOptions::with_id_and_replies(auth.my_id(), page.replies.unwrap_or(true));
+	let items = upub::Query::feed(feed_opts)
 		.join(sea_orm::JoinType::InnerJoin, upub::model::object::Relation::Actors.def())
 		.filter(filter)
 		.limit(limit)

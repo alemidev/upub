@@ -4,12 +4,22 @@ use crate::model;
 pub struct Query;
 
 impl Query {
-	pub fn feed(my_id: Option<i64>, with_replies: bool) -> Select<model::addressing::Entity> {
-		let mut select = model::addressing::Entity::find()
-			.distinct_on([
+	pub fn feed(opts: QueryFeedOptions) -> Select<model::addressing::Entity> {
+		let distinct_columns = if opts.sort_by_likes {
+			vec![
+				(model::addressing::Entity, model::object::Column::Likes).into_column_ref(),
 				(model::addressing::Entity, model::addressing::Column::Published).into_column_ref(),
 				(model::activity::Entity, model::activity::Column::Internal).into_column_ref(),
-			])
+			]
+		} else {
+			vec![
+				(model::addressing::Entity, model::addressing::Column::Published).into_column_ref(),
+				(model::activity::Entity, model::activity::Column::Internal).into_column_ref(),
+			]
+		};
+
+		let mut select = model::addressing::Entity::find()
+			.distinct_on(distinct_columns)
 			.join(sea_orm::JoinType::LeftJoin, model::addressing::Relation::Activities.def())
 			.join(sea_orm::JoinType::LeftJoin, model::addressing::Relation::Objects.def())
 			.filter(
@@ -33,7 +43,7 @@ impl Query {
 			format!("{}{}", model::addressing::Entity.table_name(), model::addressing::Column::Published.to_string())
 		);
 
-		if let Some(uid) = my_id {
+		if let Some(uid) = opts.my_id {
 			select = select
 				.join(
 					sea_orm::JoinType::LeftJoin,
@@ -43,7 +53,7 @@ impl Query {
 				.select_column_as(model::like::Column::Actor, format!("{}{}", model::like::Entity.table_name(), model::like::Column::Actor.to_string()));
 		}
 
-		if !with_replies {
+		if !opts.with_replies {
 			select = select.filter(model::object::Column::InReplyTo.is_null());
 		}
 
@@ -182,5 +192,22 @@ impl Query {
 				published: Set(chrono::Utc::now()),
 			}
 		)
+	}
+}
+
+#[derive(Default)]
+pub struct QueryFeedOptions {
+	pub my_id: Option<i64>,
+	pub with_replies: bool,
+	pub sort_by_likes: bool,
+}
+
+impl QueryFeedOptions {
+	pub fn with_id(my_id: Option<i64>) -> Self {
+		QueryFeedOptions { my_id, with_replies: false, sort_by_likes: false }
+	}
+
+	pub fn with_id_and_replies(my_id: Option<i64>, with_replies: bool) -> Self {
+		QueryFeedOptions { my_id, with_replies, sort_by_likes: false }
 	}
 }

@@ -55,7 +55,8 @@ pub async fn search(
 	};
 
 	let (limit, offset) = p.pagination();
-	let items = upub::Query::feed(auth.my_id(), true)
+	let feed_opts = upub::selector::QueryFeedOptions::with_id_and_replies(auth.my_id(), true);
+	let items = upub::Query::feed(feed_opts)
 		.filter(filter)
 		.limit(limit)
 		.offset(offset)
