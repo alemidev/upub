@@ -152,6 +152,24 @@ pub fn App() -> impl IntoView {
 											/>
 										} />
 
+										<Route path=path!("threads") view=move || view! {
+											{move || if auth.present() {
+												Either::Left(view! {
+													<Loadable
+														base=format!("{URL_BASE}/actors/{}/groups/page", auth.username())
+														convert=U::Actor
+														element=|obj| view! { <ActorBanner object=obj /><hr /> }
+													/>
+												})
+											} else {
+												Either::Right(())
+											}}
+											<Loadable
+												base=format!("{URL_BASE}/threads/page")
+												element=move |obj| view! { <Item item=obj sep=true /> }
+											/>
+										} />
+
 										<Route path=path!("notifications") view=move || if auth.present() {
 											Either::Left(view! {
 												<Loadable
@@ -260,7 +278,7 @@ pub fn App() -> impl IntoView {
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum FeedRoute {
-	Unknown, Home, Global, Server, Notifications, User, Following, Followers, Communities, ActorLikes, ObjectLikes, Replies, Context
+	Unknown, Home, Global, Server, Threads, Notifications, User, Following, Followers, ActorLikes, ObjectLikes, Replies, Context
 }
 
 impl FeedRoute {
@@ -288,6 +306,8 @@ fn Scrollable() -> impl IntoView {
 				set_route.set(FeedRoute::Global);
 			} else if path.contains("/web/local") {
 				set_route.set(FeedRoute::Server);
+			} else if path.contains("/web/threads") {
+				set_route.set(FeedRoute::Threads);
 			} else if path.starts_with("/web/notifications") {
 				set_route.set(FeedRoute::Notifications);
 			} else if path.starts_with("/web/actors") {
@@ -297,9 +317,6 @@ fn Scrollable() -> impl IntoView {
 					},
 					Some("followers") => {
 						set_route.set(FeedRoute::Followers);
-					},
-					Some("communities") => {
-						set_route.set(FeedRoute::Communities);
 					},
 					Some("likes") => {
 						set_route.set(FeedRoute::ActorLikes);
