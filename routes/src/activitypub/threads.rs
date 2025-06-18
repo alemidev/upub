@@ -13,17 +13,27 @@ pub async fn get(
 	crate::builders::collection(upub::url!(ctx, "/threads"), None)
 }
 
+#[derive(Debug, Clone, Copy, serde::Deserialize)]
+pub struct PaginationWithDays {
+	#[serde(flatten)]
+	page: Pagination,
+
+	days: Option<i64>,
+	skip: Option<i64>, // TODO is this a bad name?
+}
+
 pub async fn page(
 	State(ctx): State<Context>,
 	AuthIdentity(auth): AuthIdentity,
-	Query(page): Query<Pagination>,
+	Query(query): Query<PaginationWithDays>,
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let filter = Condition::all()
 		.add(auth.filter_objects())
 		.add(upub::model::object::Column::Audience.is_not_null())
-		.add(upub::model::object::Column::Published.gte(chrono::Utc::now() - chrono::Duration::weeks(1)));
-	let (limit, offset) = page.pagination();
-	let items = upub::Query::feed(upub::query_feed_opts!(auth.my_id(), page.replies.unwrap_or(true), true))
+		.add(upub::model::object::Column::Published.lte(chrono::Utc::now() - chrono::Duration::days(query.skip.unwrap_or(0))))
+		.add(upub::model::object::Column::Published.gte(chrono::Utc::now() - chrono::Duration::days(query.days.unwrap_or(30))));
+	let (limit, offset) = query.page.pagination();
+	let items = upub::Query::feed(upub::query_feed_opts!(auth.my_id(), query.page.replies.unwrap_or(true), true))
 		.filter(filter)
 		.limit(limit)
 		.offset(offset)
@@ -38,6 +48,6 @@ pub async fn page(
 		.into_iter()
 		.map(|item| ctx.ap(item))
 		.collect();
-	crate::builders::collection_page(&upub::url!(ctx, "/threads/page"), page, apb::Node::array(items))
+	crate::builders::collection_page(&upub::url!(ctx, "/threads/page"), query.page, apb::Node::array(items))
 }
 
