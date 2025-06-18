@@ -195,7 +195,6 @@ pub fn App() -> impl IntoView {
 											<Route path=path!("likes") view=ActorLikes />
 											<Route path=path!("following") view=move || view! { <FollowList outgoing=true /> } />
 											<Route path=path!("followers") view=move || view! { <FollowList outgoing=false /> } />
-											<Route path=path!("communities") view=move || view! { <CommunitiesList /> } />
 										</ParentRoute>
 
 										// objects
