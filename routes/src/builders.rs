@@ -5,16 +5,15 @@ use crate::activitypub::Pagination;
 
 pub fn collection_page(id: &str, page: Pagination, items: apb::Node<serde_json::Value>) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let (limit, offset) = page.pagination();
+	let sep = if id.contains('?') { '&' } else { '?' };
 	let next = if items.len() < limit as usize {
 		apb::Node::Empty
-	} else if id.contains('?') {
-		apb::Node::link(format!("{id}&offset={}", offset+limit))
 	} else {
-		apb::Node::link(format!("{id}?offset={}", offset+limit))
+		apb::Node::link(format!("{id}{sep}offset={}", offset+limit))
 	};
 	Ok(JsonLD(
 		apb::new()
-			.set_id(Some(format!("{id}?offset={offset}")))
+			.set_id(Some(format!("{id}{sep}offset={offset}")))
 			.set_collection_type(Some(apb::CollectionType::OrderedCollectionPage))
 			.set_part_of(apb::Node::link(id.replace("/page", "")))
 			.set_ordered_items(items)
