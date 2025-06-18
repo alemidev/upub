@@ -27,8 +27,7 @@ pub async fn view(
 		.add(auth.filter_activities())
 		.add(model::activity::Column::Id.eq(&aid));
 
-	let feed_opts = upub::selector::QueryFeedOptions::with_id_and_replies(auth.my_id(), true);
-	let activity = upub::Query::feed(feed_opts)
+	let activity = upub::Query::feed(upub::query_feed_opts!(auth.my_id(), true))
 		.filter(filter)
 		.into_model::<RichActivity>()
 		.one(ctx.db())

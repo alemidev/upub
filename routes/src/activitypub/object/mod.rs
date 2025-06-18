@@ -33,8 +33,7 @@ pub async fn view(
 		.add(auth.filter_objects())
 		.add(model::object::Column::Id.eq(&oid));
 
-	let feed_opts = upub::selector::QueryFeedOptions::with_id_and_replies(auth.my_id(), true);
-	let object = upub::Query::feed(feed_opts)
+	let object = upub::Query::feed(upub::query_feed_opts!(auth.my_id(), true))
 		.filter(filter)
 		.into_model::<RichObject>()
 		.one(ctx.db())

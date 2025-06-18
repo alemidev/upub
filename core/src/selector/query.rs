@@ -202,12 +202,28 @@ pub struct QueryFeedOptions {
 	pub sort_by_likes: bool,
 }
 
-impl QueryFeedOptions {
-	pub fn with_id(my_id: Option<i64>) -> Self {
-		QueryFeedOptions { my_id, with_replies: false, sort_by_likes: false }
-	}
-
-	pub fn with_id_and_replies(my_id: Option<i64>, with_replies: bool) -> Self {
-		QueryFeedOptions { my_id, with_replies, sort_by_likes: false }
-	}
+#[macro_export]
+macro_rules! query_feed_opts {
+	($my_id: expr) => {
+		upub::selector::QueryFeedOptions {
+			my_id: $my_id,
+			..Default::default()
+		}
+	};
+	($my_id: expr, $with_replies: expr) => {
+		upub::selector::QueryFeedOptions {
+			my_id: $my_id,
+			with_replies: $with_replies,
+			..Default::default()
+		}
+	};
+	($my_id: expr, $with_replies: expr, $sort_by_likes: expr) => {
+		#[allow(clippy::needless_update)]
+		upub::selector::QueryFeedOptions {
+			my_id: $my_id,
+			with_replies: $with_replies,
+			sort_by_likes: $sort_by_likes,
+			..Default::default()
+		}
+	};
 }

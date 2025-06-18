@@ -53,8 +53,7 @@ pub async fn page(
 		.add(model::object::Column::InReplyTo.eq(oid));
 
 	let (limit, offset) = page.pagination();
-	let feed_opts = upub::selector::QueryFeedOptions::with_id_and_replies(auth.my_id(), page.replies.unwrap_or(true));
-	let items = upub::Query::feed(feed_opts)
+	let items = upub::Query::feed(upub::query_feed_opts!(auth.my_id(), page.replies.unwrap_or(true)))
 		.filter(filter)
 		.limit(limit)
 		.offset(offset)

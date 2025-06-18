@@ -23,13 +23,7 @@ pub async fn page(
 		.add(upub::model::object::Column::Audience.is_not_null())
 		.add(upub::model::object::Column::Published.gte(chrono::Utc::now() - chrono::Duration::weeks(1)));
 	let (limit, offset) = page.pagination();
-	let feed_opts = upub::selector::QueryFeedOptions {
-		my_id: auth.my_id(),
-		with_replies: page.replies.unwrap_or(true),
-		sort_by_likes: true,
-		..Default::default()
-	};
-	let items = upub::Query::feed(feed_opts)
+	let items = upub::Query::feed(upub::query_feed_opts!(auth.my_id(), page.replies.unwrap_or(true), true))
 		.filter(filter)
 		.limit(limit)
 		.offset(offset)
