@@ -1,6 +1,8 @@
 use apb::{Endpoints, Node, Object, PublicKey, Shortcuts};
 use sea_orm::{sea_query::Expr, ActiveModelTrait, ActiveValue::{Unchanged, NotSet, Set}, ColumnTrait, ConnectionTrait, DbErr, EntityTrait, IntoActiveModel, QueryFilter};
 
+use crate::ext::TakeAsRef;
+
 use super::{Cloaker, Fetcher};
 
 #[derive(Debug, thiserror::Error)]
@@ -73,87 +75,51 @@ impl Normalizer for crate::Context {
 		}
 
 		let attachments = object.attachment().flat();
-		let obj_image = object_model.image.clone().unwrap_or_default();
 		let attachments_len = attachments.len();
 		for attachment in attachments {
 			let attachment_model = match attachment {
 				Node::Empty => continue,
+
 				Node::Array(_) => {
 					tracing::warn!("ignoring array-in-array while processing attachments");
 					continue
 				},
+
 				Node::Object(o) => {
-					let mut model = AP::attachment_q(o.as_document()?, object_model.internal, None)?;
-					if let Set(u) | Unchanged(u) = model.url {
-						if u == obj_image { continue };
-						model.url = Set(self.cloaked(&u));
+					let model = AP::attachment_q(o.as_document()?, object_model.internal, None)?;
+					match process_and_normalize_image(self, model, object_model.image.as_deref(), attachments_len) {
+						ModelOrUrl::Neither => continue,
+						ModelOrUrl::Url(u) => {
+							object_model.image = Some(u);
+							continue;
+						},
+						ModelOrUrl::Model(m) => m,
 					}
-					// TODO this is the third time we do this check... can we somehow centralize it?
-					if self.cfg().compat.fix_attachment_media_type && model.document_type == Set(apb::DocumentType::Document) {
-						let media_type = model.media_type.clone().take().unwrap_or_default();
-						let (mime_kind, _mime_type) = media_type.split_once('/').unwrap_or_default();
-						model.document_type = Set(match mime_kind {
-							"image" => apb::DocumentType::Image,
-							"video" => apb::DocumentType::Video,
-							"audio" => apb::DocumentType::Audio,
-							"text"  => apb::DocumentType::Page,
-							_ => apb::DocumentType::Document,
-						});
-					}
-					model
 				},
+
 				Node::Link(l) => {
 					let url = l.href().unwrap_or_default();
-					if url == obj_image { continue };
-
-					let mut media_type = l.media_type().unwrap_or("text/html".to_string());
-					let (mime_kind, _mime_type) = media_type.split_once('/').unwrap_or_default();
-					let mut document_type = match mime_kind {
-						"image" => apb::DocumentType::Image,
-						"video" => apb::DocumentType::Video,
-						"audio" => apb::DocumentType::Audio,
-						"text"  => apb::DocumentType::Page,
-						_ => apb::DocumentType::Document,
+					let media_type = l.media_type().unwrap_or("text/html".to_string());
+					let model = crate::model::attachment::ActiveModel {
+						internal: sea_orm::ActiveValue::NotSet,
+						url: Set(url),
+						object: Set(object_model.internal),
+						document_type: Set(apb::DocumentType::Document),
+						media_type: Set(media_type),
+						name: Set(l.name().ok()),
 					};
 
-					// in case we get both broken media_type and document_type, try to fix images with url
-					// TODO is this still needed? above case with mediaType should solve most issues
-					let mut is_image = false;
-					if [".jpg", ".jpeg", ".png", ".webp", ".bmp"] // TODO more image types???
-						.iter()
-						.any(|x| url.ends_with(x))
-					{
-						is_image = true;
-						if self.cfg().compat.fix_attachment_media_type {
-							document_type = apb::DocumentType::Image;
-							media_type = format!("image/{}", url.split('.').next_back().unwrap_or_default());
-						}
-					}
-
-					// TODO this check is a bit disgusting but lemmy for some incomprehensible reason sends us
-					// the same image twice: once in `image` and once as `attachment`. you may say "well just
-					// check if url is the same" and i absolutely do but lemmy is 10 steps forwards and it sends
-					// the same image twice with two distinct links. checkmate fedi developers!!!!!
-					// so basically i don't want to clutter my timeline with double images, nor fetch every image
-					// that comes from lemmy (we cloak and lazy-load) just to dedupe it...
-					if is_image
-						&& self.cfg().compat.skip_single_attachment_if_image_is_set
-						&& object_model.image.is_some()
-						&& attachments_len == 1
-					{
-						continue;
-					}
-
-					crate::model::attachment::ActiveModel {
-						internal: sea_orm::ActiveValue::NotSet,
-						url: Set(self.cloaked(&url)),
-						object: Set(object_model.internal),
-						document_type: Set(document_type),
-						name: Set(l.name().ok()),
-						media_type: Set(media_type),
+					match process_and_normalize_image(self, model, object_model.image.as_deref(), attachments_len) {
+						ModelOrUrl::Neither => continue,
+						ModelOrUrl::Url(u) => {
+							object_model.image = Some(u);
+							continue;
+						},
+						ModelOrUrl::Model(m) => m,
 					}
 				},
 			};
+
 			crate::model::attachment::Entity::insert(attachment_model)
 				.exec(tx)
 				.await?;
@@ -252,6 +218,8 @@ impl Normalizer for crate::Context {
 		Ok(activity_model)
 	}
 }
+
+
 
 pub struct AP;
 
@@ -440,4 +408,71 @@ impl AP {
 		}
 		Ok(m)
 	}
+}
+
+
+
+
+
+enum ModelOrUrl {
+	Model(crate::model::attachment::ActiveModel),
+	Url(String),
+	Neither,
+}
+
+// this is a bit jank but its purpose is mostly to centralize attachment handling
+fn process_and_normalize_image(
+	ctx: &crate::Context,
+	mut model: crate::model::attachment::ActiveModel,
+	obj_image: Option<&str>,
+	attachments_len: usize,
+) -> ModelOrUrl {
+	let Some(url) = model.url.take_as_ref().cloned() else { return ModelOrUrl::Neither };
+	if let Some(obj_image_url) = obj_image {
+		if url == obj_image_url { return ModelOrUrl::Neither };
+	}
+	model.url = Set(ctx.cloaked(&url));
+
+	if ctx.cfg().compat.fix_attachment_media_type && model.document_type == Set(apb::DocumentType::Document) {
+		let media_type = model.media_type.clone().take().unwrap_or_default();
+		let (mime_kind, _mime_type) = media_type.split_once('/').unwrap_or_default();
+		model.document_type = Set(match mime_kind {
+			"image" => apb::DocumentType::Image,
+			"video" => apb::DocumentType::Video,
+			"audio" => apb::DocumentType::Audio,
+			"text"  => apb::DocumentType::Page,
+			_ => apb::DocumentType::Document,
+		});
+	}
+
+	// in case we get both broken media_type and document_type, try to fix images with url
+	// TODO is this still needed? above case with mediaType should solve most issues
+	let mut is_image = matches!(model.document_type, Set(apb::DocumentType::Image));
+	if [".jpg", ".jpeg", ".png", ".webp", ".bmp"] // TODO more image types???
+		.iter()
+		.any(|x| url.ends_with(x))
+	{
+		is_image = true;
+		if ctx.cfg().compat.fix_attachment_media_type {
+			model.document_type = Set(apb::DocumentType::Image);
+			model.media_type = Set(format!("image/{}", url.split('.').next_back().unwrap_or_default()));
+		}
+
+	}
+
+	// TODO this check is a bit disgusting but lemmy for some incomprehensible reason sends us
+	// the same image twice: once in `image` and once as `attachment`. you may say "well just
+	// check if url is the same" and i absolutely do but lemmy is 10 steps forwards and it sends
+	// the same image twice with two distinct links. checkmate fedi developers!!!!!
+	// so basically i don't want to clutter my timeline with double images, nor fetch every image
+	// that comes from lemmy (we cloak and lazy-load) just to dedupe it...
+	if is_image
+		&& ctx.cfg().compat.skip_single_attachment_if_image_is_set
+		&& obj_image.is_some()
+		&& attachments_len == 1
+	{
+		return ModelOrUrl::Url(url);
+	}
+
+	ModelOrUrl::Model(model)
 }
