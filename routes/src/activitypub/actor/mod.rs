@@ -3,7 +3,7 @@ pub mod outbox;
 pub mod likes;
 pub mod following;
 pub mod notifications;
-pub mod communities;
+pub mod groups;
 // pub mod audience;
 
 use axum::extract::{Path, Query, State};
