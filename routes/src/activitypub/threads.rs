@@ -15,11 +15,16 @@ pub async fn get(
 
 #[derive(Debug, Clone, Copy, serde::Deserialize)]
 pub struct PaginationWithDays {
-	#[serde(flatten)]
-	page: Pagination,
+	// #[serde(flatten)]
+	// page: Pagination,
 
-	days: Option<i64>,
-	skip: Option<i64>, // TODO is this a bad name?
+	// TODO with serde(flatten) it freaks out about replies=false?? expects boolean not string?????
+	pub offset: Option<u64>,
+	pub batch: Option<u64>,
+	pub replies: Option<bool>,
+
+	pub days: Option<i64>,
+	pub skip: Option<i64>, // TODO is this a bad name?
 }
 
 pub async fn page(
@@ -29,13 +34,18 @@ pub async fn page(
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let days = query.days.unwrap_or(30);
 	let skip = query.skip.unwrap_or(0);
+	let page = Pagination {
+		offset: query.offset,
+		batch: query.batch,
+		replies: query.replies,
+	};
 	let filter = Condition::all()
 		.add(auth.filter_objects())
 		.add(upub::model::object::Column::Audience.is_not_null())
 		.add(upub::model::object::Column::Published.lte(chrono::Utc::now() - chrono::Duration::days(skip)))
 		.add(upub::model::object::Column::Published.gte(chrono::Utc::now() - chrono::Duration::days(days)));
-	let (limit, offset) = query.page.pagination();
-	let items = upub::Query::feed(upub::query_feed_opts!(auth.my_id(), query.page.replies.unwrap_or(true), true))
+	let (limit, offset) = page.pagination();
+	let items = upub::Query::feed(upub::query_feed_opts!(auth.my_id(), page.replies.unwrap_or(true), true))
 		.filter(filter)
 		.limit(limit)
 		.offset(offset)
@@ -50,6 +60,6 @@ pub async fn page(
 		.into_iter()
 		.map(|item| ctx.ap(item))
 		.collect();
-	crate::builders::collection_page(&upub::url!(ctx, "/threads/page?days={days}&skip={skip}"), query.page, apb::Node::array(items))
+	crate::builders::collection_page(&upub::url!(ctx, "/threads/page?days={days}&skip={skip}"), page, apb::Node::array(items))
 }
 
