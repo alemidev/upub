@@ -7,7 +7,7 @@ impl Query {
 	pub fn feed(opts: QueryFeedOptions) -> Select<model::addressing::Entity> {
 		let distinct_columns = if opts.sort_by_likes {
 			vec![
-				(model::addressing::Entity, model::object::Column::Likes).into_column_ref(),
+				(model::object::Entity, model::object::Column::Likes).into_column_ref(),
 				(model::addressing::Entity, model::addressing::Column::Published).into_column_ref(),
 				(model::activity::Entity, model::activity::Column::Internal).into_column_ref(),
 			]
