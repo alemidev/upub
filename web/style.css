@@ -341,6 +341,16 @@ input[type="range"]:focus {
 	outline: none;
 	accent-color: var(--accent-dim);
 }
+/* hide up/down buttons in number field */
+input::-webkit-outer-spin-button,
+input::-webkit-inner-spin-button {
+	-webkit-appearance: none;
+	margin: 0;
+}
+input[type=number] {
+	text-align: center;
+	-moz-appearance: textfield;
+}
 .ml-1-r {
 	margin-left: 1em;
 }
