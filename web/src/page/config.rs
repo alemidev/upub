@@ -117,7 +117,7 @@ pub fn ConfigPage(setter: WriteSignal<crate::Config>) -> impl IntoView {
 					<li><span title="objects without a related activity to display"><input type="checkbox" prop:checked=get_cfg!(filter orphans) on:input=set_cfg!(filter orphans) />" fetched"</span></li>
 			</ul>
 			<hr />
-			<div class="border ma-2 pa-1">
+			<div class="border ma-2 pa-1" class:hidden=auth.anonymous()>
 				<code class="center cw color mb-1">update profile</code>
 				<div class="col-side mb-0">display name</div>
 				<div class="col-main">
@@ -136,7 +136,7 @@ pub fn ConfigPage(setter: WriteSignal<crate::Config>) -> impl IntoView {
 
 				<div class="col-side mb-0">summary</div>
 				<div class="col-main">
-					<textarea class="w-100" node_ref=summary_ref placeholder="when you lose control of yourself, who's controlling you?">{curr_summary}</textarea>
+					<textarea rows="5" class="w-100" node_ref=summary_ref placeholder="when you lose control of yourself, who's controlling you?">{curr_summary}</textarea>
 				</div>
 
 				<input class="w-100" type="submit" value="submit"

@@ -31,6 +31,10 @@ impl Auth {
 		self.token.get().is_some_and(|x| !x.is_empty())
 	}
 
+	pub fn anonymous(&self) -> bool {
+		self.token.get().is_none_or(|x| x.is_empty())
+	}
+
 	pub fn outbox(&self) -> String {
 		format!("{}/outbox", self.user_id())
 	}
