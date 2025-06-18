@@ -42,19 +42,35 @@ pub fn ConfigPage(setter: WriteSignal<crate::Config>) -> impl IntoView {
 	macro_rules! set_cfg {
 		($field:ident) => {
 			move |ev| {
-				let mut mock = config.get();
+				let mut mock = config.get_untracked();
 				mock.$field = event_target_checked(&ev);
 				setter.set(mock);
 			}
 		};
 		(filter $field:ident) => {
 			move |ev| {
-				let mut mock = config.get();
+				let mut mock = config.get_untracked();
 				mock.filters.$field = event_target_checked(&ev);
 				setter.set(mock);
 			}
 		};
 	}
+
+	let (privacy, set_privacy) = signal(config.get().default_privacy);
+
+	Effect::watch(
+		move || privacy.get(),
+		move |prv, old_prv, _state| {
+			if let Some(old_prv_value) = old_prv {
+				if prv != old_prv_value {
+					let mut mock = config.get_untracked();
+					mock.default_privacy = *prv;
+					setter.set(mock);
+				}
+			}
+		},
+		false,
+	);
 
 	view! {
 		<div>
@@ -84,20 +100,27 @@ pub fn ConfigPage(setter: WriteSignal<crate::Config>) -> impl IntoView {
 				</span>
 			</p>
 			<p>
-				accent color
-				<input type="text" class="ma-1"
-					style="width: 8ch;"
-					placeholder=DEFAULT_COLOR
-					value=color
-					on:input=move|ev| {
-						let mut val = event_target_value(&ev);
-						if val.is_empty() { val = DEFAULT_COLOR.to_string() };
-						let mut mock = config.get();
-						set_color_rgb.set(parse_hex(&val));
-						set_color.set(val.clone());
-						mock.accent_color = val;
-						setter.set(mock);
-				} />
+				<span title="default privacy setting applied when loading frontend">
+					default privacy <PrivacySelector getter=privacy setter=set_privacy full_width=false />
+				</span>
+			</p>
+			<p>
+				<span title="customize frontend accent color with">
+					accent color
+					<input type="text" class="ma-1"
+						style="width: 8ch;"
+						placeholder=DEFAULT_COLOR
+						value=color
+						on:input=move|ev| {
+							let mut val = event_target_value(&ev);
+							if val.is_empty() { val = DEFAULT_COLOR.to_string() };
+							let mut mock = config.get();
+							set_color_rgb.set(parse_hex(&val));
+							set_color.set(val.clone());
+							mock.accent_color = val;
+							setter.set(mock);
+					} />
+				</span>
 			</p>
 			<hr />
 			<p><code title="unchecked elements won't show in timelines">filters</code></p>

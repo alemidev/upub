@@ -42,7 +42,7 @@ enum TextMatch {
 
 pub type PrivacyControl = ReadSignal<Privacy>;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, Ord, PartialOrd, serde::Serialize, serde::Deserialize)]
 pub enum Privacy {
 	Broadcast = 4,
 	Public = 3,
@@ -113,19 +113,18 @@ impl Privacy {
 }
 
 #[component]
-pub fn PrivacySelector(setter: WriteSignal<Privacy>) -> impl IntoView {
-	let privacy = use_context::<PrivacyControl>().expect("missing privacy context");
+pub fn PrivacySelector(getter: ReadSignal<Privacy>, setter: WriteSignal<Privacy>, #[prop(default = true)] full_width: bool) -> impl IntoView {
 	let auth = use_context::<Auth>().expect("missing auth context");
 	view! {
-		<table class="align w-100">
+		<table class:w-100=full_width class="align">
 			<tr>
-				<td class="w-100">
+				<td class:w-100=full_width >
 					<input
 						type="range"
 						min="1"
 						max="4"
-						class="w-100"
-						prop:value=move || privacy.get() as u8
+						class:w-100=full_width
+						prop:value=move || getter.get() as u8
 						on:input=move |ev| {
 							ev.prevent_default();
 							setter.set(Privacy::from_value(&event_target_value(&ev)));
@@ -133,7 +132,7 @@ pub fn PrivacySelector(setter: WriteSignal<Privacy>) -> impl IntoView {
 				</td>
 				<td>
 					{move || {
-						let p = privacy.get();
+						let p = getter.get();
 						let (to, cc) = p.address(&auth.user_id());
 						view! {
 							<PrivacyMarker privacy=p to=to cc=cc big=true />

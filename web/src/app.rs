@@ -26,7 +26,7 @@ pub fn App() -> impl IntoView {
 	);
 	let (config, set_config, _) = use_local_storage::<crate::Config, codee::string::JsonSerdeCodec>("config");
 
-	let (privacy, set_privacy) = signal(Privacy::Private);
+	let (privacy, set_privacy) = signal(config.get().default_privacy);
 
 	let auth = Auth { token, userid };
 
@@ -102,7 +102,7 @@ pub fn App() -> impl IntoView {
 					/>
 					<hr class="mt-1 mb-1" />
 					<div class:hidden=move || !auth.present() >
-						<PrivacySelector setter=set_privacy />
+						<PrivacySelector getter=privacy setter=set_privacy />
 						<hr class="mt-1 mb-1" />
 						{move || if advanced.get() { Either::Left(view! {
 							<AdvancedPostBox advanced=set_advanced/>

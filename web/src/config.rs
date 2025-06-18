@@ -16,6 +16,9 @@ pub struct Config {
 
 	#[serde_inline_default("#BF616A".to_string())]
 	pub accent_color: String,
+
+	#[serde_inline_default(crate::prelude::Privacy::Private)]
+	pub default_privacy: crate::prelude::Privacy,
 }
 
 #[serde_inline_default::serde_inline_default]
