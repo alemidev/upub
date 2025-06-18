@@ -25,6 +25,21 @@ impl<T : sea_orm::SelectorTrait + Send + Sync> AnyQuery for sea_orm::Selector<T>
 	}
 }
 
+pub trait TakeAsRef<T> {
+	fn take_as_ref(&self) -> Option<&T>;
+}
+
+impl<T> TakeAsRef<T> for sea_orm::ActiveValue<T>
+where T: std::convert::Into<sea_orm::Value>
+{
+	fn take_as_ref(&self) -> Option<&T> {
+		if matches!(self, sea_orm::ActiveValue::NotSet) {
+			return None;
+		}
+		Some(self.as_ref())
+	}
+}
+
 pub trait LoggableError {
 	fn info_failed(self, msg: &str);
 	fn warn_failed(self, msg: &str);
