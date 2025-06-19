@@ -349,32 +349,47 @@ pub fn ReplyButton(n: i32, target: String) -> impl IntoView {
 #[component]
 pub fn RepostButton(n: i32, target: String, author: String) -> impl IntoView {
 	let (count, set_count) = signal(n);
-	let (clicked, set_clicked) = signal(true);
+	let (clickable, set_clickable) = signal(true);
 	let auth = use_context::<Auth>().expect("missing auth context");
 	let privacy = use_context::<PrivacyControl>().expect("missing privacy context");
 	view! {
 		<span
-			class:emoji=clicked
+			class:emoji=clickable
 			class:emoji-btn=move || auth.present()
-			class:cursor=move || clicked.get() && auth.present()
+			class:cursor=move || auth.present()
 			class="ml-2"
 			on:click=move |_ev| {
 				if !auth.present() { return; }
-				if !clicked.get() { return; }
-				set_clicked.set(false);
+				let is_announce = clickable.get();
 				let (mut to, cc) = privacy.get().address(&auth.user_id());
 				to.push(author.clone());
-				let payload = serde_json::Value::Object(serde_json::Map::default())
+				let announce_activity = apb::new()
 					.set_activity_type(Some(apb::ActivityType::Announce))
-					.set_object(apb::Node::link(target.clone()))
+					.set_object(apb::Node::link(target.clone()));
+				let payload = if is_announce {
+					announce_activity
+				} else {
+					apb::new()
+						.set_activity_type(Some(apb::ActivityType::Undo))
+						.set_object(apb::Node::object(announce_activity))
+				}
 					.set_to(apb::Node::links(to))
 					.set_cc(apb::Node::links(cc));
+
+				let new_count = if is_announce {
+					count.get() + 1
+				} else {
+					count.get() - 1
+				};
+
 				leptos::task::spawn_local(async move {
 					match Http::post(&auth.outbox(), &payload, auth).await {
-						Ok(()) => set_count.set(count.get() + 1),
+						Ok(()) => {
+							set_count.set(new_count);
+							set_clickable.set(!is_announce);
+						},
 						Err(e) => tracing::error!("failed sending like: {e}"),
 					}
-					set_clicked.set(true);
 				});
 			}
 		>
