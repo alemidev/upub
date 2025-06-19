@@ -479,6 +479,10 @@ pub async fn process_undo(ctx: &crate::Context, activity: impl apb::Activity, tx
 				.col_expr(crate::model::object::Column::Likes, Expr::col(crate::model::object::Column::Likes).sub(1))
 				.exec(tx)
 				.await?;
+			crate::model::notification::Entity::delete_many()
+				.filter(crate::model::notification::Column::Activity.eq(undone_activity.internal))
+				.exec(tx)
+				.await?;
 		},
 		apb::ActivityType::Announce => {
 			let un_announced_object = undone_activity.object.ok_or(apb::FieldErr("object"))?;
@@ -504,6 +508,10 @@ pub async fn process_undo(ctx: &crate::Context, activity: impl apb::Activity, tx
 			crate::model::object::Entity::update_many()
 				.filter(crate::model::object::Column::Internal.eq(internal_oid))
 				.col_expr(crate::model::object::Column::Announces, Expr::col(crate::model::object::Column::Announces).sub(1))
+				.exec(tx)
+				.await?;
+			crate::model::notification::Entity::delete_many()
+				.filter(crate::model::notification::Column::Activity.eq(undone_activity.internal))
 				.exec(tx)
 				.await?;
 		},
@@ -539,6 +547,12 @@ pub async fn process_undo(ctx: &crate::Context, activity: impl apb::Activity, tx
 				crate::model::actor::Entity::update_many()
 					.filter(crate::model::actor::Column::Internal.eq(internal_uid_following))
 					.col_expr(crate::model::actor::Column::FollowersCount, Expr::col(crate::model::actor::Column::FollowersCount).sub(1))
+					.exec(tx)
+					.await?;
+			} else {
+				// only delete notifications if it wasn't already accepted
+				crate::model::notification::Entity::delete_many()
+					.filter(crate::model::notification::Column::Activity.eq(undone_activity.internal))
 					.exec(tx)
 					.await?;
 			}
