@@ -3,7 +3,7 @@ use std::sync::Arc;
 use leptos::{either::Either, prelude::*};
 use crate::{prelude::*, URL_SENSITIVE};
 
-use apb::{ActivityMut, Base, Collection, CollectionMut, Object, ObjectMut, Shortcuts};
+use apb::{ActivityMut, Base, CollectionMut, Object, ObjectMut, Shortcuts};
 
 #[component]
 pub fn Object(object: crate::Doc, #[prop(default = true)] controls: bool) -> impl IntoView {
@@ -249,41 +249,57 @@ pub fn LikeButton(
 	private: bool,
 ) -> impl IntoView {
 	let (count, set_count) = signal(n);
-	let (clicked, set_clicked) = signal(!liked);
+	let (clickable, set_clickable) = signal(!liked);
 	let auth = use_context::<Auth>().expect("missing auth context");
 	let privacy = use_context::<PrivacyControl>().expect("missing privacy context");
 	view! {
 		<span
-			class:emoji=clicked
+			class:emoji=clickable
 			class:emoji-btn=move || auth.present()
-			class:cursor=move || clicked.get() && auth.present()
+			class:cursor=move || auth.present()
 			class="ml-2"
 			on:click=move |_ev| {
 				if !auth.present() { return; }
-				if !clicked.get() { return; }
 				let (mut to, cc) = if private {
 					(vec![], vec![])
 				} else {
 					privacy.get().address(&auth.user_id())
 				};
 				to.push(author.clone());
-				let payload = serde_json::Value::Object(serde_json::Map::default())
+				let like_activity = apb::new()
 					.set_activity_type(Some(apb::ActivityType::Like))
-					.set_object(apb::Node::link(target.clone()))
+					.set_object(apb::Node::link(target.clone()));
+				let payload = if clickable.get() {
+					like_activity
+				} else {
+					apb::new()
+						.set_activity_type(Some(apb::ActivityType::Undo))
+						.set_object(apb::Node::object(like_activity))
+				}
 					.set_to(apb::Node::links(to))
 					.set_cc(apb::Node::links(cc));
+
 				let target = target.clone();
 				leptos::task::spawn_local(async move {
 					match Http::post(&auth.outbox(), &payload, auth).await {
 						Ok(()) => {
-							set_clicked.set(false);
-							set_count.set(count.get() + 1);
+							let is_like = clickable.get();
+							set_clickable.set(!is_like);
+							let count_val = if is_like {
+								count.get() + 1
+							} else {
+								count.get() - 1
+							};
+							set_count.set(count_val);
 							if let Some(cached) = cache::OBJECTS.get(&target) {
-								let mut new = (*cached).clone().set_liked_by_me(Some(true));
+								let mut new = (*cached).clone().set_liked_by_me(Some(is_like));
 								if let Ok(likes) = new.likes().inner() {
-									if let Ok(count) = likes.total_items() {
-										new = new.set_likes(apb::Node::object(likes.clone().set_total_items(Some(count + 1))));
-									}
+									new = new.set_likes(
+										apb::Node::object(
+											likes.clone()
+												.set_total_items(Some(count_val.max(0) as u64))
+										)
+									);
 								}
 								cache::OBJECTS.store(&target, Arc::new(new));
 							}
@@ -316,7 +332,13 @@ pub fn ReplyButton(n: i32, target: String) -> impl IntoView {
 			class:emoji-btn=move || auth.present()
 			class:cursor=move || auth.present()
 			class="ml-2"
-			on:click=move |_ev| if auth.present() { reply.reply(&target) }
+			on:click=move |_ev| if auth.present() {
+				if reply.is_set() {
+					reply.clear();
+				} else {
+					reply.reply(&target);
+				}
+			}
 		>
 			{comments}
 			" 📨"

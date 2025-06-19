@@ -10,6 +10,10 @@ pub struct ReplyControls {
 }
 
 impl ReplyControls {
+	pub fn is_set(&self) -> bool {
+		self.context.get_untracked().is_some() && self.reply_to.get_untracked().is_some()
+	}
+
 	pub fn reply(&self, oid: &str) {
 		if let Some(obj) = cache::OBJECTS.get(oid) {
 			self.context.set(obj.context().id().ok());
