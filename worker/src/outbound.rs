@@ -77,14 +77,14 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 							.into_tuple::<i64>()
 							.one(&tx)
 							.await?
-							.ok_or(crate::JobError::ProcessorError(ProcessorError::Incomplete))?;
+							.ok_or(crate::JobError::ProcessorError(ProcessorError::Incomplete(format!("[{follower_internal}] follows [{following_internal}]"))))?;
 						let activity_id = upub::model::activity::Entity::find_by_id(activity_id_internal)
 							.select_only()
 							.select_column(upub::model::activity::Column::Id)
 							.into_tuple::<String>()
 							.one(&tx)
 							.await?
-							.ok_or(crate::JobError::ProcessorError(ProcessorError::Incomplete))?;
+							.ok_or(crate::JobError::ProcessorError(ProcessorError::Incomplete(format!("Activity[{activity_id_internal}]"))))?;
 
 						activity = activity.set_object(apb::Node::link(activity_id));
 					},

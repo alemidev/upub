@@ -17,7 +17,7 @@ pub enum ProcessorError {
 	Unauthorized,
 
 	#[error("could not resolve all objects involved in this activity")]
-	Incomplete,
+	Incomplete(String),
 
 	#[error("activity {0} not processable by this application")]
 	Unprocessable(String),
@@ -205,10 +205,11 @@ pub async fn process_dislike(ctx: &crate::Context, activity: impl apb::Activity,
 }
 
 pub async fn process_follow(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
-	let source_actor = crate::model::actor::Entity::find_by_ap_id(&activity.actor().id()?)
+	let source_actor_id = activity.actor().id()?;
+	let source_actor = crate::model::actor::Entity::find_by_ap_id(&source_actor_id)
 		.one(tx)
 		.await?
-		.ok_or(ProcessorError::Incomplete)?;
+		.ok_or(ProcessorError::Incomplete(source_actor_id))?;
 	let target_actor = ctx.fetch_user(&activity.object().id()?, tx).await?;
 	let activity_model = ctx.insert_activity(activity, tx).await?;
 	ctx.address(Some(&activity_model), None, tx).await?;
@@ -240,11 +241,11 @@ pub async fn process_follow(ctx: &crate::Context, activity: impl apb::Activity, 
 
 		let follower_instance = crate::model::instance::Entity::domain_to_internal(&source_actor.domain, tx)
 			.await?
-			.ok_or(ProcessorError::Incomplete)?;
+			.ok_or(ProcessorError::Incomplete(source_actor.domain))?;
 
 		let following_instance = crate::model::instance::Entity::domain_to_internal(&target_actor.domain, tx)
 			.await?
-			.ok_or(ProcessorError::Incomplete)?;
+			.ok_or(ProcessorError::Incomplete(target_actor.domain))?;
 
 		// new follow request, make new row
 		let relation_model = crate::model::relation::ActiveModel {
@@ -266,10 +267,11 @@ pub async fn process_follow(ctx: &crate::Context, activity: impl apb::Activity, 
 
 pub async fn process_accept(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 	// TODO what about TentativeAccept
-	let follow_activity = crate::model::activity::Entity::find_by_ap_id(&activity.object().id()?)
+	let follow_activity_id = activity.object().id()?;
+	let follow_activity = crate::model::activity::Entity::find_by_ap_id(&follow_activity_id)
 		.one(tx)
 		.await?
-		.ok_or(ProcessorError::Incomplete)?;
+		.ok_or(ProcessorError::Incomplete(follow_activity_id))?;
 
 	if follow_activity.object.unwrap_or_default() != activity.actor().id()? {
 		return Err(ProcessorError::Unauthorized);
@@ -288,10 +290,10 @@ pub async fn process_accept(ctx: &crate::Context, activity: impl apb::Activity, 
 
 	let follower = crate::model::actor::Entity::ap_to_internal(&follow_activity.actor, tx)
 		.await?
-		.ok_or(ProcessorError::Incomplete)?;
+		.ok_or(ProcessorError::Incomplete(follow_activity.actor.clone()))?;
 	let following = crate::model::actor::Entity::ap_to_internal(&activity_model.actor, tx)
 		.await?
-		.ok_or(ProcessorError::Incomplete)?;
+		.ok_or(ProcessorError::Incomplete(activity_model.actor.clone()))?;
 
 	crate::model::relation::Entity::update_many()
 		.col_expr(crate::model::relation::Column::Accept, Expr::value(Some(activity_model.internal)))
@@ -325,10 +327,11 @@ pub async fn process_accept(ctx: &crate::Context, activity: impl apb::Activity, 
 
 pub async fn process_reject(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
 	// TODO what about TentativeReject?
-	let follow_activity = crate::model::activity::Entity::find_by_ap_id(&activity.object().id()?)
+	let follow_activity_id = activity.object().id()?;
+	let follow_activity = crate::model::activity::Entity::find_by_ap_id(&follow_activity_id)
 		.one(tx)
 		.await?
-		.ok_or(ProcessorError::Incomplete)?;
+		.ok_or(ProcessorError::Incomplete(follow_activity_id))?;
 
 	if follow_activity.object.unwrap_or_default() != activity.actor().id()? {
 		return Err(ProcessorError::Unauthorized);
@@ -391,7 +394,7 @@ pub async fn process_update(ctx: &crate::Context, activity: impl apb::Activity, 
 			}
 			let internal_uid = crate::model::actor::Entity::ap_to_internal(&oid, tx)
 				.await?
-				.ok_or(ProcessorError::Incomplete)?;
+				.ok_or(ProcessorError::Incomplete(oid.clone()))?;
 			let mut actor_model = crate::AP::actor_q(object_node.as_actor()?, Some(internal_uid))?;
 			if let Set(Some(ref image)) = actor_model.image {
 				if !image.starts_with(ctx.base()) {
@@ -410,7 +413,7 @@ pub async fn process_update(ctx: &crate::Context, activity: impl apb::Activity, 
 		apb::ObjectType::Note | apb::ObjectType::Document(apb::DocumentType::Page) => {
 			let internal_oid = crate::model::object::Entity::ap_to_internal(&oid, tx)
 				.await?
-				.ok_or(ProcessorError::Incomplete)?;
+				.ok_or(ProcessorError::Incomplete(oid.clone()))?;
 			let mut object_model = crate::AP::object_q(&object_node, Some(internal_oid))?;
 			if let Set(Some(ref content)) = object_model.content {
 				object_model.content = Set(Some(ctx.sanitize(content)));
@@ -439,12 +442,12 @@ pub async fn process_undo(ctx: &crate::Context, activity: impl apb::Activity, tx
 	let uid = activity.actor().id()?.to_string();
 	let internal_uid = crate::model::actor::Entity::ap_to_internal(&uid, tx)
 		.await?
-		.ok_or(ProcessorError::Incomplete)?;
+		.ok_or(ProcessorError::Incomplete(uid.clone()))?;
 
 	let undone_activity = crate::model::activity::Entity::find_by_ap_id(&undone_activity_id)
 		.one(tx)
 		.await?
-		.ok_or(ProcessorError::Incomplete)?;
+		.ok_or(ProcessorError::Incomplete(undone_activity_id.clone()))?;
 
 	if uid != undone_activity.actor {
 		return Err(ProcessorError::Unauthorized);
@@ -452,12 +455,13 @@ pub async fn process_undo(ctx: &crate::Context, activity: impl apb::Activity, tx
 
 	match undone_activity.activity_type {
 		apb::ActivityType::Like => {
+			let un_liked_object = undone_activity.object.ok_or(apb::FieldErr("object"))?;
 			let internal_oid = crate::model::object::Entity::ap_to_internal(
-				&undone_activity.object.ok_or(apb::FieldErr("object"))?,
+				&un_liked_object,
 				tx
 			)
 				.await?
-				.ok_or(ProcessorError::Incomplete)?;
+				.ok_or(ProcessorError::Incomplete(un_liked_object))?;
 			crate::model::like::Entity::delete_many()
 				.filter(
 					Condition::all()
@@ -477,12 +481,13 @@ pub async fn process_undo(ctx: &crate::Context, activity: impl apb::Activity, tx
 				.await?;
 		},
 		apb::ActivityType::Announce => {
+			let un_announced_object = undone_activity.object.ok_or(apb::FieldErr("object"))?;
 			let internal_oid = crate::model::object::Entity::ap_to_internal(
-				&undone_activity.object.ok_or(apb::FieldErr("object"))?,
+				&un_announced_object,
 				tx
 			)
 				.await?
-				.ok_or(ProcessorError::Incomplete)?;
+				.ok_or(ProcessorError::Incomplete(un_announced_object))?;
 			crate::model::announce::Entity::delete_many()
 				.filter(
 					Condition::all()
@@ -503,12 +508,13 @@ pub async fn process_undo(ctx: &crate::Context, activity: impl apb::Activity, tx
 				.await?;
 		},
 		apb::ActivityType::Follow => {
+			let un_followed_actor = undone_activity.object.ok_or(apb::FieldErr("object"))?;
 			let internal_uid_following = crate::model::actor::Entity::ap_to_internal(
-				&undone_activity.object.ok_or(apb::FieldErr("object"))?,
+				&un_followed_actor,
 				tx,
 			)
 				.await?
-				.ok_or(ProcessorError::Incomplete)?;
+				.ok_or(ProcessorError::Incomplete(un_followed_actor))?;
 
 			// no pending relation to undo
 			let relation = crate::model::relation::Entity::find()
