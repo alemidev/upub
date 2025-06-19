@@ -101,6 +101,7 @@ pub async fn process_like(ctx: &crate::Context, activity: impl apb::Activity, tx
 	let actor = ctx.fetch_user(&activity.actor().id()?, tx).await?;
 	let obj = ctx.fetch_object(&activity.object().id()?, tx).await?;
 	let likes_local_object = obj.attributed_to.as_ref().map(|x| ctx.is_local(x)).unwrap_or_default();
+	let is_local_actor = ctx.is_local(&actor.id);
 	if crate::model::like::Entity::find_by_uid_oid(actor.internal, obj.internal)
 		.any(tx)
 		.await?
@@ -112,7 +113,7 @@ pub async fn process_like(ctx: &crate::Context, activity: impl apb::Activity, tx
 	let content = activity.content().unwrap_or_default();
 
 	// likes without addressing are "silent likes", process them but dont store activity or notify
-	let aid = if likes_local_object || !activity.addressed().is_empty() {
+	let aid = if is_local_actor || likes_local_object || !activity.addressed().is_empty() {
 		let mut activity_model = ctx.insert_activity(activity, tx).await?;
 		// TODO mastodon and misskey don't put any addressing at all in their likes, but treat all
 		//      likes as public by default. this is quite disrespectful to be honest: they are
