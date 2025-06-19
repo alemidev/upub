@@ -100,6 +100,7 @@ async fn address_to(ctx: &crate::Context, to: Vec<String>, aid: Option<i64>, oid
 	// TODO address_to became kind of expensive, with these two selects right away and then another
 	//      select for each target we're addressing to... can this be improved??
 	let mut addressing = Vec::new();
+	let to: std::collections::HashSet<String> = std::collections::HashSet::from_iter(to.into_iter()); // dedupe
 	for target in to.into_iter()
 		.filter(|to| !to.is_empty())
 		.filter(|to| !to.ends_with("/followers"))
