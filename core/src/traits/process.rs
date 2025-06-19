@@ -434,7 +434,6 @@ pub async fn process_update(ctx: &crate::Context, activity: impl apb::Activity, 
 }
 
 pub async fn process_undo(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
-	// TODO in theory we could work with just object_id but right now only accept embedded
 	let undone_activity_id = activity.object().id()?;
 
 	let uid = activity.actor().id()?.to_string();

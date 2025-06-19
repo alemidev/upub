@@ -1,5 +1,5 @@
 use apb::{target::Addressed, Activity, ActivityMut, ActorMut, Base, BaseMut, Object, ObjectMut, Shortcuts};
-use sea_orm::{prelude::Expr, ColumnTrait, DbErr, EntityTrait, QueryFilter, QuerySelect, SelectColumns, TransactionTrait};
+use sea_orm::{prelude::Expr, ColumnTrait, DbErr, EntityTrait, QueryFilter, QueryOrder, QuerySelect, SelectColumns, TransactionTrait};
 use upub::{model::{self, actor::Field}, traits::{process::ProcessorError, Addresser, Processor}, Context};
 
 
@@ -85,6 +85,38 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 							.one(&tx)
 							.await?
 							.ok_or(crate::JobError::ProcessorError(ProcessorError::Incomplete))?;
+
+						activity = activity.set_object(apb::Node::link(activity_id));
+					},
+					apb::ActivityType::Like => {
+						let un_liked_object = undone.object().id()?;
+						let activity_id = upub::model::activity::Entity::find()
+							.select_only()
+							.select_column(upub::model::activity::Column::Id)
+							.filter(upub::model::activity::Column::Actor.eq(&job.actor))
+							.filter(upub::model::activity::Column::Object.eq(&un_liked_object))
+							.filter(upub::model::activity::Column::ActivityType.eq(apb::ActivityType::Like))
+							.order_by_desc(upub::model::activity::Column::Published)
+							.into_tuple::<String>()
+							.one(&tx)
+							.await?
+							.ok_or(sea_orm::DbErr::RecordNotFound(format!("Like({un_liked_object})")))?;
+
+						activity = activity.set_object(apb::Node::link(activity_id));
+					},
+					apb::ActivityType::Announce => {
+						let un_announced_object = undone.object().id()?;
+						let activity_id = upub::model::activity::Entity::find()
+							.select_only()
+							.select_column(upub::model::activity::Column::Id)
+							.filter(upub::model::activity::Column::Actor.eq(&job.actor))
+							.filter(upub::model::activity::Column::Object.eq(&un_announced_object))
+							.filter(upub::model::activity::Column::ActivityType.eq(apb::ActivityType::Announce))
+							.order_by_desc(upub::model::activity::Column::Published)
+							.into_tuple::<String>()
+							.one(&tx)
+							.await?
+							.ok_or(sea_orm::DbErr::RecordNotFound(format!("Announce({un_announced_object})")))?;
 
 						activity = activity.set_object(apb::Node::link(activity_id));
 					},
