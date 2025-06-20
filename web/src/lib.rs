@@ -9,6 +9,7 @@ mod actors;
 mod activities;
 mod objects;
 mod timeline;
+mod lists;
 
 use apb::{Activity, Object, Actor, Base};
 pub use app::App;

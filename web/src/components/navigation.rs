@@ -40,6 +40,7 @@ pub fn Navigator(notifications: ReadSignal<u64>) -> impl IntoView {
 			<tr><td colspan="2"><a href="/web/home"><input class="w-100" type="submit" class:hidden=move || !auth.present() value="home feed" /></a></td></tr>
 			<tr><td colspan="2"><a href="/web/notifications"><input class="w-100" type="submit" class:hidden=move || !auth.present() value=move || format!("notifications [{}]", notifications.get()) /></a></td></tr>
 			<tr><td colspan="2"><a href="/web/threads"><input class="w-100" type="submit" value="threads" /></a></td></tr>
+			<tr><td colspan="2"><a href="/web/lists"><input class="w-100" type="submit" value="lists" class:hidden=move || !auth.present() /></a></td></tr>
 			<tr>
 				<td><a href="/web/global"><input class="w-100" type="submit" value="global" /></a></td>
 				<td><a href="/web/local"><input class="w-100" type="submit" value="local" /></a></td>

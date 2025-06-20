@@ -15,3 +15,6 @@ pub use search::SearchPage;
 
 mod threads;
 pub use threads::ThreadsPage;
+
+mod lists;
+pub use lists::ListsPage;

@@ -154,6 +154,12 @@ pub fn App() -> impl IntoView {
 
 										<Route path=path!("threads") view=ThreadsPage />
 
+										<Route path=path!("lists") view=ListsPage />
+										<ParentRoute path=path!("lists/:id") view=ListView >
+											<Route path=path!("") view=ListMembers />
+											<Route path=path!("feed") view=ListFeed />
+										</ParentRoute>
+
 										<Route path=path!("notifications") view=move || if auth.present() {
 											Either::Left(view! {
 												<Loadable
@@ -262,7 +268,7 @@ pub fn App() -> impl IntoView {
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum FeedRoute {
-	Unknown, Home, Global, Server, Threads, Notifications, User, Following, Followers, ActorLikes, ObjectLikes, Replies, Context
+	Unknown, Home, Global, Server, Threads, Lists, ListFeed, ListMembers, Notifications, User, Following, Followers, ActorLikes, ObjectLikes, Replies, Context
 }
 
 impl FeedRoute {
@@ -292,6 +298,14 @@ fn Scrollable() -> impl IntoView {
 				set_route.set(FeedRoute::Server);
 			} else if path.contains("/web/threads") {
 				set_route.set(FeedRoute::Threads);
+			} else if path.starts_with("/web/lists") {
+				if let Some("feed") = path.split('/').nth(4) {
+						set_route.set(FeedRoute::ListFeed);
+				} else if let Some(_id) = path.split('/').nth(3) {
+					set_route.set(FeedRoute::ListMembers);
+				} else {
+					set_route.set(FeedRoute::Lists);
+				}
 			} else if path.starts_with("/web/notifications") {
 				set_route.set(FeedRoute::Notifications);
 			} else if path.starts_with("/web/actors") {
