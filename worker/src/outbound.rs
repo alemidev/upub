@@ -143,7 +143,7 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 				let mut prev = model::actor::Entity::find_by_ap_id(&updated.id()?)
 					.one(&tx)
 					.await?
-					.ok_or_else(|| crate::JobError::MissingPayload)?;
+					.ok_or(crate::JobError::MissingPayload)?;
 
 				if prev.id != job.actor {
 					return Err(crate::JobError::Forbidden);
@@ -178,7 +178,7 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 				let mut prev = model::object::Entity::find_by_ap_id(&updated.id()?)
 					.one(&tx)
 					.await?
-					.ok_or_else(|| crate::JobError::MissingPayload)?;
+					.ok_or(crate::JobError::MissingPayload)?;
 
 				if prev.attributed_to.as_ref() != Some(&job.actor) {
 					return Err(crate::JobError::Forbidden);
@@ -193,6 +193,21 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 					prev.sensitive = sensitive;
 				}
 
+				updated = ctx.ap(prev);
+			},
+			apb::ObjectType::Collection(apb::CollectionType::Collection) => {
+				let mut prev = model::list::Entity::find_by_ap_id(&updated.id()?)
+					.one(&tx)
+					.await?
+					.ok_or(crate::JobError::MissingPayload)?;
+
+				if prev.attributed_to != job.actor {
+					return Err(crate::JobError::Forbidden);
+				}
+
+				update!(prev, name, updated.name());
+				update!(prev, summary, updated.summary());
+				
 				updated = ctx.ap(prev);
 			},
 			t => return Err(crate::JobError::ProcessorError(ProcessorError::Unprocessable(format!("{t}")))),

@@ -422,6 +422,20 @@ pub async fn process_update(ctx: &crate::Context, activity: impl apb::Activity, 
 			object_model.updated = Set(chrono::Utc::now());
 			object_model.update(tx).await?;
 		},
+		apb::ObjectType::Collection(apb::CollectionType::Collection) => {
+			let mut previous_model = crate::model::list::Entity::find_by_ap_id(&oid)
+				.one(tx)
+				.await?
+				.ok_or(ProcessorError::Incomplete(oid.clone()))?
+				.into_active_model();
+
+			// TODO maybe make an AP::list_q() helper? but there's so few fields anyway
+			previous_model.name = Set(object_node.name().ok());
+			previous_model.summary = Set(object_node.summary().ok());
+			previous_model.updated = Set(chrono::Utc::now());
+			// TODO allow changing owner maybe?
+			previous_model.update(tx).await?;
+		},
 		_ => return Err(ProcessorError::Unprocessable(activity.id()?.to_string())),
 	}
 
