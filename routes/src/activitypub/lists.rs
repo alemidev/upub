@@ -1,6 +1,6 @@
 use apb::LD;
 use axum::extract::{Path, Query, State};
-use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait, SelectColumns};
+use sea_orm::{ColumnTrait, Condition, EntityTrait, Iterable, QueryFilter, QueryOrder, QuerySelect, RelationTrait, SelectColumns, EntityName, Iden};
 
 use upub::{model, selector::{RichActivity, RichFillable, RichObjectOrActor}, Context};
 
@@ -29,12 +29,24 @@ pub async fn page(
 
 	let list = list_if_authorized(&ctx, &lid, &auth).await?;
 
-	let list_items = model::list_element::Entity::find()
+	let mut select = model::list_element::Entity::find()
 		.join(sea_orm::JoinType::LeftJoin, model::list_element::Relation::Actors.def())
 		.join(sea_orm::JoinType::LeftJoin, model::list_element::Relation::Objects.def())
 		.filter(model::list_element::Column::List.eq(list.internal))
 		.limit(limit)
-		.offset(offset)
+		.offset(offset);
+
+
+	// TODO this should be in a Query::__ helper maybe?
+	for col in model::actor::Column::iter() {
+		select = select.select_column_as(col, format!("{}{}", model::actor::Entity.table_name(), col.to_string()));
+	}
+
+	for col in model::object::Column::iter() {
+		select = select.select_column_as(col, format!("{}{}", model::object::Entity.table_name(), col.to_string()));
+	}
+
+	let list_items = select
 		.into_model::<RichObjectOrActor>()
 		.all(ctx.db())
 		.await?
