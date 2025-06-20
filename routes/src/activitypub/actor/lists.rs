@@ -41,16 +41,16 @@ pub async fn page(
 		.filter(model::list::Column::AttributedTo.eq(&uid))
 		.limit(limit)
 		.offset(offset)
-		.select_only()
-		.select_column(model::list::Column::Id)
-		.into_tuple::<String>()
 		.all(ctx.db())
-		.await?;
+		.await?
+		.into_iter()
+		.map(|x| ctx.ap(x))
+		.collect();
 
 	crate::builders::collection_page(
 		&upub::url!(ctx, "/actors/{id}/lists/page"),
 		page,
-		apb::Node::links(lists),
+		apb::Node::array(lists),
 	)
 }
 
