@@ -5,4 +5,4 @@ mod query;
 pub use query::{Query, QueryFeedOptions};
 
 mod rich;
-pub use rich::{RichActivity, RichObject, RichNotification};
+pub use rich::{RichActivity, RichObject, RichNotification, RichObjectOrActor};

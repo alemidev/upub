@@ -1,7 +1,7 @@
 use std::collections::{hash_map::Entry, HashMap};
 
 use sea_orm::{ConnectionTrait, DbErr, EntityTrait, FromQueryResult, ModelTrait, QueryFilter};
-use super::{RichActivity, RichObject};
+use super::{RichActivity, RichObject, RichObjectOrActor};
 
 #[allow(async_fn_in_trait)]
 pub trait RichFillable: Sized {
@@ -111,6 +111,35 @@ impl BatchFillable for RichObject {
 			self.accept(batch, tx).await?;
 		}
 		Ok(self)
+	}
+}
+
+impl BatchFillable for RichObjectOrActor {
+	async fn with_batched<E>(mut self, tx: &impl ConnectionTrait) -> Result<Self, DbErr>
+	where
+		E: BatchFillableComparison + EntityTrait,
+		E::Model: BatchFillableKey + Send + FromQueryResult + ModelTrait<Entity = E>,
+		RichObject: BatchFillableAcceptor<Vec<E::Model>>,
+	{
+		self.object = self.object.with_batched::<E>(tx).await?;
+		Ok(self)
+	}
+}
+
+impl BatchFillable for Vec<RichObjectOrActor> {
+	async fn with_batched<E>(self, tx: &impl ConnectionTrait) -> Result<Self, DbErr>
+	where
+			E: BatchFillableComparison + EntityTrait,
+			E::Model: BatchFillableKey + Send + FromQueryResult + ModelTrait<Entity = E>,
+			RichObject: BatchFillableAcceptor<Vec<E::Model>>
+	{
+		// TODO can we do this in-place rather than copying everything to a new vec?
+		let mut out = Vec::new();
+		for item in self {
+			out.push(item.with_batched::<E>(tx).await?);
+		}
+
+		Ok(out)
 	}
 }
 

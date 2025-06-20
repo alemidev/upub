@@ -129,6 +129,37 @@ impl IntoActivityPub for RichActivity {
 	}
 }
 
+pub struct RichObjectOrActor {
+	pub object: RichObject,
+	pub actor: Option<crate::model::actor::Model>,
+}
+
+impl FromQueryResult for RichObjectOrActor {
+	fn from_query_result(res: &QueryResult, _pre: &str) -> Result<Self, DbErr> {
+		Ok(RichObjectOrActor {
+			object: RichObject::from_query_result(res, _pre)?,
+			actor: crate::model::actor::Model::from_query_result_optional(res, crate::model::activity::Entity.table_name())?,
+		})
+	}
+}
+
+impl IntoActivityPub for RichObjectOrActor {
+	fn into_activity_pub_json(self, ctx: &crate::Context) -> serde_json::Value {
+		match (self.actor, &self.object.object) {
+			(None, None) => serde_json::Value::Null,
+
+			(Some(actor), None) => actor.into_activity_pub_json(ctx),
+
+			(None, Some(ref _object)) => self.object.into_activity_pub_json(ctx),
+
+			(Some(actor), Some(ref _object)) => {
+				tracing::error!("RichObjectOrActor can't be both actor AND object");
+				actor.into_activity_pub_json(ctx)
+			},
+		}
+	}
+}
+
 pub struct RichNotification {
 	pub activity: crate::model::activity::Model,
 	pub seen: bool,
