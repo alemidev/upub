@@ -37,6 +37,10 @@ impl LD for serde_json::Value {
 					ctx.insert("followingMe".to_string(), serde_json::Value::String("fe:followingMe".into()));
 					ctx.insert("followedByMe".to_string(), serde_json::Value::String("fe:followedByMe".into()));
 				},
+				Ok(crate::ObjectType::Activity(_)) => {
+					ctx.insert("fe".to_string(), serde_json::Value::String("https://ns.alemi.dev/as/fe/#".into()));
+					ctx.insert("seen".to_string(), serde_json::Value::String("fe:seen".into()));
+				},
 				Ok(
 					crate::ObjectType::Note
 					| crate::ObjectType::Article
