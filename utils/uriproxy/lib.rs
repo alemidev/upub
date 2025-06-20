@@ -1,6 +1,6 @@
 use base64::Engine;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum UriClass {
 	Actor,
 	Object,
