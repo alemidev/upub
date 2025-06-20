@@ -60,7 +60,7 @@ impl Query {
 		select
 	}
 
-	pub fn objects(my_id: Option<i64>, with_replies: bool) -> Select<model::addressing::Entity> {
+	pub fn objects(opts: QueryFeedOptions) -> Select<model::addressing::Entity> {
 		let mut select = model::addressing::Entity::find()
 			.distinct()
 			.join(sea_orm::JoinType::InnerJoin, model::addressing::Relation::Objects.def())
@@ -70,7 +70,7 @@ impl Query {
 			select = select.select_column_as(col, format!("{}{}", model::object::Entity.table_name(), col.to_string()));
 		}
 
-		if let Some(uid) = my_id {
+		if let Some(uid) = opts.my_id {
 			select = select
 				.join(
 					sea_orm::JoinType::LeftJoin,
@@ -80,7 +80,7 @@ impl Query {
 				.select_column_as(model::like::Column::Actor, format!("{}{}", model::like::Entity.table_name(), model::like::Column::Actor.to_string()));
 		}
 
-		if !with_replies {
+		if !opts.with_replies {
 			select = select.filter(model::object::Column::InReplyTo.is_null());
 		}
 

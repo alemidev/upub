@@ -11,7 +11,7 @@ pub async fn get(
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let context = ctx.oid(&id);
 
-	let count = upub::Query::objects(auth.my_id(), true)
+	let count = upub::Query::objects(upub::query_feed_opts!(auth.my_id(), true))
 		.filter(auth.filter_objects())
 		.filter(model::object::Column::Context.eq(&context))
 		.count(ctx.db())
@@ -35,12 +35,11 @@ pub async fn page(
 	page.replies = Some(true); // TODO ugly that we have to force set it this way...
 	let (limit, offset) = page.pagination();
 
-	let items = upub::Query::feed(upub::query_feed_opts!(auth.my_id(), page.replies()))
+	let items = upub::Query::objects(upub::query_feed_opts!(auth.my_id(), page.replies()))
 		.filter(filter)
 		.limit(limit)
 		.offset(offset)
-		.order_by_asc(upub::model::addressing::Column::Published)
-		.order_by_asc(upub::model::activity::Column::Internal)
+		.order_by_asc(upub::model::object::Column::Published)
 		.into_model::<RichObject>()
 		.all(ctx.db())
 		.await?

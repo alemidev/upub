@@ -21,7 +21,7 @@ pub async fn get(
 		ctx.fetch_thread(&oid, ctx.db()).await?;
 	}
 
-	let total_replies = upub::Query::objects(None, true)
+	let total_replies = upub::Query::objects(upub::query_feed_opts!(None, true))
 		.filter(auth.filter_objects())
 		.filter(model::object::Column::InReplyTo.eq(&oid))
 		.count(ctx.db())
@@ -53,12 +53,11 @@ pub async fn page(
 		.add(model::object::Column::InReplyTo.eq(oid));
 
 	let (limit, offset) = page.pagination();
-	let items = upub::Query::feed(upub::query_feed_opts!(auth.my_id(), page.replies()))
+	let items = upub::Query::objects(upub::query_feed_opts!(auth.my_id(), page.replies()))
 		.filter(filter)
 		.limit(limit)
 		.offset(offset)
-		.order_by_desc(upub::model::addressing::Column::Published)
-		.order_by_desc(upub::model::activity::Column::Internal)
+		.order_by_desc(upub::model::object::Column::Published)
 		.into_model::<RichObject>()
 		.all(ctx.db())
 		.await?

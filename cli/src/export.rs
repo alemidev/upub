@@ -16,7 +16,7 @@ pub async fn export(
 
 	let mut objects = Vec::new();
 	
-	let mut stream = upub::Query::feed(upub::query_feed_opts!(Some(internal), true))
+	let mut stream = upub::Query::objects(upub::query_feed_opts!(Some(internal), true))
 		.filter(upub::model::object::Column::AttributedTo.eq(uid))
 		.order_by_asc(upub::model::addressing::Column::Published)
 		.order_by_asc(upub::model::activity::Column::Internal)

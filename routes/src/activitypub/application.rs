@@ -42,7 +42,7 @@ pub async fn search(
 	}
 
 	let filter = Condition::all()
-		.add(auth.filter_activities())
+		.add(auth.filter_objects())
 		.add(upub::model::object::Column::Content.like(format!("%{}%", page.q)));
 
 	// TODO lmao rethink this all
@@ -55,12 +55,11 @@ pub async fn search(
 	};
 
 	let (limit, offset) = p.pagination();
-	let items = upub::Query::feed(upub::query_feed_opts!(auth.my_id(), true))
+	let items = upub::Query::objects(upub::query_feed_opts!(auth.my_id(), true))
 		.filter(filter)
 		.limit(limit)
 		.offset(offset)
-		.order_by_desc(upub::model::addressing::Column::Published)
-		.order_by_desc(upub::model::activity::Column::Internal)
+		.order_by_desc(upub::model::object::Column::Published)
 		.into_model::<RichObject>()
 		.all(ctx.db())
 		.await?
