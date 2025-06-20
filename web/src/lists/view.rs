@@ -1,4 +1,3 @@
-use leptos::{either::Either, ev::MouseEvent};
 use leptos::prelude::*;
 use leptos_router::components::Outlet;
 use leptos_router::hooks::use_params_map;
@@ -12,7 +11,7 @@ pub fn ListView() -> impl IntoView {
 	let matched_route = use_context::<ReadSignal<crate::app::FeedRoute>>().expect("missing route context");
 	let auth = use_context::<Auth>().expect("missing auth context");
 	// TODO do we really need this loading signal?
-	let (loading, set_loading) = signal(false);
+	let (loading, _set_loading) = signal(false);
 	let id = Signal::derive(move || params.get().get("id").unwrap_or_default());
 	let target_ref: NodeRef<leptos::html::Input> = NodeRef::new();
 	let list = LocalResource::new(

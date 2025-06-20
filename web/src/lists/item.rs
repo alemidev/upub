@@ -1,7 +1,7 @@
 use leptos::prelude::*;
 use crate::prelude::*;
 
-use apb::{Base, Collection, Object};
+use apb::{Base, Object};
 
 #[component]
 pub fn List(
