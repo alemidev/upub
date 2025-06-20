@@ -486,7 +486,7 @@ pub fn AdvancedPostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 							Some(ref reply) => crate::cache::OBJECTS.get(reply).and_then(|x| x.audience().id().ok()),
 							None => None,
 						};
-						let payload = serde_json::Value::Object(serde_json::Map::default())
+						let payload = apb::new()
 							.set_activity_type(Some(value.get().as_str().try_into().unwrap_or(apb::ActivityType::Create)))
 							.set_to(apb::Node::links(to.clone()))
 							.set_bto(apb::Node::links(bto.clone()))
@@ -496,7 +496,7 @@ pub fn AdvancedPostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 							.set_object(
 								if embedded.get() {
 									apb::Node::object(
-										serde_json::Value::Object(serde_json::Map::default())
+										apb::new()
 											.set_id(object_id)
 											.set_object_type(Some(apb::ObjectType::Note))
 											.set_name(name)

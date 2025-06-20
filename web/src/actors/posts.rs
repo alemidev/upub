@@ -5,6 +5,7 @@ use crate::prelude::*;
 #[component]
 pub fn ActorPosts() -> impl IntoView {
 	let params = use_params::<IdParam>();
+	// TODO do it reactively
 	let id = params.get().ok().and_then(|x| x.id).unwrap_or_default();
 	view! {
 		<Loadable
@@ -17,6 +18,7 @@ pub fn ActorPosts() -> impl IntoView {
 #[component]
 pub fn ActorLikes() -> impl IntoView {
 	let params = use_params::<IdParam>();
+	// TODO do it reactively
 	let id = params.get().ok().and_then(|x| x.id).unwrap_or_default();
 	view! {
 		<Loadable
