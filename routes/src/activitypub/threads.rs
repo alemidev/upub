@@ -45,7 +45,7 @@ pub async fn page(
 		.add(upub::model::object::Column::Published.lte(chrono::Utc::now() - chrono::Duration::days(skip)))
 		.add(upub::model::object::Column::Published.gte(chrono::Utc::now() - chrono::Duration::days(days)));
 	let (limit, offset) = page.pagination();
-	let items = upub::Query::feed(upub::query_feed_opts!(auth.my_id(), page.replies.unwrap_or(true), true))
+	let items = upub::Query::feed(upub::query_feed_opts!(auth.my_id(), page.replies(), true))
 		.filter(filter)
 		.limit(limit)
 		.offset(offset)

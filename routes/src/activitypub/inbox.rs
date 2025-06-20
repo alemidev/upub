@@ -21,7 +21,7 @@ pub async fn page(
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let filter = upub::model::addressing::Column::Actor.is_null().into_condition();
 	let (limit, offset) = page.pagination();
-	let items = upub::Query::feed(upub::query_feed_opts!(auth.my_id(), page.replies.unwrap_or(true)))
+	let items = upub::Query::feed(upub::query_feed_opts!(auth.my_id(), page.replies()))
 		.filter(filter)
 		.limit(limit)
 		.offset(offset)

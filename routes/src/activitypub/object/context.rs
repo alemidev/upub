@@ -35,7 +35,7 @@ pub async fn page(
 	page.replies = Some(true); // TODO ugly that we have to force set it this way...
 	let (limit, offset) = page.pagination();
 
-	let items = upub::Query::feed(upub::query_feed_opts!(auth.my_id(), page.replies.unwrap_or(true)))
+	let items = upub::Query::feed(upub::query_feed_opts!(auth.my_id(), page.replies()))
 		.filter(filter)
 		.limit(limit)
 		.offset(offset)

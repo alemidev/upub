@@ -138,6 +138,10 @@ impl Pagination {
 		let offset = self.offset.unwrap_or(0);
 		(limit, offset)
 	}
+
+	pub fn replies(&self) -> bool {
+		self.replies.unwrap_or(true)
+	}
 }
 
 #[derive(Debug, serde::Deserialize)]
