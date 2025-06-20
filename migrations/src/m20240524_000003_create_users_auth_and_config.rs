@@ -13,6 +13,7 @@ pub enum Configs {
 	ShowFollowers,
 	ShowFollowing,
 	ShowLikedObjects, // added with migration m20241226_000001
+	ShowLists, // added with migration m20250620_000001
 }
 
 #[derive(DeriveIden)]

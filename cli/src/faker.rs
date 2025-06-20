@@ -48,6 +48,7 @@ pub async fn faker(ctx: upub::Context, count: i64) -> Result<(), sea_orm::DbErr>
 		show_followers: Set(false),
 		show_following: Set(false),
 		show_liked_objects: Set(false),
+		show_lists: Set(false),
 	}).exec(db).await?;
 
 	credential::Entity::insert(credential::ActiveModel {

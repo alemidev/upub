@@ -13,6 +13,7 @@ pub struct Model {
 	pub show_followers: bool,
 	pub show_following: bool,
 	pub show_liked_objects: bool,
+	pub show_lists: bool,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]

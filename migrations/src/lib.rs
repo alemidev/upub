@@ -24,6 +24,7 @@ mod m20241226_000001_add_show_likes_collection;
 mod m20241226_000002_add_like_activities;
 mod m20241226_000003_create_downtime_table;
 mod m20250115_000001_add_content_to_activities;
+mod m20250620_000001_add_list_tables;
 
 pub struct Migrator;
 
@@ -55,6 +56,7 @@ impl MigratorTrait for Migrator {
 			Box::new(m20241226_000002_add_like_activities::Migration),
 			Box::new(m20241226_000003_create_downtime_table::Migration),
 			Box::new(m20250115_000001_add_content_to_activities::Migration),
+			Box::new(m20250620_000001_add_list_tables::Migration),
 		]
 	}
 }

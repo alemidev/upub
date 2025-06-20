@@ -20,4 +20,7 @@ pub mod hashtag;
 pub mod mention;
 pub mod attachment;
 
+pub mod list;
+pub mod list_element;
+
 pub mod downtime;
