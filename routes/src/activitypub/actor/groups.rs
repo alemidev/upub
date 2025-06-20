@@ -1,5 +1,5 @@
 use axum::extract::{Path, Query, State};
-use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter, QuerySelect, SelectColumns, RelationTrait};
+use sea_orm::{ColumnTrait, Condition, EntityTrait, PaginatorTrait, QueryFilter, QuerySelect, RelationTrait, SelectColumns};
 
 use upub::{model, Context};
 
@@ -8,8 +8,35 @@ use crate::{activitypub::Pagination, builders::JsonLD, ApiError, AuthIdentity};
 pub async fn get(
 	State(ctx): State<Context>,
 	Path(id): Path<String>,
+	AuthIdentity(auth): AuthIdentity,
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
-	crate::builders::collection(upub::url!(ctx, "/actors/{id}/groups"), None)
+	let uid = ctx.uid(&id);
+
+	if !auth.is(&uid) {
+		return Err(crate::ApiError::unauthorized());
+	}
+
+	let user = model::actor::Entity::find_by_ap_id(&uid)
+		.one(ctx.db())
+		.await?
+		.ok_or_else(ApiError::not_found)?;
+
+	let filter = Condition::all()
+		.add(model::relation::Column::Accept.is_not_null())
+		.add(upub::model::relation::Column::Follower.eq(user.internal))
+		.add(model::actor::Column::ActorType.eq(apb::ActorType::Group));
+
+	let join = model::relation::Relation::ActorsFollowing.def();
+
+	let groups_count = model::relation::Entity::find()
+		.filter(filter)
+		.join(sea_orm::JoinType::LeftJoin, join)
+		.select_only()
+		.select_column(model::actor::Column::Id)
+		.count(ctx.db())
+		.await?;
+
+	crate::builders::collection(upub::url!(ctx, "/actors/{id}/groups"), Some(groups_count))
 }
 
 pub async fn page(
@@ -19,15 +46,16 @@ pub async fn page(
 	AuthIdentity(auth): AuthIdentity,
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let (limit, _offset) = page.pagination();
+	let uid = ctx.uid(&id);
 
-	let user = model::actor::Entity::find_by_ap_id(&ctx.uid(&id))
+	if !auth.is(&uid) {
+		return Err(crate::ApiError::unauthorized());
+	}
+
+	let user = model::actor::Entity::find_by_ap_id(&uid)
 		.one(ctx.db())
 		.await?
 		.ok_or_else(ApiError::not_found)?;
-
-	if auth.my_id().is_none_or(|x| x != user.internal) {
-		return Err(crate::ApiError::unauthorized());
-	}
 
 	let filter = Condition::all()
 		.add(model::relation::Column::Accept.is_not_null())

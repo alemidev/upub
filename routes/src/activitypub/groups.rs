@@ -1,5 +1,5 @@
 use axum::extract::{Query, State};
-use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QuerySelect, PaginatorTrait};
+use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QuerySelect, SelectColumns};
 
 use upub::{model, Context};
 
@@ -25,16 +25,15 @@ pub async fn page(
 		.filter(model::actor::Column::ActorType.eq(apb::ActorType::Group))
 		.limit(limit)
 		.offset(offset)
+		.select_only()
+		.select_column(model::actor::Column::Id)
+		.into_tuple::<String>()
 		.all(ctx.db())
-		.await?
-		.into_iter()
-		.map(|x| ctx.ap(x))
-		.collect();
-
+		.await?;
 
 	crate::builders::collection_page(
 		&upub::url!(ctx, "/groups/page"),
 		page,
-		apb::Node::array(groups),
+		apb::Node::links(groups),
 	)
 }
