@@ -1,5 +1,5 @@
 use apb::{target::Addressed, Actor, Base, Object};
-use sea_orm::{sea_query::Expr, ActiveModelTrait, ActiveValue::{NotSet, Set}, ColumnTrait, Condition, DatabaseTransaction, EntityTrait, QueryFilter, QuerySelect, SelectColumns};
+use sea_orm::{sea_query::Expr, ActiveModelTrait, ActiveValue::{NotSet, Set}, ColumnTrait, Condition, DatabaseTransaction, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect, SelectColumns};
 use crate::{ext::{AnyQuery, LoggableError}, model, traits::{fetch::Pull, Addresser, Cloaker, Fetcher, Normalizer}};
 
 #[derive(Debug, thiserror::Error)]
@@ -51,6 +51,8 @@ impl Processor for crate::Context {
 			apb::ActivityType::Update => Ok(process_update(self, activity, tx).await?),
 			apb::ActivityType::Flag => Ok(process_flag(self, activity, tx).await?),
 			apb::ActivityType::Move => Ok(process_move(self, activity, tx).await?),
+			apb::ActivityType::Add => Ok(process_add(self, activity, tx).await?),
+			apb::ActivityType::Remove => Ok(process_remove(self, activity, tx).await?),
 			_ => Err(ProcessorError::Unprocessable(activity.id()?.to_string())),
 		}
 	}
@@ -261,7 +263,7 @@ pub async fn process_follow(ctx: &crate::Context, activity: impl apb::Activity, 
 			.exec(tx).await?;
 	}
 
-	tracing::info!("{} wants to follow {}", activity_model.actor, target_actor.id);
+	tracing::debug!("{} wants to follow {}", activity_model.actor, target_actor.id);
 	Ok(())
 }
 
@@ -700,4 +702,112 @@ pub async fn process_move(ctx: &crate::Context, activity: impl apb::Activity, _t
 	// TODO move all follows
 
 	Ok(())
+}
+
+pub async fn process_add(_ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
+	let adding_actor = activity.actor().id()?;
+	let list_id = activity.target().id()?;
+	let object_id = activity.object().id()?;
+
+	let list_model = model::list::Entity::find_by_ap_id(&list_id)
+		.one(tx)
+		.await?
+		.ok_or(ProcessorError::Incomplete(list_id.clone()))?;
+
+	if list_model.attributed_to != adding_actor {
+		return Err(ProcessorError::Unauthorized);
+	}
+
+	// is object_id an actor or an object? try first actor
+	if let Some(actor_model) = model::actor::Entity::find_by_ap_id(&object_id)
+		.one(tx)
+		.await?
+	{
+		model::list_element::Entity::insert(
+			model::list_element::ActiveModel {
+				internal: NotSet,
+				list: Set(list_model.internal),
+				object: Set(None),
+				actor: Set(Some(actor_model.internal)),
+			}
+		)
+			.exec(tx)
+			.await?;
+
+		tracing::debug!("adding actor {object_id} to list {list_id}");
+
+		return Ok(());
+	}
+
+	if let Some(object_model) = model::object::Entity::find_by_ap_id(&object_id)
+		.one(tx)
+		.await?
+	{
+		model::list_element::Entity::insert(
+			model::list_element::ActiveModel {
+				internal: NotSet,
+				list: Set(list_model.internal),
+				object: Set(Some(object_model.internal)),
+				actor: Set(None),
+			}
+		)
+			.exec(tx)
+			.await?;
+
+		tracing::debug!("adding object {object_id} to list {list_id}");
+
+		return Ok(());
+	}
+
+	Err(ProcessorError::Incomplete(object_id))
+}
+
+pub async fn process_remove(_ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
+	let adding_actor = activity.actor().id()?;
+	let list_id = activity.target().id()?;
+	let object_id = activity.object().id()?;
+
+	let list_model = model::list::Entity::find_by_ap_id(&list_id)
+		.one(tx)
+		.await?
+		.ok_or(ProcessorError::Incomplete(list_id.clone()))?;
+
+	if list_model.attributed_to != adding_actor {
+		return Err(ProcessorError::Unauthorized);
+	}
+
+	// is object_id an actor or an object? try first actor
+	if let Some(actor_model) = model::actor::Entity::find_by_ap_id(&object_id)
+		.one(tx)
+		.await?
+	{
+		model::list_element::Entity::delete_many()
+			.filter(model::list_element::Column::List.eq(list_model.internal))
+			.filter(model::list_element::Column::Object.is_null())
+			.filter(model::list_element::Column::Actor.eq(actor_model.internal))
+			.exec(tx)
+			.await?;
+
+		tracing::debug!("removing actor {object_id} from list {list_id}");
+
+		return Ok(());
+	}
+
+	if let Some(object_model) = model::object::Entity::find_by_ap_id(&object_id)
+		.one(tx)
+		.await?
+	{
+		model::list_element::Entity::delete_many()
+			.filter(model::list_element::Column::List.eq(list_model.internal))
+			.filter(model::list_element::Column::Object.eq(object_model.internal))
+			.filter(model::list_element::Column::Actor.is_null())
+			.exec(tx)
+			.await?;
+
+		tracing::debug!("removing object {object_id} from list {list_id}");
+
+		return Ok(());
+	}
+
+	Err(ProcessorError::Incomplete(object_id))
 }
