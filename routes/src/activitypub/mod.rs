@@ -45,6 +45,8 @@ pub fn ap_routes(ctx: upub::Context) -> Router {
 		.route("/groups/page", get(ap::groups::page))
 		.route("/lists/{id}", get(ap::lists::get))
 		.route("/lists/{id}/page", get(ap::lists::page))
+		.route("/lists/{id}/feed", get(ap::lists::feed))
+		.route("/lists/{id}/feed/page", get(ap::lists::feed_page))
 		.nest("/actors/{id}", Router::new()
 			.route("/", get(ap::actor::view))
 			.route("/inbox", post(ap::actor::inbox::post))
@@ -133,6 +135,7 @@ pub struct Pagination {
 }
 
 impl Pagination {
+	/// returns (limit, offset), forcing defaults and boundaries
 	pub fn pagination(&self) -> (u64, u64) {
 		let limit = self.batch.unwrap_or(20).min(50);
 		let offset = self.offset.unwrap_or(0);
