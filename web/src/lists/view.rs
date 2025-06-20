@@ -11,7 +11,7 @@ pub fn ListView() -> impl IntoView {
 	let params = use_params_map();
 	let matched_route = use_context::<ReadSignal<crate::app::FeedRoute>>().expect("missing route context");
 	let auth = use_context::<Auth>().expect("missing auth context");
-	let refresh = use_context::<WriteSignal<()>>().expect("missing refresh context");
+	// TODO do we really need this loading signal?
 	let (loading, set_loading) = signal(false);
 	let id = Signal::derive(move || params.get().get("id").unwrap_or_default());
 	let target_ref: NodeRef<leptos::html::Input> = NodeRef::new();
@@ -45,8 +45,7 @@ pub fn ListView() -> impl IntoView {
 				tracing::info!("redrawing list");
 				view! {
 					<List list=o.clone() />
-					<hr />
-					<blockquote>
+					<blockquote class="mt-1">
 						<details class="cw">
 							<summary>
 								<code class="cw center color">add to list</code>
@@ -55,7 +54,7 @@ pub fn ListView() -> impl IntoView {
 									<tr>
 										<td class="w-66"><input class="w-100" type="text" node_ref=target_ref placeholder="id" /></td>
 										<td class="w-33">
-											<input class="w-100" type="submit" value="create" on:click=move |ev| {
+											<input class="w-100" type="submit" value="add" on:click=move |ev| {
 												ev.prevent_default();
 												let object_id = target_ref.get().map(|x| x.value()).filter(|x| !x.is_empty());
 												let target_id = o.id();

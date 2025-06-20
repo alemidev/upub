@@ -115,7 +115,7 @@ impl DashmapCache<Doc> {
 						Some(obj)
 					},
 					Err(e) => {
-						tracing::error!("failed loading object from backend: {e}");
+						tracing::error!("failed loading object '{kind:?}({key})' from backend: {e}");
 						None
 					},
 				}
