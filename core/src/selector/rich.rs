@@ -138,7 +138,7 @@ impl FromQueryResult for RichObjectOrActor {
 	fn from_query_result(res: &QueryResult, _pre: &str) -> Result<Self, DbErr> {
 		Ok(RichObjectOrActor {
 			object: RichObject::from_query_result(res, _pre)?,
-			actor: crate::model::actor::Model::from_query_result_optional(res, crate::model::activity::Entity.table_name())?,
+			actor: crate::model::actor::Model::from_query_result_optional(res, crate::model::actor::Entity.table_name())?,
 		})
 	}
 }
