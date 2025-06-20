@@ -4,6 +4,7 @@ pub mod likes;
 pub mod following;
 pub mod notifications;
 pub mod groups;
+pub mod lists;
 // pub mod audience;
 
 use axum::extract::{Path, Query, State};

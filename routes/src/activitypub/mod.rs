@@ -3,6 +3,7 @@ pub mod inbox;
 pub mod outbox;
 pub mod object;
 pub mod groups;
+pub mod lists;
 pub mod threads;
 pub mod activity;
 pub mod application;
@@ -42,6 +43,8 @@ pub fn ap_routes(ctx: upub::Context) -> Router {
 		.route("/nodeinfo/{version}", get(ap::well_known::nodeinfo))
 		.route("/groups", get(ap::groups::get))
 		.route("/groups/page", get(ap::groups::page))
+		.route("/lists/{id}", get(ap::lists::get))
+		.route("/lists/{id}/page", get(ap::lists::page))
 		.nest("/actors/{id}", Router::new()
 			.route("/", get(ap::actor::view))
 			.route("/inbox", post(ap::actor::inbox::post))
@@ -58,6 +61,8 @@ pub fn ap_routes(ctx: upub::Context) -> Router {
 			.route("/following/page", get(ap::actor::following::page::<true>))
 			.route("/groups", get(ap::actor::groups::get))
 			.route("/groups/page", get(ap::actor::groups::page))
+			.route("/lists", get(ap::actor::lists::get))
+			.route("/lists/page", get(ap::actor::lists::page))
 			// .route("/audience", get(ap::actor::audience::get))
 			// .route("/audience/page", get(ap::actor::audience::page))
 			.route("/likes", get(ap::actor::likes::get))
