@@ -2,7 +2,7 @@ use apb::LD;
 use axum::extract::{Path, Query, State};
 use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait, SelectColumns};
 
-use upub::{model, selector::{RichActivity, RichFillable, RichObject}, Context};
+use upub::{model, selector::{RichActivity, RichFillable}, Context};
 
 use crate::{activitypub::Pagination, builders::JsonLD, AuthIdentity, Identity};
 
