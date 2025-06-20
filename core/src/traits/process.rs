@@ -70,33 +70,61 @@ pub async fn process_create(ctx: &crate::Context, activity: impl apb::Activity, 
 	if object_node.attributed_to().id()? != activity.actor().id()? {
 		return Err(ProcessorError::Unauthorized);
 	}
-	if let Ok(reply) = object_node.in_reply_to().id() {
-		if let Err(e) = ctx.fetch_object(&reply, tx).await {
-			tracing::warn!("failed fetching replies for received object: {e}");
-		}
-	}
 
-	let notified = object_node.tag()
-		.flat()
-		.into_iter()
-		.filter_map(|x| Some(x.id().ok()?.to_string()))
-		.collect::<Vec<String>>();
+	match object_node.object_type()? {
+		apb::ObjectType::Note => {
+			if let Ok(reply) = object_node.in_reply_to().id() {
+				if let Err(e) = ctx.fetch_object(&reply, tx).await {
+					tracing::warn!("failed fetching replies for received object: {e}");
+				}
+			}
 
-	let object_model = ctx.insert_object(object_node, tx).await?;
-	let activity_model = ctx.insert_activity(activity, tx).await?;
-	ctx.address(Some(&activity_model), Some(&object_model), tx).await?;
+			let notified = object_node.tag()
+				.flat()
+				.into_iter()
+				.filter_map(|x| Some(x.id().ok()?.to_string()))
+				.collect::<Vec<String>>();
 
-	for uid in notified {
-		if !ctx.is_local(&uid) || uid == activity_model.actor { continue }
-		if let Some(actor_internal) = crate::model::actor::Entity::ap_to_internal(&uid, tx).await? {
-			crate::Query::notify(activity_model.internal, actor_internal)
+			let object_model = ctx.insert_object(object_node, tx).await?;
+			let activity_model = ctx.insert_activity(activity, tx).await?;
+			ctx.address(Some(&activity_model), Some(&object_model), tx).await?;
+
+			for uid in notified {
+				if !ctx.is_local(&uid) || uid == activity_model.actor { continue }
+				if let Some(actor_internal) = crate::model::actor::Entity::ap_to_internal(&uid, tx).await? {
+					crate::Query::notify(activity_model.internal, actor_internal)
+						.exec(tx)
+						.await?;
+				}
+			}
+
+			tracing::debug!("{} posted {}", object_model.attributed_to.as_deref().unwrap_or("<anonymous>"), object_model.id);
+			Ok(())
+		},
+
+		apb::ObjectType::Collection(apb::CollectionType::Collection) => {
+			let attributed_to = activity.actor().id()?;
+			let list_id = ctx.lid(&crate::Context::new_id());
+			model::list::Entity::insert(
+				model::list::ActiveModel {
+					internal: NotSet,
+					id: Set(list_id.clone()),
+					attributed_to: Set(attributed_to.clone()),
+					name: Set(object_node.name().ok()),
+					summary: Set(object_node.summary().ok()),
+					published: Set(chrono::Utc::now()),
+					updated: Set(chrono::Utc::now()),
+				}
+			)
 				.exec(tx)
 				.await?;
-		}
-	}
 
-	tracing::debug!("{} posted {}", object_model.attributed_to.as_deref().unwrap_or("<anonymous>"), object_model.id);
-	Ok(())
+			tracing::debug!("{attributed_to} created list {list_id}");
+			Ok(())
+		},
+
+		t => Err(ProcessorError::Unprocessable(format!("Create({t})")))
+	}
 }
 
 pub async fn process_like(ctx: &crate::Context, activity: impl apb::Activity, tx: &DatabaseTransaction) -> Result<(), ProcessorError> {
