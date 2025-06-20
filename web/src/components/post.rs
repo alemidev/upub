@@ -397,6 +397,7 @@ pub fn AdvancedPostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 	let summary_ref: NodeRef<leptos::html::Input> = NodeRef::new();
 	let content_ref: NodeRef<leptos::html::Textarea> = NodeRef::new();
 	let context_ref: NodeRef<leptos::html::Input> = NodeRef::new();
+	let target_ref: NodeRef<leptos::html::Input> = NodeRef::new();
 	let name_ref: NodeRef<leptos::html::Input> = NodeRef::new();
 	let reply_ref: NodeRef<leptos::html::Input> = NodeRef::new();
 	let to_ref: NodeRef<leptos::html::Input> = NodeRef::new();
@@ -436,6 +437,7 @@ pub fn AdvancedPostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 				</table>
 
 				<input class="w-100" type="text" node_ref=object_id_ref title="objectId" placeholder="objectId" />
+				<input class="w-100" type="text" node_ref=target_ref title="target" placeholder="target" />
 
 				<div class:hidden=move|| !embedded.get()>
 					<input class="w-100" type="text" node_ref=name_ref title="name" placeholder="name" />
@@ -475,6 +477,7 @@ pub fn AdvancedPostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 						let context = get_if_some(context_ref);
 						let reply = get_if_some(reply_ref);
 						let object_id = get_if_some(object_id_ref);
+						let target = get_if_some(target_ref);
 						let to = get_vec_if_some(to_ref);
 						let bto = get_vec_if_some(bto_ref);
 						let cc = get_vec_if_some(cc_ref);
@@ -489,6 +492,7 @@ pub fn AdvancedPostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 							.set_bto(apb::Node::links(bto.clone()))
 							.set_cc(apb::Node::links(cc.clone()))
 							.set_bcc(apb::Node::links(bcc.clone()))
+							.set_target(apb::Node::maybe_link(target))
 							.set_object(
 								if embedded.get() {
 									apb::Node::object(
