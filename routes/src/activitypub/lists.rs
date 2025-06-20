@@ -2,7 +2,7 @@ use apb::LD;
 use axum::extract::{Path, Query, State};
 use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait, SelectColumns};
 
-use upub::{model, selector::{RichActivity, RichFillable}, Context};
+use upub::{model, selector::{RichActivity, RichFillable, RichObjectOrActor}, Context};
 
 use crate::{activitypub::Pagination, builders::JsonLD, AuthIdentity, Identity};
 
@@ -33,27 +33,22 @@ pub async fn page(
 		.join(sea_orm::JoinType::LeftJoin, model::list_element::Relation::Actors.def())
 		.join(sea_orm::JoinType::LeftJoin, model::list_element::Relation::Objects.def())
 		.filter(model::list_element::Column::List.eq(list.internal))
-		.select_only()
-		.select_column(model::actor::Column::Id)
-		.select_column(model::object::Column::Id)
 		.limit(limit)
 		.offset(offset)
-		.into_tuple::<(Option<String>, Option<String>)>()
+		.into_model::<RichObjectOrActor>()
 		.all(ctx.db())
 		.await?
+		.load_batched_models(ctx.db())
+		.await?
 		.into_iter()
-		.filter_map(|(actor, object)| match (actor, object) {
-			(Some(_a), Some(_o)) => None, // this should never happen?
-			(Some(a), None) => Some(a),
-			(None, Some(o)) => Some(o),
-			(None, None) => None,
-		})
-		.collect::<Vec<String>>();
+		.map(|x| ctx.ap(x))
+		.collect();
+
 
 	crate::builders::collection_page(
 		&upub::url!(ctx, "{lid}/page"),
 		page,
-		apb::Node::links(list_items),
+		apb::Node::array(list_items),
 	)
 }
 
