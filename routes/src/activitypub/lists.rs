@@ -4,7 +4,7 @@ use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QuerySelect, SelectColumns,
 
 use upub::{model, Context};
 
-use crate::{activitypub::Pagination, builders::JsonLD, AuthIdentity};
+use crate::{activitypub::Pagination, builders::JsonLD, AuthIdentity, Identity};
 
 pub async fn get(
 	State(ctx): State<Context>,
@@ -13,21 +13,7 @@ pub async fn get(
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let lid = ctx.lid(&id);
 
-	let list = model::list::Entity::find_by_ap_id(&lid)
-		.one(ctx.db())
-		.await?
-		.ok_or(sea_orm::DbErr::RecordNotFound(lid))?;
-
-	if let (_, Some(config)) = model::actor::Entity::find_by_ap_id(&list.attributed_to)
-		.find_also_related(model::config::Entity)
-		.one(ctx.db())
-		.await?
-		.ok_or(sea_orm::DbErr::RecordNotFound(list.attributed_to.clone()))?
-	{
-		if !config.show_lists && !auth.is(&list.attributed_to) {
-			return Err(crate::ApiError::unauthorized());
-		}
-	}
+	let list = list_if_authorized(&ctx, &lid, &auth).await?;
 
 	Ok(JsonLD(ctx.ap(list).ld_context()))
 }
@@ -41,21 +27,7 @@ pub async fn page(
 	let lid = ctx.lid(&id);
 	let (limit, offset) = page.pagination();
 
-	let list = model::list::Entity::find_by_ap_id(&lid)
-		.one(ctx.db())
-		.await?
-		.ok_or(sea_orm::DbErr::RecordNotFound(lid))?;
-
-	if let (_, Some(config)) = model::actor::Entity::find_by_ap_id(&list.attributed_to)
-		.find_also_related(model::config::Entity)
-		.one(ctx.db())
-		.await?
-		.ok_or(sea_orm::DbErr::RecordNotFound(list.attributed_to.clone()))?
-	{
-		if !config.show_lists && !auth.is(&list.attributed_to) {
-			return Err(crate::ApiError::unauthorized());
-		}
-	}
+	let list = list_if_authorized(&ctx, &lid, &auth).await?;
 
 	let list_items = model::list_element::Entity::find()
 		.join(sea_orm::JoinType::InnerJoin, model::list_element::Relation::Actors.def())
@@ -85,3 +57,27 @@ pub async fn page(
 	)
 }
 	
+
+
+
+
+
+async fn list_if_authorized(ctx: &Context, lid: &str, auth: &Identity) -> crate::ApiResult<model::list::Model> {
+	let list = model::list::Entity::find_by_ap_id(lid)
+		.one(ctx.db())
+		.await?
+		.ok_or(sea_orm::DbErr::RecordNotFound(lid.to_string()))?;
+
+	if let (_, Some(config)) = model::actor::Entity::find_by_ap_id(&list.attributed_to)
+		.find_also_related(model::config::Entity)
+		.one(ctx.db())
+		.await?
+		.ok_or(sea_orm::DbErr::RecordNotFound(list.attributed_to.clone()))?
+	{
+		if !config.show_lists && !auth.is(&list.attributed_to) {
+			return Err(crate::ApiError::unauthorized());
+		}
+	}
+
+	Ok(list)
+}
