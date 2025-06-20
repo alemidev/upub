@@ -30,8 +30,8 @@ pub async fn page(
 	let list = list_if_authorized(&ctx, &lid, &auth).await?;
 
 	let list_items = model::list_element::Entity::find()
-		.join(sea_orm::JoinType::InnerJoin, model::list_element::Relation::Actors.def())
-		.join(sea_orm::JoinType::InnerJoin, model::list_element::Relation::Objects.def())
+		.join(sea_orm::JoinType::LeftJoin, model::list_element::Relation::Actors.def())
+		.join(sea_orm::JoinType::LeftJoin, model::list_element::Relation::Objects.def())
 		.filter(model::list_element::Column::List.eq(list.internal))
 		.select_only()
 		.select_column(model::actor::Column::Id)
