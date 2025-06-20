@@ -137,6 +137,11 @@ impl Context {
 		uriproxy::uri(self.base(), UriClass::Activity, id)
 	}
 
+	/// get full list id uri
+	pub fn lid(&self, id: &str) -> String {
+		uriproxy::uri(self.base(), UriClass::List, id)
+	}
+
 	/// get bare id, which is uuid for local stuff and +{uri|base64} for remote stuff
 	pub fn id(&self, full_id: &str) -> String {
 		if self.is_local(full_id) {

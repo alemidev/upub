@@ -6,6 +6,7 @@ pub enum UriClass {
 	Object,
 	Activity,
 	Hashtag,
+	List,
 }
 
 impl AsRef<str> for UriClass {
@@ -15,6 +16,7 @@ impl AsRef<str> for UriClass {
 			Self::Object => "objects",
 			Self::Activity => "activities",
 			Self::Hashtag => "tags",
+			Self::List => "lists",
 		}
 	}
 }
