@@ -68,6 +68,7 @@ pub fn App() -> impl IntoView {
 
 	// refresh notifications
 	let (notifications, set_notifications) = signal(0);
+	provide_context((notifications, set_notifications));
 	let fetch_notifications = move || leptos::task::spawn_local(async move {
 		if let Some(actor_id) = userid.get_untracked() {
 			let notif_url = format!("{actor_id}/notifications");
@@ -79,9 +80,16 @@ pub fn App() -> impl IntoView {
 			} 
 		}
 	});
-	fetch_notifications();
 	set_interval(fetch_notifications, std::time::Duration::from_secs(60));
-	provide_context((notifications, set_notifications));
+	Effect::watch(
+		move || auth.present(),
+		move |present, _present_before, _state| {
+			if *present {
+				fetch_notifications();
+			}
+		},
+		true,
+	);
 
 	view! {
 		<nav class="w-100 mt-1 mb-1 pb-s">
