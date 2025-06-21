@@ -12,6 +12,7 @@ pub fn ListView() -> impl IntoView {
 	let auth = use_context::<Auth>().expect("missing auth context");
 	// TODO do we really need this loading signal?
 	let (loading, _set_loading) = signal(false);
+	let (error, set_error) = signal(None);
 	let id = Signal::derive(move || params.get().get("id").unwrap_or_default());
 	let target_ref: NodeRef<leptos::html::Input> = NodeRef::new();
 	let list = LocalResource::new(
@@ -55,28 +56,37 @@ pub fn ListView() -> impl IntoView {
 										<td class="w-33">
 											<input class="w-100" type="submit" value="add" on:click=move |ev| {
 												ev.prevent_default();
-												let object_id = target_ref.get().map(|x| x.value()).filter(|x| !x.is_empty());
-												let target_id = o.id();
-												if let (Some(oid), Ok(tid)) = (object_id, target_id) {
-													let payload = apb::new()
-														.set_activity_type(Some(apb::ActivityType::Add))
-														.set_target(apb::Node::link(tid))
-														.set_object(apb::Node::link(oid));
-													leptos::task::spawn_local(async move {
-														match crate::Http::post(&auth.outbox(), &payload, auth).await {
-															Ok(()) => {
-																if let Some(target_ref_element) = target_ref.get() {
-																	target_ref_element.set_value("");
-																}
-															},
-															Err(e) => { tracing::error!("{e}"); },
-														}
-													});
-												} else {
-													tracing::error!("missing object_id or target_id");
-												}
+												let Some(object_id) = target_ref.get().map(|x| x.value()).filter(|x| !x.is_empty()) else {
+													set_error.set(Some("missing object/actor id".to_string()));
+													return;
+												};
+												let Ok(target_id) = o.id() else {
+													tracing::error!("missing target id, should get loaded with page");
+													return;
+												};
+												let payload = apb::new()
+													.set_activity_type(Some(apb::ActivityType::Add))
+													.set_target(apb::Node::link(target_id))
+													.set_object(apb::Node::link(object_id));
+												leptos::task::spawn_local(async move {
+													match crate::Http::post(&auth.outbox(), &payload, auth).await {
+														Ok(()) => {
+															if let Some(target_ref_element) = target_ref.get() {
+																target_ref_element.set_value("");
+															}
+															set_error.set(None);
+														},
+														Err(e) => {
+															tracing::error!("{e}");
+															set_error.set(Some(e.to_string()));
+														},
+													}
+												});
 											} />
 										</td>
+									</tr>
+									<tr>
+										<td colspan="2" class="center"><b>{error}</b></td>
 									</tr>
 								</table>
 						</details>
