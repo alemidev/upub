@@ -20,6 +20,7 @@ pub fn Breadcrumb(
 #[component]
 pub fn Navigator(notifications: ReadSignal<u64>) -> impl IntoView {
 	let auth = use_context::<Auth>().expect("missing auth context");
+	let list_controls = use_context::<ListControls>().expect("missing list control context");
 	let (query, set_query) = signal("".to_string());
 	view! {
 		<form action={move|| format!("/web/search?q={}", query.get())}>
@@ -38,18 +39,40 @@ pub fn Navigator(notifications: ReadSignal<u64>) -> impl IntoView {
 		</form>
 		<table class="align w-100">
 			<tr><td colspan="2"><a href="/web/home"><input class="w-100" type="submit" class:hidden=move || !auth.present() value="home feed" /></a></td></tr>
-			<tr><td colspan="2"><a href="/web/notifications"><input class="w-100" type="submit" class:hidden=move || !auth.present() value=move || format!("notifications [{}]", notifications.get()) /></a></td></tr>
 			<tr><td colspan="2"><a href="/web/threads"><input class="w-100" type="submit" value="threads" /></a></td></tr>
-			<tr><td colspan="2"><a href="/web/lists"><input class="w-100" type="submit" value="lists" class:hidden=move || !auth.present() /></a></td></tr>
 			<tr>
 				<td><a href="/web/global"><input class="w-100" type="submit" value="global" /></a></td>
 				<td><a href="/web/local"><input class="w-100" type="submit" value="local" /></a></td>
+			</tr>
+			<tr class:hidden=move || !auth.present() >
+				<td><a href="/web/lists"><input class="w-100" type="submit" value="lists" /></a></td>
+				<td>
+					<select
+						name="active list"
+						id="active-list"
+						class="w-100 center"
+						on:change:target=move |ev| {
+							let value = Some(ev.target().value()).filter(|x| !x.is_empty());
+							list_controls.set_active.set(value);
+						}
+						prop:value=move || list_controls.active.get().unwrap_or_default()
+					>
+						<option value="" selected>"--"</option>
+						<For
+							each=move || list_controls.available.get()
+							key=move |x| x.clone()
+							let(id)
+						>
+							<option value={id}>{list_controls.list_name(&id)}</option>
+						</For>
+					</select>
+				</td>
 			</tr>
 			<tr>
 				<td class="w-50"><a href="/web/about"><input class="w-100" type="submit" value="about" /></a></td>
 				<td class="w-50"><a href="/web/config"><input class="w-100" type="submit" value="config" /></a></td>
 			</tr>
-			// <tr><td colspan="2"><a href="/web/groups"><input class="w-100" type="submit" value="groups" /></a></td></tr> // still too crude, don't include in navigation
+			<tr><td colspan="2"><a href="/web/notifications"><input class="w-100" type="submit" class:hidden=move || !auth.present() value=move || format!("notifications [{}]", notifications.get()) /></a></td></tr>
 			<tr><td colspan="2"><a href="/web/explore"><input class="w-100" type="submit" class:hidden=move || !auth.present() value="explore" /></a></td></tr>
 		</table>
 	}

@@ -19,6 +19,7 @@ pub use crate::{
 		item::{Object, Summary, LikeButton, RepostButton, ReplyButton},
 	},
 	lists::{
+		ListControls,
 		item::List,
 		view::ListView,
 		feed::ListFeed,

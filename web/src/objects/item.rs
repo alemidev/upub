@@ -213,6 +213,7 @@ pub fn Object(object: crate::Doc, #[prop(default = true)] controls: bool) -> imp
 			{if controls {
 				Some(view! {
 					<span style="white-space:nowrap">
+						<AddToListButton oid=oid.clone() />
 						<ReplyButton n=comments target=oid.clone() />
 						<LikeButton n=likes liked=already_liked target=oid.clone() author=author_id.clone() private=!privacy.is_public() />
 						{if privacy.is_public() { Some(view! { <RepostButton n=shares target=oid author=author_id /> }) } else { None }}
@@ -237,6 +238,29 @@ pub fn Summary(summary: Option<String>, children: Children) -> impl IntoView {
 			</details>
 		}),
 	}
+}
+
+#[component]
+pub fn AddToListButton(oid: String) -> impl IntoView {
+	let auth = use_context::<Auth>().expect("missing auth context");
+	let list_controls = use_context::<ListControls>().expect("missing list controls context");
+	view! {
+		<span
+			class:hidden=move || list_controls.active.get().is_none()
+			class:emoji-btn=move || auth.present()
+			class:cursor=move || auth.present()
+			class="ml-2 emoji"
+			on:click=move |_ev| {
+				if !auth.present() { return; }
+				if let Some(lid) = list_controls.active.get() {
+					list_controls.add_to_list(lid, oid.clone(), auth);
+				}
+			}
+		>
+			" ➕"
+		</span>
+	}
+	
 }
 
 #[component]

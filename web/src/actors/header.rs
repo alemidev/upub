@@ -9,6 +9,7 @@ pub fn ActorHeader() -> impl IntoView {
 	let params = use_params::<IdParam>();
 	let auth = use_context::<Auth>().expect("missing auth context");
 	let refresh = use_context::<WriteSignal<()>>().expect("missing refresh context");
+	let list_controls = use_context::<ListControls>().expect("missing list control context");
 	let matched_route = use_context::<ReadSignal<crate::app::FeedRoute>>().expect("missing route context");
 	let (loading, set_loading) = signal(false);
 	let actor = LocalResource::new(
@@ -58,6 +59,7 @@ pub fn ActorHeader() -> impl IntoView {
 			let _uid = uid.clone();
 			let __uid = uid.clone();
 			let ___uid = uid.clone();
+			let ____uid = uid.clone();
 			view! {
 				<div class="ml-3 mr-3">
 					<div 
@@ -86,35 +88,39 @@ pub fn ActorHeader() -> impl IntoView {
 						<div class="mr-1 ml-1" class:hidden=move || !auth.present() || auth.user_id() == uid>
 							{if following_me {
 								Some(view! {
-									<a class="clean dim" href="#remove" on:click=move |_| remove_follower(___uid.clone(), auth)>
-										<span class="border-button ml-s" title="remove follower">
-											<code class="color mr-s">"!"</code>
-											<small class="mr-s">follows you</small>
-										</span>
-									</a>
+									<span class="border-button ml-s cursor" title="remove follower" on:click=move |_| remove_follower(___uid.clone(), auth)>
+										<code class="color mr-s">"!"</code>
+										<small class="mr-s">follows you</small>
+									</span>
 								})
 							} else {
 								None
 							}}
 							{if followed_by_me {
 								Either::Left(view! {
-									<a class="clean dim" href="#unfollow" on:click=move |_| unfollow(_uid.clone(), auth)>
-										<span class="border-button ml-s" title="undo follow">
-											<code class="color mr-s">x</code>
-											<small class="mr-s">following</small>
-										</span>
-									</a>
+									<span class="border-button ml-s cursor" title="undo follow" on:click=move |_| unfollow(_uid.clone(), auth)>
+										<code class="color mr-s">x</code>
+										<small class="mr-s">following</small>
+									</span>
 								})
 							} else {
 								Either::Right(view! {
-									<a class="clean dim" href="#follow" on:click=move |_| send_follow_request(_uid.clone(), auth)>
-										<span class="border-button ml-s" title="send follow request">
-											<code class="color mr-s">+</code>
-											<small class="mr-s">follow</small>
-										</span>
-									</a>
+									<span class="border-button ml-s cursor" title="send follow request" on:click=move |_| send_follow_request(_uid.clone(), auth)>
+										<code class="color mr-s">+</code>
+										<small class="mr-s">follow</small>
+									</span>
 								})
 							}}
+							{list_controls.active.get().map(|active| {
+								view! {
+									<span class="border-button ml-s cursor" title="add to list"
+										on:click=move |_| list_controls.add_to_list(active.clone(), ____uid.clone(), auth)
+									>
+										<code class="color mr-s">#</code>
+										<small class="mr-s">add</small>
+									</span>
+								}
+							})}
 						</div>
 					</div>
 					<p class="mb-2 mt-0 center bio" inner_html={mdhtml::safe_html(&actor.summary().unwrap_or_default())}></p>

@@ -53,6 +53,18 @@ pub fn App() -> impl IntoView {
 	let reply_controls = ReplyControls::default();
 	provide_context(reply_controls);
 
+	let list_controls = ListControls::default();
+	provide_context(list_controls);
+	Effect::watch(
+		move || auth.present(),
+		move |present, _present_before, _state| {
+			if *present {
+				list_controls.fetch(auth);
+			}
+		},
+		true,
+	);
+
 	let screen_width = document().body().map(|x| x.client_width()).unwrap_or_default();
 	tracing::info!("detected width of {screen_width}");
 
