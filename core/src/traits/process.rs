@@ -103,7 +103,9 @@ pub async fn process_create(ctx: &crate::Context, activity: impl apb::Activity, 
 		},
 
 		apb::ObjectType::Collection(apb::CollectionType::Collection) => {
-			let attributed_to = activity.actor().id()?;
+			let activity_model = ctx.insert_activity(activity, tx).await?;
+
+			let attributed_to = activity_model.actor;
 			let list_id = ctx.lid(&crate::Context::new_id());
 			model::list::Entity::insert(
 				model::list::ActiveModel {
