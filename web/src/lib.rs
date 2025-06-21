@@ -150,6 +150,9 @@ impl DashmapCache<Doc> {
 				if let Ok(actor) = doc.actor().id() {
 					sub_tasks.push(self.preload(actor, UriClass::Actor, auth));
 				}
+				if let Ok(actor) = doc.attributed_to().id() {
+					sub_tasks.push(self.preload(actor, UriClass::Actor, auth));
+				}
 				let clazz = match doc.activity_type().unwrap_or(apb::ActivityType::Activity) {
 					// TODO activities like Announce or Update may be multiple things, we can't know before
 					apb::ActivityType::Accept(_) => UriClass::Activity,
@@ -163,6 +166,9 @@ impl DashmapCache<Doc> {
 				}
 			},
 			UriClass::Object => {
+				if let Ok(actor) = doc.actor().id() {
+					sub_tasks.push(self.preload(actor, UriClass::Actor, auth));
+				}
 				if let Ok(actor) = doc.attributed_to().id() {
 					sub_tasks.push(self.preload(actor, UriClass::Actor, auth));
 				}
