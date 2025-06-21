@@ -5,6 +5,15 @@ use crate::prelude::*;
 #[component]
 pub fn ListsPage() -> impl IntoView {
 	let auth = use_context::<Auth>().expect("missing auth context");
+	let reload = use_context::<ReadSignal<()>>().expect("missing reload signal");
+	let list_controls = use_context::<ListControls>().expect("missing list controls context");
+
+	Effect::watch(
+		move || reload.get(),
+		move |_, _, _state| list_controls.fetch(auth),
+		false,
+	);
+
 	let uid = auth.username();
 
 	let (error, set_error) = signal(None);
