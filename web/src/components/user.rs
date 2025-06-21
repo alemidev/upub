@@ -1,9 +1,7 @@
-use std::hash::{Hash, Hasher};
-
 use leptos::prelude::*;
-use crate::{prelude::*, FALLBACK_IMAGE_URL};
+use crate::{prelude::*, IconGradient};
 
-use apb::{Activity, ActivityMut, Actor, Base, Object, ObjectMut, Shortcuts};
+use apb::{Activity, ActivityMut, Actor, Base, Object, ObjectMut};
 
 lazy_static::lazy_static! {
 	static ref REGEX: regex::Regex = regex::Regex::new(r":\w+:").expect("failed compiling custom emoji regex");
@@ -14,10 +12,10 @@ pub fn ActorStrip(object: crate::Doc) -> impl IntoView {
 	let actor_id = object.id().unwrap_or_default().to_string();
 	let username = object.preferred_username().unwrap_or_default().to_string();
 	let domain = object.id().unwrap_or_default().replace("https://", "").split('/').next().unwrap_or_default().to_string();
-	let avatar = object.icon_url().unwrap_or(FALLBACK_IMAGE_URL.into());
+	let (avatar_url, avatar_style) = object.icon_url_and_style();
 	view! {
-		<a href={Uri::web(U::Actor, &actor_id)} class="clean hover">
-			<img src={avatar} class="avatar inline mr-s" onerror={format!("this.onerror=null; this.src='{FALLBACK_IMAGE_URL}';")} /><b>{username}</b><small>@{domain}</small>
+		<a href={Uri::web(U::Actor, &actor_id)} class="clean hover force-break">
+			<img src={avatar_url} style={avatar_style} class="avatar avatar-inline inline mr-s" /><b>{username}</b><small>@{domain}</small>
 		</a>
 	}
 }
@@ -34,13 +32,7 @@ pub fn ActorBanner(object: crate::Doc) -> impl IntoView {
 			let username = object.preferred_username().unwrap_or_default().to_string();
 			let domain = object.id().unwrap_or_default().replace("https://", "").replace("http://", "").split('/').next().unwrap_or_default().to_string();
 			let display_name = object.name().unwrap_or(username.clone());
-			let (avatar_url, avatar_style) = match object.icon_url() {
-				Ok(url) => (url, "".to_string()),
-				Err(_e) => {
-					let (from, to) = string_to_hex(&uid);
-					("".to_string(), format!("background: linear-gradient({from}, {to});"))
-				},
-			};
+			let (avatar_url, avatar_style) = object.icon_url_and_style();
 
 			view! {
 				<div>
@@ -58,7 +50,7 @@ pub fn ActorBanner(object: crate::Doc) -> impl IntoView {
 					<tr>
 						<td class="top" >
 							<a class="hover" href={uri} >
-								<small>{username}@{domain}</small>
+								<small class="force-break">{username}@{domain}</small>
 							</a>
 						</td>
 					</tr>
@@ -80,7 +72,7 @@ fn DisplayName(mut name: String) -> impl IntoView {
 		//      deal with it rn
 		name = name.replace(m.as_str(), &format!("<u class=\"moreinfo\" title=\"{}\">[::]</u>", m.as_str()));
 	}
-	view! { <span inner_html=name></span> }
+	view! { <span class="force-break" inner_html=name></span> }
 }
 
 #[component]
@@ -137,22 +129,3 @@ async fn send_follow_response(kind: apb::ActivityType, target: String, to: Strin
 		tracing::error!("failed posting follow response: {e}");
 	}
 }
-
-fn string_to_hex(inpt: &str) -> (String, String) {
-	let mut hasher = std::hash::DefaultHasher::new();
-	inpt.hash(&mut hasher);
-	let raw = hasher.finish();
-
-	let from = raw as u32;
-	let to = (raw >> 32) as u32;
-
-	let from_str = format!(
-		"#{:06x}", from >> 8
-	);
-
-	let to_str = format!(
-		"#{:06x}", to >> 8
-	);
-	(from_str, to_str)
-}
-

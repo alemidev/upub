@@ -215,6 +215,18 @@ img.avatar-actor {
 	min-width: 2em;
 	max-width: 2em;
 }
+img.avatar-inline {
+	min-height: .75em;
+	max-height: .75em;
+	min-width: .75em;
+	max-width: .75em;
+}
+img.avatar-large {
+	min-height: 7em;
+	max-height: 7em;
+	min-width: 7em;
+	max-width: 7em;
+}
 img.flex-pic {
 	float: left;
 	width: 10em;
@@ -239,6 +251,9 @@ img.flex-pic-expand {
 }
 .cursor {
 	cursor: pointer;
+}
+.force-break {
+	word-wrap: anywhere;
 }
 video.attachment {
 	height: 10em;

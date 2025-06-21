@@ -342,3 +342,41 @@ impl Uri {
 			.to_string()
 	}
 }
+
+pub trait IconGradient {
+	fn icon_url_and_style(&self) -> (String, String);
+}
+
+impl IconGradient for Doc {
+	fn icon_url_and_style(&self) -> (String, String) {
+		use apb::Shortcuts;
+		match self.icon_url() {
+			Ok(url) => (url, "".to_string()),
+			Err(_e) => {
+				let (from, to) = crate::string_to_hex(&self.id().unwrap_or_default());
+				("".to_string(), format!("background: radial-gradient({from}, {to}); padding: .1em;"))
+			},
+		}
+	}
+}
+
+fn string_to_hex(inpt: &str) -> (String, String) {
+	use std::hash::{Hash, Hasher};
+
+	let mut hasher = std::hash::DefaultHasher::new();
+	inpt.hash(&mut hasher);
+	let raw = hasher.finish();
+
+	let from = raw as u32;
+	let to = (raw >> 32) as u32;
+
+	let from_str = format!(
+		"#{:06x}", from >> 8
+	);
+
+	let to_str = format!(
+		"#{:06x}", to >> 8
+	);
+	(from_str, to_str)
+}
+

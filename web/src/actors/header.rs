@@ -1,6 +1,6 @@
 use leptos::{either::Either, prelude::*, reactive::signal::signal};
 use leptos_router::{components::Outlet, hooks::use_params};
-use crate::{app::FeedRoute, prelude::*, FALLBACK_IMAGE_URL};
+use crate::{app::FeedRoute, prelude::*, IconGradient, FALLBACK_IMAGE_URL};
 
 use apb::{ActivityMut, Actor, Base, Object, ObjectMut, Shortcuts};
 
@@ -29,8 +29,6 @@ pub fn ActorHeader() -> impl IntoView {
 		None => view! { <Loader /> }.into_any(),
 		Some(None) => view! { <code class="center cw color">"could not resolve user"</code> }.into_any(),
 		Some(Some(actor)) => {
-			let avatar_url = actor.icon_url().unwrap_or(FALLBACK_IMAGE_URL.into());
-			let background_url = actor.image_url().unwrap_or(FALLBACK_IMAGE_URL.into());
 			let username = actor.preferred_username().unwrap_or_default().to_string();
 			let name = actor.name().unwrap_or(username.clone());
 			let created = actor.published().ok();
@@ -41,6 +39,8 @@ pub fn ActorHeader() -> impl IntoView {
 			let actor_type_tag = if actor_type == apb::ActorType::Person { None } else {
 				Some(view! { <sup class="ml-s"><small>"["{actor_type.as_ref().to_lowercase()}"]"</small></sup> } )
 			};
+			let background_url = actor.image_url().unwrap_or(FALLBACK_IMAGE_URL.into());
+			let (avatar_url, avatar_style) = actor.icon_url_and_style();
 			let fields = actor.attachment()
 				.flat()
 				.into_iter()
@@ -68,7 +68,7 @@ pub fn ActorHeader() -> impl IntoView {
 					</div>
 					<div class="overlap">
 						<div class="pl-1 pr-1" style="display: flex">
-							<img class="avatar avatar-border mr-s" src={avatar_url} style="height: 7em; width: 7em" onerror={format!("this.onerror=null; this.src='{FALLBACK_IMAGE_URL}';")} />
+							<img class="avatar avatar-large avatar-border mr-s" src={avatar_url} style={avatar_style} />
 
 							<div class="ma-s">
 								<p class="line shadow">
