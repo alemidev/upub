@@ -1,9 +1,9 @@
-use axum::{extract::{Path, Query, State}, http::StatusCode, Json};
+use axum::{extract::{Path, Query, State}, Json};
 use sea_orm::{ActiveValue::{NotSet, Set}, ColumnTrait, Condition, EntityTrait, QueryFilter, QueryOrder, QuerySelect};
 
 use upub::{model, selector::{RichActivity, RichFillable}, traits::Fetcher, Context};
 
-use crate::{activitypub::{CreationResult, Pagination, TryFetch}, builders::JsonLD, AuthIdentity, Identity};
+use crate::{activitypub::{CreationResult, Pagination, TryFetch}, builders::JsonLD, AuthIdentity};
 
 pub async fn get(
 	State(ctx): State<Context>,
@@ -61,35 +61,28 @@ pub async fn post(
 	AuthIdentity(auth): AuthIdentity,
 	Json(activity): Json<serde_json::Value>,
 ) -> crate::ApiResult<CreationResult> {
-	match auth {
-		Identity::Anonymous => Err(StatusCode::UNAUTHORIZED.into()),
-		Identity::Remote { .. } => Err(StatusCode::NOT_IMPLEMENTED.into()),
-		Identity::Local { id: uid, .. } => {
-			if ctx.uid(&id) != uid {
-				return Err(crate::ApiError::forbidden());
-			}
+	let uid = ctx.uid(&id);
+	auth.check(&uid, false)?;
 
-			tracing::debug!("enqueuing new local activity: {}", serde_json::to_string(&activity).unwrap_or_default());
-			let aid = ctx.aid(&Context::new_id());
+	tracing::debug!("enqueuing new local activity: {}", serde_json::to_string(&activity).unwrap_or_default());
+	let aid = ctx.aid(&Context::new_id());
 
-			let job = model::job::ActiveModel {
-				internal: NotSet,
-				activity: Set(aid.clone()),
-				job_type: Set(model::job::JobType::Outbound),
-				actor: Set(uid.clone()),
-				target: Set(None),
-				published: Set(chrono::Utc::now()),
-				not_before: Set(chrono::Utc::now()),
-				attempt: Set(0),
-				payload: Set(Some(activity)),
-				error: Set(None),
-			};
+	let job = model::job::ActiveModel {
+		internal: NotSet,
+		activity: Set(aid.clone()),
+		job_type: Set(model::job::JobType::Outbound),
+		actor: Set(uid.clone()),
+		target: Set(None),
+		published: Set(chrono::Utc::now()),
+		not_before: Set(chrono::Utc::now()),
+		attempt: Set(0),
+		payload: Set(Some(activity)),
+		error: Set(None),
+	};
 
-			model::job::Entity::insert(job).exec(ctx.db()).await?;
+	model::job::Entity::insert(job).exec(ctx.db()).await?;
 
-			ctx.wake_workers(); // process immediately
+	ctx.wake_workers(); // process immediately
 
-			Ok(CreationResult(aid))
-		}
-	}
+	Ok(CreationResult(aid))
 }

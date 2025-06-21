@@ -142,7 +142,7 @@ async fn list_if_authorized(ctx: &Context, lid: &str, auth: &Identity) -> crate:
 		.ok_or(sea_orm::DbErr::RecordNotFound(list.attributed_to.clone()))?
 	{
 		if !config.show_lists && !auth.is(&list.attributed_to) {
-			return Err(crate::ApiError::unauthorized());
+			return Err(crate::ApiError::forbidden());
 		}
 	}
 

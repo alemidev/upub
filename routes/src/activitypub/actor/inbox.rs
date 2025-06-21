@@ -3,22 +3,16 @@ use sea_orm::{ColumnTrait, Condition, QueryFilter, QueryOrder, QuerySelect};
 
 use upub::{selector::{RichActivity, RichFillable}, Context};
 
-use crate::{activitypub::Pagination, builders::JsonLD, AuthIdentity, Identity};
+use crate::{activitypub::Pagination, builders::JsonLD, AuthIdentity};
 
 pub async fn get(
 	State(ctx): State<Context>,
 	Path(id): Path<String>,
 	AuthIdentity(auth): AuthIdentity,
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
-	match auth {
-		Identity::Anonymous => Err(crate::ApiError::forbidden()),
-		Identity::Remote { .. } => Err(crate::ApiError::forbidden()),
-		Identity::Local { id: user, .. } => if ctx.uid(&id) == user {
-			crate::builders::collection(upub::url!(ctx, "/actors/{id}/inbox"), None)
-		} else {
-			Err(crate::ApiError::forbidden())
-		},
-	}
+	auth.check(&ctx.uid(&id), true)?;
+
+	crate::builders::collection(upub::url!(ctx, "/actors/{id}/inbox"), None)
 }
 
 pub async fn page(
@@ -27,18 +21,13 @@ pub async fn page(
 	AuthIdentity(auth): AuthIdentity,
 	Query(page): Query<Pagination>,
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
-	let Identity::Local { id: uid, internal } = &auth else {
-		// local inbox is only for local users
-		return Err(crate::ApiError::forbidden());
-	};
-	if uid != &ctx.uid(&id) {
-		return Err(crate::ApiError::forbidden());
-	}
+	let uid = ctx.uid(&id);
+	let internal = auth.check(&uid, true)?;
 
 	let filter = Condition::any()
-		.add(upub::model::addressing::Column::Actor.eq(*internal))
-		.add(upub::model::activity::Column::Actor.eq(uid))
-		.add(upub::model::object::Column::AttributedTo.eq(uid));
+		.add(upub::model::addressing::Column::Actor.eq(internal))
+		.add(upub::model::activity::Column::Actor.eq(&uid))
+		.add(upub::model::object::Column::AttributedTo.eq(&uid));
 
 	let (limit, offset) = page.pagination();
 	let items = upub::Query::feed(upub::query_feed_opts!(auth.my_id(), page.replies()))

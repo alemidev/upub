@@ -11,19 +11,11 @@ pub async fn get(
 	AuthIdentity(auth): AuthIdentity,
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let uid = ctx.uid(&id);
-
-	if !auth.is(&uid) {
-		return Err(crate::ApiError::unauthorized());
-	}
-
-	let user = model::actor::Entity::find_by_ap_id(&uid)
-		.one(ctx.db())
-		.await?
-		.ok_or_else(ApiError::not_found)?;
+	let internal = auth.check(&uid, true)?;
 
 	let filter = Condition::all()
 		.add(model::relation::Column::Accept.is_not_null())
-		.add(upub::model::relation::Column::Follower.eq(user.internal))
+		.add(upub::model::relation::Column::Follower.eq(internal))
 		.add(model::actor::Column::ActorType.eq(apb::ActorType::Group));
 
 	let join = model::relation::Relation::ActorsFollowing.def();
@@ -47,19 +39,11 @@ pub async fn page(
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let (limit, _offset) = page.pagination();
 	let uid = ctx.uid(&id);
-
-	if !auth.is(&uid) {
-		return Err(crate::ApiError::unauthorized());
-	}
-
-	let user = model::actor::Entity::find_by_ap_id(&uid)
-		.one(ctx.db())
-		.await?
-		.ok_or_else(ApiError::not_found)?;
+	let internal = auth.check(&uid, true)?;
 
 	let filter = Condition::all()
 		.add(model::relation::Column::Accept.is_not_null())
-		.add(upub::model::relation::Column::Follower.eq(user.internal))
+		.add(upub::model::relation::Column::Follower.eq(internal))
 		.add(model::actor::Column::ActorType.eq(apb::ActorType::Group));
 
 	let join = model::relation::Relation::ActorsFollowing.def();

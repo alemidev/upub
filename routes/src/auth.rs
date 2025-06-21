@@ -59,8 +59,29 @@ impl Identity {
 	pub fn is(&self, uid: &str) -> bool {
 		match self {
 			Identity::Anonymous => false,
-			Identity::Remote { .. } => false, // TODO per-actor server auth should check this
+			Identity::Remote { user, ..} => user.as_str() == uid, // TODO per-actor server auth should check this
 			Identity::Local { id, .. } => id.as_str() == uid
+		}
+	}
+
+	pub fn check(&self, uid: &str, allow_remote: bool) -> crate::ApiResult<i64> {
+		if !allow_remote && matches!(self, Identity::Remote { .. }) {
+			return Err(crate::ApiError::forbidden());
+		}
+
+		if self.is(uid) {
+			return match self {
+				Identity::Local { internal, .. } | Identity::Remote { internal, .. } => Ok(*internal),
+				Identity::Anonymous => {
+					tracing::warn!("auth.is() returned true but it's anonymous!");
+					Err(crate::ApiError::unauthorized())
+				},
+			}
+		}
+	
+		match self {
+			Identity::Anonymous => Err(crate::ApiError::unauthorized()),
+			Identity::Remote { .. } | Identity::Local { .. } => Err(crate::ApiError::forbidden()),
 		}
 	}
 

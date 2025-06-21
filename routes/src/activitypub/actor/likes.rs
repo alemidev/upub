@@ -25,8 +25,8 @@ pub async fn page(
 		.await?
 		.ok_or_else(ApiError::not_found)?;
 
-	if !auth.is(&uid) && !config.is_none_or(|x| x.show_liked_objects) {
-		return Err(ApiError::forbidden());
+	if !config.is_none_or(|x| x.show_liked_objects) {
+		auth.check(&uid, true)?;
 	}
 
 	let (limit, offset) = page.pagination();

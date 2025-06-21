@@ -11,10 +11,7 @@ pub async fn get(
 	AuthIdentity(auth): AuthIdentity,
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let uid = ctx.uid(&id);
-
-	if !auth.is(&uid) {
-		return Err(crate::ApiError::unauthorized());
-	}
+	auth.check(&uid, true)?;
 
 	let lists_count = model::list::Entity::find()
 		.filter(model::list::Column::AttributedTo.eq(&uid))
@@ -32,10 +29,7 @@ pub async fn page(
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	let (limit, offset) = page.pagination();
 	let uid = ctx.uid(&id);
-
-	if !auth.is(&uid) {
-		return Err(crate::ApiError::unauthorized());
-	}
+	auth.check(&uid, true)?;
 
 	let lists = model::list::Entity::find()
 		.filter(model::list::Column::AttributedTo.eq(&uid))
