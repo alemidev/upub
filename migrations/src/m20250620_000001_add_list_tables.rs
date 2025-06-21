@@ -51,7 +51,7 @@ impl MigrationTrait for Migration {
 							.to(Actors::Table, Actors::Id)
 							.on_update(ForeignKeyAction::Cascade)
 					)
-					.col(ColumnDef::new(Lists::Name).string().null())
+					.col(ColumnDef::new(Lists::Name).string().not_null())
 					.col(ColumnDef::new(Lists::Summary).string().null())
 					.col(ColumnDef::new(Lists::Published).timestamp_with_time_zone().not_null().default(Expr::current_timestamp()))
 					.col(ColumnDef::new(Lists::Updated).timestamp_with_time_zone().not_null().default(Expr::current_timestamp()))
