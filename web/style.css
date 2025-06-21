@@ -242,6 +242,7 @@ img.flex-pic-expand {
 }
 video.attachment {
 	height: 10em;
+	max-width: 100%;
 }
 img.attachment {
 	cursor: pointer;
