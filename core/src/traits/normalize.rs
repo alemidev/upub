@@ -325,7 +325,7 @@ impl AP {
 			published: object.published().unwrap_or_else(|_| chrono::Utc::now()),
 			updated: object.updated().unwrap_or_else(|_| chrono::Utc::now()),
 			url: object.url().id().ok(),
-			replies: object.replies_count().unwrap_or_default(),
+			replies: 0, // dont count replies we don't have, since when we pull them they just get added
 			likes: object.likes_count().unwrap_or_default(),
 			announces: object.shares_count().unwrap_or_default(),
 			audience: object.audience().id().ok(),
