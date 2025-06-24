@@ -1,6 +1,6 @@
 use apb::{LD, ActivityMut};
 use sea_orm::{QueryFilter, ColumnTrait};
-use upub::{ext::IntoActivityPub, model, selector::{RichFillable, RichObject}, traits::Fetcher, Context};
+use upub::{model, selector::{RichFillable, RichObject}, traits::Fetcher, Context};
 
 #[allow(clippy::manual_map)] // TODO can Update code be improved?
 pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<()> {
@@ -34,7 +34,7 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 				if let Some(a) = model::actor::Entity::find_by_ap_id(oid).one(ctx.db()).await? {
 					Some(ctx.ap(a))
 				} else if let Some(o) = upub::Query::objects(upub::query_feed_opts!(None, true))
-					.filter(upub::model::object::Column::Id.eq(oid))
+					.filter(model::object::Column::Id.eq(oid))
 					.into_model::<RichObject>()
 					.one(ctx.db())
 					.await?
@@ -49,7 +49,7 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 			},
 			apb::ActivityType::Create => {
 				match upub::Query::objects(upub::query_feed_opts!(None, true))
-					.filter(upub::model::object::Column::Id.eq(oid))
+					.filter(model::object::Column::Id.eq(oid))
 					.into_model::<RichObject>()
 					.one(ctx.db())
 					.await?

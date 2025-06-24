@@ -3,7 +3,7 @@ use sea_orm::{ColumnTrait, Condition, EntityTrait, PaginatorTrait, QueryFilter, 
 
 use upub::{model, Context};
 
-use crate::{activitypub::Pagination, builders::JsonLD, ApiError, AuthIdentity};
+use crate::{activitypub::Pagination, builders::JsonLD, AuthIdentity};
 
 pub async fn get(
 	State(ctx): State<Context>,
