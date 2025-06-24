@@ -15,11 +15,18 @@ pub async fn thread(ctx: upub::Context) -> Result<(), RequestError> {
 		match object.in_reply_to {
 			None => object.context = Some(object.id.clone()),
 			Some(ref in_reply_to) => {
-				let reply = ctx.fetch_object(in_reply_to, ctx.db()).await?;
-				if let Some(context) = reply.context {
-					object.context = Some(context);
-				} else {
-					continue;
+				match ctx.fetch_object(in_reply_to, ctx.db()).await {
+					Ok(reply) => {
+						if let Some(context) = reply.context {
+							object.context = Some(context);
+						} else {
+							continue;
+						}
+					},
+					Err(e) => {
+						tracing::error!("could not fetch in_reply_to: {e} -- {e:?}");
+						continue;
+					},
 				}
 			},
 		}
