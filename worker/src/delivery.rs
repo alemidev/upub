@@ -1,5 +1,6 @@
 use apb::{LD, ActivityMut};
-use upub::{Context, model, traits::Fetcher};
+use sea_orm::{QueryFilter, ColumnTrait};
+use upub::{ext::IntoActivityPub, model, selector::{RichFillable, RichObject}, traits::Fetcher, Context};
 
 #[allow(clippy::manual_map)] // TODO can Update code be improved?
 pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<()> {
@@ -24,23 +25,42 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 
 	let object = if let Some(ref oid) = activity.object {
 		match activity.activity_type {
-			apb::ActivityType::Create =>
-				model::object::Entity::find_by_ap_id(oid)
-					.one(ctx.db())
-					.await?
-					.map(|x| ctx.ap(x)),
 			apb::ActivityType::Accept(_) | apb::ActivityType::Reject(_) | apb::ActivityType::Undo =>
 				model::activity::Entity::find_by_ap_id(oid)
 					.one(ctx.db())
 					.await?
 					.map(|x| ctx.ap(x)),
 			apb::ActivityType::Update => {
-				if let Some(o) = model::object::Entity::find_by_ap_id(oid).one(ctx.db()).await? {
-					Some(ctx.ap(o))
-				} else if let Some(a) = model::actor::Entity::find_by_ap_id(oid).one(ctx.db()).await? {
+				if let Some(a) = model::actor::Entity::find_by_ap_id(oid).one(ctx.db()).await? {
 					Some(ctx.ap(a))
+				} else if let Some(o) = upub::Query::objects(upub::query_feed_opts!(None, true))
+					.filter(upub::model::object::Column::Id.eq(oid))
+					.into_model::<RichObject>()
+					.one(ctx.db())
+					.await?
+				{
+					let filled = o
+						.load_batched_models(ctx.db())
+						.await?;
+					Some(ctx.ap(filled))
 				} else {
 					None
+				}
+			},
+			apb::ActivityType::Create => {
+				match upub::Query::objects(upub::query_feed_opts!(None, true))
+					.filter(upub::model::object::Column::Id.eq(oid))
+					.into_model::<RichObject>()
+					.one(ctx.db())
+					.await?
+				{
+					Some(obj) => {
+						let filled = obj
+							.load_batched_models(ctx.db())
+							.await?;
+						Some(ctx.ap(filled))
+					},
+					None => None,
 				}
 			},
 			_ => None,
