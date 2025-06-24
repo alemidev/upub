@@ -33,7 +33,7 @@ pub async fn nodeinfo_discovery(State(ctx): State<Context>) -> Json<NodeInfoDisc
 
 // TODO either vendor or fork nodeinfo-rs because it still represents "repository" and "homepage"
 // even if None! technically leads to invalid nodeinfo 2.0
-pub async fn nodeinfo(State(ctx): State<Context>, Path(version): Path<String>) -> crate::ApiResult<Json<nodeinfo::NodeInfoOwned>> {
+pub async fn nodeinfo(State(ctx): State<Context>, Path(version): Path<String>) -> crate::ApiResult<Json<nodeinfo_upub::NodeInfoOwned>> {
 	// keep these as statics so they get calculated once and then stay cached
 	// TODO this will cache them just once per runtime, maybe re-calculate them after some time?
 	static TOTAL_USERS: AtomicI64 = AtomicI64::new(i64::MIN);
@@ -110,7 +110,7 @@ pub async fn nodeinfo(State(ctx): State<Context>, Path(version): Path<String>) -
 
 	let (software, version) = match version.as_str() {
 		"2.0.json" | "2.0" => (
-			nodeinfo::types::Software {
+			nodeinfo_upub::types::Software {
 				name: "μpub".to_string(),
 				version: Some(upub::VERSION.into()),
 				repository: None,
@@ -119,7 +119,7 @@ pub async fn nodeinfo(State(ctx): State<Context>, Path(version): Path<String>) -
 			"2.0".to_string()
 		),
 		"2.1.json" | "2.1" => (
-			nodeinfo::types::Software {
+			nodeinfo_upub::types::Software {
 				name: "μpub".to_string(),
 				version: Some(upub::VERSION.into()),
 				repository: Some("https://github.com/alemidev/upub".into()),
@@ -130,19 +130,19 @@ pub async fn nodeinfo(State(ctx): State<Context>, Path(version): Path<String>) -
 		_ => return Err(crate::ApiError::Status(StatusCode::NOT_IMPLEMENTED)),
 	};
 	Ok(Json(
-		nodeinfo::NodeInfoOwned {
+		nodeinfo_upub::NodeInfoOwned {
 			version,
 			software,
 			open_registrations: ctx.cfg().security.allow_registration,
 			protocols: vec!["activitypub".into()],
-			services: nodeinfo::types::Services {
+			services: nodeinfo_upub::types::Services {
 				inbound: vec![],
 				outbound: vec![],
 			},
-			usage: nodeinfo::types::Usage {
+			usage: nodeinfo_upub::types::Usage {
 				local_posts: Some(total_posts),
 				local_comments: Some(total_comments),
-				users: Some(nodeinfo::types::Users {
+				users: Some(nodeinfo_upub::types::Users {
 					active_month: Some(total_active_users_month),
 					active_halfyear: Some(total_active_users_halfyear),
 					total: Some(total_users),

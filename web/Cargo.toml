@@ -29,9 +29,9 @@ leptos_router = { version = "0.8", features = ["tracing"] }
 leptos-use = "0.16"
 codee = { version = "0.3", features = ["json_serde"] } # WHYYY LEPTOS-USE AKSJFOASHGOAEG
 reqwest = { version = "0.12", features = ["json"] }
-apb = { path = "../apb", features = ["unstructured", "activitypub-fe", "activitypub-counters", "litepub", "did-core"] }
-uriproxy = { path = "../utils/uriproxy/" }
-mdhtml = { path = "../utils/mdhtml/" }
+apb = { path = "../apb", version = "0.3.2", features = ["unstructured", "activitypub-fe", "activitypub-counters", "litepub", "did-core"] }
+uriproxy = { path = "../utils/uriproxy/", version = "0.1.2" }
+mdhtml = { path = "../utils/mdhtml/", version = "0.1.2" }
 futures = "0.3"
 chrono = { version = "0.4", features = ["serde"] }
 jrd = "0.1"

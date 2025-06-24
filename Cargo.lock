@@ -2560,9 +2560,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "60993920e071b0c9b66f14e2b32740a4e27ffc82854dcd72035887f336a09a28"
 
 [[package]]
-name = "nodeinfo"
-version = "0.0.2"
-source = "git+https://codeberg.org/thefederationinfo/nodeinfo-rs?rev=e865094804#e865094804dc09400888840561aec507b65ecfa2"
+name = "nodeinfo-upub"
+version = "0.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "301e6929ec6238bf4fa11efe3c34d8d0c509769709b93aa060332ac05e598e88"
 dependencies = [
  "serde",
  "serde_json",
@@ -5184,7 +5185,7 @@ dependencies = [
  "httpsign",
  "jrd",
  "mdhtml",
- "nodeinfo",
+ "nodeinfo-upub",
  "openssl",
  "reqwest",
  "sea-orm",
@@ -5258,7 +5259,7 @@ dependencies = [
  "leptos_meta",
  "leptos_router",
  "mastodon-async-entities",
- "nodeinfo",
+ "nodeinfo-upub",
  "rand 0.9.0",
  "reqwest",
  "sea-orm",

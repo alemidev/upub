@@ -1,4 +1,4 @@
-use nodeinfo::NodeInfoOwned;
+use nodeinfo_upub::NodeInfoOwned;
 use sea_orm::{entity::prelude::*, QuerySelect, SelectColumns};
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
@@ -87,7 +87,7 @@ impl Entity {
 				let mut nodeinfo : NodeInfoOwned = res.json().await?;
 
 				if gotosocial_is_fucking_with_us {
-					nodeinfo.usage = nodeinfo::types::Usage {
+					nodeinfo.usage = nodeinfo_upub::types::Usage {
 						users: None,
 						local_posts: None,
 						local_comments: None,
