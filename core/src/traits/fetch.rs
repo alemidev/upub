@@ -577,7 +577,7 @@ impl Dereferenceable<serde_json::Value> for apb::Node<serde_json::Value> {
 				if crate::ext::is_blacklisted(&href, &ctx.cfg().reject.fetch) {
 					return Err(RequestError::AbortedForPolicy);
 				}
-				tracing::info!("dereferencing {href}");
+				tracing::debug!("dereferencing {href}");
 				let res = crate::Context::request(Method::GET, &href, None, ctx.base(), ctx.pkey(), ctx.domain())
 					.await?
 					.json::<serde_json::Value>()

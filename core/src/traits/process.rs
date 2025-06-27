@@ -101,7 +101,7 @@ pub async fn process_create(ctx: &crate::Context, activity: impl apb::Activity, 
 				}
 			}
 
-			tracing::debug!("{} posted {}", object_model.attributed_to.as_deref().unwrap_or("<anonymous>"), object_model.id);
+			tracing::info!("{} posted {}", object_model.attributed_to.as_deref().unwrap_or("<anonymous>"), object_model.id);
 			Ok(())
 		},
 
@@ -124,7 +124,7 @@ pub async fn process_create(ctx: &crate::Context, activity: impl apb::Activity, 
 				.exec(tx)
 				.await?;
 
-			tracing::debug!("{attributed_to} created list {list_id}");
+			tracing::info!("{attributed_to} created list {list_id}");
 			Ok(())
 		},
 
@@ -194,7 +194,7 @@ pub async fn process_like(ctx: &crate::Context, activity: impl apb::Activity, tx
 		}
 	}
 
-	tracing::debug!("{} liked {}", actor.id, obj.id);
+	tracing::info!("{} liked {}", actor.id, obj.id);
 	Ok(())
 }
 
@@ -235,7 +235,7 @@ pub async fn process_dislike(ctx: &crate::Context, activity: impl apb::Activity,
 		}
 	}
 
-	tracing::debug!("{} disliked {}", actor.id, obj.id);
+	tracing::info!("{} disliked {}", actor.id, obj.id);
 	Ok(())
 }
 
@@ -293,7 +293,7 @@ pub async fn process_follow(ctx: &crate::Context, activity: impl apb::Activity, 
 			.exec(tx).await?;
 	}
 
-	tracing::debug!("{} wants to follow {}", activity_model.actor, target_actor.id);
+	tracing::info!("{} wants to follow {}", activity_model.actor, target_actor.id);
 	Ok(())
 }
 
@@ -352,7 +352,7 @@ pub async fn process_accept(ctx: &crate::Context, activity: impl apb::Activity, 
 		.exec(tx)
 		.await?;
 
-	tracing::debug!("{} accepted follow request by {}", activity_model.actor, follow_activity.actor);
+	tracing::info!("{} accepted follow request by {}", activity_model.actor, follow_activity.actor);
 
 	Ok(())
 }
@@ -388,7 +388,7 @@ pub async fn process_reject(ctx: &crate::Context, activity: impl apb::Activity, 
 		.exec(tx)
 		.await?;
 
-	tracing::debug!("{} rejected follow request by {}", activity_model.actor, follow_activity.actor);
+	tracing::info!("{} rejected follow request by {}", activity_model.actor, follow_activity.actor);
 
 	Ok(())
 }
@@ -405,7 +405,7 @@ pub async fn process_delete(ctx: &crate::Context, activity: impl apb::Activity, 
 		ctx.address(Some(&activity_model), None, tx).await?;
 	}
 	// TODO we should delete notifications from CREATEs related to objects we deleted
-	tracing::debug!("deleted '{oid}'");
+	tracing::info!("deleted '{oid}'");
 	Ok(())
 }
 
@@ -478,7 +478,7 @@ pub async fn process_update(ctx: &crate::Context, activity: impl apb::Activity, 
 		ctx.address(Some(&activity_model), None, tx).await?;
 	}
 
-	tracing::debug!("{} updated {}", actor_id, oid);
+	tracing::info!("{} updated {}", actor_id, oid);
 	Ok(())
 }
 
@@ -738,7 +738,7 @@ pub async fn process_announce(ctx: &crate::Context, activity: impl apb::Activity
 		}
 	}
 
-	tracing::debug!("{} shared {}", actor.id, announced_id);
+	tracing::info!("{} shared {}", actor.id, announced_id);
 	Ok(())
 }
 
@@ -798,7 +798,7 @@ pub async fn process_add(_ctx: &crate::Context, activity: impl apb::Activity, tx
 			.exec(tx)
 			.await?;
 
-		tracing::debug!("adding actor {object_id} to list {list_id}");
+		tracing::info!("adding actor {object_id} to list {list_id}");
 
 		return Ok(());
 	}
@@ -818,7 +818,7 @@ pub async fn process_add(_ctx: &crate::Context, activity: impl apb::Activity, tx
 			.exec(tx)
 			.await?;
 
-		tracing::debug!("adding object {object_id} to list {list_id}");
+		tracing::info!("adding object {object_id} to list {list_id}");
 
 		return Ok(());
 	}
@@ -852,7 +852,7 @@ pub async fn process_remove(_ctx: &crate::Context, activity: impl apb::Activity,
 			.exec(tx)
 			.await?;
 
-		tracing::debug!("removing actor {object_id} from list {list_id}");
+		tracing::info!("removing actor {object_id} from list {list_id}");
 
 		return Ok(());
 	}
@@ -868,7 +868,7 @@ pub async fn process_remove(_ctx: &crate::Context, activity: impl apb::Activity,
 			.exec(tx)
 			.await?;
 
-		tracing::debug!("removing object {object_id} from list {list_id}");
+		tracing::info!("removing object {object_id} from list {list_id}");
 
 		return Ok(());
 	}
