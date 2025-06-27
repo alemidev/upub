@@ -485,7 +485,7 @@ pub async fn process_undo(ctx: &crate::Context, activity: impl apb::Activity, tx
 	let uid = activity.actor().id()?.to_string();
 	let internal_uid = crate::model::actor::Entity::ap_to_internal(&uid, tx)
 		.await?
-		.ok_or(ProcessorError::Incomplete((apb::ActivityType::Undo, uid.clone()))?;
+		.ok_or(ProcessorError::Incomplete(apb::ActivityType::Undo, uid.clone()))?;
 
 	let undone_activity = crate::model::activity::Entity::find_by_ap_id(&undone_activity_id)
 		.one(tx)
