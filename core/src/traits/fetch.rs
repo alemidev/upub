@@ -586,7 +586,13 @@ impl Dereferenceable<serde_json::Value> for apb::Node<serde_json::Value> {
 			},
 			apb::Node::Object(x) => Ok(*x),
 			apb::Node::Empty => Err(RequestError::Tombstone),
-			apb::Node::Array(_) => Err(RequestError::Malformed(apb::FieldErr("id"))), // TODO weird!!
+			apb::Node::Array(arr) => {
+				let mut out = Vec::new();
+				for el in arr {
+					out.push(el.into_inner()?);
+				}
+				Ok(serde_json::Value::Array(out))
+			},
 		}
 	}
 }
