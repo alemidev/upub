@@ -487,10 +487,23 @@ pub async fn process_undo(ctx: &crate::Context, activity: impl apb::Activity, tx
 		.await?
 		.ok_or(ProcessorError::Incomplete(apb::ActivityType::Undo, uid.clone()))?;
 
-	let undone_activity = crate::model::activity::Entity::find_by_ap_id(&undone_activity_id)
+	let undone_activity = match crate::model::activity::Entity::find_by_ap_id(&undone_activity_id)
 		.one(tx)
 		.await?
-		.ok_or(ProcessorError::Incomplete(apb::ActivityType::Undo, undone_activity_id.clone()))?;
+	{
+		Some(model) => model,
+		None => {
+			// Like activities which hold no addressing aren't stored: those are lemmy votes, which, if
+			//  stored as activities too, would take up a ton of useless storage. If we don't have the
+			//  activity which should be undone, try seeing if the Undo holds embedded the activity to
+			//  undo, and act on that regardless of us having it saved before
+			if let Ok(node) = activity.object().into_inner() {
+				crate::AP::activity(node.as_activity()?)?
+			} else {
+				return Err(ProcessorError::Incomplete(apb::ActivityType::Undo, undone_activity_id));
+			}
+		},
+	};
 
 	if uid != undone_activity.actor {
 		return Err(ProcessorError::Unauthorized);
@@ -522,10 +535,12 @@ pub async fn process_undo(ctx: &crate::Context, activity: impl apb::Activity, tx
 				.col_expr(crate::model::object::Column::Likes, Expr::col(crate::model::object::Column::Likes).sub(1))
 				.exec(tx)
 				.await?;
-			crate::model::notification::Entity::delete_many()
-				.filter(crate::model::notification::Column::Activity.eq(undone_activity.internal))
-				.exec(tx)
-				.await?;
+			if undone_activity.internal != 0 {
+				crate::model::notification::Entity::delete_many()
+					.filter(crate::model::notification::Column::Activity.eq(undone_activity.internal))
+					.exec(tx)
+					.await?;
+			}
 		},
 		apb::ActivityType::Announce => {
 			let un_announced_object = undone_activity.object.ok_or(apb::FieldErr("object"))?;
