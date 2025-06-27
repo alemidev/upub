@@ -72,7 +72,7 @@ pub async fn process_create(ctx: &crate::Context, activity: impl apb::Activity, 
 	}
 
 	match object_node.object_type()? {
-		apb::ObjectType::Note => {
+		apb::ObjectType::Note | apb::ObjectType::Document(apb::DocumentType::Page) => {
 			if let Ok(reply) = object_node.in_reply_to().id() {
 				if let Err(e) = ctx.fetch_object(&reply, tx).await {
 					tracing::warn!("failed fetching replies for received object: {e}");
