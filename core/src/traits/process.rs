@@ -22,10 +22,10 @@ pub enum ProcessorError {
 	#[error("activity {0} not processable by this application")]
 	Unprocessable(String),
 
-	#[error("failed normalizing and inserting entity: {0:?}")]
+	#[error("failed normalizing and inserting entity: {0}")]
 	NormalizerError(#[from] crate::traits::normalize::NormalizerError),
 
-	#[error("failed fetching resource: {0:?}")]
+	#[error("failed fetching resource: {0}")]
 	PullError(#[from] crate::traits::fetch::RequestError),
 }
 

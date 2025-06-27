@@ -17,10 +17,10 @@ pub enum JobError {
 	#[error("malformed job: missing payload")]
 	MissingPayload,
 
-	#[error("error processing activity: {0:?}")]
+	#[error("processing error: {0}")]
 	ProcessorError(#[from] upub::traits::process::ProcessorError),
 
-	#[error("error delivering activity: {0}")]
+	#[error("delivery error: {0}")]
 	DeliveryError(#[from] upub::traits::fetch::RequestError),
 
 	#[error("creator is not authorized to carry out this job")]
@@ -142,6 +142,8 @@ impl JobDispatcher for Context {
 						tracing::error!("dropping job with malformed activity (missing field {f})"),
 					Err(JobError::ProcessorError(ProcessorError::AlreadyProcessed)) =>
 						tracing::info!("dropping job already processed: {}", job.activity),
+					Err(JobError::ProcessorError(ProcessorError::NotNecessary)) =>
+						tracing::info!("dropping job irrelevant to us: {}", job.activity),
 					Err(JobError::ProcessorError(ProcessorError::PullError(RequestError::Fetch(StatusCode::FORBIDDEN, e)))) => 
 						tracing::warn!("dropping job because requested resource is not accessible: {e}"),
 					Err(JobError::ProcessorError(ProcessorError::PullError(RequestError::Fetch(StatusCode::NOT_FOUND, e)))) => 
