@@ -661,13 +661,25 @@ pub async fn process_announce(ctx: &crate::Context, activity: impl apb::Activity
 		},
 		// something new, fetch it!
 		None => {
-			match ctx.pull(&announced_id).await? {
+			match ctx.pull(&announced_id).await {
 				// if we receive a remote activity, process it directly
-				Pull::Activity(x) => return ctx.process(x, tx).await,
+				Ok(Pull::Activity(x)) => return ctx.process(x, tx).await,
 				// actors are not processable at all
-				Pull::Actor(_) => return Err(ProcessorError::Unprocessable(activity.id()?.to_string())),
+				Ok(Pull::Actor(_)) => return Err(ProcessorError::Unprocessable(activity.id()?.to_string())),
 				// objects are processed down below, make a mock Internal::Object(internal)
-				Pull::Object(x) => ctx.resolve_object(x, tx).await?,
+				Ok(Pull::Object(x)) => ctx.resolve_object(x, tx).await?,
+				// special case for lemmy: answers BAD_REQUEST but should be a 404
+				Err(crate::traits::fetch::RequestError::Fetch(reqwest::StatusCode::BAD_REQUEST, body)) => {
+					if body == "{\"error\":\"couldnt_find_activity\"}" {
+						return Err(ProcessorError::NotNecessary);
+					} else {
+						return Err(ProcessorError::PullError(
+							crate::traits::fetch::RequestError::Fetch(reqwest::StatusCode::BAD_REQUEST, body)
+						));
+					}
+				},
+				// default error case: just throw it back to worker and try again
+				Err(e) => return Err(ProcessorError::PullError(e)),
 			}
 		}
 	};
