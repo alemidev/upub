@@ -1,4 +1,4 @@
-use apb::{target::Addressed, Actor, Base, Object};
+use apb::{target::Addressed, Activity, Actor, Base, Object};
 use sea_orm::{sea_query::Expr, ActiveModelTrait, ActiveValue::{NotSet, Set}, ColumnTrait, Condition, DatabaseTransaction, EntityTrait, IntoActiveModel, QueryFilter, QuerySelect, SelectColumns};
 use crate::{ext::{AnyQuery, LoggableError}, model, traits::{fetch::Pull, Addresser, Cloaker, Fetcher, Normalizer}};
 
@@ -6,6 +6,9 @@ use crate::{ext::{AnyQuery, LoggableError}, model, traits::{fetch::Pull, Address
 pub enum ProcessorError {
 	#[error("activity already processed")]
 	AlreadyProcessed,
+
+	#[error("unnecessary activity (undoing something we don't have in the first place)")]
+	NotNecessary,
 
 	#[error("processed activity misses required field: '{0}'")]
 	Malformed(#[from] apb::FieldErr),
@@ -497,10 +500,17 @@ pub async fn process_undo(ctx: &crate::Context, activity: impl apb::Activity, tx
 			//  stored as activities too, would take up a ton of useless storage. If we don't have the
 			//  activity which should be undone, try seeing if the Undo holds embedded the activity to
 			//  undo, and act on that regardless of us having it saved before
-			if let Ok(node) = activity.object().into_inner() {
-				crate::AP::activity(node.as_activity()?)?
+			// TODO can we avoid having 3 explicit returns?
+			let Ok(node) = activity.object().into_inner() else {
+				return Err(ProcessorError::NotNecessary);
+			};
+			let Ok(activity_node) = node.as_activity() else {
+				return Err(ProcessorError::Unprocessable(format!("cannot process Undo of an embedded object: {}", node.id().unwrap_or_default())));
+			};
+			if matches!(activity_node.activity_type()?, apb::ActivityType::Like) {
+				crate::AP::activity(activity_node)?
 			} else {
-				return Err(ProcessorError::Incomplete(apb::ActivityType::Undo, undone_activity_id));
+				return Err(ProcessorError::NotNecessary);
 			}
 		},
 	};
