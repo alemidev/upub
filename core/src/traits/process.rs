@@ -22,8 +22,8 @@ pub enum ProcessorError {
 	#[error("could not resolve all objects involved in this {0}: {1}")]
 	Incomplete(apb::ActivityType, String),
 
-	#[error("activity {0} not processable by this application")]
-	Unprocessable(String),
+	#[error("activity {0}:{1} not processable by this application")]
+	Unprocessable(apb::ActivityType, String),
 
 	#[error("failed normalizing and inserting entity: {0}")]
 	NormalizerError(#[from] crate::traits::normalize::NormalizerError),
@@ -56,7 +56,7 @@ impl Processor for crate::Context {
 			apb::ActivityType::Move => Ok(process_move(self, activity, tx).await?),
 			apb::ActivityType::Add => Ok(process_add(self, activity, tx).await?),
 			apb::ActivityType::Remove => Ok(process_remove(self, activity, tx).await?),
-			_ => Err(ProcessorError::Unprocessable(activity.id()?.to_string())),
+			_ => Err(ProcessorError::Unprocessable(activity.activity_type()?, activity.id()?.to_string())),
 		}
 	}
 }
@@ -65,7 +65,7 @@ pub async fn process_create(ctx: &crate::Context, activity: impl apb::Activity, 
 	let Ok(object_node) = activity.object().into_inner() else {
 		// TODO we could process non-embedded activities or arrays but im lazy rn
 		tracing::error!("refusing to process activity without embedded object");
-		return Err(ProcessorError::Unprocessable(activity.id()?.to_string()));
+		return Err(ProcessorError::Unprocessable(activity.activity_type()?, activity.id()?.to_string()));
 	};
 	if model::object::Entity::ap_to_internal(&object_node.id()?, tx).await?.is_some() {
 		return Err(ProcessorError::AlreadyProcessed);
@@ -128,7 +128,7 @@ pub async fn process_create(ctx: &crate::Context, activity: impl apb::Activity, 
 			Ok(())
 		},
 
-		t => Err(ProcessorError::Unprocessable(format!("Create({t})")))
+		t => Err(ProcessorError::Unprocessable(activity.activity_type()?, t.to_string()))
 	}
 }
 
@@ -413,7 +413,7 @@ pub async fn process_update(ctx: &crate::Context, activity: impl apb::Activity, 
 	// TODO when attachments get updated we do nothing!!!!!!!!!!
 	let Ok(object_node) = activity.object().into_inner() else {
 		tracing::error!("refusing to process activity without embedded object");
-		return Err(ProcessorError::Unprocessable(activity.id()?.to_string()));
+		return Err(ProcessorError::Unprocessable(activity.activity_type()?, activity.id()?.to_string()));
 	};
 
 	let actor_id = activity.actor().id()?.to_string();
@@ -468,7 +468,7 @@ pub async fn process_update(ctx: &crate::Context, activity: impl apb::Activity, 
 			// TODO allow changing owner maybe?
 			previous_model.update(tx).await?;
 		},
-		_ => return Err(ProcessorError::Unprocessable(activity.id()?.to_string())),
+		_ => return Err(ProcessorError::Unprocessable(activity.activity_type()?, activity.id()?.to_string())),
 	}
 
 	// updates can be silently discarded except if local. we dont really care about knowing when
@@ -505,7 +505,7 @@ pub async fn process_undo(ctx: &crate::Context, activity: impl apb::Activity, tx
 				return Err(ProcessorError::NotNecessary);
 			};
 			let Ok(activity_node) = node.as_activity() else {
-				return Err(ProcessorError::Unprocessable(format!("cannot process Undo of an embedded object: {}", node.id().unwrap_or_default())));
+				return Err(ProcessorError::Unprocessable(activity.activity_type()?, format!("cannot process Undo of an embedded object: {}", node.id().unwrap_or_default())));
 			};
 			if matches!(activity_node.activity_type()?, apb::ActivityType::Like) {
 				crate::AP::activity(activity_node)?
@@ -625,7 +625,7 @@ pub async fn process_undo(ctx: &crate::Context, activity: impl apb::Activity, tx
 					.await?;
 			}
 		},
-		_ => return Err(ProcessorError::Unprocessable(activity.id()?.to_string())),
+		_ => return Err(ProcessorError::Unprocessable(activity.activity_type()?, activity.id()?.to_string())),
 	}
 
 	// TODO we should store undos to make local delete deliveries work and relations make sense
@@ -651,7 +651,7 @@ pub async fn process_announce(ctx: &crate::Context, activity: impl apb::Activity
 		// if we already have this activity, skip it
 		Some(crate::context::Internal::Activity(_)) => return Ok(()), // already processed
 		// actors and objects which we already have
-		Some(crate::context::Internal::Actor(_)) => return Err(ProcessorError::Unprocessable(activity.id()?.to_string())),
+		Some(crate::context::Internal::Actor(_)) => return Err(ProcessorError::Unprocessable(activity.activity_type()?, activity.id()?.to_string())),
 		// objects that we already have
 		Some(crate::context::Internal::Object(internal)) => {
 			crate::model::object::Entity::find_by_id(internal)
@@ -665,7 +665,7 @@ pub async fn process_announce(ctx: &crate::Context, activity: impl apb::Activity
 				// if we receive a remote activity, process it directly
 				Ok(Pull::Activity(x)) => return ctx.process(x, tx).await,
 				// actors are not processable at all
-				Ok(Pull::Actor(_)) => return Err(ProcessorError::Unprocessable(activity.id()?.to_string())),
+				Ok(Pull::Actor(_)) => return Err(ProcessorError::Unprocessable(activity.activity_type()?, activity.id()?.to_string())),
 				// objects are processed down below, make a mock Internal::Object(internal)
 				Ok(Pull::Object(x)) => ctx.resolve_object(x, tx).await?,
 				// special case for lemmy: answers BAD_REQUEST but should be a 404

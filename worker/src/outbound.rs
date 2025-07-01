@@ -121,7 +121,7 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 						activity = activity.set_object(apb::Node::link(activity_id));
 					},
 					t => return Err(crate::JobError::ProcessorError(
-						ProcessorError::Unprocessable(format!("can't normalize Undo({t})"))
+						ProcessorError::Unprocessable(activity.activity_type()?, format!("can't normalize Undo({t})"))
 					)),
 				}
 			},
@@ -210,7 +210,7 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 				
 				updated = ctx.ap(prev);
 			},
-			t => return Err(crate::JobError::ProcessorError(ProcessorError::Unprocessable(format!("{t}")))),
+			t => return Err(crate::JobError::ProcessorError(ProcessorError::Unprocessable(activity.activity_type()?, format!("{t}")))),
 		}
 		activity = activity.set_object(apb::Node::object(updated));
 	}
