@@ -1,4 +1,5 @@
 use leptos::{either::Either, prelude::*};
+use leptos_router::{hooks::{use_navigate, use_query_map}, NavigateOptions};
 use crate::prelude::*;
 
 #[component]
@@ -6,6 +7,21 @@ pub fn ThreadsPage() -> impl IntoView {
 	let (days, set_days) = signal(Some(30));
 	let (skip, set_skip) = signal(Some(0));
 	let auth = use_context::<Auth>().expect("missing auth context");
+	use_query_map().with(|q| {
+		if let Some(d) = q.get("days") {
+			if let Ok(days_number) = d.parse() {
+				set_days.set(Some(days_number));
+			}
+		}
+
+		if let Some(s) = q.get("skip") {
+			if let Ok(skip_number) = s.parse() {
+				set_skip.set(Some(skip_number));
+			}
+		}
+	});
+	let navigate = use_navigate();
+	let _navigate = navigate.clone();
 	view! {
 		{move || if auth.present() {
 			Either::Left(view! {
@@ -36,7 +52,9 @@ pub fn ThreadsPage() -> impl IntoView {
 							prop:value=move || days.get()
 							on:input=move |ev| {
 								ev.prevent_default();
-								set_days.set(event_target_value(&ev).parse().ok());
+								let days = event_target_value(&ev).parse().ok();
+								set_days.set(days);
+								navigate(&threads_query_params(days, skip.get()), threads_nav_options());
 						} />
 						" days"
 					</td>
@@ -46,7 +64,9 @@ pub fn ThreadsPage() -> impl IntoView {
 							prop:value=move || skip.get().unwrap_or(0)
 							on:input=move |ev| {
 								ev.prevent_default();
-								set_skip.set(event_target_value(&ev).parse().ok());
+								let skip = event_target_value(&ev).parse().ok();
+								set_skip.set(skip);
+								_navigate(&threads_query_params(days.get(), skip), threads_nav_options());
 						} />
 						" most recent days"
 					</td>
@@ -67,4 +87,26 @@ pub fn ThreadsPage() -> impl IntoView {
 			}),
 		}}
 	}
+}
+
+fn threads_query_params(days: Option<i32>, skip: Option<i32>) -> String {
+	let mut query_string = "/web/threads".to_string();
+	if let Some(days_n) = days {
+		query_string.push('?');
+		query_string.push_str("days=");
+		query_string.push_str(&days_n.to_string());
+	}
+
+	if let Some(skip_n) = skip {
+		query_string.push(if query_string.is_empty() { '?' } else { '&' });
+		query_string.push_str("skip=");
+		query_string.push_str(&skip_n.to_string());
+	}
+
+	query_string
+}
+
+#[inline]
+fn threads_nav_options() -> NavigateOptions {
+	NavigateOptions { resolve: false, replace: true, scroll: false, state: leptos_router::location::State::new(None) }
 }
