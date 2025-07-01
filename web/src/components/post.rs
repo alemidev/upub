@@ -359,24 +359,27 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 							attachments_vec
 								.into_iter()
 								.map(|x| (get_if_some(x.url_ref), get_if_some(x.media_type_ref), get_if_some(x.summary_ref)))
-								.filter_map(|(url, ty, sum)| Some((url?, ty?, sum)))
+								.filter_map(|(url, ty, sum)| Some((url?, ty, sum)))
 								.map(|(url, ty, summary)| {
-									let document_type = if let Some((t, _mime)) = ty.split_once('/') {
-										match t {
-											"audio" => apb::DocumentType::Audio,
-											"image" => apb::DocumentType::Image,
-											"video" => apb::DocumentType::Video,
-											_ => apb::DocumentType::Document,
-										}
-									} else {
-										apb::DocumentType::Page
-									};
+									let mut document_type = None;
+									if let Some(ref mime_type) = ty {
+										document_type = if let Some((t, _mime)) = mime_type.split_once('/') {
+											Some(match t {
+												"audio" => apb::DocumentType::Audio,
+												"image" => apb::DocumentType::Image,
+												"video" => apb::DocumentType::Video,
+												_ => apb::DocumentType::Document,
+											})
+										} else {
+											Some(apb::DocumentType::Page)
+										};
+									}
 
 									apb::new()
 										.set_url(apb::Node::link(url))
-										.set_media_type(Some(ty))
+										.set_media_type(ty)
 										.set_name(summary)
-										.set_document_type(Some(document_type))
+										.set_document_type(document_type)
 								})
 								.collect()
 						)
