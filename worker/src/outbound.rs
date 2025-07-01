@@ -1,4 +1,4 @@
-use apb::{target::Addressed, Activity, ActivityMut, ActorMut, Base, BaseMut, Object, ObjectMut, Shortcuts};
+use apb::{target::Addressed, Activity, ActivityMut, ActorMut, Base, BaseMut, DocumentMut, Object, ObjectMut, Shortcuts};
 use sea_orm::{prelude::Expr, ColumnTrait, DbErr, EntityTrait, QueryFilter, QueryOrder, QuerySelect, SelectColumns, TransactionTrait};
 use upub::{model::{self, actor::Field}, traits::{process::ProcessorError, Addresser, Processor}, Context};
 
@@ -241,12 +241,34 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 			content = Some(tmp);
 		}
 
+		let mut normalized_attachments = Vec::new();
+
+		for attachment_node in object.attachment().flat() {
+			match attachment_node.into_inner() {
+				Err(e) => tracing::warn!("discarding outbound attachment: {e}"),
+				Ok(mut attachment) => {
+					if attachment.media_type().is_err() {
+						let url = attachment.url().id().unwrap_or_default();
+						if let Some(ext) = url.split('.').next_back() {
+							if let Some((ty, mime)) = ext_to_mime_and_type(ext) {
+								attachment = attachment
+									.set_document_type(Some(ty))
+									.set_media_type(Some(mime.to_string()));
+							}
+						}
+					}
+					normalized_attachments.push(attachment);
+				},
+			}
+		}
+
 		activity = activity
 			.set_object(apb::Node::object(
 					object
 						.set_id(Some(oid))
 						.set_content(content)
 						.set_attributed_to(apb::Node::link(job.actor.clone()))
+						.set_attachment(apb::Node::array(normalized_attachments))
 						.set_published(Some(now))
 						.set_updated(Some(now))
 						.set_url(apb::Node::maybe_link(ctx.cfg().frontend_url(&format!("/objects/{raw_oid}")))),
@@ -289,4 +311,34 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 	ctx.wake_workers(); // dispatch immediately
 
 	Ok(())
+}
+
+fn ext_to_mime_and_type(ext: &str) -> Option<(apb::DocumentType, &'static str)> {
+	match ext {
+		"jpg" | "jpeg" => Some((apb::DocumentType::Image, "image/jpeg")),
+		"png" => Some((apb::DocumentType::Image, "image/png")),
+		"webp" => Some((apb::DocumentType::Image, "image/webp")),
+		"gif" => Some((apb::DocumentType::Image, "image/gif")),
+		"svg" => Some((apb::DocumentType::Image, "image/svg+xml")),
+		"ico" => Some((apb::DocumentType::Image, "image/vnd.microsoft.icon")),
+		"bmp" => Some((apb::DocumentType::Image, "image/bmp")),
+		"aac" => Some((apb::DocumentType::Audio, "audio/aac")),
+		"mid" | "midi" => Some((apb::DocumentType::Audio, "audio/midi")),
+		"mp3" => Some((apb::DocumentType::Audio, "audio/mpeg")),
+		"oga" | "opus" => Some((apb::DocumentType::Audio, "audio/ogg")),
+		"wav" => Some((apb::DocumentType::Audio, "audio/wav")),
+		"weba" => Some((apb::DocumentType::Audio, "audio/webm")),
+		"avi" => Some((apb::DocumentType::Video, "video/x-msvideo")),
+		"mp4" => Some((apb::DocumentType::Video, "video/mp4")),
+		"mpeg" => Some((apb::DocumentType::Video, "video/mpeg")),
+		"ogv" => Some((apb::DocumentType::Video, "video/ogg")),
+		"webm" => Some((apb::DocumentType::Video, "video/webm")),
+		"css" => Some((apb::DocumentType::Document, "text/css")),
+		"csv" => Some((apb::DocumentType::Document, "text/csv")),
+		"htm" | "html" => Some((apb::DocumentType::Page, "text/html")),
+		"js" => Some((apb::DocumentType::Document, "text/javascript")),
+		"md" => Some((apb::DocumentType::Document, "text/markdown")),
+		"txt" => Some((apb::DocumentType::Document, "text/plain")),
+		_ => None,
+	}
 }
