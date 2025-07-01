@@ -7,11 +7,16 @@ use crate::prelude::*;
 pub struct ReplyControls {
 	pub context: RwSignal<Option<String>>,
 	pub reply_to: RwSignal<Option<String>>,
+	pub quote_url: RwSignal<Option<String>>,
 }
 
 impl ReplyControls {
-	pub fn is_set(&self) -> bool {
+	pub fn is_reply_set(&self) -> bool {
 		self.context.get_untracked().is_some() && self.reply_to.get_untracked().is_some()
+	}
+
+	pub fn is_quote_set(&self) -> bool {
+		self.quote_url.get_untracked().is_some()
 	}
 
 	pub fn reply(&self, oid: &str) {
@@ -21,9 +26,17 @@ impl ReplyControls {
 		}
 	}
 
-	pub fn clear(&self) {
+	pub fn quote(&self, oid: &str) {
+		self.quote_url.set(Some(oid.to_string()));
+	}
+
+	pub fn clear_reply(&self) {
 		self.context.set(None);
 		self.reply_to.set(None);
+	}
+
+	pub fn clear_quote(&self) {
+		self.quote_url.set(None);
 	}
 }
 
@@ -166,7 +179,6 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 	let auth = use_context::<Auth>().expect("missing auth context");
 	let privacy = use_context::<PrivacyControl>().expect("missing privacy context");
 	let reply = use_context::<ReplyControls>().expect("missing reply controls");
-	let (reply_is_quote, set_reply_is_quote) = signal(false);
 	let (posting, set_posting) = signal(false);
 	let (error, set_error) = signal(None);
 	let (content, set_content) = signal("".to_string());
@@ -208,17 +220,29 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 						<span class="nowrap">
 							<span 
 								class="cursor emoji emoji-btn mr-s ml-s"
-								on:click=move|_| reply.clear()
-								title={format!("> {r} | ctx: {}", reply.context.get().unwrap_or_default())}
+								on:click=move|_| reply.clear_reply()
+								title={format!("replying to {r} (ctx: {})", reply.context.get().unwrap_or_default())}
 							>
-								"✒️"
+								"📨"
 							</span>
 							{actor_strip}
-							<small class="tiny ml-1">"["
-								<a class="clean cursor" title="reply/quote control" on:click=move |_| set_reply_is_quote.set(!reply_is_quote.get()) >
-									{move || if reply_is_quote.get() { "quote" } else { "reply" }}
-								</a>
-							"]"</small>
+						</span>
+					}
+				})
+			}
+			{move ||
+				reply.quote_url.get().map(|r| {
+					let actor_strip = post_author(&r).map(|x| view! { <ActorStrip object=x /> });
+					view! {
+						<span class="nowrap">
+							<span 
+								class="cursor emoji emoji-btn mr-s ml-s"
+								on:click=move|_| reply.clear_quote()
+								title={format!("quoting {r}")}
+							>
+								"💬"
+							</span>
+							{actor_strip}
 						</span>
 					}
 				})
@@ -362,9 +386,9 @@ pub fn PostBox(advanced: WriteSignal<bool>) -> impl IntoView {
 						.set_attachment(attachments_node)
 						.set_summary(summary)
 						.set_content(Some(content))
-						.set_context(apb::Node::maybe_link(if reply_is_quote.get() { None } else { reply.context.get() }))
-						.set_in_reply_to(apb::Node::maybe_link(if reply_is_quote.get() { None } else { reply.reply_to.get()}))
-						.set_quote_url(apb::Node::maybe_link(if reply_is_quote.get() { reply.reply_to.get() } else { None }))
+						.set_context(apb::Node::maybe_link(reply.context.get()))
+						.set_in_reply_to(apb::Node::maybe_link(reply.reply_to.get()))
+						.set_quote_url(apb::Node::maybe_link(reply.quote_url.get()))
 						.set_to(apb::Node::links(to_vec))
 						.set_cc(apb::Node::links(cc_vec))
 						.set_tag(apb::Node::array(mention_tags));

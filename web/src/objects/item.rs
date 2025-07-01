@@ -214,6 +214,7 @@ pub fn Object(object: crate::Doc, #[prop(default = true)] controls: bool) -> imp
 				Some(view! {
 					<span style="white-space:nowrap">
 						<AddToListButton oid=oid.clone() />
+						<QuoteButton target=oid.clone() />
 						<ReplyButton n=comments target=oid.clone() />
 						<LikeButton n=likes liked=already_liked target=oid.clone() author=author_id.clone() private=!privacy.is_public() />
 						{if privacy.is_public() { Some(view! { <RepostButton n=shares target=oid author=author_id /> }) } else { None }}
@@ -282,6 +283,7 @@ pub fn LikeButton(
 			class:emoji-btn=move || auth.present()
 			class:cursor=move || auth.present()
 			class="ml-2"
+			title="like this post"
 			on:click=move |_ev| {
 				if !auth.present() { return; }
 				let (mut to, cc) = if private {
@@ -340,6 +342,30 @@ pub fn LikeButton(
 }
 
 #[component]
+pub fn QuoteButton(target: String) -> impl IntoView {
+	let reply = use_context::<ReplyControls>().expect("missing reply controls context");
+	let auth = use_context::<Auth>().expect("missing auth context");
+	let _target = target.clone(); // TODO ughhhh useless clones
+	view! {
+		<span
+			class:emoji=move || !reply.quote_url.get().map(|x| x == _target).unwrap_or_default()
+			class:hidden=move || !auth.present()
+			class="emoji-btn cursor ml-2"
+			title="quote this post"
+			on:click=move |_ev| if auth.present() {
+				if reply.is_quote_set() {
+					reply.clear_quote();
+				} else {
+					reply.quote(&target);
+				}
+			}
+		>
+			" 💬"
+		</span>
+	}
+}
+
+#[component]
 pub fn ReplyButton(n: i32, target: String) -> impl IntoView {
 	let reply = use_context::<ReplyControls>().expect("missing reply controls context");
 	let auth = use_context::<Auth>().expect("missing auth context");
@@ -356,9 +382,10 @@ pub fn ReplyButton(n: i32, target: String) -> impl IntoView {
 			class:emoji-btn=move || auth.present()
 			class:cursor=move || auth.present()
 			class="ml-2"
+			title="reply to this post"
 			on:click=move |_ev| if auth.present() {
-				if reply.is_set() {
-					reply.clear();
+				if reply.is_reply_set() {
+					reply.clear_reply();
 				} else {
 					reply.reply(&target);
 				}
@@ -382,6 +409,7 @@ pub fn RepostButton(n: i32, target: String, author: String) -> impl IntoView {
 			class:emoji-btn=move || auth.present()
 			class:cursor=move || auth.present()
 			class="ml-2"
+			title="announce this post (repost, reblog, boost...)"
 			on:click=move |_ev| {
 				if !auth.present() { return; }
 				let is_announce = clickable.get();
