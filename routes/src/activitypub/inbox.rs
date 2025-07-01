@@ -100,5 +100,7 @@ pub async fn post(
 
 	upub::downtime::unset(ctx.db(), &server).await?;
 
+	ctx.wake_workers();
+
 	Ok(StatusCode::ACCEPTED)
 }

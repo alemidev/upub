@@ -225,6 +225,8 @@ struct WakeToken(tokio::sync::mpsc::UnboundedReceiver<()>);
 impl worker::WakeToken for WakeToken {
 	async fn wait(&mut self) {
 		let _ = self.0.recv().await;
+		// clear extra wakes queued
+		while let Ok(_) = self.0.try_recv() {};
 	}
 }
 
