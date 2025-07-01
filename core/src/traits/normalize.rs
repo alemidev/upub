@@ -448,7 +448,7 @@ fn process_and_normalize_image(
 	// in case we get both broken media_type and document_type, try to fix images with url
 	// TODO is this still needed? above case with mediaType should solve most issues
 	let mut is_image = matches!(model.document_type, Set(apb::DocumentType::Image));
-	if [".jpg", ".jpeg", ".png", ".webp", ".bmp"] // TODO more image types???
+	if [".jpg", ".jpeg", ".png", ".webp", ".bmp", ".gif", ".ico", ".svg"] // TODO more image types???
 		.iter()
 		.any(|x| url.ends_with(x))
 	{
