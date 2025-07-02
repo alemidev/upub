@@ -71,7 +71,10 @@ pub async fn post(
 	let aid = activity.id()?.to_string();
 	let server = upub::Context::server(&aid);
 
-	if activity.actor().id()? != uid && !ctx.cfg().compat.verify_relayed_activities_by_fetching {
+	if activity.actor().id()? != uid
+		&& !ctx.cfg().compat.verify_relayed_activities_by_fetching
+		&& !ctx.cfg().compat.trust_relayed_activities_by_registered_relays
+	{
 		return Err(crate::ApiError::forbidden());
 	}
 

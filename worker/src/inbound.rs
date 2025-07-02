@@ -1,6 +1,6 @@
 use apb::{Activity, Base};
 use sea_orm::TransactionTrait;
-use upub::traits::{Fetcher, Processor};
+use upub::{ext::AnyQuery, traits::{Fetcher, Processor}};
 
 
 pub async fn process(ctx: upub::Context, job: &upub::model::job::Model) -> crate::JobResult<()> {
@@ -12,14 +12,7 @@ pub async fn process(ctx: upub::Context, job: &upub::model::job::Model) -> crate
 	let activity_actor = activity.actor().id()?;
 
 	if job.actor != activity_actor {
-		if ctx.cfg().compat.verify_relayed_activities_by_fetching {
-			activity = ctx.pull(&activity.id()?).await?.activity()?;
-		} else {
-			// this should not happen since we 403 directly while queueing if compat option isn't set,
-			//  however this job could have been queued for a while and config changed in the meantime
-			tracing::error!("discarding job: actor {activity_actor} doesn't match {}", job.actor);
-			return Ok(());
-		}
+		activity = try_verifying_relayed_activity(&ctx, activity, &job.actor).await?;
 	}
 
 	let tx = ctx.db().begin().await?;
@@ -28,4 +21,24 @@ pub async fn process(ctx: upub::Context, job: &upub::model::job::Model) -> crate
 	tx.commit().await?;
 
 	Ok(())
+}
+
+async fn try_verifying_relayed_activity(ctx: &upub::Context, activity: serde_json::Value, job_actor: &str) -> crate::JobResult<serde_json::Value> {
+	if ctx.cfg().compat.trust_relayed_activities_by_registered_relays {
+		if let Some(internal) = upub::model::actor::Entity::ap_to_internal(job_actor, ctx.db()).await? {
+			if upub::Query::related(Some(ctx.actor().internal), Some(internal), false)
+				.any(ctx.db())
+				.await?
+			{
+				return Ok(activity);
+			}
+		};
+	}
+
+	if ctx.cfg().compat.verify_relayed_activities_by_fetching {
+		return Ok(ctx.pull(&activity.id()?).await?.activity()?);
+	}
+
+	tracing::error!("discarding job: actor {} doesn't match {job_actor}", activity.actor().id().unwrap_or_default());
+	Err(crate::JobError::Forbidden)
 }

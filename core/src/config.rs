@@ -147,6 +147,16 @@ pub struct CompatibilityConfig {
 	/// relays send a lot of activities and we effectively end up fetching again all these, so this
 	/// defaults to false
 	pub verify_relayed_activities_by_fetching: bool,
+
+	#[serde_inline_default(false)]
+	/// compatibility with most relays + mastodon: since they send us other server's activities, we
+	/// should fetch them to verify the relay isn't falsifying them. however, some software (cough
+	/// mastodon) has fake activity ids for stuff like Undos and Updates
+	/// (https://mastodon.social/users/some_user#announces/1234/undo) which makes these activities
+	/// impossible to fetch and verify. by enabling this setting, activities by relays are just
+	/// trusted, even if the signing actor doesn't match the activity actor. you should only enable
+	/// this if you trust ALL relays sending you data
+	pub trust_relayed_activities_by_registered_relays: bool,
 }
 
 #[serde_inline_default::serde_inline_default]
