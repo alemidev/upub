@@ -39,6 +39,5 @@ async fn try_verifying_relayed_activity(ctx: &upub::Context, activity: serde_jso
 		return Ok(ctx.pull(&activity.id()?).await?.activity()?);
 	}
 
-	tracing::error!("discarding job: actor {} doesn't match {job_actor}", activity.actor().id().unwrap_or_default());
 	Err(crate::JobError::Forbidden)
 }

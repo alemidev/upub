@@ -138,6 +138,8 @@ impl JobDispatcher for Context {
 						tracing::error!("dropping job with invalid json payload: {x}"),
 					Err(JobError::MissingPayload) =>
 						tracing::warn!("dropping job without payload"),
+					Err(JobError::Forbidden) =>
+						tracing::warn!("dropping job for unauthorized activity: {}", job.activity),
 					Err(JobError::Malformed(f)) =>
 						tracing::error!("dropping job with malformed activity (missing field {f})"),
 					Err(JobError::ProcessorError(ProcessorError::AlreadyProcessed)) =>
