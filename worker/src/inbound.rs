@@ -36,7 +36,17 @@ async fn try_verifying_relayed_activity(ctx: &upub::Context, activity: serde_jso
 	}
 
 	if ctx.cfg().compat.verify_relayed_activities_by_fetching {
-		return Ok(ctx.pull(&activity.id()?).await?.activity()?);
+		// masodon generates fake activities which we can't resolve, so when they get relayed to us we
+		//  can't really reoslve them. it's even worse: these activities have broken URIs since they
+		//  contain fragments, which get stripped (idk if by reqwest or mastodon backend) and so this
+		//  pull gets the base actor instead of the related activity, or the base note instead of its
+		//  delete. we stack up tons of "Mismatched" or "Not Found" errors. to avoid this, ignore
+		//  pull and activity conversion errors and just go forward with the "Forbidden" error
+		if let Ok(doc) = ctx.pull(&activity.id()?).await {
+			if let Ok(activity) = doc.activity() {
+				return Ok(activity);
+			}
+		}
 	}
 
 	Err(crate::JobError::Forbidden)
