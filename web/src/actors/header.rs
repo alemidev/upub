@@ -74,9 +74,9 @@ pub fn ActorHeader() -> impl IntoView {
 
 							<div class="ma-s">
 								<p class="line shadow">
-									<span class="emoji mr-s">"📫"</span><small>{actor.statuses_count().unwrap_or_default()}</small>
-									<span class="emoji ml-1 mr-s">"👥"</span><small>{actor.following_count().unwrap_or_default()}</small>
-									<span class="emoji ml-1 mr-s">"📢"</span><small>{actor.followers_count().unwrap_or_default()}</small>
+									<span title="posts"><span class="emoji mr-s">"📫"</span><small>{actor.statuses_count().unwrap_or_default()}</small></span>
+									<span title="following"><span class="emoji ml-1 mr-s">"👥"</span><small>{actor.following_count().unwrap_or_default()}</small></span>
+									<span title="followers"><span class="emoji ml-1 mr-s">"📢"</span><small>{actor.followers_count().unwrap_or_default()}</small></span>
 								</p>
 								<p class="line pt-1"><b class="big mt-1">{name}</b>{actor_type_tag}</p>
 								<p class="line"><small><a class="clean hover" href={uid.clone()} target="_blank">{username.clone()}@{domain}</a></small></p>
