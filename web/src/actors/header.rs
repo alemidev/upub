@@ -74,7 +74,7 @@ pub fn ActorHeader() -> impl IntoView {
 
 							<div class="ma-s">
 								<p class="line shadow">
-									<span class="emoji mr-s">"\u{1f582}"</span><small>{actor.statuses_count().unwrap_or_default()}</small>
+									<span class="emoji mr-s">"📫"</span><small>{actor.statuses_count().unwrap_or_default()}</small>
 									<span class="emoji ml-1 mr-s">"👥"</span><small>{actor.following_count().unwrap_or_default()}</small>
 									<span class="emoji ml-1 mr-s">"📢"</span><small>{actor.followers_count().unwrap_or_default()}</small>
 								</p>
