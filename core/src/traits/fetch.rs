@@ -123,8 +123,15 @@ pub trait Fetcher {
 	) -> Result<Response, RequestError> {
 		let host = crate::Context::server(url);
 		let date = chrono::Utc::now().format("%a, %d %b %Y %H:%M:%S GMT").to_string(); // lmao @ "GMT"
-		let path = url.replace("https://", "").replace("http://", "").replace(&host, "");
 		let digest = httpsign::digest(payload.unwrap_or_default());
+		let path_with_possible_fragment = url
+			.replace("https://", "")
+			.replace("http://", "")
+			.replace(&host, "");
+		let path = path_with_possible_fragment
+			.split('#')
+			.next()
+			.unwrap_or(&path_with_possible_fragment);
 
 		let headers = vec!["(request-target)", "host", "date", "digest"];
 		let headers_map : BTreeMap<String, String> = [
@@ -141,7 +148,7 @@ pub trait Fetcher {
 		);
 		
 		signer
-			.build_manually(&method.to_string().to_lowercase(), &path, headers_map)
+			.build_manually(&method.to_string().to_lowercase(), path, headers_map)
 			.sign(key)?;
 
 		let response = Self::client(domain)
