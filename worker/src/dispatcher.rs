@@ -47,6 +47,7 @@ impl JobDispatcher for Context {
 		
 		Ok(
 			s
+				.order_by(model::job::Column::Attempt, Order::Asc)
 				.order_by(model::job::Column::NotBefore, Order::Asc)
 				.one(self.db())
 				.await?
