@@ -125,7 +125,7 @@ pub use types::{
 			Activity, ActivityMut, ActivityType,
 			accept::{Accept, AcceptMut, AcceptType},
 			ignore::{Ignore, IgnoreMut, IgnoreType},
-			intransitive::{IntransitiveActivity, IntransitiveActivityMut, IntransitiveActivityType},
+			intransitive::{IntransitiveActivity, IntransitiveActivityMut, IntransitiveActivityType, Question, QuestionMut},
 			offer::{Offer, OfferMut, OfferType},
 			reject::{Reject, RejectMut, RejectType},
 		},

@@ -22,6 +22,8 @@ where
 				.await?
 				.with_batched::<crate::model::hashtag::Entity>(tx)
 				.await?
+				.with_batched::<crate::model::question_option::Entity>(tx)
+				.await?
 		)
 	}
 }
@@ -172,6 +174,12 @@ mod hell {
 			crate::model::hashtag::Column::Object.is_in(ids).into_condition()
 		}
 	}
+
+	impl BatchFillableComparison for crate::model::question_option::Entity {
+		fn comparison(ids: Vec<i64>) -> sea_orm::Condition {
+			crate::model::question_option::Column::Object::is_in(ids).into_condition()
+		}
+	}
 	
 	pub trait BatchFillableKey {
 		fn key(&self) -> i64;
@@ -258,6 +266,38 @@ mod hell {
 
 		fn accept(&mut self, batch: Vec<Self::To>) {
 			self.mentions = Some(batch);
+		}
+	}
+
+	impl BatchFillableLoader<crate::model::question_option::Entity> for super::RichObject {
+		type To = crate::selector::RichQuestionOption;
+
+		fn load(query: sea_orm::Select<crate::model::question_option::Entity>) -> sea_orm::Selector<sea_orm::SelectModel<Self::To>> {
+			let mut new_query = query
+				.join(sea_orm::JoinType::LeftJoin, crate::model::question_option::Relation::QuestionAnswers.def())
+				.select_only()
+				.select_column_as(
+					crate::model::question_answer::Column::Internal.sum(),
+					format!(
+						"{}{}",
+						crate::model::question_option::Entity.table_name(),
+						"votes",
+					),
+				);
+
+			for col in crate::model::question_option::Column::iter() {
+				new_query = new_query.select_column_as(
+					col,
+					format!("{}{}", crate::model::question_option::Entity.table_name(), col.to_string())
+				);
+			}
+
+			new_query
+				.into_model::<crate::selector::RichQuestionOption>()
+		}
+
+		fn accept(&mut self, batch: Vec<Self::To>) {
+			self.options = Some(batch);
 		}
 	}
 }

@@ -23,4 +23,7 @@ pub mod attachment;
 pub mod list;
 pub mod list_element;
 
+pub mod question_option;
+pub mod question_answer;
+
 pub mod downtime;

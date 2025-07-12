@@ -71,7 +71,9 @@ pub enum Objects {
 	Bto,
 	Published,
 	Updated,
+	EndTime, // added with migration m20250712_000001
 	Audience, // added with migration m20240606_000001
+	IsMultipleChoicePoll, // added with migration m20250712_000001
 }
 
 #[derive(DeriveIden)]

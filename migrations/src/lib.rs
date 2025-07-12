@@ -26,6 +26,7 @@ mod m20241226_000003_create_downtime_table;
 mod m20250115_000001_add_content_to_activities;
 mod m20250620_000001_add_list_tables;
 mod m20250620_000002_add_unique_index_to_list_elements;
+mod m20250712_000001_add_question_tables;
 
 pub struct Migrator;
 
@@ -59,6 +60,7 @@ impl MigratorTrait for Migrator {
 			Box::new(m20250115_000001_add_content_to_activities::Migration),
 			Box::new(m20250620_000001_add_list_tables::Migration),
 			Box::new(m20250620_000002_add_unique_index_to_list_elements::Migration),
+			Box::new(m20250712_000001_add_question_tables::Migration),
 		]
 	}
 }

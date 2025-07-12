@@ -32,6 +32,8 @@ pub struct Model {
 	pub updated: ChronoDateTimeUtc,
 
 	pub audience: Option<String>, // added with migration m20240606_000001
+	pub end_time: Option<ChronoDateTimeUtc>, // added with migration m20250712_000001
+	pub is_multiple_choice_poll: Option<bool>, // added with migration m20250712_000001
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -76,6 +78,10 @@ pub enum Relation {
 		on_delete = "NoAction"
 	)]
 	ObjectsQuote,
+	#[sea_orm(has_many = "super::question_option::Entity")]
+	QuestionOption,
+	#[sea_orm(has_many = "super::question_answer::Entity")]
+	QuestionAnswer,
 }
 
 impl Related<super::activity::Entity> for Entity {
@@ -132,6 +138,19 @@ impl Related<super::mention::Entity> for Entity {
 	}
 }
 
+impl Related<super::question_option::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::QuestionOption.def()
+	}
+}
+
+impl Related<super::question_answer::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::QuestionAnswer.def()
+	}
+}
+
+// this is weird because it backreferences itself
 impl Related<Entity> for Entity {
 	fn to() -> RelationDef {
 		Relation::ObjectsReply.def()
@@ -180,6 +199,7 @@ impl crate::ext::IntoActivityPub for Model {
 			.set_quote_url(apb::Node::maybe_link(self.quote.clone()))
 			.set_published(Some(self.published))
 			.set_updated(if self.updated != self.published { Some(self.updated) } else { None })
+			.set_end_time(self.end_time)
 			.set_audience(apb::Node::maybe_link(self.audience))
 			.set_to(apb::Node::links(self.to.0.clone()))
 			.set_bto(apb::Node::Empty)

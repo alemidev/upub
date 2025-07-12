@@ -13,6 +13,7 @@ use actor::ActorType;
 use document::DocumentType;
 use activity::ActivityType;
 use collection::CollectionType;
+use activity::intransitive::IntransitiveActivityType;
 
 crate::strenum! {
 	pub enum ObjectType {
@@ -39,6 +40,7 @@ pub trait Object : Base {
 	type Collection : crate::Collection;
 	type Document : crate::Document;
 	type Activity : crate::Activity;
+	type Question : crate::Question;
 
 	fn object_type(&self) -> Field<ObjectType> { Err(FieldErr("type")) }
 	/// Identifies a resource attached or related to an object that potentially requires special handling
@@ -127,6 +129,7 @@ pub trait Object : Base {
 	fn as_actor(&self) -> Result<&Self::Actor, FieldErr> { Err(FieldErr("type")) }
 	fn as_collection(&self) -> Result<&Self::Collection, FieldErr> { Err(FieldErr("type")) }
 	fn as_document(&self) -> Result<&Self::Document, FieldErr> { Err(FieldErr("type")) }
+	fn as_question(&self) -> Result<&Self::Question, FieldErr> { Err(FieldErr("type")) }
 
 	#[cfg(feature = "did-core")] // TODO this isn't from did-core actually!?!?!?!?!
 	fn value(&self) -> Field<String> { Err(FieldErr("value")) }
@@ -192,6 +195,7 @@ impl Object for serde_json::Value {
 	type Document = serde_json::Value;
 	type Collection = serde_json::Value;
 	type Activity = serde_json::Value;
+	type Question = serde_json::Value;
 
 	crate::getter! { objectType -> type ObjectType }
 	crate::getter! { attachment -> node <Self as Object>::Object }
@@ -261,6 +265,13 @@ impl Object for serde_json::Value {
 	fn as_document(&self) -> Result<&Self::Document, FieldErr> {
 		match self.object_type()? {
 			ObjectType::Document(_) => Ok(self),
+			_ => Err(FieldErr("type")),
+		}
+	}
+
+	fn as_question(&self) -> Result<&Self::Question, FieldErr> {
+		match self.object_type()? {
+			ObjectType::Activity(ActivityType::IntransitiveActivity(IntransitiveActivityType::Question)) => Ok(self),
 			_ => Err(FieldErr("type")),
 		}
 	}

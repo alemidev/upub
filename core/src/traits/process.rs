@@ -67,6 +67,36 @@ pub async fn process_create(ctx: &crate::Context, activity: impl apb::Activity, 
 		tracing::error!("refusing to process activity without embedded object");
 		return Err(ProcessorError::Unprocessable(activity.activity_type()?, activity.id()?.to_string()));
 	};
+
+	// poll votes are represented as id-less objects? this is madness
+	//  anyways, this short-circuits the function so we need to repeat some things but AP is badly
+	//  thought anyways...
+	if object_node.id().is_err() {
+		let in_reply_to = object_node.in_reply_to().id()?;
+		let who = object_node.attributed_to().id()?;
+		let answer_name = object_node.name()?;
+
+		let in_reply_to_model = ctx.fetch_object(&in_reply_to, tx).await?;
+		let who_model = ctx.fetch_user(&who, tx).await?;
+		let answer_model = model::question_option::Entity::find()
+			.filter(model::question_option::Column::Name.eq(&answer_name))
+			.one(tx)
+			.await?
+			.ok_or(ProcessorError::Incomplete(apb::ActivityType::Create, in_reply_to.clone()))?;
+
+		model::question_answer::ActiveModel {
+			internal: NotSet,
+			object: Set(in_reply_to_model.internal),
+			actor: Set(who_model.internal),
+			answer: Set(answer_model.internal),
+		}
+			.insert(tx)
+			.await?;
+
+		tracing::info!("{who} voted in poll {in_reply_to} with '{answer_name}'");
+		return Ok(());
+	}
+
 	if model::object::Entity::ap_to_internal(&object_node.id()?, tx).await?.is_some() {
 		return Err(ProcessorError::AlreadyProcessed);
 	}
@@ -75,7 +105,10 @@ pub async fn process_create(ctx: &crate::Context, activity: impl apb::Activity, 
 	}
 
 	match object_node.object_type()? {
-		apb::ObjectType::Note | apb::ObjectType::Document(apb::DocumentType::Page) => {
+		apb::ObjectType::Note
+		| apb::ObjectType::Document(apb::DocumentType::Page)
+		| apb::ObjectType::Activity(apb::ActivityType::IntransitiveActivity(apb::IntransitiveActivityType::Question))
+		=> {
 			if let Ok(reply) = object_node.in_reply_to().id() {
 				if let Err(e) = ctx.fetch_object(&reply, tx).await {
 					tracing::warn!("failed fetching replies for received object: {e}");

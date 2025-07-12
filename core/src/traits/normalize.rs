@@ -1,4 +1,4 @@
-use apb::{Endpoints, Node, Object, PublicKey, Shortcuts};
+use apb::{Endpoints, Node, Object, PublicKey, Shortcuts, Question};
 use sea_orm::{sea_query::Expr, ActiveModelTrait, ActiveValue::{Unchanged, NotSet, Set}, ColumnTrait, ConnectionTrait, DbErr, EntityTrait, IntoActiveModel, QueryFilter};
 
 use crate::ext::TakeAsRef;
@@ -178,6 +178,20 @@ impl Normalizer for crate::Context {
 			}
 		}
 
+		if let Ok(question) = object.as_question() {
+			for option in question.any_of().flat() {
+				if let Ok(doc) = option.into_inner() {
+					crate::model::question_option::ActiveModel {
+						internal: sea_orm::ActiveValue::NotSet,
+						object: sea_orm::ActiveValue::Set(object_model.internal),
+						name: sea_orm::ActiveValue::Set(doc.name().unwrap_or_default()),
+					}
+						.insert(tx)
+						.await?;
+				}
+			}
+		}
+
 		Ok(object_model)
 	}
 
@@ -305,11 +319,18 @@ impl AP {
 				| apb::ObjectType::Event
 				| apb::ObjectType::Place
 				| apb::ObjectType::Profile
+				| apb::ObjectType::Activity(apb::ActivityType::IntransitiveActivity(apb::IntransitiveActivityType::Question))
 				| apb::ObjectType::Document(apb::DocumentType::Page) // why Document lemmy??????
 			)
 		) {
 			return Err(NormalizerError::WrongType(apb::BaseType::Object(apb::ObjectType::Object), t));
 		}
+
+		let is_multiple_choice_poll = match object.as_question() {
+			Ok(question) => Some(question.any_of().is_empty()),
+			Err(_) => None,
+		};
+
 		Ok(crate::model::object::Model {
 			internal: 0,
 			id: object.id()?.to_string(),
@@ -333,8 +354,9 @@ impl AP {
 			bto: object.bto().all_ids().into(),
 			cc: object.cc().all_ids().into(),
 			bcc: object.bcc().all_ids().into(),
-
+			end_time: object.end_time().ok(),
 			sensitive: object.sensitive().unwrap_or(false),
+			is_multiple_choice_poll,
 		})
 	}
 
