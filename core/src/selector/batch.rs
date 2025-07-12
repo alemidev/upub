@@ -276,6 +276,7 @@ mod hell {
 			let mut new_query = query
 				.join(sea_orm::JoinType::LeftJoin, crate::model::question_option::Relation::QuestionAnswers.def())
 				.select_only()
+				.select_column(crate::model::question_option::Column::Internal)
 				.select_column_as(
 					crate::model::question_answer::Column::Internal.sum(),
 					format!(
