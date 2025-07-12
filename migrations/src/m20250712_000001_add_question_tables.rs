@@ -8,6 +8,7 @@ pub enum QuestionOptions {
 	Internal,
 	Object,
 	Name,
+	Votes, // added with m20250712_000003
 }
 
 #[derive(DeriveIden)]

@@ -46,7 +46,7 @@ pub struct RichObject {
 	pub attachments: Option<Vec<crate::model::attachment::Model>>,
 	pub hashtags: Option<Vec<crate::model::hashtag::Model>>,
 	pub mentions: Option<Vec<RichMention>>,
-	pub options: Option<Vec<RichQuestionOption>>,
+	pub options: Option<Vec<crate::model::question_option::Model>>,
 }
 
 impl FromQueryResult for RichObject {
@@ -211,35 +211,5 @@ impl IntoActivityPub for RichNotification {
 		let seen = self.seen;
 		self.activity.into_activity_pub_json(ctx)
 			.set_seen(Some(seen))
-	}
-}
-
-pub struct RichQuestionOption {
-	pub option: crate::model::question_option::Model,
-	pub votes: u64,
-}
-
-impl FromQueryResult for RichQuestionOption {
-	fn from_query_result(res: &QueryResult, pre: &str) -> Result<Self, DbErr> {
-		Ok(RichQuestionOption {
-			option: crate::model::question_option::Model::from_query_result(res, pre)?,
-			votes: res.try_get(
-	crate::model::question_option::Entity.table_name(),
-				"votes",
-			).unwrap_or(0)
-		})
-	}
-}
-
-impl IntoActivityPub for RichQuestionOption {
-	fn into_activity_pub_json(self, ctx: &crate::Context) -> serde_json::Value {
-		use apb::{ObjectMut, CollectionMut};
-		self.option.into_activity_pub_json(ctx)
-			.set_replies(apb::Node::object(
-				apb::new()
-					.set_collection_type(Some(apb::CollectionType::OrderedCollection))
-					.set_total_items(Some(self.votes))
-					// .set_first(apb::Node::link(format!(""))) // TODO add in backend API routes to see votes
-			))
 	}
 }

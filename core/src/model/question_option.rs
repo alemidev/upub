@@ -1,4 +1,4 @@
-use apb::ObjectMut;
+use apb::{CollectionMut, ObjectMut};
 use sea_orm::entity::prelude::*;
 
 #[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq)]
@@ -8,6 +8,7 @@ pub struct Model {
 	pub internal: i64,
 	pub object: i64,
 	pub name: String,
+	pub votes: i32,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
@@ -41,7 +42,11 @@ impl ActiveModelBehavior for ActiveModel {}
 impl crate::ext::IntoActivityPub for Model {
 	fn into_activity_pub_json(self, _ctx: &crate::Context) -> serde_json::Value {
 		apb::new()
-			.set_name(Some(self.name))
 			// .set_object_type(Some(apb::ObjectType::Note))
+			.set_name(Some(self.name))
+			.set_replies(apb::Node::object(
+				apb::new()
+					.set_total_items(Some(self.votes.max(0) as u64))
+			))
 	}
 }

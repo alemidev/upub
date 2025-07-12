@@ -203,9 +203,9 @@ mod hell {
 		}
 	}
 
-	impl BatchFillableKey for crate::selector::RichQuestionOption {
+	impl BatchFillableKey for crate::model::question_option::Model {
 		fn key(&self) -> i64 {
-			self.option.object
+			self.object
 		}
 	}
 	
@@ -267,30 +267,7 @@ mod hell {
 	}
 
 	impl BatchFillableLoader<crate::model::question_option::Entity> for super::RichObject {
-		type To = crate::selector::RichQuestionOption;
-
-		fn load(query: sea_orm::Select<crate::model::question_option::Entity>) -> sea_orm::Selector<sea_orm::SelectModel<Self::To>> {
-			let mut new_query = query
-				.join(sea_orm::JoinType::LeftJoin, crate::model::question_option::Relation::QuestionAnswers.def())
-				.select_only()
-				.select_column_as(
-					crate::model::question_answer::Column::Internal.sum(),
-					format!(
-						"{}{}",
-						crate::model::question_option::Entity.table_name(),
-						"votes",
-					),
-				);
-
-			for col in crate::model::question_option::Column::iter() {
-				new_query = new_query.select_column(col);
-			}
-
-			new_query
-				.group_by(crate::model::question_option::Column::Internal)
-				.into_model::<crate::selector::RichQuestionOption>()
-		}
-
+		type To = crate::model::question_option::Model;
 		fn accept(&mut self, batch: Vec<Self::To>) {
 			self.options = Some(batch);
 		}

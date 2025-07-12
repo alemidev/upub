@@ -185,6 +185,7 @@ impl Normalizer for crate::Context {
 						internal: sea_orm::ActiveValue::NotSet,
 						object: sea_orm::ActiveValue::Set(object_model.internal),
 						name: sea_orm::ActiveValue::Set(doc.name().unwrap_or_default()),
+						votes: sea_orm::ActiveValue::Set(doc.replies_count().unwrap_or_default()),
 					}
 						.insert(tx)
 						.await?;
@@ -199,6 +200,7 @@ impl Normalizer for crate::Context {
 						internal: sea_orm::ActiveValue::NotSet,
 						object: sea_orm::ActiveValue::Set(object_model.internal),
 						name: sea_orm::ActiveValue::Set(doc.name().unwrap_or_default()),
+						votes: sea_orm::ActiveValue::Set(doc.replies_count().unwrap_or_default()),
 					}
 						.insert(tx)
 						.await?;
