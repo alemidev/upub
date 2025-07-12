@@ -5,6 +5,7 @@ use sea_orm::entity::prelude::*;
 pub struct Model {
 	#[sea_orm(primary_key)]
 	pub internal: i64,
+	#[sea_orm(unique)]
 	pub domain: String,
 	pub published: ChronoDateTimeUtc,
 }
