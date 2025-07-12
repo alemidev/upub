@@ -190,7 +190,9 @@ impl Normalizer for crate::Context {
 						.await?;
 				}
 			}
+		}
 
+		if let Ok(question) = object.as_question() {
 			for option in question.one_of().flat() {
 				if let Ok(doc) = option.into_inner() {
 					crate::model::question_option::ActiveModel {
