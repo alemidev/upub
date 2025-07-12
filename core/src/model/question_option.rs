@@ -21,7 +21,7 @@ pub enum Relation {
 		on_update = "Cascade",
 		on_delete = "NoAction"
 	)]
-	Questions,
+	Objects,
 }
 
 impl Related<super::question_answer::Entity> for Entity {
@@ -32,7 +32,7 @@ impl Related<super::question_answer::Entity> for Entity {
 
 impl Related<super::object::Entity> for Entity {
 	fn to() -> RelationDef {
-		Relation::Questions.def()
+		Relation::Objects.def()
 	}
 }
 
