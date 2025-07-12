@@ -254,10 +254,7 @@ mod hell {
 				);
 
 			for col in crate::model::mention::Column::iter() {
-				new_query = new_query.select_column_as(
-					col,
-					format!("{}{}", crate::model::mention::Entity.table_name(), col.to_string())
-				);
+				new_query = new_query.select_column(col);
 			}
 
 			new_query
