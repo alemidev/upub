@@ -341,7 +341,7 @@ impl AP {
 		}
 
 		let is_multiple_choice_poll = match object.as_question() {
-			Ok(question) => Some(question.any_of().is_empty()),
+			Ok(question) => Some(!question.any_of().is_empty()),
 			Err(_) => None,
 		};
 
