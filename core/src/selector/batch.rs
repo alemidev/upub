@@ -276,7 +276,6 @@ mod hell {
 			let mut new_query = query
 				.join(sea_orm::JoinType::LeftJoin, crate::model::question_option::Relation::QuestionAnswers.def())
 				.select_only()
-				.select_column(crate::model::question_option::Column::Internal)
 				.select_column_as(
 					crate::model::question_answer::Column::Internal.sum(),
 					format!(
@@ -287,10 +286,7 @@ mod hell {
 				);
 
 			for col in crate::model::question_option::Column::iter() {
-				new_query = new_query.select_column_as(
-					col,
-					format!("{}{}", crate::model::question_option::Entity.table_name(), col.to_string())
-				);
+				new_query = new_query.select_column(col);
 			}
 
 			new_query
