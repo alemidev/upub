@@ -207,6 +207,7 @@ impl Fetcher for crate::Context {
 		match document.object_type()? {
 			apb::ObjectType::Collection(x) => Err(RequestError::mismatch(apb::ObjectType::Object, apb::ObjectType::Collection(x))),
 			apb::ObjectType::Tombstone => Err(RequestError::Tombstone),
+			apb::ObjectType::Activity(apb::ActivityType::IntransitiveActivity(apb::IntransitiveActivityType::Question)) => Ok(Pull::Object(document)),
 			apb::ObjectType::Activity(_) => Ok(Pull::Activity(document)),
 			apb::ObjectType::Actor(_) => Ok(Pull::Actor(document)),
 			_ => Ok(Pull::Object(document)),
