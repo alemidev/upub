@@ -177,7 +177,7 @@ mod hell {
 
 	impl BatchFillableComparison for crate::model::question_option::Entity {
 		fn comparison(ids: Vec<i64>) -> sea_orm::Condition {
-			crate::model::question_option::Column::Object::is_in(ids).into_condition()
+			crate::model::question_option::Column::Object.is_in(ids).into_condition()
 		}
 	}
 	
