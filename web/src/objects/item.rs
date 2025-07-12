@@ -137,14 +137,24 @@ pub fn Object(object: crate::Doc, #[prop(default = true)] controls: bool) -> imp
 					question.any_of()
 						.flat()
 						.into_iter()
-						.filter_map(|x| Some(view!{ <li><input type="checkbox" disabled /> { x.into_inner().ok()?.name().ok()? }</li> }))
+						.filter_map(|x| {
+							let inner = x.into_inner().ok()?;
+							let name = inner.name().ok()?;
+							let votes = inner.replies_count().ok()?;
+							Some(view!{ <li><code class="color pa-s">{ votes }</code><input type="checkbox" disabled class="ml-s mr-1" /> { name }</li> })
+						})
 						.collect::<Vec<_>>()
 				}
 				{
 					question.one_of()
 						.flat()
 						.into_iter()
-						.filter_map(|x| Some(view!{ <li><input type="radio" disabled /> { x.into_inner().ok()?.name().ok()? }</li> }))
+						.filter_map(|x| {
+							let inner = x.into_inner().ok()?;
+							let name = inner.name().ok()?;
+							let votes = inner.replies_count().ok()?;
+							Some(view!{ <li><code class="color pa-s">{ votes }</code><input type="radio" disabled class="ml-s mr-1" /> { name }</li> })
+						})
 						.collect::<Vec<_>>()
 				}
 			</ul>
@@ -171,6 +181,7 @@ pub fn Object(object: crate::Doc, #[prop(default = true)] controls: bool) -> imp
 		<Summary summary=object.summary().ok().map(|x| x.to_string()) >
 			{quote_block}
 			<p inner_html={content}></p>
+			{post_poll}
 			{attachments_padding}
 			{attachments}
 		</Summary>
@@ -230,7 +241,6 @@ pub fn Object(object: crate::Doc, #[prop(default = true)] controls: bool) -> imp
 			</tr>
 		</table>
 		{post}
-		{post_poll}
 		<div class="mb-s mt-s ml-1 rev">
 			{quote_badge}
 			{tag_badges}
