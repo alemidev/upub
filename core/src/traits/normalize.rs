@@ -190,6 +190,18 @@ impl Normalizer for crate::Context {
 						.await?;
 				}
 			}
+
+			for option in question.one_of().flat() {
+				if let Ok(doc) = option.into_inner() {
+					crate::model::question_option::ActiveModel {
+						internal: sea_orm::ActiveValue::NotSet,
+						object: sea_orm::ActiveValue::Set(object_model.internal),
+						name: sea_orm::ActiveValue::Set(doc.name().unwrap_or_default()),
+					}
+						.insert(tx)
+						.await?;
+				}
+			}
 		}
 
 		Ok(object_model)
