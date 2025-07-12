@@ -106,6 +106,7 @@ pub async fn process_create(ctx: &crate::Context, activity: impl apb::Activity, 
 
 	match object_node.object_type()? {
 		apb::ObjectType::Note
+		| apb::ObjectType::Article
 		| apb::ObjectType::Document(apb::DocumentType::Page)
 		| apb::ObjectType::Activity(apb::ActivityType::IntransitiveActivity(apb::IntransitiveActivityType::Question))
 		=> {
