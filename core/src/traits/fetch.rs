@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 
-use apb::{Shortcuts, Activity, Actor, ActorMut, Base, Collection, CollectionPage, Object};
+use apb::{Activity, Actor, ActorMut, Base, Collection, CollectionPage, Object, Question, Shortcuts};
 use reqwest::{header::{ACCEPT, CONTENT_TYPE, USER_AGENT}, Method, Response};
-use sea_orm::{ActiveValue::Set, ColumnTrait, ConnectionTrait, DbErr, EntityTrait, IntoActiveModel, NotSet, QueryFilter, ActiveModelTrait};
+use sea_orm::{prelude::Expr, ActiveModelTrait, ActiveValue::Set, ColumnTrait, ConnectionTrait, DbErr, EntityTrait, IntoActiveModel, NotSet, QueryFilter};
 
 use super::{Addresser, Cloaker, Normalizer};
 use httpsign::HttpSignature;
@@ -438,6 +438,36 @@ impl Fetcher for crate::Context {
 
 		if changed {
 			active.update(tx).await?;
+		}
+
+		if let Ok(question) = object.as_question() {
+			for option in question.any_of().flat() {
+				if let Ok(inner) = option.into_inner() {
+					if let Ok(name) = inner.name() {
+						crate::model::question_option::Entity::update_many()
+							.filter(crate::model::question_option::Column::Object.eq(model.internal))
+							.filter(crate::model::question_option::Column::Name.eq(name))
+							.col_expr(crate::model::question_option::Column::Votes, Expr::value(inner.replies_count().unwrap_or_default()))
+							.exec(tx)
+							.await?;
+					}
+				}
+			}
+		}
+
+		if let Ok(question) = object.as_question() {
+			for option in question.one_of().flat() {
+				if let Ok(inner) = option.into_inner() {
+					if let Ok(name) = inner.name() {
+						crate::model::question_option::Entity::update_many()
+							.filter(crate::model::question_option::Column::Object.eq(model.internal))
+							.filter(crate::model::question_option::Column::Name.eq(name))
+							.col_expr(crate::model::question_option::Column::Votes, Expr::value(inner.replies_count().unwrap_or_default()))
+							.exec(tx)
+							.await?;
+					}
+				}
+			}
 		}
 
 		// crawl replies collection
