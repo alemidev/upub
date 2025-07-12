@@ -293,6 +293,7 @@ mod hell {
 			}
 
 			new_query
+				.group_by(crate::model::question_option::Column::Internal)
 				.into_model::<crate::selector::RichQuestionOption>()
 		}
 
