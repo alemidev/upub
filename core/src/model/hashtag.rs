@@ -28,3 +28,13 @@ impl Related<super::object::Entity> for Entity {
 }
 
 impl ActiveModelBehavior for ActiveModel {}
+
+impl crate::ext::IntoActivityPub for Model {
+	fn into_activity_pub_json(self, ctx: &crate::Context) -> serde_json::Value {
+		use apb::LinkMut;
+		apb::new()
+			.set_name(Some(format!("#{}", self.name)))
+			.set_link_type(Some(apb::LinkType::Hashtag))
+			.set_href(Some(crate::url!(ctx, "/tags/{}", self.name)))
+	}
+}

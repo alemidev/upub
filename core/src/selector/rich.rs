@@ -1,5 +1,4 @@
-use apb::ActivityMut;
-use sea_orm::{DbErr, EntityName, FromQueryResult, Iden, QueryResult};
+use sea_orm::{DbErr, EntityName, FromQueryResult, Iden, IdenStatic, QueryResult};
 
 use crate::ext::IntoActivityPub;
 
@@ -7,6 +6,28 @@ pub struct RichMention {
 	pub mention: crate::model::mention::Model,
 	pub id: String,
 	pub fqn: String,
+}
+
+impl FromQueryResult for RichMention {
+	fn from_query_result(res: &QueryResult, pre: &str) -> Result<Self, DbErr> {
+		let domain: String = res.try_get(
+			crate::model::actor::Entity.table_name(),
+			crate::model::actor::Column::Domain.as_str(),
+		)?;
+		let preferred_username: String = res.try_get(
+			crate::model::actor::Entity.table_name(),
+			crate::model::actor::Column::PreferredUsername.as_str(),
+		)?;
+		let id: String = res.try_get(
+			crate::model::actor::Entity.table_name(),
+			crate::model::actor::Column::Id.as_str(),
+		)?;
+		Ok(RichMention {
+			mention: crate::model::mention::Model::from_query_result(res, pre)?,
+			fqn: format!("@{preferred_username}@{domain}"),
+			id,
+		})
+	}
 }
 
 impl IntoActivityPub for RichMention {
@@ -19,26 +40,13 @@ impl IntoActivityPub for RichMention {
 	}
 }
 
-pub struct RichHashtag {
-	pub hash: crate::model::hashtag::Model,
-}
-
-impl IntoActivityPub for RichHashtag {
-	fn into_activity_pub_json(self, ctx: &crate::Context) -> serde_json::Value {
-		use apb::LinkMut;
-		apb::new()
-			.set_name(Some(format!("#{}", self.hash.name)))
-			.set_link_type(Some(apb::LinkType::Hashtag))
-			.set_href(Some(crate::url!(ctx, "/tags/{}", self.hash.name)))
-	}
-}
-
 pub struct RichObject {
 	pub object: Option<crate::model::object::Model>,
 	pub liked: Option<i64>,
 	pub attachments: Option<Vec<crate::model::attachment::Model>>,
-	pub hashtags: Option<Vec<RichHashtag>>,
+	pub hashtags: Option<Vec<crate::model::hashtag::Model>>,
 	pub mentions: Option<Vec<RichMention>>,
+	pub options: Option<Vec<RichQuestionOption>>,
 }
 
 impl FromQueryResult for RichObject {
@@ -47,6 +55,7 @@ impl FromQueryResult for RichObject {
 			attachments: None,
 			hashtags: None,
 			mentions: None,
+			options: None,
 			liked: res.try_get(crate::model::like::Entity.table_name(), &crate::model::like::Column::Actor.to_string()).ok(),
 			object: crate::model::object::Model::from_query_result_optional(res, crate::model::object::Entity.table_name())?,
 		})
@@ -55,21 +64,27 @@ impl FromQueryResult for RichObject {
 
 impl IntoActivityPub for RichObject {
 	fn into_activity_pub_json(self, ctx: &crate::Context) -> serde_json::Value {
-		use apb::ObjectMut;
+		use apb::{ObjectMut, QuestionMut};
 		match self.object {
 			Some(object) => {
 				let mut tags = Vec::new();
+
 				if let Some(mentions) = self.mentions {
 					for mention in mentions {
 						tags.push(mention.into_activity_pub_json(ctx));
 					}
 				}
+
 				if let Some(hashtags) = self.hashtags {
 					for hash in hashtags {
 						tags.push(hash.into_activity_pub_json(ctx));
 					}
 				}
-				object.into_activity_pub_json(ctx)
+
+				let is_question = matches!(object.object_type, apb::ObjectType::Activity(apb::ActivityType::IntransitiveActivity(apb::IntransitiveActivityType::Question)));
+				let multiple_choice = object.is_multiple_choice_poll.unwrap_or(false);
+
+				let mut obj = object.into_activity_pub_json(ctx)
 					.set_liked_by_me(if self.liked.is_some() { Some(true) } else { None })
 					.set_tag(apb::Node::maybe_array(tags))
 					.set_attachment(match self.attachments {
@@ -79,7 +94,20 @@ impl IntoActivityPub for RichObject {
 								.map(|x| x.into_activity_pub_json(ctx))
 								.collect()
 						),
-					})
+					});
+
+				if is_question {
+					if let Some(options) = self.options {
+						let options_ap = options.into_iter().map(|x| ctx.ap(x)).collect();
+						if multiple_choice {
+							obj = obj.set_any_of(apb::Node::array(options_ap));
+						} else {
+							obj = obj.set_one_of(apb::Node::array(options_ap));
+						}
+					}
+				}
+
+				obj
 			},
 			None => serde_json::Value::Null,
 		}
@@ -107,7 +135,7 @@ impl FromQueryResult for RichActivity {
 
 impl IntoActivityPub for RichActivity {
 	fn into_activity_pub_json(self, ctx: &crate::Context) -> serde_json::Value {
-		use apb::ObjectMut;
+		use apb::{ActivityMut, ObjectMut};
 		match (self.activity, &self.object.object) {
 			(None, None) => serde_json::Value::Null,
 
@@ -179,8 +207,39 @@ impl FromQueryResult for RichNotification {
 
 impl IntoActivityPub for RichNotification {
 	fn into_activity_pub_json(self, ctx: &crate::Context) -> serde_json::Value {
+		use apb::ActivityMut;
 		let seen = self.seen;
 		self.activity.into_activity_pub_json(ctx)
 			.set_seen(Some(seen))
+	}
+}
+
+pub struct RichQuestionOption {
+	pub option: crate::model::question_option::Model,
+	pub votes: u64,
+}
+
+impl FromQueryResult for RichQuestionOption {
+	fn from_query_result(res: &QueryResult, pre: &str) -> Result<Self, DbErr> {
+		Ok(RichQuestionOption {
+			option: crate::model::question_option::Model::from_query_result(res, pre)?,
+			votes: res.try_get(
+	crate::model::question_option::Entity.table_name(),
+				"votes",
+			).unwrap_or(0)
+		})
+	}
+}
+
+impl IntoActivityPub for RichQuestionOption {
+	fn into_activity_pub_json(self, ctx: &crate::Context) -> serde_json::Value {
+		use apb::{ObjectMut, CollectionMut};
+		self.option.into_activity_pub_json(ctx)
+			.set_replies(apb::Node::object(
+				apb::new()
+					.set_collection_type(Some(apb::CollectionType::OrderedCollection))
+					.set_total_items(Some(self.votes))
+					// .set_first(apb::Node::link(format!(""))) // TODO add in backend API routes to see votes
+			))
 	}
 }

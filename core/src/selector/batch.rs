@@ -12,33 +12,36 @@ impl<T> RichFillable for T
 where
 	T: BatchFillable
 {
+	#[allow(clippy::needless_question_mark)]
 	async fn load_batched_models(self, tx: &impl ConnectionTrait) -> Result<Self, DbErr> {
-		self
-			.with_batched::<crate::model::attachment::Entity>(tx)
-			.await?
-			.with_batched::<crate::model::mention::Entity>(tx)
-			.await?
-			.with_batched::<crate::model::hashtag::Entity>(tx)
-			.await
+		Ok(
+			self
+				.with_batched::<crate::model::attachment::Entity>(tx)
+				.await?
+				.with_batched::<crate::model::mention::Entity>(tx)
+				.await?
+				.with_batched::<crate::model::hashtag::Entity>(tx)
+				.await?
+		)
 	}
 }
 
 
 #[allow(async_fn_in_trait)]
 pub trait BatchFillable: Sized {
-	async fn with_batched<E>(self, tx: &impl ConnectionTrait) -> Result<Self, DbErr>
+	async fn with_batched<T>(self, tx: &impl ConnectionTrait) -> Result<Self, DbErr>
 	where
-		E: BatchFillableComparison + EntityTrait,
-		E::Model: BatchFillableKey + Send + FromQueryResult + ModelTrait<Entity = E>,
-		RichObject: BatchFillableAcceptor<Vec<E::Model>>;
+		T: BatchFillableComparison + EntityTrait,
+		T::Model: Send + FromQueryResult + ModelTrait<Entity = T>,
+		RichObject: BatchFillableLoader<T>;
 }
 
 impl BatchFillable for RichActivity {
 	async fn with_batched<E>(mut self, tx: &impl ConnectionTrait) -> Result<Self, DbErr>
 	where
 		E: BatchFillableComparison + EntityTrait,
-		E::Model: BatchFillableKey + Send + FromQueryResult + ModelTrait<Entity = E>,
-		RichObject: BatchFillableAcceptor<Vec<E::Model>>,
+		E::Model: Send + FromQueryResult + ModelTrait<Entity = E>,
+		RichObject: BatchFillableLoader<E>,
 	{
 		self.object = self.object.with_batched::<E>(tx).await?;
 		Ok(self)
@@ -49,8 +52,8 @@ impl BatchFillable for Vec<RichActivity> {
 	async fn with_batched<E>(self, tx: &impl ConnectionTrait) -> Result<Self, DbErr>
 	where
 			E: BatchFillableComparison + EntityTrait,
-			E::Model: BatchFillableKey + Send + FromQueryResult + ModelTrait<Entity = E>,
-			RichObject: BatchFillableAcceptor<Vec<E::Model>>
+			E::Model: Send + FromQueryResult + ModelTrait<Entity = E>,
+			RichObject: BatchFillableLoader<E>
 	{
 		// TODO can we do this in-place rather than copying everything to a new vec?
 		let mut out = Vec::new();
@@ -68,15 +71,16 @@ impl BatchFillable for Vec<RichObject> {
 	async fn with_batched<E>(mut self, tx: &impl ConnectionTrait) -> Result<Self, DbErr>
 	where
 		E: BatchFillableComparison + EntityTrait,
-		E::Model: BatchFillableKey + Send + FromQueryResult + ModelTrait<Entity = E>,
-		RichObject: BatchFillableAcceptor<Vec<E::Model>>,
+		E::Model: Send + FromQueryResult + ModelTrait<Entity = E>,
+		RichObject: BatchFillableLoader<E>,
 	{
 		let ids : Vec<i64> = self.iter().filter_map(|x| Some(x.object.as_ref()?.internal)).collect();
-		let batch = E::find()
-			.filter(E::comparison(ids))
+		let batch_query = E::find()
+			.filter(E::comparison(ids));
+		let batch = RichObject::load(batch_query)
 			.all(tx)
 			.await?;
-		let mut map : HashMap<i64, Vec<E::Model>> = HashMap::new();
+		let mut map : HashMap<i64, Vec<<RichObject as BatchFillableLoader<E>>::To>> = HashMap::new();
 		for element in batch {
 			match map.entry(element.key()) {
 				Entry::Occupied(mut x) => { x.get_mut().push(element); },
@@ -85,10 +89,8 @@ impl BatchFillable for Vec<RichObject> {
 		}
 		for element in self.iter_mut() {
 			if let Some(ref object) = element.object {
-				if let Some(v) = map.get(&object.internal) {
-					// TODO wasteful because we clone every time, but we cant do remove otherwise multiple
-					//      identical objects wont get filled (for example, a post boosted twice)
-					element.accept(v.clone(), tx).await?;
+				if let Some(v) = map.remove(&object.internal) {
+					element.accept(v);
 				}
 			}
 		}
@@ -100,15 +102,16 @@ impl BatchFillable for RichObject {
 	async fn with_batched<E>(mut self, tx: &impl ConnectionTrait) -> Result<Self, DbErr>
 	where
 		E: BatchFillableComparison + EntityTrait,
-		E::Model: BatchFillableKey + Send + FromQueryResult + ModelTrait<Entity = E>,
-		RichObject: BatchFillableAcceptor<Vec<E::Model>>,
+		E::Model: Send + FromQueryResult + ModelTrait<Entity = E>,
+		RichObject: BatchFillableLoader<E>,
 	{
 		if let Some(ref obj) = self.object {
-			let batch =E::find()
-				.filter(E::comparison(vec![obj.internal]))
+			let query = E::find()
+				.filter(E::comparison(vec![obj.internal]));
+			let batch = RichObject::load(query)
 				.all(tx)
 				.await?;
-			self.accept(batch, tx).await?;
+			self.accept(batch);
 		}
 		Ok(self)
 	}
@@ -118,8 +121,8 @@ impl BatchFillable for RichObjectOrActor {
 	async fn with_batched<E>(mut self, tx: &impl ConnectionTrait) -> Result<Self, DbErr>
 	where
 		E: BatchFillableComparison + EntityTrait,
-		E::Model: BatchFillableKey + Send + FromQueryResult + ModelTrait<Entity = E>,
-		RichObject: BatchFillableAcceptor<Vec<E::Model>>,
+		E::Model: Send + FromQueryResult + ModelTrait<Entity = E>,
+		RichObject: BatchFillableLoader<E>,
 	{
 		self.object = self.object.with_batched::<E>(tx).await?;
 		Ok(self)
@@ -130,8 +133,8 @@ impl BatchFillable for Vec<RichObjectOrActor> {
 	async fn with_batched<E>(self, tx: &impl ConnectionTrait) -> Result<Self, DbErr>
 	where
 			E: BatchFillableComparison + EntityTrait,
-			E::Model: BatchFillableKey + Send + FromQueryResult + ModelTrait<Entity = E>,
-			RichObject: BatchFillableAcceptor<Vec<E::Model>>
+			E::Model: Send + FromQueryResult + ModelTrait<Entity = E>,
+			RichObject: BatchFillableLoader<E>
 	{
 		// TODO can we do this in-place rather than copying everything to a new vec?
 		let mut out = Vec::new();
@@ -146,9 +149,7 @@ impl BatchFillable for Vec<RichObjectOrActor> {
 
 // welcome to interlocking trait hell, enjoy your stay
 mod hell {
-	use sea_orm::{sea_query::IntoCondition, ColumnTrait, ConnectionTrait, DbErr, EntityTrait};
-
-	use crate::selector::rich::{RichHashtag, RichMention};
+	use sea_orm::{sea_query::IntoCondition, ColumnTrait, EntityName, Iden, Iterable, QuerySelect, RelationTrait, SelectColumns};
 
 	pub trait BatchFillableComparison {
 		fn comparison(ids: Vec<i64>) -> sea_orm::Condition;
@@ -182,9 +183,9 @@ mod hell {
 		}
 	}
 
-	impl BatchFillableKey for crate::model::mention::Model {
+	impl BatchFillableKey for crate::selector::RichMention {
 		fn key(&self) -> i64 {
-			self.object
+			self.mention.object
 		}
 	}
 
@@ -193,42 +194,70 @@ mod hell {
 			self.object
 		}
 	}
-	
-	#[allow(async_fn_in_trait)]
-	pub trait BatchFillableAcceptor<B> {
-		async fn accept(&mut self, batch: B, tx: &impl ConnectionTrait) -> Result<(), DbErr>;
+
+	impl BatchFillableKey for crate::selector::RichQuestionOption {
+		fn key(&self) -> i64 {
+			self.option.object
+		}
 	}
 	
-	impl BatchFillableAcceptor<Vec<crate::model::attachment::Model>> for super::RichObject {
-		async fn accept(&mut self, batch: Vec<crate::model::attachment::Model>, _tx: &impl ConnectionTrait) -> Result<(), DbErr> {
+	pub trait BatchFillableLoader<From>
+	where
+		From : sea_orm::EntityTrait,
+	{
+		type To : sea_orm::FromQueryResult + BatchFillableKey;
+
+		fn load(query: sea_orm::Select<From>) -> sea_orm::Selector<sea_orm::SelectModel<Self::To>> { query.into_model::<Self::To>() }
+		fn accept(&mut self, batch: Vec<Self::To>);
+	}
+	
+	impl BatchFillableLoader<crate::model::attachment::Entity> for super::RichObject {
+		type To = crate::model::attachment::Model;
+		fn accept(&mut self, batch: Vec<Self::To>) {
 			self.attachments = Some(batch);
-			Ok(())
 		}
 	}
 	
-	impl BatchFillableAcceptor<Vec<crate::model::hashtag::Model>> for super::RichObject {
-		async fn accept(&mut self, batch: Vec<crate::model::hashtag::Model>, _tx: &impl ConnectionTrait) -> Result<(), DbErr> {
-			self.hashtags = Some(batch.into_iter().map(|x| RichHashtag { hash: x }).collect());
-			Ok(())
+	impl BatchFillableLoader<crate::model::hashtag::Entity> for super::RichObject {
+		type To = crate::model::hashtag::Model;
+		fn accept(&mut self, batch: Vec<Self::To>) {
+			self.hashtags = Some(batch);
 		}
 	}
 	
-	impl BatchFillableAcceptor<Vec<crate::model::mention::Model>> for super::RichObject {
-		async fn accept(&mut self, batch: Vec<crate::model::mention::Model>, tx: &impl ConnectionTrait) -> Result<(), DbErr> {
-			// TODO batch load users from mentions rather than doing for loop
-			let mut mentions = Vec::new();
-			for row in batch {
-				// TODO filter only needed rows
-				if let Some(user) = crate::model::actor::Entity::find_by_id(row.actor).one(tx).await? {
-					mentions.push(RichMention {
-						mention: row,
-						fqn: format!("@{}@{}", user.preferred_username, user.domain),
-						id: user.id,
-					});
-				}
+	impl BatchFillableLoader<crate::model::mention::Entity> for super::RichObject {
+		type To = crate::selector::RichMention;
+
+		fn load(query: sea_orm::Select<crate::model::mention::Entity>) -> sea_orm::Selector<sea_orm::SelectModel<Self::To>> {
+			let mut new_query = query
+				.join(sea_orm::JoinType::LeftJoin, crate::model::mention::Relation::Actors.def())
+				.select_only()
+				.select_column_as(
+					crate::model::actor::Column::PreferredUsername,
+					format!("{}{}", crate::model::actor::Entity.table_name(), crate::model::actor::Column::PreferredUsername.to_string()),
+				)
+				.select_column_as(
+					crate::model::actor::Column::Domain,
+					format!("{}{}", crate::model::actor::Entity.table_name(), crate::model::actor::Column::Domain.to_string()),
+				)
+				.select_column_as(
+					crate::model::actor::Column::Id,
+					format!("{}{}", crate::model::actor::Entity.table_name(), crate::model::actor::Column::Id.to_string()),
+				);
+
+			for col in crate::model::mention::Column::iter() {
+				new_query = new_query.select_column_as(
+					col,
+					format!("{}{}", crate::model::mention::Entity.table_name(), col.to_string())
+				);
 			}
-			self.mentions = Some(mentions);
-			Ok(())
+
+			new_query
+				.into_model::<crate::selector::RichMention>()
+		}
+
+		fn accept(&mut self, batch: Vec<Self::To>) {
+			self.mentions = Some(batch);
 		}
 	}
 }
