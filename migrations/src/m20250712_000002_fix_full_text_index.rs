@@ -9,11 +9,15 @@ pub struct Migration;
 impl MigrationTrait for Migration {
 	async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
 		manager
+			.drop_index(Index::drop().name("index-objects-content").table(Objects::Table).to_owned())
+			.await?;
+
+		manager
 			.create_index(
 				Index::create()
 					.name("index-objects-content")
 					.table(Objects::Table)
-					.col(Objects::Audience) // oh my god... took me almost a year to find this huge whoopsies
+					.col(Objects::Content)
 					.full_text() // on postgres this may fail, run `CREATE EXTENSION btree_gin;` to fix
 					.to_owned()
 				)
@@ -24,6 +28,17 @@ impl MigrationTrait for Migration {
 	async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
 		manager
 			.drop_index(Index::drop().name("index-objects-content").table(Objects::Table).to_owned())
+			.await?;
+
+		manager
+			.create_index(
+				Index::create()
+					.name("index-objects-content")
+					.table(Objects::Table)
+					.col(Objects::Audience)
+					.full_text() // on postgres this may fail, run `CREATE EXTENSION btree_gin;` to fix
+					.to_owned()
+				)
 			.await?;
 		Ok(())
 	}

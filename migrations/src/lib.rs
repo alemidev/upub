@@ -27,6 +27,7 @@ mod m20250115_000001_add_content_to_activities;
 mod m20250620_000001_add_list_tables;
 mod m20250620_000002_add_unique_index_to_list_elements;
 mod m20250712_000001_add_question_tables;
+mod m20250712_000002_fix_full_text_index;
 
 pub struct Migrator;
 
@@ -61,6 +62,7 @@ impl MigratorTrait for Migrator {
 			Box::new(m20250620_000001_add_list_tables::Migration),
 			Box::new(m20250620_000002_add_unique_index_to_list_elements::Migration),
 			Box::new(m20250712_000001_add_question_tables::Migration),
+			Box::new(m20250712_000002_fix_full_text_index::Migration),
 		]
 	}
 }
