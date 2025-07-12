@@ -98,6 +98,8 @@ pub async fn faker(ctx: upub::Context, count: i64) -> Result<(), sea_orm::DbErr>
 			bcc: Set(JsonVec::default()),
 			url: Set(None),
 			sensitive: Set(false),
+			end_time: Set(None),
+			is_multiple_choice_poll: Set(None),
 		}).exec(db).await?;
 
 		activity::Entity::insert(activity::ActiveModel {
