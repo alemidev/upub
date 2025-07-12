@@ -178,8 +178,12 @@ where
 					(object.id().ok()?, object.in_reply_to().id().ok()?)
 				},
 
-				// if it's a raw note, directly check if it replies to root
-				apb::ObjectType::Note => (document.id().ok()?, document.in_reply_to().id().ok()?),
+				// if it's a note, directly check if it replies to root
+				apb::ObjectType::Note
+				| apb::ObjectType::Article
+				| apb::ObjectType::Document(apb::DocumentType::Page)
+				| apb::ObjectType::Activity(apb::ActivityType::IntransitiveActivity(apb::IntransitiveActivityType::Question))
+				=> (document.id().ok()?, document.in_reply_to().id().ok()?),
 
 				// if it's anything else, check if it relates to root, maybe like or announce?
 				_ => (document.id().ok()?, document.object().id().ok()?),

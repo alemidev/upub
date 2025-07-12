@@ -3,7 +3,7 @@ use std::sync::Arc;
 use leptos::{either::Either, prelude::*};
 use crate::{prelude::*, URL_SENSITIVE};
 
-use apb::{ActivityMut, Base, CollectionMut, Object, ObjectMut, Shortcuts};
+use apb::{ActivityMut, Base, CollectionMut, Object, ObjectMut, Question, Shortcuts};
 
 #[component]
 pub fn Object(object: crate::Doc, #[prop(default = true)] controls: bool) -> impl IntoView {
@@ -130,6 +130,27 @@ pub fn Object(object: crate::Doc, #[prop(default = true)] controls: bool) -> imp
 			}
 		}).collect_view();
 
+	let post_poll = object.as_question().ok().map(|question| {
+		view! {
+			<ul>
+				{
+					question.any_of()
+						.flat()
+						.into_iter()
+						.filter_map(|x| Some(view!{ <li><input type="checkbox" disabled /> { x.into_inner().ok()?.name().ok()? }</li> }))
+						.collect::<Vec<_>>()
+				}
+				{
+					question.one_of()
+						.flat()
+						.into_iter()
+						.filter_map(|x| Some(view!{ <li><input type="radio" disabled /> { x.into_inner().ok()?.name().ok()? }</li> }))
+						.collect::<Vec<_>>()
+				}
+			</ul>
+		}
+	});
+
 	let post_image = object.image().inner().and_then(|x| x.url().id()).ok().map(|x| {
 		let (expand, set_expand) = signal(false);
 		view! {
@@ -156,7 +177,10 @@ pub fn Object(object: crate::Doc, #[prop(default = true)] controls: bool) -> imp
 	};
 	let post = match object.object_type() {
 		// mastodon, pleroma, misskey
-		Ok(apb::ObjectType::Note) => view! {
+		Ok(
+			apb::ObjectType::Note
+			| apb::ObjectType::Activity(apb::ActivityType::IntransitiveActivity(apb::IntransitiveActivityType::Question))
+		) => view! {
 			<article class="tl">
 				{post_inner}
 			</article>
@@ -206,6 +230,7 @@ pub fn Object(object: crate::Doc, #[prop(default = true)] controls: bool) -> imp
 			</tr>
 		</table>
 		{post}
+		{post_poll}
 		<div class="mb-s mt-s ml-1 rev">
 			{quote_badge}
 			{tag_badges}
