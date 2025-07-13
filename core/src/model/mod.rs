@@ -27,3 +27,5 @@ pub mod question_option;
 pub mod question_answer;
 
 pub mod downtime;
+pub mod emoji;
+

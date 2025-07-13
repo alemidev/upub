@@ -1,7 +1,7 @@
 use apb::{LD, ActorMut, BaseMut, ObjectMut, PublicKeyMut};
 use axum::{extract::{Path, Query, State}, response::{IntoResponse, Response}};
 use reqwest::Method;
-use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter, QueryOrder, QuerySelect};
+use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter, QueryOrder, QuerySelect, SelectColumns};
 use upub::{selector::{RichFillable, RichObject}, traits::{Cloaker, Fetcher}, Context};
 
 use crate::{builders::JsonLD, ApiError, AuthIdentity};
@@ -136,6 +136,31 @@ pub async fn cloak_proxy(
 		return Err(ApiError::Status(axum::http::StatusCode::UNAVAILABLE_FOR_LEGAL_REASONS));
 	}
 
+	proxy_request(ctx, uri).await
+}
+
+pub async fn emoji_proxy(
+	State(ctx): State<Context>,
+	Path((domain, name)) : Path<(String, String)>,
+) -> crate::ApiResult<impl IntoResponse> {
+	let uri = upub::model::emoji::Entity::find()
+		.filter(upub::model::emoji::Column::Name.eq(name))
+		.filter(upub::model::emoji::Column::Domain.eq(domain))
+		.select_only()
+		.select_column(upub::model::emoji::Column::Uri)
+		.into_tuple::<String>()
+		.one(ctx.db())
+		.await?
+		.ok_or(crate::ApiError::not_found())?;
+
+	if upub::ext::is_blacklisted(&uri, &ctx.cfg().reject.media) {
+		return Err(ApiError::Status(axum::http::StatusCode::UNAVAILABLE_FOR_LEGAL_REASONS));
+	}
+
+	proxy_request(ctx, uri).await
+}
+
+async fn proxy_request(ctx: upub::Context, uri: String) -> crate::ApiResult<impl IntoResponse> {
 	let resp = Context::client(ctx.domain())
 		.get(uri)
 		.send()

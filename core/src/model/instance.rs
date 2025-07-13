@@ -27,6 +27,8 @@ pub enum Relation {
 	Addressing,
 	#[sea_orm(has_many = "super::downtime::Entity")]
 	Downtime,
+	#[sea_orm(has_many = "super::emoji::Entity")]
+	Emojis,
 }
 
 impl Related<super::actor::Entity> for Entity {
@@ -44,6 +46,12 @@ impl Related<super::addressing::Entity> for Entity {
 impl Related<super::downtime::Entity> for Entity {
 	fn to() -> RelationDef {
 		Relation::Downtime.def()
+	}
+}
+
+impl Related<super::emoji::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Emojis.def()
 	}
 }
 
