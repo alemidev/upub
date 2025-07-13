@@ -94,8 +94,7 @@ pub trait Object : Base {
 	fn summary(&self) -> Field<String> { Err(FieldErr("summary")) }
 	/// One or more "tags" that have been associated with an objects. A tag can be any kind of Object
 	/// The key difference between attachment and tag is that the former implies association by inclusion, while the latter implies associated by reference
-	// TODO technically this is an object? but spec says that it works my reference, idk
-	fn tag(&self) -> Node<Self::Link> { Node::Empty }
+	fn tag(&self) -> Node<Self::Object> { Node::Empty }
 	/// Identifies one or more links to representations of the object
 	fn url(&self) -> Node<Self::Link> { Node::Empty }
 	/// Identifies an entity considered to be part of the public primary audience of an Object
@@ -130,6 +129,7 @@ pub trait Object : Base {
 	fn as_collection(&self) -> Result<&Self::Collection, FieldErr> { Err(FieldErr("type")) }
 	fn as_document(&self) -> Result<&Self::Document, FieldErr> { Err(FieldErr("type")) }
 	fn as_question(&self) -> Result<&Self::Question, FieldErr> { Err(FieldErr("type")) }
+	fn as_link(&self) -> Result<&Self::Link, FieldErr> { Err(FieldErr("type")) }
 
 	#[cfg(feature = "did-core")] // TODO this isn't from did-core actually!?!?!?!?!
 	fn value(&self) -> Field<String> { Err(FieldErr("value")) }
@@ -272,6 +272,13 @@ impl Object for serde_json::Value {
 	fn as_question(&self) -> Result<&Self::Question, FieldErr> {
 		match self.object_type()? {
 			ObjectType::Activity(ActivityType::IntransitiveActivity(IntransitiveActivityType::Question)) => Ok(self),
+			_ => Err(FieldErr("type")),
+		}
+	}
+
+	fn as_link(&self) -> Result<&Self::Link, FieldErr> {
+		match self.base_type()? {
+			crate::BaseType::Link(_) => Ok(self),
 			_ => Err(FieldErr("type")),
 		}
 	}
