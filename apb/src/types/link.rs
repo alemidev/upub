@@ -1,6 +1,16 @@
 use crate::{Field, FieldErr};
 
-#[cfg(feature = "activitypub-miscellaneous-terms")]
+#[cfg(all(feature = "activitypub-miscellaneous-terms", feature = "toot"))]
+crate::strenum! {
+	pub enum LinkType {
+		Emoji,
+		Link,
+		Hashtag,
+		Mention;
+	};
+}
+
+#[cfg(all(feature = "activitypub-miscellaneous-terms", not(feature = "toot")))]
 crate::strenum! {
 	pub enum LinkType {
 		Link,
@@ -9,7 +19,16 @@ crate::strenum! {
 	};
 }
 
-#[cfg(not(feature = "activitypub-miscellaneous-terms"))]
+#[cfg(all(not(feature = "activitypub-miscellaneous-terms"), feature = "toot"))]
+crate::strenum! {
+	pub enum LinkType {
+		Emoji,
+		Link,
+		Mention;
+	};
+}
+
+#[cfg(all(not(feature = "activitypub-miscellaneous-terms"), not(feature = "toot")))]
 crate::strenum! {
 	pub enum LinkType {
 		Link,
