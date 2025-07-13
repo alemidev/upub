@@ -390,7 +390,7 @@ fn string_to_hex(inpt: &str) -> (String, String) {
 	(from_str, to_str)
 }
 
-pub fn replace_custom_emoji(mut text: String, domain: String) -> String {
+pub fn replace_custom_emoji(mut text: String, domain: &str) -> String {
 	// TODO disgusting clone
 	for m in crate::CUSTOM_EMOJI_REGEX.find_iter(&text.clone()) {
 		let emoji = m.as_str().replace(':', "");

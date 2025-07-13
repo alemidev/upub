@@ -33,7 +33,7 @@ pub fn ActorHeader() -> impl IntoView {
 			let domain = crate::server(&actor.id().unwrap_or_default());
 			let username = actor.preferred_username().unwrap_or_default().to_string();
 			let name_raw = actor.name().unwrap_or(username.clone());
-			let name = crate::replace_custom_emoji(name_raw, domain);
+			let name = crate::replace_custom_emoji(name_raw, &domain);
 			let created = actor.published().ok();
 			let following_me = actor.following_me().unwrap_or(false);
 			let followed_by_me = actor.followed_by_me().unwrap_or(false);
