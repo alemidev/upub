@@ -40,6 +40,9 @@ pub use export::*;
 mod attachments;
 pub use attachments::*;
 
+mod emoji;
+pub use emoji::*;
+
 // TODO naming is going kind of all over the place, should probably rename lot of these...
 
 #[derive(Debug, Clone, clap::Subcommand)]
@@ -213,6 +216,12 @@ pub enum CliCommand {
 	Attachments {
 
 	},
+
+	/// fetch custom emojis from provided document
+	Emoji {
+		/// target document: actor, object or activity doesn't matter
+		document: String
+	},
 }
 
 pub async fn run(ctx: upub::Context, command: CliCommand) -> Result<(), Box<dyn std::error::Error>> {
@@ -246,5 +255,7 @@ pub async fn run(ctx: upub::Context, command: CliCommand) -> Result<(), Box<dyn 
 			Ok(export(ctx, actor, file, pretty).await?),
 		CliCommand::Attachments {  } =>
 			Ok(fix_attachments_types(ctx).await?),
+		CliCommand::Emoji { document } =>
+			Ok(fetch_custom_emojis(ctx, document).await?),
 	}
 }

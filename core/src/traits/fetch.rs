@@ -79,6 +79,12 @@ impl Pull<serde_json::Value> {
 			Self::Object(x) => Ok(x),
 		}
 	}
+
+	pub fn document(self) -> serde_json::Value {
+		match self {
+			Self::Actor(x) | Self::Activity(x) | Self::Object(x) => x,
+		}
+	}
 }
 
 #[async_trait::async_trait]
