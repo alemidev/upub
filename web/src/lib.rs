@@ -390,6 +390,16 @@ fn string_to_hex(inpt: &str) -> (String, String) {
 	(from_str, to_str)
 }
 
+pub fn replace_custom_emoji(mut text: String, domain: String) -> String {
+	// TODO disgusting clone
+	for m in crate::CUSTOM_EMOJI_REGEX.find_iter(&text.clone()) {
+		let emoji = m.as_str().replace(':', "");
+		let safe = mdhtml::safe_html(m.as_str());
+		text = text.replace(m.as_str(), &format!("<img class=\"custom-emoji\" title=\"{safe}\" src=\"{URL_BASE}/emoji/{domain}/{emoji}\" />"));
+	}
+	text
+}
+
 pub fn server(id: &str) -> String {
 	id
 		.replace("https://", "")

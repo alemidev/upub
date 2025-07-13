@@ -62,11 +62,7 @@ pub fn ActorBanner(object: crate::Doc) -> impl IntoView {
 
 #[component]
 fn DisplayName(mut name: String, domain: String) -> impl IntoView {
-	for m in crate::CUSTOM_EMOJI_REGEX.find_iter(&name.clone()) {
-		let emoji = m.as_str().replace(':', "");
-		let safe = mdhtml::safe_html(m.as_str());
-		name = name.replace(m.as_str(), &format!("<img class=\"custom-emoji\" title=\"{safe}\" src=\"{URL_BASE}/emoji/{domain}/{emoji}\" />"));
-	}
+	name = crate::replace_custom_emoji(name, domain);
 	view! { <span class="force-break" inner_html=name></span> }
 }
 

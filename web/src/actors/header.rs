@@ -30,12 +30,13 @@ pub fn ActorHeader() -> impl IntoView {
 		None => view! { <Loader /> }.into_any(),
 		Some(None) => view! { <code class="center cw color">"could not resolve user"</code> }.into_any(),
 		Some(Some(actor)) => {
+			let domain = crate::server(&actor.id().unwrap_or_default());
 			let username = actor.preferred_username().unwrap_or_default().to_string();
-			let name = actor.name().unwrap_or(username.clone());
+			let name_raw = actor.name().unwrap_or(username.clone());
+			let name = crate::replace_custom_emoji(name_raw, domain);
 			let created = actor.published().ok();
 			let following_me = actor.following_me().unwrap_or(false);
 			let followed_by_me = actor.followed_by_me().unwrap_or(false);
-			let domain = actor.id().unwrap_or_default().replace("https://", "").split('/').next().unwrap_or_default().to_string();
 			let actor_type = actor.actor_type().unwrap_or(apb::ActorType::Person);
 			let actor_type_tag = if actor_type == apb::ActorType::Person { None } else {
 				Some(view! { <sup class="ml-s"><small>"["{actor_type.as_ref().to_lowercase()}"]"</small></sup> } )
@@ -78,7 +79,7 @@ pub fn ActorHeader() -> impl IntoView {
 									<span title="following"><span class="emoji ml-1 mr-s">"👥"</span><small>{actor.following_count().unwrap_or_default()}</small></span>
 									<span title="followers"><span class="emoji ml-1 mr-s">"📢"</span><small>{actor.followers_count().unwrap_or_default()}</small></span>
 								</p>
-								<p class="line pt-1"><b class="big mt-1">{name}</b>{actor_type_tag}</p>
+								<p class="line pt-1"><b class="big mt-1" inner_html=name></b>{actor_type_tag}</p>
 								<p class="line"><small><a class="clean hover" href={uid.clone()} target="_blank">{username.clone()}@{domain}</a></small></p>
 								<p class="line"><DateTime t=created /></p>
 							</div>

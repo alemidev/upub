@@ -34,12 +34,7 @@ pub fn Object(object: crate::Doc, #[prop(default = true)] controls: bool) -> imp
 	};
 
 	let mut content = mdhtml::safe_html(&object.content().unwrap_or_default());
-	// TODO disgusting clone
-	for m in crate::CUSTOM_EMOJI_REGEX.find_iter(&content.clone()) {
-		let emoji = m.as_str().replace(':', "");
-		let safe = mdhtml::safe_html(m.as_str());
-		content = content.replace(m.as_str(), &format!("<img class=\"custom-emoji\" title=\"{safe}\" src=\"{URL_BASE}/emoji/{domain}/{emoji}\" />"));
-	}
+	content = crate::replace_custom_emoji(content, domain);
 
 	let audience_badge = object.audience().id().ok()
 		.map(|x| {
