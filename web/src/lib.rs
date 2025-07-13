@@ -56,6 +56,10 @@ impl<T> LookupStatus<T> {
 	}
 }
 
+lazy_static::lazy_static! {
+	pub static ref CUSTOM_EMOJI_REGEX: regex::Regex = regex::Regex::new(r":\w+:").expect("failed compiling custom emoji regex");
+}
+
 pub trait Cache {
 	type Item;
 
@@ -386,3 +390,12 @@ fn string_to_hex(inpt: &str) -> (String, String) {
 	(from_str, to_str)
 }
 
+pub fn server(id: &str) -> String {
+	id
+		.replace("https://", "")
+		.replace("http://", "")
+		.split('/')
+		.next()
+		.unwrap_or("")
+		.to_string()
+}

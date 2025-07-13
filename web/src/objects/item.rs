@@ -8,6 +8,7 @@ use apb::{ActivityMut, Base, CollectionMut, Object, ObjectMut, Question, Shortcu
 #[component]
 pub fn Object(object: crate::Doc, #[prop(default = true)] controls: bool) -> impl IntoView {
 	let oid = object.id().unwrap_or_default().to_string();
+	let domain = crate::server(&oid);
 	let author_id = object.attributed_to().id().ok().unwrap_or_default();
 	let author = cache::OBJECTS.get_or(&author_id, serde_json::Value::String(author_id.clone()).into());
 	let sensitive = object.sensitive().unwrap_or_default();
@@ -32,7 +33,13 @@ pub fn Object(object: crate::Doc, #[prop(default = true)] controls: bool) -> imp
 		Some(view! { <div class="pb-1"></div> })
 	};
 
-	let content = mdhtml::safe_html(&object.content().unwrap_or_default());
+	let mut content = mdhtml::safe_html(&object.content().unwrap_or_default());
+	// TODO disgusting clone
+	for m in crate::CUSTOM_EMOJI_REGEX.find_iter(&content.clone()) {
+		let emoji = m.as_str().replace(':', "");
+		let safe = mdhtml::safe_html(m.as_str());
+		content = content.replace(m.as_str(), &format!("<img class=\"custom-emoji\" title=\"{safe}\" src=\"{URL_BASE}/emoji/{domain}/{emoji}\" />"));
+	}
 
 	let audience_badge = object.audience().id().ok()
 		.map(|x| {

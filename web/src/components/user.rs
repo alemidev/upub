@@ -3,10 +3,6 @@ use crate::{prelude::*, IconGradient};
 
 use apb::{Activity, ActivityMut, Actor, Base, Object, ObjectMut};
 
-lazy_static::lazy_static! {
-	static ref REGEX: regex::Regex = regex::Regex::new(r":\w+:").expect("failed compiling custom emoji regex");
-}
-
 #[component]
 pub fn ActorStrip(object: crate::Doc) -> impl IntoView {
 	let actor_id = object.id().unwrap_or_default().to_string();
@@ -30,7 +26,7 @@ pub fn ActorBanner(object: crate::Doc) -> impl IntoView {
 			let uid = object.id().unwrap_or_default().to_string();
 			let uri = Uri::web(U::Actor, &uid);
 			let username = object.preferred_username().unwrap_or_default().to_string();
-			let domain = object.id().unwrap_or_default().replace("https://", "").replace("http://", "").split('/').next().unwrap_or_default().to_string();
+			let domain = crate::server(&object.id().unwrap_or_default());
 			let display_name = object.name().unwrap_or(username.clone());
 			let (avatar_url, avatar_style) = object.icon_url_and_style();
 
@@ -44,7 +40,7 @@ pub fn ActorBanner(object: crate::Doc) -> impl IntoView {
 							</a>
 						</td>
 						<td>
-							<b class="displayname"><DisplayName name=display_name /></b>
+							<b class="displayname"><DisplayName name=display_name domain=domain.clone() /></b>
 						</td>
 					</tr>
 					<tr>
@@ -65,12 +61,11 @@ pub fn ActorBanner(object: crate::Doc) -> impl IntoView {
 }
 
 #[component]
-fn DisplayName(mut name: String) -> impl IntoView {
-	for m in REGEX.find_iter(&name.clone()) {
-		// TODO this is a clear unmitigated unsanitized html injection ahahahahaha but accounts 
-		//      with many custom emojis in their names mess with my frontend and i dont want to 
-		//      deal with it rn
-		name = name.replace(m.as_str(), &format!("<u class=\"moreinfo\" title=\"{}\">[::]</u>", m.as_str()));
+fn DisplayName(mut name: String, domain: String) -> impl IntoView {
+	for m in crate::CUSTOM_EMOJI_REGEX.find_iter(&name.clone()) {
+		let emoji = m.as_str().replace(':', "");
+		let safe = mdhtml::safe_html(m.as_str());
+		name = name.replace(m.as_str(), &format!("<img class=\"custom-emoji\" title=\"{safe}\" src=\"{URL_BASE}/emoji/{domain}/{emoji}\" />"));
 	}
 	view! { <span class="force-break" inner_html=name></span> }
 }
