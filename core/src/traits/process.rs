@@ -476,6 +476,7 @@ pub async fn process_update(ctx: &crate::Context, activity: impl apb::Activity, 
 			actor_model.updated = Set(chrono::Utc::now());
 			actor_model.update(tx).await?;
 		},
+		// TODO also process Question vote count updates
 		apb::ObjectType::Note | apb::ObjectType::Document(apb::DocumentType::Page) => {
 			let internal_oid = crate::model::object::Entity::ap_to_internal(&oid, tx)
 				.await?
