@@ -339,37 +339,6 @@ impl Fetcher for crate::Context {
 			}
 		}
 
-		let mut user_model = AP::actor_q(&document, None)?;
-
-		// cloak remote images
-		if let Set(Some(ref image)) = user_model.image {
-			if !image.starts_with(self.base()) {
-				user_model.image = Set(Some(self.cloaked(image)));
-			}
-		}
-
-		if let Set(Some(ref icon)) = user_model.icon {
-			if !icon.starts_with(self.base()) {
-				user_model.icon = Set(Some(self.cloaked(icon)));
-			}
-		}
-
-		Ok(user_model)
-	}
-
-	async fn fetch_user(&self, id: &str, tx: &impl ConnectionTrait) -> Result<crate::model::actor::Model, RequestError> {
-		if let Some(x) = crate::model::actor::Entity::find_by_ap_id(id).one(tx).await? {
-			return Ok(x); // already in db, easy
-		}
-
-		let document = self.pull(id).await?.actor()?;
-
-		if document.id()? != id {
-			if let Some(x) = crate::model::actor::Entity::find_by_ap_id(&document.id()?).one(tx).await? {
-				return Ok(x); // already in db but we had to follow the "pretty" url, mehh
-			}
-		}
-
 		// lookup custom emojis in this user
 		// TODO is this the right place to do it?
 		for tag in document.tag().flat() {
@@ -399,6 +368,37 @@ impl Fetcher for crate::Context {
 							.await?;
 					}
 				}
+			}
+		}
+
+		let mut user_model = AP::actor_q(&document, None)?;
+
+		// cloak remote images
+		if let Set(Some(ref image)) = user_model.image {
+			if !image.starts_with(self.base()) {
+				user_model.image = Set(Some(self.cloaked(image)));
+			}
+		}
+
+		if let Set(Some(ref icon)) = user_model.icon {
+			if !icon.starts_with(self.base()) {
+				user_model.icon = Set(Some(self.cloaked(icon)));
+			}
+		}
+
+		Ok(user_model)
+	}
+
+	async fn fetch_user(&self, id: &str, tx: &impl ConnectionTrait) -> Result<crate::model::actor::Model, RequestError> {
+		if let Some(x) = crate::model::actor::Entity::find_by_ap_id(id).one(tx).await? {
+			return Ok(x); // already in db, easy
+		}
+
+		let document = self.pull(id).await?.actor()?;
+
+		if document.id()? != id {
+			if let Some(x) = crate::model::actor::Entity::find_by_ap_id(&document.id()?).one(tx).await? {
+				return Ok(x); // already in db but we had to follow the "pretty" url, mehh
 			}
 		}
 
