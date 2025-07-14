@@ -175,9 +175,8 @@ impl Normalizer for crate::Context {
 								.await?;
 						},
 						Ok(apb::LinkType::Emoji) => {
-							use apb::Base;
 							let name = l.name().unwrap_or_default().replace(':', "");
-							let domain = crate::Context::server(&doc.id().unwrap_or_default());
+							let domain = crate::Context::server(&object_model.id);
 							let uri = doc.icon().into_inner().and_then(|x| x.url().id()).unwrap_or_default();
 							if !name.is_empty()
 								&& !domain.is_empty()
@@ -266,9 +265,8 @@ impl Normalizer for crate::Context {
 			if let Ok(doc) = tag.into_inner() {
 				if let Ok(l) = doc.as_link() {
 					if matches!(l.link_type(), Ok(apb::LinkType::Emoji)) {
-						use apb::Base;
 						let name = l.name().unwrap_or_default().replace(':', "");
-						let domain = crate::Context::server(&doc.id().unwrap_or_default());
+						let domain = crate::Context::server(&activity_model.id);
 						let uri = doc.icon().into_inner().and_then(|x| x.url().id()).unwrap_or_default();
 						if !name.is_empty()
 							&& !domain.is_empty()

@@ -13,7 +13,7 @@ pub async fn fetch_custom_emojis(ctx: upub::Context, document: String) -> Result
 			use apb::Link;
 			if matches!(doc.link_type(), Ok(apb::LinkType::Emoji)) {
 				let name = apb::Link::name(&doc).unwrap_or_default().replace(':', "");
-				let domain = upub::Context::server(&doc.id().unwrap_or_default());
+				let domain = upub::Context::server(&document.id().unwrap_or_default());
 				let uri = doc.icon().into_inner().and_then(|x| x.url().id()).unwrap_or_default();
 				if !name.is_empty()
 					&& !domain.is_empty()
