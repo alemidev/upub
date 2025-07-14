@@ -1,11 +1,38 @@
 fn main() {
-	println!("cargo::rerun-if-changed=web/src/");
-	println!("cargo::rerun-if-changed=web/Cargo.toml");
-	println!("cargo::rerun-if-changed=web/index.html");
-	println!("cargo::rerun-if-changed=web/style.css");
-	println!("cargo::rerun-if-changed=web/manifest.json");
-	println!("cargo::rerun-if-changed=web/favicon.ico");
-	println!("cargo::rerun-if-changed=web/icon.png");
+	println!("cargo::rerun-if-changed=build.rs");
+	println!("cargo::rerun-if-changed=../web/src/");
+	println!("cargo::rerun-if-changed=../web/Cargo.toml");
+	println!("cargo::rerun-if-changed=../web/index.html");
+	println!("cargo::rerun-if-changed=../web/style.css");
+	println!("cargo::rerun-if-changed=../web/manifest.json");
+	println!("cargo::rerun-if-changed=../web/favicon.ico");
+	println!("cargo::rerun-if-changed=../web/icon.png");
+
+	#[cfg(feature = "web-build-fe")]
+	{
+		let trunk_bin = std::env::var("TRUNK_PATH").unwrap_or("trunk".to_string());
+		let base_url = std::env::var("UPUB_BASE_URL").unwrap_or_default();
+		let public_url = format!("{base_url}/web/assets/");
+
+		let Ok(status) = std::process::Command::new(trunk_bin)
+			.env("UPUB_BASE_URL", base_url)
+			.arg("build")
+			.arg("../web/index.html")
+			.arg("--release")
+			.arg(format!("--public-url={public_url}"))
+			.arg("--filehash=false")
+			.arg("--dist=../web/dist")
+			.status()
+		else {
+			println!("cargo::error=failed invoking trunk build, aborting");
+			return;
+		};
+
+		if !status.success() {
+			println!("cargo::error=trunk build failed, aborting");
+			return;
+		}
+	}
 
 	#[cfg(feature = "web")]
 	{

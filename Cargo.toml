@@ -48,7 +48,7 @@ migrate = ["dep:upub-migrations"]
 cli = ["dep:upub-cli"]
 worker = ["dep:upub-worker"]
 web = ["upub-routes?/web"]
-web-build-fe = []
+web-build-fe = ["upub-routes?/web-build-fe"]
 openssl-vendored = ["upub/openssl-vendored", "upub-cli/openssl-vendored", "upub-routes/openssl-vendored"]
 
 # upub: ~38M
