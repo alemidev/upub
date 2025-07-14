@@ -41,6 +41,7 @@ pub fn ActorHeader() -> impl IntoView {
 			let actor_type_tag = if actor_type == apb::ActorType::Person { None } else {
 				Some(view! { <sup class="ml-s"><small>"["{actor_type.as_ref().to_lowercase()}"]"</small></sup> } )
 			};
+			let actor_summary = crate::replace_custom_emoji(mdhtml::safe_html(&actor.summary().unwrap_or_default()), &domain);
 			let background_url = actor.image_url().unwrap_or(FALLBACK_IMAGE_URL.into());
 			let (avatar_url, avatar_style) = actor.icon_url_and_style();
 			let fields = actor.attachment()
@@ -124,7 +125,7 @@ pub fn ActorHeader() -> impl IntoView {
 							})}
 						</div>
 					</div>
-					<p class="mb-2 mt-0 center bio" inner_html={mdhtml::safe_html(&actor.summary().unwrap_or_default())}></p>
+					<p class="mb-2 mt-0 center bio" inner_html=actor_summary ></p>
 					<p class="center">
 						<table class="fields center w-100 pa-s" style="margin: auto; table-layout: fixed;">{fields}</table>
 					</p>
