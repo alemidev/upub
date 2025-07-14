@@ -398,7 +398,7 @@ pub fn replace_custom_emoji(mut text: String, domain: &str) -> String {
 		let safe = mdhtml::safe_html(raw);
 		matches.push((m.range(), format!("<img class=\"custom-emoji\" title=\"{safe}\" src=\"{URL_BASE}/emoji/{domain}/{emoji}\" />")));
 	}
-	for (range, repl) in matches {
+	for (range, repl) in matches.into_iter().rev() {
 		text.replace_range(range, &repl);
 	}
 	text
