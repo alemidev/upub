@@ -250,7 +250,7 @@ pub fn Object(object: crate::Doc, #[prop(default = true)] controls: bool) -> imp
 				Some(view! {
 					<span style="white-space:nowrap">
 						<AddToListButton oid=oid.clone() />
-						<QuoteButton target=oid.clone() />
+						{if privacy.is_public() { Some(view! { <QuoteButton target=oid.clone() /> }) } else { None }}
 						<ReplyButton n=comments target=oid.clone() />
 						<LikeButton n=likes liked=already_liked target=oid.clone() author=author_id.clone() private=!privacy.is_public() />
 						{if privacy.is_public() { Some(view! { <RepostButton n=shares target=oid author=author_id /> }) } else { None }}
