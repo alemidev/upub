@@ -250,7 +250,7 @@ impl Http {
 		data: Option<&T>,
 		auth: Auth,
 	) -> reqwest::Result<reqwest::Response> {
-		tracing::info!("making request to {url}");
+		tracing::debug!("making request to {url}");
 		use leptos::prelude::GetUntracked;
 
 		// TODO while in web environments it's ok (and i'd say good!) to fetch with relative urls,
