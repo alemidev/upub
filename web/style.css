@@ -420,8 +420,9 @@ input[type=number] {
 	}
 }
 img.custom-emoji {
-	height: 1em;
-	width: 1em;
+	height: 1.2em;
+	width: 1.2em;
+	vertical-align: middle;
 }
 span.emoji {
 	color: transparent;
