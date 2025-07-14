@@ -140,9 +140,9 @@ pub fn Object(object: crate::Doc, #[prop(default = true)] controls: bool) -> imp
 						.into_iter()
 						.filter_map(|x| {
 							let inner = x.into_inner().ok()?;
-							let name = inner.name().ok()?;
+							let name = crate::replace_custom_emoji(inner.name().ok()?, &domain, true);
 							let votes = inner.replies_count().ok()?;
-							Some(view!{ <li><code class="color pa-s">{ votes }</code><input type="checkbox" disabled class="ml-s mr-1" /> { name }</li> })
+							Some(view!{ <li><code class="color pa-s">{ votes }</code><input type="checkbox" disabled class="ml-s mr-1" /><span inner_html=name></span></li> })
 						})
 						.collect::<Vec<_>>()
 				}
@@ -152,9 +152,9 @@ pub fn Object(object: crate::Doc, #[prop(default = true)] controls: bool) -> imp
 						.into_iter()
 						.filter_map(|x| {
 							let inner = x.into_inner().ok()?;
-							let name = inner.name().ok()?;
+							let name = crate::replace_custom_emoji(inner.name().ok()?, &domain, true);
 							let votes = inner.replies_count().ok()?;
-							Some(view!{ <li><code class="color pa-s">{ votes }</code><input type="radio" disabled class="ml-s mr-1" /> { name }</li> })
+							Some(view!{ <li><code class="color pa-s">{ votes }</code><input type="radio" disabled class="ml-s mr-1" /><span inner_html=name></span></li> })
 						})
 						.collect::<Vec<_>>()
 				}
