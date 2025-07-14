@@ -14,6 +14,7 @@ fn main() {
 		let base_url = std::env::var("UPUB_BASE_URL").unwrap_or_default();
 		let public_url = format!("{base_url}/web/assets/");
 
+		println!("cargo::warning=building frontend bundle with trunk");
 		let Ok(status) = std::process::Command::new(trunk_bin)
 			.env("UPUB_BASE_URL", base_url)
 			.arg("build")
