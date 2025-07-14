@@ -38,7 +38,7 @@ pub async fn fetch_custom_emojis(ctx: upub::Context, document: String) -> Result
 					tracing::warn!("{name}:{domain} -> {uri} already exists");
 				}
 			} else {
-				tracing::warn!("shipping non-emoji tag");
+				tracing::warn!("skipping non-emoji tag");
 			}
 		} else {
 			tracing::warn!("could not extract tag data from document");
