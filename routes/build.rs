@@ -1,17 +1,17 @@
 fn main() {
-	println!("cargo:rerun-if-changed=../web/src/");
-	println!("cargo:rerun-if-changed=../web/Cargo.toml");
-	println!("cargo:rerun-if-changed=../web/index.html");
-	println!("cargo:rerun-if-changed=../web/style.css");
-	println!("cargo:rerun-if-changed=../web/manifest.json");
-	println!("cargo:rerun-if-changed=../web/favicon.ico");
-	println!("cargo:rerun-if-changed=../web/icon.png");
+	println!("cargo::rerun-if-changed=web/src/");
+	println!("cargo::rerun-if-changed=web/Cargo.toml");
+	println!("cargo::rerun-if-changed=web/index.html");
+	println!("cargo::rerun-if-changed=web/style.css");
+	println!("cargo::rerun-if-changed=web/manifest.json");
+	println!("cargo::rerun-if-changed=web/favicon.ico");
+	println!("cargo::rerun-if-changed=web/icon.png");
 
 	#[cfg(feature = "web")]
 	{
-		println!("cargo:warning=searching frontend files in $WORKSPACE_ROOT/web/dist");
+		println!("cargo::warning=searching frontend files in $WORKSPACE_ROOT/web/dist");
 		let Ok(dist) = std::fs::read_dir(std::path::Path::new("../web/dist")) else {
-			println!("cargo:error=could not find 'web/dist' dir: did you 'trunk build' the frontend crate?");
+			println!("cargo::error=could not find 'web/dist' dir: did you 'trunk build' the frontend crate?");
 			return;
 		};
 
@@ -53,31 +53,31 @@ fn main() {
 		}
 
 		if !found_wasm {
-			println!("cargo:error=could not find wasm payload");
+			println!("cargo::error=could not find wasm payload");
 		}
 
 		if !found_js {
-			println!("cargo:error=could not find js bindings");
+			println!("cargo::error=could not find js bindings");
 		}
 
 		if !found_style {
-			println!("cargo:error=could not find style sheet");
+			println!("cargo::error=could not find style sheet");
 		}
 
 		if !found_favicon {
-			println!("cargo:error=could not find favicon image");
+			println!("cargo::error=could not find favicon image");
 		}
 
 		if !found_icon {
-			println!("cargo:error=could not find pwa icon image");
+			println!("cargo::error=could not find pwa icon image");
 		}
 
 		if !found_manifest {
-			println!("cargo:error=could not find pwa manifest");
+			println!("cargo::error=could not find pwa manifest");
 		}
 
 		if !found_index {
-			println!("cargo:error=could not find html index");
+			println!("cargo::error=could not find html index");
 		}
 	}
 }
@@ -86,8 +86,8 @@ fn main() {
 fn if_matches_set_env_path(var: &str, f: &std::fs::DirEntry, fname: &str, first: &str, last: &str) -> bool {
 	if fname.starts_with(first) && fname.ends_with(last) {
 		match f.path().canonicalize() {
-			Ok(path) => println!("cargo:rustc-env={var}={}", path.to_string_lossy()),
-			Err(e) => println!("cargo:warning=could not canonicalize '{}': {e}", f.path().to_string_lossy()),
+			Ok(path) => println!("cargo::rustc-env={var}={}", path.to_string_lossy()),
+			Err(e) => println!("cargo::warning=could not canonicalize '{}': {e}", f.path().to_string_lossy()),
 		}
 		true
 	} else {
