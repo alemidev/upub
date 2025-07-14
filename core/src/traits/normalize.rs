@@ -261,6 +261,39 @@ impl Normalizer for crate::Context {
 			_ => {},
 		}
 
+		for tag in activity.tag().flat() {
+			use apb::Link;
+			if let Ok(doc) = tag.into_inner() {
+				if let Ok(l) = doc.as_link() {
+					if matches!(l.link_type(), Ok(apb::LinkType::Emoji)) {
+						use apb::Base;
+						let name = l.name().unwrap_or_default().replace(':', "");
+						let domain = crate::Context::server(&doc.id().unwrap_or_default());
+						let uri = doc.icon().into_inner().and_then(|x| x.url().id()).unwrap_or_default();
+						if !name.is_empty()
+							&& !domain.is_empty()
+							&& !uri.is_empty()
+							&& !crate::model::emoji::Entity::find()
+								.filter(crate::model::emoji::Column::Name.eq(&name))
+								.filter(crate::model::emoji::Column::Domain.eq(&domain))
+								.any(tx)
+								.await?
+							// TODO every time we resolve an user we make multiple queries
+						{
+							crate::model::emoji::ActiveModel {
+								internal: NotSet,
+								domain: Set(domain),
+								name: Set(name),
+								uri: Set(uri),
+							}
+								.insert(tx)
+								.await?;
+						}
+					}
+				}
+			}
+		}
+
 		let mut active_model = activity_model.clone().into_active_model();
 		active_model.internal = NotSet;
 		crate::model::activity::Entity::insert(active_model)
