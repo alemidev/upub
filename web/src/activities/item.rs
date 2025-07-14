@@ -1,4 +1,4 @@
-use leptos::{either::Either, prelude::*};
+use leptos::prelude::*;
 use crate::prelude::*;
 
 use apb::{Activity, ActivityMut, Base, Object};
@@ -7,6 +7,7 @@ use apb::{Activity, ActivityMut, Base, Object};
 #[component]
 pub fn ActivityLine(activity: crate::Doc, children: Children) -> impl IntoView {
 	let object_id = activity.object().id().unwrap_or_default();
+	let domain = crate::server(&object_id);
 	let to = activity.to().all_ids();
 	let cc = activity.cc().all_ids();
 	let privacy = Privacy::from_addressed(&to, &cc);
@@ -16,14 +17,8 @@ pub fn ActivityLine(activity: crate::Doc, children: Children) -> impl IntoView {
 	let actor_id = activity.actor().id().unwrap_or_default();
 	let actor = cache::OBJECTS.get_or(&actor_id, serde_json::Value::String(actor_id.clone()).into());
 	let kind = activity.activity_type().unwrap_or(apb::ActivityType::Activity);
-	let content_text = activity.content().unwrap_or_default();
-	let content = if matches!(kind, apb::ActivityType::EmojiReact) {
-		let name = content_text.replace(':', "");
-		let domain = crate::server(&actor_id);
-		Either::Left(view! { <img class="custom-emoji" title={content_text} src=format!("{URL_BASE}/emoji/{domain}/{name}") /> })
-	} else {
-		Either::Right(view! { <span>{content_text}</span> })
-	};
+	let content_text = mdhtml::safe_html(&activity.content().unwrap_or_default());
+	let content = crate::replace_custom_emoji(content_text, &domain);
 	let href = match kind {
 		apb::ActivityType::Follow => Uri::web(U::Actor, &object_id),
 		// TODO for update check what's being updated
@@ -36,7 +31,7 @@ pub fn ActivityLine(activity: crate::Doc, children: Children) -> impl IntoView {
 					<ActorStrip object=actor />
 				</td>
 				<td class="rev">
-					{content}" "
+					<span inner_html=content></span>
 					<code class="color" title={activity.published().ok().map(|x| x.to_rfc2822())} >
 						{children()}
 						<a class="upub-title clean" title={object_id} href={href} >
