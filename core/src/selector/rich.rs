@@ -141,14 +141,14 @@ impl IntoActivityPub for RichActivity {
 
 			(Some(activity), None) => activity.into_activity_pub_json(ctx),
 
-			(None, Some(ref _object)) => {
+			(None, Some(_object)) => {
 				apb::new()
 					.set_activity_type(Some(apb::ActivityType::View))
 					.set_published(Some(self.discovered))
 					.set_object(apb::Node::object(self.object.into_activity_pub_json(ctx)))
 			},
 
-			(Some(activity), Some(ref _object)) => {
+			(Some(activity), Some(_object)) => {
 				activity
 					.into_activity_pub_json(ctx)
 					.set_object(apb::Node::object(self.object.into_activity_pub_json(ctx)))
@@ -178,9 +178,9 @@ impl IntoActivityPub for RichObjectOrActor {
 
 			(Some(actor), None) => actor.into_activity_pub_json(ctx),
 
-			(None, Some(ref _object)) => self.object.into_activity_pub_json(ctx),
+			(None, Some(_object)) => self.object.into_activity_pub_json(ctx),
 
-			(Some(actor), Some(ref _object)) => {
+			(Some(actor), Some(_object)) => {
 				tracing::error!("RichObjectOrActor can't be both actor AND object");
 				actor.into_activity_pub_json(ctx)
 			},

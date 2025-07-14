@@ -15,7 +15,7 @@ members = [
 [package]
 name = "upub-bin"
 version = "0.7.1"
-edition = "2021"
+edition = "2024"
 authors = [ "alemi <me@alemi.dev>" ]
 description = "micro social network, federated"
 license = "AGPL-3.0"
