@@ -6,7 +6,6 @@ members = [
 	"migrations",
 	"routes",
 	"worker",
-	"web",
 	"utils/httpsign",
 	"utils/mdhtml",
 	"utils/uriproxy",
