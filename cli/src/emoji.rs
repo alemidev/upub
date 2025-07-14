@@ -25,6 +25,7 @@ pub async fn fetch_custom_emojis(ctx: upub::Context, document: String) -> Result
 						.await?
 					// TODO every time we resolve an user we make multiple queries
 				{
+					tracing::info!("adding {name}:{domain} -> {uri}");
 					upub::model::emoji::ActiveModel {
 						internal: NotSet,
 						domain: Set(domain),
