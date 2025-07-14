@@ -75,6 +75,10 @@ enum Mode {
 		#[arg(short, long, default_value_t = 20)]
 		/// interval for polling new tasks
 		poll: u64,
+
+		#[arg(long, default_value_t = false)]
+		/// skip running migrations on startup
+		no_migrations: bool,
 	},
 
 	#[cfg(feature = "serve")]
@@ -154,7 +158,7 @@ async fn init(args: Args, config: upub::Config) {
 		.await.expect("error connecting to db");
 
 	#[cfg(feature = "migrate")]
-	if matches!(args.command, Mode::Migrate | Mode::Monolith { bind: _, tasks: _, poll: _ }) {
+	if matches!(args.command, Mode::Migrate | Mode::Monolith { bind: _, tasks: _, poll: _, no_migrations: false }) {
 		// note that, if running in monolith mode, we want to apply migrations before starting, as a
 		// convenience for quickly spinning up new test instances and to prevent new server admins from
 		// breaking stuff by forgetting to migrate
@@ -198,7 +202,7 @@ async fn init(args: Args, config: upub::Config) {
 				.await.expect("failed running worker"),
 
 		#[cfg(all(feature = "serve", feature = "worker"))]
-		Mode::Monolith { bind, tasks, poll } => {
+		Mode::Monolith { bind, tasks, poll, no_migrations: _ } => {
 			worker::spawn(ctx.clone(), tasks, poll, None, stop.clone(), wake);
 
 			routes::serve(ctx, bind, stop)
