@@ -31,7 +31,7 @@ pub fn ActivityLine(activity: crate::Doc, children: Children) -> impl IntoView {
 					<ActorStrip object=actor />
 				</td>
 				<td class="rev">
-					<span inner_html=content></span>
+					<span class="mr-1" inner_html=content></span>
 					<code class="color" title={activity.published().ok().map(|x| x.to_rfc2822())} >
 						{children()}
 						<a class="upub-title clean" title={object_id} href={href} >
