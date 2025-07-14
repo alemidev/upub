@@ -66,7 +66,7 @@ pub fn App() -> impl IntoView {
 	);
 
 	let screen_width = document().body().map(|x| x.client_width()).unwrap_or_default();
-	tracing::info!("detected width of {screen_width}");
+	tracing::debug!("detected width of {screen_width}");
 
 	let (menu, set_menu) = signal(screen_width < 768);
 	let (advanced, set_advanced) = signal(false);
