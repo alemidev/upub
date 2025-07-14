@@ -1,5 +1,5 @@
 fn main() {
-	println!("cargo::rerun-if-changed=../web/src");
+	println!("cargo::rerun-if-changed=../web/src/");
 	println!("cargo::rerun-if-changed=../web/Cargo.toml");
 	println!("cargo::rerun-if-changed=../web/index.html");
 	println!("cargo::rerun-if-changed=../web/style.css");
