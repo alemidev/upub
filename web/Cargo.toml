@@ -45,3 +45,10 @@ regex = "1.11"
 public_url = "/web/assets/"
 filehash = false
 #offline = true # if you're looking in here, you may want to uncomment this and download wasm-bindgen-cli yourself
+
+[profile.release]
+opt-level = 'z'
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
