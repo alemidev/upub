@@ -4,7 +4,7 @@ use crate::prelude::*;
 
 #[component]
 pub fn ThreadsPage() -> impl IntoView {
-	let (days, set_days) = signal(Some(30));
+	let (days, set_days) = signal(Some(1));
 	let (skip, set_skip) = signal(Some(0));
 	let auth = use_context::<Auth>().expect("missing auth context");
 	use_query_map().with(|q| {
@@ -77,7 +77,7 @@ pub fn ThreadsPage() -> impl IntoView {
 			(Some(days_n), Some(skip_n)) => Either::Right(view! {
 				<div class="mt-3">
 					<Loadable
-						base=format!("{URL_BASE}/threads/page?days={days_n}&skip={skip_n}")
+						base=format!("{URL_BASE}/threads/page?days={}&skip={skip_n}", days_n + skip_n)
 						element=move |obj| view! { <Item item=obj sep=true /> }
 					/>
 				</div>

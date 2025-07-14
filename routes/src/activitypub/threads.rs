@@ -32,7 +32,7 @@ pub async fn page(
 	AuthIdentity(auth): AuthIdentity,
 	Query(query): Query<PaginationWithDays>,
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
-	let days = query.days.unwrap_or(30);
+	let days = query.days.unwrap_or(1);
 	let skip = query.skip.unwrap_or(0);
 	let page = Pagination {
 		offset: query.offset,
