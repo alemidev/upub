@@ -398,7 +398,7 @@ pub fn replace_custom_emoji(mut text: String, domain: &str, sanitize_first: bool
 	for m in crate::CUSTOM_EMOJI_REGEX.find_iter(&text) {
 		let raw = m.as_str();
 		let emoji = raw.replace(':', "");
-		matches.push((m.range(), format!("<img class=\"custom-emoji\" title=\"{raw}\" src=\"{URL_BASE}/emoji/{domain}/{emoji}\" />")));
+		matches.push((m.range(), format!("<img class=\"custom-emoji\" title=\"{raw}\" src=\"{URL_BASE}/emoji/{domain}/{emoji}\" alt=\"{raw}\" />")));
 	}
 	for (range, repl) in matches.into_iter().rev() {
 		text.replace_range(range, &repl);
