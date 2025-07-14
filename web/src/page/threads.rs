@@ -98,7 +98,7 @@ fn threads_query_params(days: Option<i32>, skip: Option<i32>) -> String {
 	}
 
 	if let Some(skip_n) = skip {
-		query_string.push(if query_string.is_empty() { '?' } else { '&' });
+		query_string.push(if query_string.contains('?') { '&' } else { '?' });
 		query_string.push_str("skip=");
 		query_string.push_str(&skip_n.to_string());
 	}
