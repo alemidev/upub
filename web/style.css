@@ -423,6 +423,7 @@ img.custom-emoji {
 	height: 1.2em;
 	width: 1.2em;
 	vertical-align: middle;
+	object-fit: cover;
 }
 span.emoji {
 	color: transparent;
