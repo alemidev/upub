@@ -1,5 +1,12 @@
 fn main() {
-	println!("cargo::rerun-if-changed=../web/dist");
+	println!("cargo::rerun-if-changed=../web/src");
+	println!("cargo::rerun-if-changed=../web/Cargo.toml");
+	println!("cargo::rerun-if-changed=../web/index.html");
+	println!("cargo::rerun-if-changed=../web/style.css");
+	println!("cargo::rerun-if-changed=../web/manifest.json");
+	println!("cargo::rerun-if-changed=../web/favicon.ico");
+	println!("cargo::rerun-if-changed=../web/icon.png");
+
 	#[cfg(feature = "web")]
 	{
 		println!("cargo::warning=searching frontend files in $WORKSPACE_ROOT/web/dist");
