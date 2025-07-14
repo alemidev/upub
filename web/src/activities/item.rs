@@ -6,8 +6,9 @@ use apb::{Activity, ActivityMut, Base, Object};
 
 #[component]
 pub fn ActivityLine(activity: crate::Doc, children: Children) -> impl IntoView {
+	let activity_id = activity.id().unwrap_or_default();
 	let object_id = activity.object().id().unwrap_or_default();
-	let domain = crate::server(&object_id);
+	let domain = crate::server(&activity_id);
 	let to = activity.to().all_ids();
 	let cc = activity.cc().all_ids();
 	let privacy = Privacy::from_addressed(&to, &cc);
