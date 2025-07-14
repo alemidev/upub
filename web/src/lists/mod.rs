@@ -44,7 +44,7 @@ impl ListControls {
 		use apb::CollectionPage;
 
 		let set_available = self.set_available;
-		if let Some(uid) = auth.userid.get() {
+		if let Some(uid) = auth.userid.get_untracked() {
 			leptos::task::spawn_local(async move {
 				let mut lists = Vec::new();
 				let mut next = format!("{uid}/lists/page");

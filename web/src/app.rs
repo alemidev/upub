@@ -26,7 +26,7 @@ pub fn App() -> impl IntoView {
 	);
 	let (config, set_config, _) = use_local_storage::<crate::Config, codee::string::JsonSerdeCodec>("config");
 
-	let (privacy, set_privacy) = signal(config.get().default_privacy);
+	let (privacy, set_privacy) = signal(config.get_untracked().default_privacy);
 
 	let auth = Auth { token, userid };
 
