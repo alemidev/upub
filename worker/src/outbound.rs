@@ -224,7 +224,7 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 		let re = regex::Regex::new(r"@(.+)@([^ ]+)").expect("failed compiling regex pattern");
 		let mut content = object.content().map(|x| x.to_string()).ok();
 		if let Some(c) = content {
-			let mut tmp = mdhtml::safe_markdown(&c);
+			let mut tmp = mdhtml::safe_markdown(c);
 			for (full, [user, domain]) in re.captures_iter(&tmp.clone()).map(|x| x.extract()) {
 				if let Ok(Some(uid)) = model::actor::Entity::find()
 					.filter(model::actor::Column::PreferredUsername.eq(user))

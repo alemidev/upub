@@ -482,7 +482,7 @@ pub async fn process_update(ctx: &crate::Context, activity: impl apb::Activity, 
 				.await?
 				.ok_or(ProcessorError::Incomplete(apb::ActivityType::Update, oid.clone()))?;
 			let mut object_model = crate::AP::object_q(&object_node, Some(internal_oid))?;
-			if let Set(Some(ref content)) = object_model.content {
+			if let Set(Some(content)) = object_model.content {
 				object_model.content = Set(Some(ctx.sanitize(content)));
 			}
 			object_model.context = NotSet; // TODO dont overwrite context when updating!!

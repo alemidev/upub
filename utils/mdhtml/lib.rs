@@ -64,11 +64,11 @@ pub struct Sanitizer {
 	pub buffer: String,
 }
 
-pub fn safe_html(text: &str) -> String {
+pub fn safe_html(text: String) -> String {
 	Sanitizer::default().html(text)
 }
 
-pub fn safe_markdown(text: &str) -> String {
+pub fn safe_markdown(text: String) -> String {
 	Sanitizer::default().markdown(text)
 }
 
@@ -80,11 +80,11 @@ impl Sanitizer {
 		}
 	}
 
-	pub fn markdown(self, text: &str) -> String {
-		self.html(&comrak::markdown_to_html(text, &OPTIONS))
+	pub fn markdown(self, text: String) -> String {
+		self.html(comrak::markdown_to_html(&text, &OPTIONS))
 	}
 	
-	pub fn html(self, text: &str) -> String {
+	pub fn html(self, text: String) -> String {
 		let mut input = BufferQueue::default();
 		input.push_back(text.to_tendril().try_reinterpret().unwrap());
 	

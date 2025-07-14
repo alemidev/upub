@@ -64,7 +64,7 @@ impl Cloaker for crate::Context {
 
 // TODO this shouldnt sit in bare context.rs but also having it here is weird!!
 impl crate::Context {
-	pub fn sanitize(&self, text: &str) -> String {
+	pub fn sanitize(&self, text: String) -> String {
 		let _ctx = self.clone();
 		mdhtml::Sanitizer::new(Box::new(move |txt| _ctx.cloaked(txt))).html(text)
 	}

@@ -29,7 +29,7 @@ impl Normalizer for crate::Context {
 		let mut object_model = AP::object(&object)?;
 
 		if let Some(content) = object_model.content {
-			object_model.content = Some(self.sanitize(&content));
+			object_model.content = Some(self.sanitize(content));
 		}
 
 		if let Some(image) = object_model.image {

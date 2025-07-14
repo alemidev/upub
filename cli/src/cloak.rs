@@ -113,7 +113,8 @@ pub async fn cloak(ctx: upub::Context, post_contents: bool, objects: bool, actor
 			.await?;
 
 		while let Some((internal, content)) = stream.try_next().await? {
-			let sanitized = ctx.sanitize(&content);
+			// TODO can we detect if content changed without having to clone?
+			let sanitized = ctx.sanitize(content.clone());
 			if sanitized != content {
 				tracing::info!("sanitizing object #{internal}");
 				let model = upub::model::object::ActiveModel {
