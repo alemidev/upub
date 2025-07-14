@@ -32,8 +32,7 @@ pub fn ActorHeader() -> impl IntoView {
 		Some(Some(actor)) => {
 			let domain = crate::server(&actor.id().unwrap_or_default());
 			let username = actor.preferred_username().unwrap_or_default().to_string();
-			let name_raw = actor.name().unwrap_or(username.clone());
-			let name = crate::replace_custom_emoji(name_raw, &domain);
+			let name = crate::replace_custom_emoji(actor.name().unwrap_or(username.clone()), &domain, true);
 			let created = actor.published().ok();
 			let following_me = actor.following_me().unwrap_or(false);
 			let followed_by_me = actor.followed_by_me().unwrap_or(false);
@@ -41,7 +40,7 @@ pub fn ActorHeader() -> impl IntoView {
 			let actor_type_tag = if actor_type == apb::ActorType::Person { None } else {
 				Some(view! { <sup class="ml-s"><small>"["{actor_type.as_ref().to_lowercase()}"]"</small></sup> } )
 			};
-			let actor_summary = crate::replace_custom_emoji(mdhtml::safe_html(&actor.summary().unwrap_or_default()), &domain);
+			let actor_summary = crate::replace_custom_emoji(actor.summary().unwrap_or_default(), &domain, true);
 			let background_url = actor.image_url().unwrap_or(FALLBACK_IMAGE_URL.into());
 			let (avatar_url, avatar_style) = actor.icon_url_and_style();
 			let fields = actor.attachment()
@@ -51,7 +50,7 @@ pub fn ActorHeader() -> impl IntoView {
 				.map(|x| view! {
 					<tr>
 						<td class="w-25"><b class="color">{x.name().unwrap_or_default()}</b></td>
-						<td class="w-75" inner_html={mdhtml::safe_html(&x.value().unwrap_or_default())}></td>
+						<td class="w-75" inner_html={crate::replace_custom_emoji(x.value().unwrap_or_default(), &domain, true)}></td>
 					</tr>
 				})
 				.collect_view();

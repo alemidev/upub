@@ -390,13 +390,15 @@ lazy_static::lazy_static! {
 	pub static ref CUSTOM_EMOJI_REGEX: regex::Regex = regex::Regex::new(r":(\w+?):").expect("failed compiling custom emoji regex");
 }
 
-pub fn replace_custom_emoji(mut text: String, domain: &str) -> String {
+pub fn replace_custom_emoji(mut text: String, domain: &str, sanitize_first: bool) -> String {
+	if sanitize_first {
+		text = mdhtml::safe_html(text);
+	}
 	let mut matches = Vec::new();
 	for m in crate::CUSTOM_EMOJI_REGEX.find_iter(&text) {
 		let raw = m.as_str();
 		let emoji = raw.replace(':', "");
-		let safe = mdhtml::safe_html(raw);
-		matches.push((m.range(), format!("<img class=\"custom-emoji\" title=\"{safe}\" src=\"{URL_BASE}/emoji/{domain}/{emoji}\" />")));
+		matches.push((m.range(), format!("<img class=\"custom-emoji\" title=\"{raw}\" src=\"{URL_BASE}/emoji/{domain}/{emoji}\" />")));
 	}
 	for (range, repl) in matches.into_iter().rev() {
 		text.replace_range(range, &repl);

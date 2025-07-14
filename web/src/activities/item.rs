@@ -17,8 +17,7 @@ pub fn ActivityLine(activity: crate::Doc, children: Children) -> impl IntoView {
 	let actor_id = activity.actor().id().unwrap_or_default();
 	let actor = cache::OBJECTS.get_or(&actor_id, serde_json::Value::String(actor_id.clone()).into());
 	let kind = activity.activity_type().unwrap_or(apb::ActivityType::Activity);
-	let content_text = mdhtml::safe_html(&activity.content().unwrap_or_default());
-	let content = crate::replace_custom_emoji(content_text, &domain);
+	let content = crate::replace_custom_emoji(activity.content().unwrap_or_default(), &domain, true);
 	let href = match kind {
 		apb::ActivityType::Follow => Uri::web(U::Actor, &object_id),
 		// TODO for update check what's being updated

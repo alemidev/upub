@@ -33,8 +33,7 @@ pub fn Object(object: crate::Doc, #[prop(default = true)] controls: bool) -> imp
 		Some(view! { <div class="pb-1"></div> })
 	};
 
-	let mut content = mdhtml::safe_html(&object.content().unwrap_or_default());
-	content = crate::replace_custom_emoji(content, &domain);
+	let content = crate::replace_custom_emoji(object.content().unwrap_or_default(), &domain, true);
 
 	let audience_badge = object.audience().id().ok()
 		.map(|x| {

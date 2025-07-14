@@ -62,7 +62,7 @@ pub fn ActorBanner(object: crate::Doc) -> impl IntoView {
 
 #[component]
 fn DisplayName(mut name: String, domain: String) -> impl IntoView {
-	name = crate::replace_custom_emoji(name, &domain);
+	name = crate::replace_custom_emoji(name, &domain, true);
 	view! { <span class="force-break" inner_html=name></span> }
 }
 
