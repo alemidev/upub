@@ -28,4 +28,25 @@
 <body>
 
 </body>
+
+<script>
+// when installing as PWA, precache all the relevant assets for fast loading
+const precachedResources = [
+	"/web/",
+	"/web/assets/upub_web.js",
+	"/web/assets/upub_web_bg.wasm",
+	"/web/assets/style.css"
+	"/web/assets/favicon.ico"
+	"/web/assets/icon.png"
+];
+
+async function precache() {
+  const cache = await caches.open('upub-assets-cache');
+  return cache.addAll(precachedResources);
+}
+
+self.addEventListener("install", (event) => {
+  event.waitUntil(precache());
+});
+</script>
 </html>
