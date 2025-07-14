@@ -72,17 +72,20 @@ where
 
 			set_next.set(new_next.clone());
 
-			let store = process_activities(
-				object,
-				items.get_untracked(),
-				preload,
-				convert,
-				auth
-			).await;
+			if let Some(items) = items.try_get_untracked() {
+				let store = process_activities(
+					object,
+					items,
+					preload,
+					convert,
+					auth
+				).await;
 
-			crate::cache::TIMELINES.store(&key, (new_next, store.clone()));
+				crate::cache::TIMELINES.store(&key, (new_next, store.clone()));
 
-			set_items.set(store);
+				set_items.set(store);
+			}
+
 			set_loading.set(false);
 		})
 	};
