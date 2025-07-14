@@ -56,10 +56,6 @@ impl<T> LookupStatus<T> {
 	}
 }
 
-lazy_static::lazy_static! {
-	pub static ref CUSTOM_EMOJI_REGEX: regex::Regex = regex::Regex::new(r":\w+?:").expect("failed compiling custom emoji regex");
-}
-
 pub trait Cache {
 	type Item;
 
@@ -390,12 +386,20 @@ fn string_to_hex(inpt: &str) -> (String, String) {
 	(from_str, to_str)
 }
 
+lazy_static::lazy_static! {
+	pub static ref CUSTOM_EMOJI_REGEX: regex::Regex = regex::Regex::new(r":(\w+?):").expect("failed compiling custom emoji regex");
+}
+
 pub fn replace_custom_emoji(mut text: String, domain: &str) -> String {
-	// TODO disgusting clone
-	for m in crate::CUSTOM_EMOJI_REGEX.find_iter(&text.clone()) {
-		let emoji = m.as_str().replace(':', "");
-		let safe = mdhtml::safe_html(m.as_str());
-		text = text.replace(m.as_str(), &format!("<img class=\"custom-emoji\" title=\"{safe}\" src=\"{URL_BASE}/emoji/{domain}/{emoji}\" />"));
+	let mut matches = Vec::new();
+	for m in crate::CUSTOM_EMOJI_REGEX.find_iter(&text) {
+		let raw = m.as_str();
+		let emoji = raw.replace(':', "");
+		let safe = mdhtml::safe_html(raw);
+		matches.push((m.range(), format!("<img class=\"custom-emoji\" title=\"{safe}\" src=\"{URL_BASE}/emoji/{domain}/{emoji}\" />")));
+	}
+	for (range, repl) in matches {
+		text.replace_range(range, &repl);
 	}
 	text
 }
