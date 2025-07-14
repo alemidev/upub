@@ -57,7 +57,7 @@ impl<T> LookupStatus<T> {
 }
 
 lazy_static::lazy_static! {
-	pub static ref CUSTOM_EMOJI_REGEX: regex::Regex = regex::Regex::new(r":\w+:").expect("failed compiling custom emoji regex");
+	pub static ref CUSTOM_EMOJI_REGEX: regex::Regex = regex::Regex::new(r":\w+?:").expect("failed compiling custom emoji regex");
 }
 
 pub trait Cache {
