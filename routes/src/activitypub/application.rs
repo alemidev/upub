@@ -98,7 +98,7 @@ pub async fn search_actors(
 		return Err(crate::ApiError::forbidden());
 	}
 
-	let is_exact_search = page.q.starts_with("https://") || page.q.starts_with("http://");
+	let is_exact_search = page.q.starts_with('@') || page.q.starts_with("https://") || page.q.starts_with("http://");
 
 	if auth.is_local() && is_exact_search {
 		// allow searching with @user@domain format
