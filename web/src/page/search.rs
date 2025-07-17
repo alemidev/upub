@@ -36,6 +36,7 @@ pub fn SearchPage() -> impl IntoView {
 						<Loadable
 							base=format!("{URL_BASE}/search/objects?q={q}")
 							element=|obj| view! { <Item item=obj sep=true /> }
+							replies=true
 						/>
 					</div>
 				</details>
