@@ -72,6 +72,44 @@ pub async fn search(
 	crate::builders::collection_page(&upub::url!(ctx, "/search?q={}", page.q), p, apb::Node::array(items))
 }
 
+pub async fn search_actors(
+	State(ctx): State<Context>,
+	AuthIdentity(auth): AuthIdentity,
+	Query(page): Query<PaginatedSearch>,
+) -> crate::ApiResult<JsonLD<serde_json::Value>> {
+	if !auth.is_local() && !ctx.cfg().security.allow_public_search {
+		return Err(crate::ApiError::forbidden());
+	}
+
+	let filter = Condition::any()
+		.add(upub::model::actor::Column::Name.like(format!("%{}%", page.q)))
+		.add(upub::model::actor::Column::PreferredUsername.like(format!("%{}%", page.q)))
+		.add(upub::model::actor::Column::Id.eq(&page.q));
+
+	// TODO lmao rethink this all
+	//      still haven't redone this gg me
+	//      have redone it but didnt rethink it properly so we're stuck with this bahahaha
+	let p = Pagination {
+		offset: page.offset,
+		batch: page.batch,
+		replies: Some(true),
+	};
+
+	let (limit, offset) = p.pagination();
+	let items = upub::model::actor::Entity::find()
+		.filter(filter)
+		.limit(limit)
+		.offset(offset)
+		.order_by_desc(upub::model::actor::Column::Published)
+		.all(ctx.db())
+		.await?
+		.into_iter()
+		.map(|item| ctx.ap(item))
+		.collect();
+
+	crate::builders::collection_page(&upub::url!(ctx, "/search/actors?q={}", page.q), p, apb::Node::array(items))
+}
+
 #[derive(Debug, serde::Deserialize)]
 pub struct ProxyQuery {
 	uri: String,
