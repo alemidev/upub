@@ -1,49 +1,48 @@
-use leptos::prelude::*;
-use leptos_router::hooks::use_query_map;
+use leptos::{either::Either, prelude::*};
+use leptos_router::hooks::query_signal;
 use crate::prelude::*;
 
 #[component]
 pub fn SearchPage() -> impl IntoView {
-	let (query, set_query) = signal("".to_string());
+	let (query, _set_query) = query_signal::<String>("q");
 
-	use_query_map().with(|q| {
-		if let Some(q) = q.get("q") {
-			set_query.set(q);
-		}
-	});
+	match query.get() {
+		Some(q) => Either::Left(view! {
+			<p class="ml-3">
+				<a href={format!("/web/tags/{q}")}>#{q.clone()}</a>
+			</p>
 
-	view! {
+			<blockquote class="mt-3 mb-3">
+				<details class="cw" open>
+					<summary class="mb-2">
+						<code class="cw center color ml-s w-100">actors</code>
+					</summary>
+					<div class="pb-1 pl-2">
+						<Loadable
+							base=format!("{URL_BASE}/search/actors?q={q}")
+							convert=U::Actor
+							element=|obj| view! { <ActorBanner object=obj /> }
+						/>
+					</div>
+				</details>
+			</blockquote>
 
-		<a href={format!("/web/tags/{}", query.get())}>#{query.get()}</a>
-
-		<blockquote class="mt-3 mb-3">
-			<details class="cw" open>
-				<summary class="mb-2">
-					<code class="cw center color ml-s w-100">actors</code>
-				</summary>
-				<div class="pb-1">
-					<Loadable
-						base=format!("{URL_BASE}/search/actors?q={}", query.get())
-						convert=U::Actor
-						element=|obj| view! { <ActorBanner object=obj /> }
-					/>
-				</div>
-			</details>
-		</blockquote>
-
-		<blockquote class="mt-3 mb-3">
-			<details class="cw" open>
-				<summary class="mb-2">
-					<code class="cw center color ml-s w-100">objects</code>
-				</summary>
-				<div class="pb-1">
-					<Loadable
-						base=format!("{URL_BASE}/search/objects?q={}", query.get())
-						element=|obj| view! { <Item item=obj sep=true /> }
-					/>
-				</div>
-			</details>
-		</blockquote>
-
+			<blockquote class="mt-3 mb-3">
+				<details class="cw" open>
+					<summary class="mb-2">
+						<code class="cw center color ml-s w-100">objects</code>
+					</summary>
+					<div class="pb-1">
+						<Loadable
+							base=format!("{URL_BASE}/search/objects?q={q}")
+							element=|obj| view! { <Item item=obj sep=true /> }
+						/>
+					</div>
+				</details>
+			</blockquote>
+		}),
+		None => Either::Right(view! {
+			<code class="center color cw ma-3">no search query given</code>
+		}),
 	}
 }

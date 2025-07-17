@@ -1,25 +1,12 @@
 use leptos::{either::Either, prelude::*};
-use leptos_router::{hooks::{use_navigate, use_query_map}, NavigateOptions};
+use leptos_router::{hooks::{use_navigate, query_signal}, NavigateOptions};
 use crate::prelude::*;
 
 #[component]
 pub fn ThreadsPage() -> impl IntoView {
-	let (days, set_days) = signal(Some(1));
-	let (skip, set_skip) = signal(Some(0));
+	let (days, set_days) = query_signal::<i32>("days");
+	let (skip, set_skip) = query_signal::<i32>("skip");
 	let auth = use_context::<Auth>().expect("missing auth context");
-	use_query_map().with(|q| {
-		if let Some(d) = q.get("days") {
-			if let Ok(days_number) = d.parse() {
-				set_days.set(Some(days_number));
-			}
-		}
-
-		if let Some(s) = q.get("skip") {
-			if let Ok(skip_number) = s.parse() {
-				set_skip.set(Some(skip_number));
-			}
-		}
-	});
 	let navigate = use_navigate();
 	let _navigate = navigate.clone();
 	view! {
