@@ -49,6 +49,7 @@ pub async fn search_objects(
 		tx.commit().await?;
 	}
 
+	// TODO search on URL is slow! maybe add index?
 	let mut inner_filter = Condition::any()
 		.add(upub::model::object::Column::Id.eq(&page.q))
 		.add(upub::model::object::Column::Url.eq(&page.q));

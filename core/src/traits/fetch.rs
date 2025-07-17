@@ -599,6 +599,8 @@ async fn fetch_object_r(ctx: &crate::Context, id: &str, depth: u32, tx: &impl Co
 		return Ok(x); // already in db, easy
 	}
 
+	// TODO we may have this object already and just be pulling by url rather than id, maybe search
+	//      with url too?
 	let object = ctx.pull(id).await?.object()?;
 
 	if object.id()? != id {
