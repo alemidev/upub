@@ -23,19 +23,15 @@ pub async fn view(
 	Path(id): Path<String>,
 	Query(query): Query<TryFetch>,
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
-	let mut uid = ctx.uid(&id);
-	if auth.is_local() {
-		if id.starts_with('@') {
-			if let Some((user, host)) = id.replacen('@', "", 1).split_once('@') {
-				if let Some(webfinger) = ctx.webfinger(user, host).await? {
-					uid = webfinger;
-				}
-			}
-		}
-		if query.fetch && !ctx.is_local(&uid) {
-			ctx.fetch_user(&uid, ctx.db()).await?;
+	let uid = ctx.uid(&id);
+
+	if auth.is_local() && query.fetch && !ctx.is_local(&uid) {
+		let user = ctx.fetch_user(&uid, ctx.db()).await?;
+		if user.id != uid {
+			return Err(crate::ApiError::Redirect(upub::url!(ctx, "/actors/{}", ctx.id(&user.id))));
 		}
 	}
+
 	let internal_uid = model::actor::Entity::ap_to_internal(&uid, ctx.db())
 		.await?
 		.ok_or_else(ApiError::not_found)?;

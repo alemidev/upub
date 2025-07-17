@@ -1,7 +1,7 @@
 use apb::{LD, ActorMut, BaseMut, ObjectMut, PublicKeyMut};
 use axum::{extract::{Path, Query, State}, response::{IntoResponse, Response}};
 use reqwest::Method;
-use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter, QueryOrder, QuerySelect, SelectColumns};
+use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter, QueryOrder, QuerySelect, SelectColumns, TransactionTrait};
 use upub::{selector::{RichFillable, RichObject}, traits::{Cloaker, Fetcher}, Context};
 
 use crate::{builders::JsonLD, ApiError, AuthIdentity};
@@ -32,7 +32,7 @@ pub async fn view(State(ctx): State<Context>) -> crate::ApiResult<Response> {
 	).into_response())
 }
 
-pub async fn search(
+pub async fn search_objects(
 	State(ctx): State<Context>,
 	AuthIdentity(auth): AuthIdentity,
 	Query(page): Query<PaginatedSearch>,
@@ -41,9 +41,26 @@ pub async fn search(
 		return Err(crate::ApiError::forbidden());
 	}
 
+	let is_exact_search = page.q.starts_with("https://") || page.q.starts_with("http://");
+
+	if auth.is_local() && is_exact_search {
+		let tx = ctx.db().begin().await?;
+		ctx.fetch_object(&page.q, &tx).await?;
+		tx.commit().await?;
+	}
+
+	let mut inner_filter = Condition::any()
+		.add(upub::model::object::Column::Id.eq(&page.q))
+		.add(upub::model::object::Column::Url.eq(&page.q));
+
+	if !is_exact_search {
+		inner_filter = inner_filter
+			.add(upub::model::object::Column::Content.like(format!("%{}%", page.q)));
+	}
+
 	let filter = Condition::all()
 		.add(auth.filter_objects())
-		.add(upub::model::object::Column::Content.like(format!("%{}%", page.q)));
+		.add(inner_filter);
 
 	// TODO lmao rethink this all
 	//      still haven't redone this gg me
@@ -75,16 +92,34 @@ pub async fn search(
 pub async fn search_actors(
 	State(ctx): State<Context>,
 	AuthIdentity(auth): AuthIdentity,
-	Query(page): Query<PaginatedSearch>,
+	Query(mut page): Query<PaginatedSearch>,
 ) -> crate::ApiResult<JsonLD<serde_json::Value>> {
 	if !auth.is_local() && !ctx.cfg().security.allow_public_search {
 		return Err(crate::ApiError::forbidden());
 	}
 
-	let filter = Condition::any()
-		.add(upub::model::actor::Column::Name.like(format!("%{}%", page.q)))
-		.add(upub::model::actor::Column::PreferredUsername.like(format!("%{}%", page.q)))
+	let is_exact_search = page.q.starts_with("https://") || page.q.starts_with("http://");
+
+	if auth.is_local() && is_exact_search {
+		// allow searching with @user@domain format
+		if page.q.starts_with('@') {
+			if let Some((user, host)) = page.q.replacen('@', "", 1).split_once('@') {
+				if let Some(webfinger) = ctx.webfinger(user, host).await? {
+					page.q = webfinger;
+				}
+			}
+		}
+		ctx.fetch_user(&page.q, ctx.db()).await?;
+	}
+
+	let mut filter = Condition::any()
 		.add(upub::model::actor::Column::Id.eq(&page.q));
+
+	if !is_exact_search {
+		filter = filter
+			.add(upub::model::actor::Column::Name.like(format!("%{}%", page.q)))
+			.add(upub::model::actor::Column::PreferredUsername.like(format!("%{}%", page.q)));
+	};
 
 	// TODO lmao rethink this all
 	//      still haven't redone this gg me
