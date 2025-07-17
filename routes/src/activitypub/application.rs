@@ -87,7 +87,7 @@ pub async fn search_objects(
 		.map(|item| ctx.ap(item))
 		.collect();
 
-	crate::builders::collection_page(&upub::url!(ctx, "/search?q={}", page.q), p, apb::Node::array(items))
+	crate::builders::collection_page(&upub::url!(ctx, "/search/objects?q={}", page.q), p, apb::Node::array(items))
 }
 
 pub async fn search_actors(
