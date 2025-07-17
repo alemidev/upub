@@ -6,7 +6,7 @@ use crate::prelude::*;
 pub fn SearchPage() -> impl IntoView {
 	let (query, _set_query) = query_signal::<String>("q");
 
-	match query.get() {
+	move || match query.get() {
 		Some(q) => Either::Left(view! {
 			<p class="ml-3">
 				<a href={format!("/web/tags/{q}")}>#{q.clone()}</a>
