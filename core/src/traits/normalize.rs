@@ -21,6 +21,18 @@ pub enum NormalizerError {
 pub trait Normalizer {
 	async fn insert_object(&self, obj: impl apb::Object, tx: &impl ConnectionTrait) -> Result<crate::model::object::Model, NormalizerError>;
 	async fn insert_activity(&self, act: impl apb::Activity, tx: &impl ConnectionTrait) -> Result<crate::model::activity::Model, NormalizerError>;
+
+	// TODO add actor too
+	
+	async fn insert_tags(
+		&self,
+		object: impl apb::Object,
+		tx: &impl ConnectionTrait,
+		internal: i64,
+		mentions: bool,
+		hashtags: bool,
+		emojis: bool,
+	) -> Result<(), NormalizerError>;
 }
 
 impl Normalizer for crate::Context {
@@ -125,85 +137,6 @@ impl Normalizer for crate::Context {
 				.await?;
 		}
 
-		for tag in object.tag().flat() {
-			use apb::Link;
-			if let Ok(doc) = tag.into_inner() {
-				if let Ok(l) = doc.as_link() {
-					match l.link_type() {
-						Ok(apb::LinkType::Mention) => {
-							if let Ok(href) = l.href() {
-								// TODO here we do a silent fetch, in theory normalizer trait should not use fetcher
-								//      trait because fetcher uses normalizer (and it becomes cyclic), however here
-								//      we should try to resolve remote users mentioned, otherwise most mentions will
-								//      be lost. also we shouldn't fail inserting the whole post if the mention fails
-								//      resolving.
-								if let Ok(user) = self.fetch_user(&href, tx).await {
-									let model = crate::model::mention::ActiveModel {
-										internal: NotSet,
-										object: Set(object_model.internal),
-										actor: Set(user.internal),
-									};
-									crate::model::mention::Entity::insert(model)
-										.exec(tx)
-										.await?;
-								}
-							}
-						},
-						Ok(apb::LinkType::Hashtag) => {
-							let hashtag = l.name()
-								.unwrap_or_else(|_| l.href().unwrap_or_default().split('/').next_back().unwrap_or_default().to_string()) // TODO maybe just fail?
-								.replace('#', "");
-							// TODO lemmy added a "fix" to make its communities kind of work with mastodon:
-							//      basically they include the community name as hashtag. ughhhh, since we handle
-							//      hashtags and audience it means our hashtags gets clogged with posts from lemmy
-							//      communities. it kind of make sense to include them since they fit the hashtag
-							//      theme, but nonetheless it's annoying and i'd rather not have the two things
-							//      mixed. maybe it's just me and this should go instead? maybe this has other
-							//      issues and it's just not worth fixing this tiny lemmy kink? idkk
-							if let Some(ref audience) = object_model.audience {
-								if audience.ends_with(&hashtag) {
-									continue;
-								}
-							}
-							let model = crate::model::hashtag::ActiveModel {
-								internal: NotSet,
-								object: Set(object_model.internal),
-								name: Set(hashtag),
-							};
-							crate::model::hashtag::Entity::insert(model)
-								.exec(tx)
-								.await?;
-						},
-						Ok(apb::LinkType::Emoji) => {
-							let name = l.name().unwrap_or_default().replace(':', "");
-							let domain = crate::Context::server(&object_model.id);
-							let uri = doc.icon().into_inner().and_then(|x| x.url().id()).unwrap_or_default();
-							if !name.is_empty()
-								&& !domain.is_empty()
-								&& !uri.is_empty()
-								&& !crate::model::emoji::Entity::find()
-									.filter(crate::model::emoji::Column::Name.eq(&name))
-									.filter(crate::model::emoji::Column::Domain.eq(&domain))
-									.any(tx)
-									.await?
-								// TODO every time we resolve an user we make multiple queries
-							{
-								crate::model::emoji::ActiveModel {
-									internal: NotSet,
-									domain: Set(domain),
-									name: Set(name),
-									uri: Set(uri),
-								}
-									.insert(tx)
-									.await?;
-							}
-						},
-						_ => {},
-					}
-				}
-			}
-		}
-
 		if let Ok(question) = object.as_question() {
 			for option in question.any_of().flat() {
 				if let Ok(doc) = option.into_inner() {
@@ -234,6 +167,8 @@ impl Normalizer for crate::Context {
 			}
 		}
 
+		self.insert_tags(object, tx, object_model.internal, true, true, true).await?;
+
 		Ok(object_model)
 	}
 
@@ -260,37 +195,7 @@ impl Normalizer for crate::Context {
 			_ => {},
 		}
 
-		for tag in activity.tag().flat() {
-			use apb::Link;
-			if let Ok(doc) = tag.into_inner() {
-				if let Ok(l) = doc.as_link() {
-					if matches!(l.link_type(), Ok(apb::LinkType::Emoji)) {
-						let name = l.name().unwrap_or_default().replace(':', "");
-						let domain = crate::Context::server(&activity_model.id);
-						let uri = doc.icon().into_inner().and_then(|x| x.url().id()).unwrap_or_default();
-						if !name.is_empty()
-							&& !domain.is_empty()
-							&& !uri.is_empty()
-							&& !crate::model::emoji::Entity::find()
-								.filter(crate::model::emoji::Column::Name.eq(&name))
-								.filter(crate::model::emoji::Column::Domain.eq(&domain))
-								.any(tx)
-								.await?
-							// TODO every time we resolve an user we make multiple queries
-						{
-							crate::model::emoji::ActiveModel {
-								internal: NotSet,
-								domain: Set(domain),
-								name: Set(name),
-								uri: Set(uri),
-							}
-								.insert(tx)
-								.await?;
-						}
-					}
-				}
-			}
-		}
+		self.insert_tags(activity, tx, activity_model.internal, false, false, true).await?;
 
 		let mut active_model = activity_model.clone().into_active_model();
 		active_model.internal = NotSet;
@@ -304,6 +209,114 @@ impl Normalizer for crate::Context {
 		activity_model.internal = internal;
 
 		Ok(activity_model)
+	}
+
+	async fn insert_tags(
+		&self,
+		object: impl apb::Object,
+		tx: &impl ConnectionTrait,
+		internal: i64,
+		mentions: bool,
+		hashtags: bool,
+		emojis: bool
+	) -> Result<(), NormalizerError> {
+		for tag in object.tag().flat() {
+			use apb::Link;
+			if let Ok(doc) = tag.into_inner() {
+				if let Ok(l) = doc.as_link() {
+					match l.link_type() {
+						Ok(apb::LinkType::Mention) => {
+							if !mentions { continue };
+							if let Ok(href) = l.href() {
+								// TODO here we do a silent fetch, in theory normalizer trait should not use fetcher
+								//      trait because fetcher uses normalizer (and it becomes cyclic), however here
+								//      we should try to resolve remote users mentioned, otherwise most mentions will
+								//      be lost. also we shouldn't fail inserting the whole post if the mention fails
+								//      resolving.
+								if let Ok(user) = self.fetch_user(&href, tx).await {
+									if !crate::model::mention::Entity::find()
+										.filter(crate::model::mention::Column::Object.eq(internal))
+										.filter(crate::model::mention::Column::Actor.eq(internal))
+										.any(tx)
+										.await?
+									{
+										let model = crate::model::mention::ActiveModel {
+											internal: NotSet,
+											object: Set(internal),
+											actor: Set(user.internal),
+										};
+										crate::model::mention::Entity::insert(model)
+											.exec(tx)
+											.await?;
+									}
+								}
+							}
+						},
+						Ok(apb::LinkType::Hashtag) => {
+							if !hashtags { continue };
+							let hashtag = l.name()
+								.unwrap_or_else(|_| l.href().unwrap_or_default().split('/').next_back().unwrap_or_default().to_string()) // TODO maybe just fail?
+								.replace('#', "");
+							// TODO lemmy added a "fix" to make its communities kind of work with mastodon:
+							//      basically they include the community name as hashtag. ughhhh, since we handle
+							//      hashtags and audience it means our hashtags gets clogged with posts from lemmy
+							//      communities. it kind of make sense to include them since they fit the hashtag
+							//      theme, but nonetheless it's annoying and i'd rather not have the two things
+							//      mixed. maybe it's just me and this should go instead? maybe this has other
+							//      issues and it's just not worth fixing this tiny lemmy kink? idkk
+							if let Ok(ref audience) = object.audience().id() {
+								if audience.ends_with(&hashtag) {
+									continue;
+								}
+							}
+							if !crate::model::hashtag::Entity::find()
+								.filter(crate::model::hashtag::Column::Object.eq(internal))
+								.filter(crate::model::hashtag::Column::Name.eq(&hashtag))
+								.any(tx)
+								.await?
+							{
+								let model = crate::model::hashtag::ActiveModel {
+									internal: NotSet,
+									object: Set(internal),
+									name: Set(hashtag),
+								};
+								crate::model::hashtag::Entity::insert(model)
+									.exec(tx)
+									.await?;
+							}
+						},
+						Ok(apb::LinkType::Emoji) => {
+							if !emojis { continue };
+							let name = l.name().unwrap_or_default().replace(':', "");
+							let uri = doc.icon().into_inner().and_then(|x| x.url().id()).unwrap_or_default();
+							let domain = crate::Context::server(&object.id().unwrap_or_default());
+							if name.is_empty() || domain.is_empty() || uri.is_empty() {
+								tracing::warn!("skipping emoji which failed parsing: {name}:{domain} -> {uri}");
+								continue
+							};
+							if !crate::model::emoji::Entity::find()
+								.filter(crate::model::emoji::Column::Name.eq(&name))
+								.filter(crate::model::emoji::Column::Domain.eq(&domain))
+								.any(tx)
+								.await?
+							{
+								crate::model::emoji::ActiveModel {
+									internal: NotSet,
+									domain: Set(domain),
+									name: Set(name),
+									uri: Set(uri),
+								}
+									.insert(tx)
+									.await?;
+							}
+						},
+						_ => {},
+					}
+				}
+			}
+		}
+
+		Ok(())
 	}
 }
 

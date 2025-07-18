@@ -345,39 +345,11 @@ impl Fetcher for crate::Context {
 			}
 		}
 
+		let mut user_model = AP::actor_q(&document, None)?;
+
 		// lookup custom emojis in this user
 		// TODO is this the right place to do it?
-		for tag in document.tag().flat() {
-			if let Ok(doc) = tag.into_inner() {
-				use apb::Link;
-				if matches!(doc.link_type(), Ok(apb::LinkType::Emoji)) {
-					let name = apb::Link::name(&doc).unwrap_or_default().replace(':', "");
-					let domain = crate::Context::server(&doc.id().unwrap_or_default());
-					let uri = doc.icon().into_inner().and_then(|x| x.url().id()).unwrap_or_default();
-					if !name.is_empty()
-						&& !domain.is_empty()
-						&& !uri.is_empty()
-						&& !crate::model::emoji::Entity::find()
-							.filter(crate::model::emoji::Column::Name.eq(&name))
-							.filter(crate::model::emoji::Column::Domain.eq(&domain))
-							.any(tx)
-							.await?
-						// TODO every time we resolve an user we make multiple queries
-					{
-						crate::model::emoji::ActiveModel {
-							internal: NotSet,
-							domain: Set(domain),
-							name: Set(name),
-							uri: Set(uri),
-						}
-							.insert(tx)
-							.await?;
-					}
-				}
-			}
-		}
-
-		let mut user_model = AP::actor_q(&document, None)?;
+		self.insert_tags(document, tx, 0, false, false, true).await?;
 
 		// cloak remote images
 		if let Set(Some(ref image)) = user_model.image {
