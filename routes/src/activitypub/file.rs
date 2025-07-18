@@ -1,4 +1,4 @@
-use axum::extract::{Multipart, Path, State};
+use axum::{extract::{Multipart, Path, State}, Json};
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use upub::Context;
 
@@ -8,7 +8,7 @@ pub async fn upload(
 	State(ctx): State<Context>,
 	AuthIdentity(auth): AuthIdentity,
 	mut multipart: Multipart,
-) -> crate::ApiResult<Vec<String>> {
+) -> crate::ApiResult<Json<Vec<String>>> {
 	if !ctx.cfg().files.allow_uploads || !auth.is_local() {
 		return Err(crate::ApiError::forbidden());
 	}
@@ -49,7 +49,7 @@ pub async fn upload(
 	}
 
 	if uploaded_something {
-		Ok(uploaded_urls)
+		Ok(Json(uploaded_urls))
 	} else {
 		Err(crate::ApiError::bad_request())
 	}

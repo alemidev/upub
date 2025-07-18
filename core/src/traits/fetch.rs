@@ -7,7 +7,7 @@ use sea_orm::{prelude::Expr, ActiveModelTrait, ActiveValue::Set, ColumnTrait, Co
 use super::{Addresser, Cloaker, Normalizer};
 use httpsign::HttpSignature;
 
-use crate::{ext::AnyQuery, AP};
+use crate::AP;
 
 #[derive(Debug, Clone)]
 pub enum Pull<T> {
