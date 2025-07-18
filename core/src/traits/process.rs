@@ -475,6 +475,8 @@ pub async fn process_update(ctx: &crate::Context, activity: impl apb::Activity, 
 			}
 			actor_model.updated = Set(chrono::Utc::now());
 			actor_model.update(tx).await?;
+
+			ctx.insert_tags(object_node, tx, 0, false, false, true).await?;
 		},
 		// TODO also process Question vote count updates
 		apb::ObjectType::Note | apb::ObjectType::Document(apb::DocumentType::Page) | apb::ObjectType::Article => {
@@ -488,6 +490,8 @@ pub async fn process_update(ctx: &crate::Context, activity: impl apb::Activity, 
 			object_model.context = NotSet; // TODO dont overwrite context when updating!!
 			object_model.updated = Set(chrono::Utc::now());
 			object_model.update(tx).await?;
+
+			ctx.insert_tags(object_node, tx, internal_oid, true, true, true).await?;
 		},
 		apb::ObjectType::Collection(apb::CollectionType::Collection) => {
 			let mut previous_model = crate::model::list::Entity::find_by_ap_id(&oid)
