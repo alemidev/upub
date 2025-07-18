@@ -29,9 +29,8 @@ pub fn SearchPage() -> impl IntoView {
 					<summary>
 						<code class="cw center color ml-s w-100">hashtags</code>
 					</summary>
-					<div class="pb-1 pt-1 pl-2">
+					<div class="pb-1 pt-1">
 						<ul>
-							<li><a href={format!("{URL_BASE}/web/tags/{q}")}>#{q.clone()}</a></li>
 							<Loadable
 								base=format!("{URL_BASE}/search/tags?q={q}")
 								element=|obj| {
