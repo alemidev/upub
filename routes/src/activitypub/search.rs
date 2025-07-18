@@ -1,6 +1,6 @@
 use apb::{BaseMut, CollectionMut, ObjectMut};
 use axum::extract::{Query, State};
-use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter, QueryOrder, QuerySelect, SelectColumns, TransactionTrait};
+use sea_orm::{sea_query::{Expr, Alias}, ColumnTrait, Condition, EntityTrait, QueryFilter, QueryOrder, QuerySelect, SelectColumns, TransactionTrait};
 use upub::{selector::{RichFillable, RichObject}, traits::Fetcher, Context};
 
 use crate::{builders::JsonLD, AuthIdentity};
@@ -147,6 +147,7 @@ pub async fn tags(
 		.select_column(upub::model::hashtag::Column::Name)
 		.column_as(upub::model::hashtag::Column::Name.count(), "count")
 		.group_by(upub::model::hashtag::Column::Name)
+		.order_by(Expr::col(Alias::new("count")), sea_orm::Order::Desc)
 		.limit(limit)
 		.offset(offset)
 		.into_tuple::<(String, i64)>()
