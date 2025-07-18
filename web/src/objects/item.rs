@@ -83,51 +83,52 @@ pub fn Object(object: crate::Doc, #[prop(default = true)] controls: bool) -> imp
 	let tag_badges = object.tag()
 		.flat()
 		.into_iter()
-		.filter_map(|node| match node {
-			apb::Node::Link(x) => Some(x),
-			_ => None,
-		})
-		.map(|link| {
-			match apb::Link::link_type(link.as_ref()) {
-				Ok(apb::LinkType::Hashtag) => {
-					let name = apb::Link::name(link.as_ref()).unwrap_or_default().replace('#', "");
-					let href = Uri::web(U::Hashtag, &name);
-					Some(Either::Left(view! {
-						<a class="clean dim" href={href}>
-							<span class="border-button ml-s" >
-								<code class="color mr-s">#</code>
-								<small class="mr-s">
-									{name}
-								</small>
-							</span>
-						</a>" "
-					}))
-				},
-				Ok(apb::LinkType::Mention) => {
-					let uid = apb::Link::href(link.as_ref()).unwrap_or_default();
-					let mention = apb::Link::name(link.as_ref()).unwrap_or_default().replacen('@', "", 1);
-					let (username, domain) = if let Some((username, server)) = mention.split_once('@') {
-						(username.to_string(), server.to_string())
-					} else {
-						(
-							mention.to_string(),
-							uid.replace("https://", "").replace("http://", "").split('/').next().unwrap_or_default().to_string(),
-						)
-					};
-					let href = Uri::web(U::Actor, &uid);
-					let title = format!("@{username}@{domain}");
-					Some(Either::Right(view! {
-						<a class="clean dim" href={href}>
-							<span class="border-button ml-s" title={title} >
-								<code class="color mr-s">@</code>
-								<small class="mr-s">
-									{username}
-								</small>
-							</span>
-						</a>" "
-					}))
-				},
-				_ => None,
+		.filter_map(|node| node.into_inner().ok())
+		.map(|obj| {
+			if let Ok(link) = obj.as_link() {
+				match apb::Link::link_type(link) {
+					Ok(apb::LinkType::Hashtag) => {
+						let name = apb::Link::name(link).unwrap_or_default().replace('#', "");
+						let href = Uri::web(U::Hashtag, &name);
+						Some(Either::Left(view! {
+							<a class="clean dim" href={href}>
+								<span class="border-button ml-s" >
+									<code class="color mr-s">#</code>
+									<small class="mr-s">
+										{name}
+									</small>
+								</span>
+							</a>" "
+						}))
+					},
+					Ok(apb::LinkType::Mention) => {
+						let uid = apb::Link::href(link).unwrap_or_default();
+						let mention = apb::Link::name(link).unwrap_or_default().replacen('@', "", 1);
+						let (username, domain) = if let Some((username, server)) = mention.split_once('@') {
+							(username.to_string(), server.to_string())
+						} else {
+							(
+								mention.to_string(),
+								uid.replace("https://", "").replace("http://", "").split('/').next().unwrap_or_default().to_string(),
+							)
+						};
+						let href = Uri::web(U::Actor, &uid);
+						let title = format!("@{username}@{domain}");
+						Some(Either::Right(view! {
+							<a class="clean dim" href={href}>
+								<span class="border-button ml-s" title={title} >
+									<code class="color mr-s">@</code>
+									<small class="mr-s">
+										{username}
+									</small>
+								</span>
+							</a>" "
+						}))
+					},
+					_ => None,
+				}
+			} else {
+				None
 			}
 		}).collect_view();
 
