@@ -38,7 +38,7 @@ pub fn SearchPage() -> impl IntoView {
 									let name = obj.name().unwrap_or_default();
 									let count = obj.total_items().unwrap_or_default();
 									view! {
-										<li><a href={format!("{URL_BASE}/web/tags/{name}")}>#{name.clone()}</a> (<b>{count}</b>)</li>
+										<li><a href={format!("{URL_BASE}/web/tags/{name}")}>#{name.clone()}</a>" ("<b>{count}</b>")"</li>
 									}
 								}
 							/>
