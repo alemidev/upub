@@ -1,3 +1,4 @@
+use apb::{Collection, Object};
 use leptos::{either::Either, prelude::*};
 use leptos_router::hooks::query_signal;
 use crate::prelude::*;
@@ -8,10 +9,6 @@ pub fn SearchPage() -> impl IntoView {
 
 	move || match query.get() {
 		Some(q) => Either::Left(view! {
-			<p class="ml-3">
-				<a href={format!("/web/tags/{q}")}>#{q.clone()}</a>
-			</p>
-
 			<blockquote class="mt-3 mb-3">
 				<details class="cw" open>
 					<summary>
@@ -23,6 +20,29 @@ pub fn SearchPage() -> impl IntoView {
 							convert=U::Actor
 							element=|obj| view! { <ActorBanner object=obj /> }
 						/>
+					</div>
+				</details>
+			</blockquote>
+
+			<blockquote class="mt-3 mb-3">
+				<details class="cw" open>
+					<summary>
+						<code class="cw center color ml-s w-100">hashtags</code>
+					</summary>
+					<div class="pb-1 pt-1 pl-2">
+						<ul>
+							<li><a href={format!("{URL_BASE}/web/tags/{q}")}>#{q.clone()}</a></li>
+							<Loadable
+								base=format!("{URL_BASE}/search/tags?q={q}")
+								element=|obj| {
+									let name = obj.name().unwrap_or_default();
+									let count = obj.total_items().unwrap_or_default();
+									view! {
+										<li><a href={format!("{URL_BASE}/web/tags/{name}")}>#{name.clone()}</a> (<b>{count}</b>)</li>
+									}
+								}
+							/>
+						</ul>
 					</div>
 				</details>
 			</blockquote>
