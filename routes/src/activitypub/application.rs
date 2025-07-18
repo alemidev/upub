@@ -1,4 +1,4 @@
-use apb::{LD, ActorMut, BaseMut, ObjectMut, PublicKeyMut};
+use apb::{ActorMut, BaseMut, CollectionMut, ObjectMut, PublicKeyMut, LD};
 use axum::{extract::{Path, Query, State}, response::{IntoResponse, Response}};
 use reqwest::Method;
 use sea_orm::{ColumnTrait, Condition, EntityTrait, QueryFilter, QueryOrder, QuerySelect, SelectColumns, TransactionTrait};
@@ -144,6 +144,48 @@ pub async fn search_actors(
 		.collect();
 
 	crate::builders::collection_page(&upub::url!(ctx, "/search/actors?q={}", page.q), p, apb::Node::array(items))
+}
+
+pub async fn search_tags(
+	State(ctx): State<Context>,
+	AuthIdentity(auth): AuthIdentity,
+	Query(page): Query<PaginatedSearch>,
+) -> crate::ApiResult<JsonLD<serde_json::Value>> {
+	if !auth.is_local() && !ctx.cfg().security.allow_public_search {
+		return Err(crate::ApiError::forbidden());
+	}
+
+	// TODO lmao rethink this all
+	//      still haven't redone this gg me
+	//      have redone it but didnt rethink it properly so we're stuck with this bahahaha
+	let p = Pagination {
+		offset: page.offset,
+		batch: page.batch,
+		replies: Some(true),
+	};
+
+	let (limit, offset) = p.pagination();
+	let items = upub::model::hashtag::Entity::find()
+		.filter(upub::model::hashtag::Column::Name.like(format!("%{}%", page.q)))
+		.select_only()
+		.select_column(upub::model::hashtag::Column::Name)
+		.column_as(upub::model::hashtag::Column::Name.count(), "count")
+		.group_by(upub::model::hashtag::Column::Name)
+		.limit(limit)
+		.offset(offset)
+		.into_tuple::<(String, i64)>()
+		.all(ctx.db())
+		.await?
+		.into_iter()
+		.map(|(name, count)| apb::new()
+			.set_collection_type(Some(apb::CollectionType::Collection))
+			.set_id(Some(upub::url!(ctx, "/tags/{name}")))
+			.set_name(Some(name))
+			.set_total_items(Some(count.max(0) as u64))
+		)
+		.collect();
+
+	crate::builders::collection_page(&upub::url!(ctx, "/search/tags?q={}", page.q), p, apb::Node::array(items))
 }
 
 #[derive(Debug, serde::Deserialize)]

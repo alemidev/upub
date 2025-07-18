@@ -21,6 +21,7 @@ pub fn ap_routes(ctx: upub::Context) -> Router {
 		.route("/", get(ap::application::view))
 		.route("/search/objects", get(ap::application::search_objects))
 		.route("/search/actors", get(ap::application::search_actors))
+		.route("/search/tags", get(ap::application::search_tags))
 		.route("/fetch", get(ap::application::ap_fetch))
 		.route("/proxy/{hmac}/{uri}", get(ap::application::cloak_proxy))
 		.route("/emoji/{domain}/{name}", get(ap::application::emoji_proxy))
