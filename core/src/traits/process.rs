@@ -110,17 +110,29 @@ pub async fn process_create(ctx: &crate::Context, activity: impl apb::Activity, 
 		| apb::ObjectType::Document(apb::DocumentType::Page)
 		| apb::ObjectType::Activity(apb::ActivityType::IntransitiveActivity(apb::IntransitiveActivityType::Question))
 		=> {
-			if let Ok(reply) = object_node.in_reply_to().id() {
-				if let Err(e) = ctx.fetch_object(&reply, tx).await {
-					tracing::warn!("failed fetching replies for received object: {e}");
+			use apb::Link;
+
+			let mut notified = std::collections::HashSet::new();
+			for tag in object_node.tag().flat() {
+				if let Ok(doc) = tag.into_inner() {
+					if let Ok(l) = doc.as_link() {
+						if matches!(l.link_type(), Ok(apb::LinkType::Mention)) {
+							if let Ok(href) = l.href() {
+								notified.insert(href);
+							}
+						}
+					}
 				}
 			}
 
-			let notified = object_node.tag()
-				.flat()
-				.into_iter()
-				.filter_map(|x| Some(x.id().ok()?.to_string()))
-				.collect::<Vec<String>>();
+			if let Ok(reply) = object_node.in_reply_to().id() {
+				match ctx.fetch_object(&reply, tx).await {
+					Ok(r) => if let Some(attributed_to) = r.attributed_to {
+						notified.insert(attributed_to);
+					},
+					Err(e) => tracing::warn!("failed fetching replies for received object: {e}"),
+				}
+			}
 
 			let object_model = ctx.insert_object(object_node, tx).await?;
 			let activity_model = ctx.insert_activity(activity, tx).await?;
