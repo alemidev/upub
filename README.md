@@ -6,7 +6,7 @@
 [![Actions Status](https://github.com/alemidev/upub/actions/workflows/test.yml/badge.svg?branch=dev)](https://github.com/alemidev/upub/actions/workflows/test.yml)
 [![Actions Status](https://github.com/alemidev/upub/actions/workflows/release.yml/badge.svg)](https://github.com/alemidev/upub/actions/workflows/release.yml)
 [![GitHub last commit](https://img.shields.io/github/last-commit/alemidev/upub)](https://github.com/alemidev/upub/commits/dev/)
-[![GitHub commits since tagged version](https://img.shields.io/github/commits-since/alemidev/upub/v0.5.1)](https://github.com/alemidev/upub/releases/tag/v0.5.1)
+[![GitHub commits since tagged version](https://img.shields.io/github/commits-since/alemidev/upub/v0.7.1)](https://github.com/alemidev/upub/releases/tag/v0.7.1)
 
 > ## micro social network, federated
 >
