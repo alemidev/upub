@@ -17,7 +17,7 @@ pub fn SearchPage() -> impl IntoView {
 					<summary>
 						<code class="cw center color ml-s w-100">actors</code>
 					</summary>
-					<div class="pb-1 pl-2">
+					<div class="pb-1 pt-1 pl-2">
 						<Loadable
 							base=format!("{URL_BASE}/search/actors?q={q}")
 							convert=U::Actor
@@ -32,7 +32,7 @@ pub fn SearchPage() -> impl IntoView {
 					<summary>
 						<code class="cw center color ml-s w-100">objects</code>
 					</summary>
-					<div class="pb-1">
+					<div class="pb-1 pt-1">
 						<Loadable
 							base=format!("{URL_BASE}/search/objects?q={q}")
 							element=|obj| view! { <Item item=obj sep=true always=true /> }
