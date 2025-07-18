@@ -173,6 +173,12 @@ pub struct FileStorageConfig {
 	#[serde_inline_default("files/".to_string())]
 	/// path where media files should be stored
 	pub path: String,
+
+	#[serde(default)]
+	/// url prefix to download files. this is needed if upub uploads files somewhere, but then
+	/// something else handles the download itself, like nginx. you probably want to use this
+	/// together with allow_downloads:false. don't include trailing slash
+	pub download_base: Option<String>,
 }
 
 #[serde_inline_default::serde_inline_default]

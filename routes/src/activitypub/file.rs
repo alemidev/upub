@@ -8,10 +8,12 @@ pub async fn upload(
 	State(ctx): State<Context>,
 	AuthIdentity(auth): AuthIdentity,
 	mut multipart: Multipart,
-) -> crate::ApiResult<()> {
+) -> crate::ApiResult<Vec<String>> {
 	if !ctx.cfg().files.allow_uploads || !auth.is_local() {
 		return Err(crate::ApiError::forbidden());
 	}
+
+	let mut uploaded_urls = Vec::new();
 
 	let mut uploaded_something = false;
 	while let Some(field) = multipart
@@ -39,10 +41,15 @@ pub async fn upload(
 
 		tokio::fs::File::open(path).await?.write_all(&data).await?;
 		uploaded_something = true;
+
+		uploaded_urls.push(match ctx.cfg().files.download_base {
+			Some(ref base) => format!("{base}/{name}"),
+			None => upub::url!(ctx, "/file/{name}"),
+		});
 	}
 
 	if uploaded_something {
-		Ok(())
+		Ok(uploaded_urls)
 	} else {
 		Err(crate::ApiError::bad_request())
 	}
