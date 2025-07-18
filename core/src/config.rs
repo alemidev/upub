@@ -162,6 +162,14 @@ pub struct CompatibilityConfig {
 #[serde_inline_default::serde_inline_default]
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize, serde_default::DefaultFromSerde)]
 pub struct FileStorageConfig {
+	#[serde_inline_default(false)]
+	/// allow uploading files to this instance
+	pub allow_uploads: bool,
+
+	#[serde_inline_default(false)]
+	/// allow downloading files from this instance
+	pub allow_downloads: bool,
+
 	#[serde_inline_default("files/".to_string())]
 	/// path where media files should be stored
 	pub path: String,

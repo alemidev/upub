@@ -9,7 +9,7 @@ pub async fn upload(
 	AuthIdentity(auth): AuthIdentity,
 	mut multipart: Multipart,
 ) -> crate::ApiResult<()> {
-	if !auth.is_local() {
+	if !ctx.cfg().files.allow_uploads || !auth.is_local() {
 		return Err(crate::ApiError::forbidden());
 	}
 
@@ -53,6 +53,10 @@ pub async fn download(
 	AuthIdentity(_auth): AuthIdentity,
 	Path(id): Path<String>,
 ) -> crate::ApiResult<Vec<u8>> {
+	if !ctx.cfg().files.allow_downloads {
+		return Err(crate::ApiError::forbidden());
+	}
+
 	let path = format!("{}{id}", ctx.cfg().files.path);
 	let mut buffer = Vec::new();
 	tokio::fs::File::open(path)
