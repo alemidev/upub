@@ -477,7 +477,7 @@ pub async fn process_update(ctx: &crate::Context, activity: impl apb::Activity, 
 			actor_model.update(tx).await?;
 		},
 		// TODO also process Question vote count updates
-		apb::ObjectType::Note | apb::ObjectType::Document(apb::DocumentType::Page) => {
+		apb::ObjectType::Note | apb::ObjectType::Document(apb::DocumentType::Page) | apb::ObjectType::Article => {
 			let internal_oid = crate::model::object::Entity::ap_to_internal(&oid, tx)
 				.await?
 				.ok_or(ProcessorError::Incomplete(apb::ActivityType::Update, oid.clone()))?;
