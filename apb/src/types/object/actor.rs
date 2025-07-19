@@ -14,9 +14,9 @@ pub trait Actor : Object {
 	type PublicKey : crate::PublicKey;
 	type Endpoints : Endpoints;
 
-	fn actor_type(&self) -> Field<ActorType> { Err(FieldErr("type")) }
+	fn actor_type(&self) -> Field<ActorType> { Err(FieldErr("type", None)) }
 	/// A short username which may be used to refer to the actor, with no uniqueness guarantees.
-	fn preferred_username(&self) -> Field<String> { Err(FieldErr("preferredUsername")) }
+	fn preferred_username(&self) -> Field<String> { Err(FieldErr("preferredUsername", None)) }
 	/// A reference to an [ActivityStreams] OrderedCollection comprised of all the messages received by the actor; see 5.2 Inbox. 
 	fn inbox(&self) -> Node<Self::Collection>;
 	/// An [ActivityStreams] OrderedCollection comprised of all the messages produced by the actor; see 5.1 Outbox. 
@@ -37,15 +37,15 @@ pub trait Actor : Object {
 	#[cfg(feature = "activitypub-miscellaneous-terms")]
 	fn moved_to(&self) -> Node<Self::Actor> { Node::Empty }
 	#[cfg(feature = "activitypub-miscellaneous-terms")]
-	fn manually_approves_followers(&self) -> Field<bool> { Err(FieldErr("manuallyApprovesFollowers")) }
+	fn manually_approves_followers(&self) -> Field<bool> { Err(FieldErr("manuallyApprovesFollowers", None)) }
 
 	#[cfg(feature = "did-core")]
 	fn also_known_as(&self) -> Node<Self::Actor> { Node::Empty }
 
 	#[cfg(feature = "activitypub-fe")]
-	fn following_me(&self) -> Field<bool> { Err(FieldErr("followingMe")) }
+	fn following_me(&self) -> Field<bool> { Err(FieldErr("followingMe", None)) }
 	#[cfg(feature = "activitypub-fe")]
-	fn followed_by_me(&self) -> Field<bool> { Err(FieldErr("followedByMe")) }
+	fn followed_by_me(&self) -> Field<bool> { Err(FieldErr("followedByMe", None)) }
 	#[cfg(feature = "activitypub-fe")]
 	fn notifications(&self) -> Node<Self::Collection> { Node::Empty }
 	#[cfg(feature = "activitypub-fe")]
@@ -54,31 +54,31 @@ pub trait Actor : Object {
 	fn lists(&self) -> Node<Self::Collection> { Node::Empty }
 
 	#[cfg(feature = "activitypub-counters")]
-	fn followers_count(&self) -> Field<u64> { Err(FieldErr("followersCount")) }
+	fn followers_count(&self) -> Field<u64> { Err(FieldErr("followersCount", None)) }
 	#[cfg(feature = "activitypub-counters")]
-	fn following_count(&self) -> Field<u64> { Err(FieldErr("followingCount")) }
+	fn following_count(&self) -> Field<u64> { Err(FieldErr("followingCount", None)) }
 	#[cfg(feature = "activitypub-counters")]
-	fn statuses_count(&self) -> Field<u64> { Err(FieldErr("statusesCount")) }
+	fn statuses_count(&self) -> Field<u64> { Err(FieldErr("statusesCount", None)) }
 
 	#[cfg(feature = "toot")]
-	fn discoverable(&self) -> Field<bool> { Err(FieldErr("discoverable")) }
+	fn discoverable(&self) -> Field<bool> { Err(FieldErr("discoverable", None)) }
 	#[cfg(feature = "toot")]
 	fn featured(&self) -> Node<Self::Collection> { Node::Empty }
 }
 
 pub trait Endpoints : Object {
 	/// Endpoint URI so this actor's clients may access remote ActivityStreams objects which require authentication to access. To use this endpoint, the client posts an x-www-form-urlencoded id parameter with the value being the id of the requested ActivityStreams object. 
-	fn proxy_url(&self) -> Field<String> { Err(FieldErr("proxyUrl")) }
+	fn proxy_url(&self) -> Field<String> { Err(FieldErr("proxyUrl", None)) }
 	/// If OAuth 2.0 bearer tokens [RFC6749] [RFC6750] are being used for authenticating client to server interactions, this endpoint specifies a URI at which a browser-authenticated user may obtain a new authorization grant. 
-	fn oauth_authorization_endpoint(&self) -> Field<String> { Err(FieldErr("oauthAuthorizationEndpoint")) }
+	fn oauth_authorization_endpoint(&self) -> Field<String> { Err(FieldErr("oauthAuthorizationEndpoint", None)) }
 	/// If OAuth 2.0 bearer tokens [RFC6749] [RFC6750] are being used for authenticating client to server interactions, this endpoint specifies a URI at which a client may acquire an access token. 
-	fn oauth_token_endpoint(&self) -> Field<String> { Err(FieldErr("oauthTokenEndpoint")) }
+	fn oauth_token_endpoint(&self) -> Field<String> { Err(FieldErr("oauthTokenEndpoint", None)) }
 	/// If Linked Data Signatures and HTTP Signatures are being used for authentication and authorization, this endpoint specifies a URI at which browser-authenticated users may authorize a client's public key for client to server interactions. 
-	fn provide_client_key(&self) -> Field<String> { Err(FieldErr("provideClientKey")) }
+	fn provide_client_key(&self) -> Field<String> { Err(FieldErr("provideClientKey", None)) }
 	/// If Linked Data Signatures and HTTP Signatures are being used for authentication and authorization, this endpoint specifies a URI at which a client key may be signed by the actor's key for a time window to act on behalf of the actor in interacting with foreign servers. 
-	fn sign_client_key(&self) -> Field<String> { Err(FieldErr("signClientKey")) }
+	fn sign_client_key(&self) -> Field<String> { Err(FieldErr("signClientKey", None)) }
 	/// An optional endpoint used for wide delivery of publicly addressed activities and activities sent to followers. sharedInbox endpoints SHOULD also be publicly readable OrderedCollection objects containing objects addressed to the Public special collection. Reading from the sharedInbox endpoint MUST NOT present objects which are not addressed to the Public endpoint.
-	fn shared_inbox(&self) -> Field<String> { Err(FieldErr("sharedInbox")) }
+	fn shared_inbox(&self) -> Field<String> { Err(FieldErr("sharedInbox", None)) }
 }
 
 pub trait ActorMut : ObjectMut {

@@ -37,15 +37,15 @@ crate::strenum! {
 }
 
 pub trait Link : crate::Base {
-	fn link_type(&self) -> Field<LinkType> { Err(FieldErr("type")) }
+	fn link_type(&self) -> Field<LinkType> { Err(FieldErr("type", None)) }
 	fn href(&self) -> Field<String>;
-	fn rel(&self) -> Field<String> { Err(FieldErr("rel")) }
-	fn media_type(&self) -> Field<String> { Err(FieldErr("mediaType")) } // also in obj
-	fn name(&self) -> Field<String> { Err(FieldErr("name")) }       // also in obj
-	fn hreflang(&self) -> Field<String> { Err(FieldErr("hreflang")) }
-	fn height(&self) -> Field<u64> { Err(FieldErr("height")) }
-	fn width(&self) -> Field<u64> { Err(FieldErr("width")) }
-	fn preview(&self) -> Field<String> { Err(FieldErr("linkPreview")) }    // also in obj
+	fn rel(&self) -> Field<String> { Err(FieldErr("rel", None)) }
+	fn media_type(&self) -> Field<String> { Err(FieldErr("mediaType", None)) } // also in obj
+	fn name(&self) -> Field<String> { Err(FieldErr("name", None)) }       // also in obj
+	fn hreflang(&self) -> Field<String> { Err(FieldErr("hreflang", None)) }
+	fn height(&self) -> Field<u64> { Err(FieldErr("height", None)) }
+	fn width(&self) -> Field<u64> { Err(FieldErr("width", None)) }
+	fn preview(&self) -> Field<String> { Err(FieldErr("linkPreview", None)) }    // also in obj
 }
 
 pub trait LinkMut : crate::BaseMut {
@@ -71,12 +71,12 @@ impl Link for serde_json::Value {
 	// TODO this can fail, but it should never do!
 	fn href(&self) -> Field<String> {
 		if self.is_string() {
-			self.as_str().map(|x| x.to_string()).ok_or(FieldErr("href"))
+			self.as_str().map(|x| x.to_string()).ok_or(FieldErr("href", None))
 		} else {
 			self.get("href")
 				.and_then(|x| x.as_str())
 				.map(|x| x.to_string())
-				.ok_or(FieldErr("href"))
+				.ok_or(FieldErr("href", None))
 		}
 	}
 

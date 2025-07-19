@@ -1,7 +1,7 @@
 // TODO technically this is not part of ActivityStreams
 
 pub trait PublicKey : super::Base {
-	fn owner(&self) -> crate::Field<String> { Err(crate::FieldErr("owner")) }
+	fn owner(&self) -> crate::Field<String> { Err(crate::FieldErr("owner", None)) }
 	fn public_key_pem(&self) -> String;
 }
 

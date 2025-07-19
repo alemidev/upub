@@ -42,7 +42,7 @@ pub trait Object : Base {
 	type Activity : crate::Activity;
 	type Question : crate::Question;
 
-	fn object_type(&self) -> Field<ObjectType> { Err(FieldErr("type")) }
+	fn object_type(&self) -> Field<ObjectType> { Err(FieldErr("type", None)) }
 	/// Identifies a resource attached or related to an object that potentially requires special handling
 	/// The intent is to provide a model that is at least semantically similar to attachments in email. 
 	fn attachment(&self) -> Node<Self::Object> { Node::Empty }
@@ -54,17 +54,17 @@ pub trait Object : Base {
 	/// The content or textual representation of the Object encoded as a JSON string. By default, the value of content is HTML
 	/// The mediaType property can be used in the object to indicate a different content type
 	/// The content MAY be expressed using multiple language-tagged values
-	fn content(&self) -> Field<String> { Err(FieldErr("content")) } // TODO handle language maps
+	fn content(&self) -> Field<String> { Err(FieldErr("content", None)) } // TODO handle language maps
 	/// Identifies the context within which the object exists or an activity was performed
 	/// The notion of "context" used is intentionally vague
 	/// The intended function is to serve as a means of grouping objects and activities that share a common originating context or purpose
 	/// An example could be all activities relating to a common project or event
 	fn context(&self) -> Node<Self::Object> { Node::Empty } 
 	/// A simple, human-readable, plain-text name for the object. HTML markup MUST NOT be included. The name MAY be expressed using multiple language-tagged values
-	fn name(&self) -> Field<String> { Err(FieldErr("name")) }       // also in link // TODO handle language maps
+	fn name(&self) -> Field<String> { Err(FieldErr("name", None)) }       // also in link // TODO handle language maps
 	/// The date and time describing the actual or expected ending time of the object
 	/// When used with an Activity object, for instance, the endTime property specifies the moment the activity concluded or is expected to conclude. 
-	fn end_time(&self) -> Field<chrono::DateTime<chrono::Utc>> { Err(FieldErr("endTime")) }
+	fn end_time(&self) -> Field<chrono::DateTime<chrono::Utc>> { Err(FieldErr("endTime", None)) }
 	/// Identifies the entity (e.g. an application) that generated the object
 	fn generator(&self) -> Node<Self::Actor> { Node::Empty }
 	/// Indicates an entity that describes an icon for this object
@@ -80,18 +80,18 @@ pub trait Object : Base {
 	/// Identifies an entity that provides a preview of this object
 	fn preview(&self) -> Node<Self::Object> { Node::Empty }    // also in link
 	/// The date and time at which the object was published
-	fn published(&self) -> Field<chrono::DateTime<chrono::Utc>> { Err(FieldErr("published")) }
+	fn published(&self) -> Field<chrono::DateTime<chrono::Utc>> { Err(FieldErr("published", None)) }
 	/// The date and time at which the object was updated
-	fn updated(&self) -> Field<chrono::DateTime<chrono::Utc>> { Err(FieldErr("updated")) }
+	fn updated(&self) -> Field<chrono::DateTime<chrono::Utc>> { Err(FieldErr("updated", None)) }
 	/// Identifies a Collection containing objects considered to be responses to this object
 	fn replies(&self) -> Node<Self::Collection> { Node::Empty }
 	fn likes(&self) -> Node<Self::Collection> { Node::Empty }
 	fn shares(&self) -> Node<Self::Collection> { Node::Empty }
 	/// The date and time describing the actual or expected starting time of the object.
 	/// When used with an Activity object, for instance, the startTime property specifies the moment the activity began or is scheduled to begin. 
-	fn start_time(&self) -> Field<chrono::DateTime<chrono::Utc>> { Err(FieldErr("startTime")) }
+	fn start_time(&self) -> Field<chrono::DateTime<chrono::Utc>> { Err(FieldErr("startTime", None)) }
 	/// A natural language summarization of the object encoded as HTML. Multiple language tagged summaries MAY be provided
-	fn summary(&self) -> Field<String> { Err(FieldErr("summary")) }
+	fn summary(&self) -> Field<String> { Err(FieldErr("summary", None)) }
 	/// One or more "tags" that have been associated with an objects. A tag can be any kind of Object
 	/// The key difference between attachment and tag is that the former implies association by inclusion, while the latter implies associated by reference
 	fn tag(&self) -> Node<Self::Object> { Node::Empty }
@@ -108,31 +108,31 @@ pub trait Object : Base {
 	/// When used on a Link, identifies the MIME media type of the referenced resource.
 	/// When used on an Object, identifies the MIME media type of the value of the content property.
 	/// If not specified, the content property is assumed to contain text/html content. 
-	fn media_type(&self) -> Field<String> { Err(FieldErr("mediaType")) } // also in link
+	fn media_type(&self) -> Field<String> { Err(FieldErr("mediaType", None)) } // also in link
 	/// When the object describes a time-bound resource, such as an audio or video, a meeting, etc, the duration property indicates the object's approximate duration.
 	/// The value MUST be expressed as an xsd:duration as defined by [ xmlschema11-2], section 3.3.6 (e.g. a period of 5 seconds is represented as "PT5S"). 
-	fn duration(&self) -> Field<String> { Err(FieldErr("duration")) } // TODO how to parse xsd:duration ?
+	fn duration(&self) -> Field<String> { Err(FieldErr("duration", None)) } // TODO how to parse xsd:duration ?
 
 	#[cfg(feature = "activitypub-miscellaneous-terms")]
-	fn sensitive(&self) -> Field<bool> { Err(FieldErr("sensitive")) }
+	fn sensitive(&self) -> Field<bool> { Err(FieldErr("sensitive", None)) }
 	#[cfg(feature = "activitypub-miscellaneous-terms")]
 	fn quote_url(&self) -> Node<Self::Object> { Node::Empty }
 
 	#[cfg(feature = "activitypub-fe")]
-	fn liked_by_me(&self) -> Field<bool> { Err(FieldErr("likedByMe")) }
+	fn liked_by_me(&self) -> Field<bool> { Err(FieldErr("likedByMe", None)) }
 
 	#[cfg(feature = "ostatus")]
 	fn conversation(&self) -> Node<Self::Object> { Node::Empty }
 
-	fn as_activity(&self) -> Result<&Self::Activity, FieldErr> { Err(FieldErr("type")) }
-	fn as_actor(&self) -> Result<&Self::Actor, FieldErr> { Err(FieldErr("type")) }
-	fn as_collection(&self) -> Result<&Self::Collection, FieldErr> { Err(FieldErr("type")) }
-	fn as_document(&self) -> Result<&Self::Document, FieldErr> { Err(FieldErr("type")) }
-	fn as_question(&self) -> Result<&Self::Question, FieldErr> { Err(FieldErr("type")) }
-	fn as_link(&self) -> Result<&Self::Link, FieldErr> { Err(FieldErr("type")) }
+	fn as_activity(&self) -> Result<&Self::Activity, FieldErr> { Err(FieldErr("type", None)) }
+	fn as_actor(&self) -> Result<&Self::Actor, FieldErr> { Err(FieldErr("type", None)) }
+	fn as_collection(&self) -> Result<&Self::Collection, FieldErr> { Err(FieldErr("type", None)) }
+	fn as_document(&self) -> Result<&Self::Document, FieldErr> { Err(FieldErr("type", None)) }
+	fn as_question(&self) -> Result<&Self::Question, FieldErr> { Err(FieldErr("type", None)) }
+	fn as_link(&self) -> Result<&Self::Link, FieldErr> { Err(FieldErr("type", None)) }
 
 	#[cfg(feature = "did-core")] // TODO this isn't from did-core actually!?!?!?!?!
-	fn value(&self) -> Field<String> { Err(FieldErr("value")) }
+	fn value(&self) -> Field<String> { Err(FieldErr("value", None)) }
 }
 
 pub trait ObjectMut : BaseMut {
@@ -244,28 +244,28 @@ impl Object for serde_json::Value {
 	fn as_activity(&self) -> Result<&Self::Activity, FieldErr> {
 		match self.object_type()? {
 			ObjectType::Activity(_) => Ok(self),
-			_ => Err(FieldErr("type")),
+			_ => Err(FieldErr("type", None)),
 		}
 	}
 
 	fn as_actor(&self) -> Result<&Self::Actor, FieldErr> {
 		match self.object_type()? {
 			ObjectType::Actor(_) => Ok(self),
-			_ => Err(FieldErr("type")),
+			_ => Err(FieldErr("type", None)),
 		}
 	}
 
 	fn as_collection(&self) -> Result<&Self::Collection, FieldErr> {
 		match self.object_type()? {
 			ObjectType::Collection(_) => Ok(self),
-			_ => Err(FieldErr("type")),
+			_ => Err(FieldErr("type", None)),
 		}
 	}
 
 	fn as_document(&self) -> Result<&Self::Document, FieldErr> {
 		match self.object_type()? {
 			ObjectType::Document(_) => Ok(self),
-			_ => Err(FieldErr("type")),
+			_ => Err(FieldErr("type", None)),
 		}
 	}
 

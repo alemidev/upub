@@ -73,7 +73,7 @@ crate::strenum! {
 }
 
 pub trait Activity : Object {
-	fn activity_type(&self) -> Field<ActivityType> { Err(FieldErr("type")) }
+	fn activity_type(&self) -> Field<ActivityType> { Err(FieldErr("type", None)) }
 	/// Describes one or more entities that either performed or are expected to perform the activity.
 	/// Any single activity can have multiple actors. The actor MAY be specified using an indirect Link. 
 	fn actor(&self) -> Node<Self::Actor> { Node::Empty }
@@ -95,7 +95,7 @@ pub trait Activity : Object {
 	fn instrument(&self) -> Node<Self::Object> { Node::Empty }
 
 	#[cfg(feature = "activitypub-fe")]
-	fn seen(&self) -> Field<bool> { Err(FieldErr("seen")) }
+	fn seen(&self) -> Field<bool> { Err(FieldErr("seen", None)) }
 }
 
 pub trait ActivityMut : ObjectMut {

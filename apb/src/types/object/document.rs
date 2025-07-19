@@ -9,7 +9,7 @@ crate::strenum! {
 }
 
 pub trait Document : super::Object {
-	fn document_type(&self) -> crate::Field<DocumentType> { Err(crate::FieldErr("type")) }
+	fn document_type(&self) -> crate::Field<DocumentType> { Err(crate::FieldErr("type", None)) }
 }
 
 pub trait DocumentMut : super::ObjectMut {

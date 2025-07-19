@@ -5,7 +5,7 @@ use upub::{model, selector::{RichFillable, RichObject}, traits::Fetcher, Context
 #[allow(clippy::manual_map)] // TODO can Update code be improved?
 pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<()> {
 	let Some(ref target) = job.target else {
-		return Err(crate::JobError::Malformed(apb::FieldErr("target"))); // TODO not best error to use..
+		return Err(crate::JobError::Malformed(apb::FieldErr("target", Some(job.payload.clone().unwrap_or_default().to_string())))); // TODO not best error to use..
 	};
 
 	if upub::ext::is_blacklisted(target, &ctx.cfg().reject.delivery) {

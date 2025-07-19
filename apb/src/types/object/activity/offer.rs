@@ -8,7 +8,7 @@ strenum! {
 }
 
 pub trait Offer : super::Activity {
-	fn offer_type(&self) -> crate::Field<OfferType> { Err(crate::FieldErr("type")) }
+	fn offer_type(&self) -> crate::Field<OfferType> { Err(crate::FieldErr("type", None)) }
 }
 
 pub trait OfferMut : super::ActivityMut {

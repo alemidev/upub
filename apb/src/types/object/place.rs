@@ -1,12 +1,12 @@
 use crate::{Field, FieldErr};
 
 pub trait Place : super::Object {
-	fn accuracy(&self) -> Field<f64> { Err(FieldErr("accuracy")) }
-	fn altitude(&self) -> Field<f64> { Err(FieldErr("altitude")) }
-	fn latitude(&self) -> Field<f64> { Err(FieldErr("latitude")) }
-	fn longitude(&self) -> Field<f64> { Err(FieldErr("longitude")) }
-	fn radius(&self) -> Field<f64> { Err(FieldErr("radius")) }
-	fn units(&self) -> Field<&str> { Err(FieldErr("units")) }
+	fn accuracy(&self) -> Field<f64> { Err(FieldErr("accuracy", None)) }
+	fn altitude(&self) -> Field<f64> { Err(FieldErr("altitude", None)) }
+	fn latitude(&self) -> Field<f64> { Err(FieldErr("latitude", None)) }
+	fn longitude(&self) -> Field<f64> { Err(FieldErr("longitude", None)) }
+	fn radius(&self) -> Field<f64> { Err(FieldErr("radius", None)) }
+	fn units(&self) -> Field<&str> { Err(FieldErr("units", None)) }
 }
 
 pub trait PlaceMut : super::ObjectMut {

@@ -572,7 +572,7 @@ pub async fn process_undo(ctx: &crate::Context, activity: impl apb::Activity, tx
 
 	match undone_activity.activity_type {
 		apb::ActivityType::Like => {
-			let un_liked_object = undone_activity.object.ok_or(apb::FieldErr("object"))?;
+			let un_liked_object = undone_activity.object.ok_or(apb::FieldErr("object", Some(undone_activity_id.clone())))?;
 			let internal_oid = crate::model::object::Entity::ap_to_internal(
 				&un_liked_object,
 				tx
@@ -604,7 +604,7 @@ pub async fn process_undo(ctx: &crate::Context, activity: impl apb::Activity, tx
 			}
 		},
 		apb::ActivityType::Announce => {
-			let un_announced_object = undone_activity.object.ok_or(apb::FieldErr("object"))?;
+			let un_announced_object = undone_activity.object.ok_or(apb::FieldErr("object", Some(undone_activity_id.clone())))?;
 			let internal_oid = crate::model::object::Entity::ap_to_internal(
 				&un_announced_object,
 				tx
@@ -635,7 +635,7 @@ pub async fn process_undo(ctx: &crate::Context, activity: impl apb::Activity, tx
 				.await?;
 		},
 		apb::ActivityType::Follow => {
-			let un_followed_actor = undone_activity.object.ok_or(apb::FieldErr("object"))?;
+			let un_followed_actor = undone_activity.object.ok_or(apb::FieldErr("object", Some(undone_activity_id)))?;
 			let internal_uid_following = crate::model::actor::Entity::ap_to_internal(
 				&un_followed_actor,
 				tx,

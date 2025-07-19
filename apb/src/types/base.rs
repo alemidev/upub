@@ -9,8 +9,8 @@ crate::strenum! {
 }
 
 pub trait Base : crate::macros::MaybeSend {
-	fn id(&self) -> crate::Field<String> { Err(crate::FieldErr("id")) }
-	fn base_type(&self) -> crate::Field<BaseType> { Err(crate::FieldErr("type")) }
+	fn id(&self) -> crate::Field<String> { Err(crate::FieldErr("id", None)) }
+	fn base_type(&self) -> crate::Field<BaseType> { Err(crate::FieldErr("type", None)) }
 }
 
 
@@ -39,18 +39,18 @@ impl Base for serde_json::Value {
 			self.get("type")
 				.and_then(|x| x.as_str())
 				.and_then(|x| x.try_into().ok())
-				.ok_or(crate::FieldErr("type"))
+				.ok_or(crate::FieldErr("type", Some(self.to_string())))
 		}
 	}
 
 	fn id(&self) -> crate::Field<String> {
 		if self.is_string() {
-			Ok(self.as_str().ok_or(crate::FieldErr("id"))?.to_string())
+			Ok(self.as_str().ok_or(crate::FieldErr("id", Some(self.to_string())))?.to_string())
 		} else {
 			self.get("id")
 				.and_then(|x| x.as_str())
 				.map(|x| x.to_string())
-				.ok_or(crate::FieldErr("id"))
+				.ok_or(crate::FieldErr("id", Some(self.to_string())))
 		}
 	}
 }

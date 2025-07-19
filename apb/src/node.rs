@@ -65,20 +65,20 @@ impl<T : super::Base> Node<T> {
 	/// return reference to embedded object (or first if many are present)
 	pub fn inner(&self) -> crate::Field<&T> {
 		match self {
-			Node::Empty => Err(crate::FieldErr("node is empty")),
-			Node::Link(_) => Err(crate::FieldErr("node has not been dereferenced")),
+			Node::Empty => Err(crate::FieldErr("node is empty", None)),
+			Node::Link(l) => Err(crate::FieldErr("node has not been dereferenced", Some(l.href().unwrap_or_default()))),
 			Node::Object(x) => Ok(x),
-			Node::Array(v) => v.iter().next().ok_or(crate::FieldErr("node contains no items"))?.inner(),
+			Node::Array(v) => v.iter().next().ok_or(crate::FieldErr("node contains no items", None))?.inner(),
 		}
 	}
 
 	/// return embedded object (or first if many are present)
 	pub fn into_inner(self) -> crate::Field<T> {
 		match self {
-			Node::Empty => Err(crate::FieldErr("node is empty")),
-			Node::Link(_) => Err(crate::FieldErr("node has not been dereferenced")),
+			Node::Empty => Err(crate::FieldErr("node is empty", None)),
+			Node::Link(l) => Err(crate::FieldErr("node has not been dereferenced", Some(l.href().unwrap_or_default()))),
 			Node::Object(x) => Ok(*x),
-			Node::Array(v) => v.into_iter().next().ok_or(crate::FieldErr("node contains no items"))?.into_inner(),
+			Node::Array(v) => v.into_iter().next().ok_or(crate::FieldErr("node contains no items", None))?.into_inner(),
 		}
 	}
 
@@ -115,10 +115,10 @@ impl<T : super::Base> Node<T> {
 	/// returns id of object: url for link, id for object, None if empty or array
 	pub fn id(&self) -> crate::Field<String> {
 		match self {
-			Node::Empty => Err(crate::FieldErr("id")),
+			Node::Empty => Err(crate::FieldErr("id", None)),
 			Node::Link(uri) => uri.href(),
 			Node::Object(obj) => obj.id(),
-			Node::Array(arr) => arr.front().map(|x| x.id()).ok_or(crate::FieldErr("id"))?,
+			Node::Array(arr) => arr.front().map(|x| x.id()).ok_or(crate::FieldErr("id", None))?,
 		}
 	}
 

@@ -122,7 +122,7 @@ macro_rules! getter {
 				self.get("type")
 					.and_then(|x| x.as_str())
 					.and_then(|x| x.try_into().ok())
-					.ok_or($crate::FieldErr("type"))
+					.ok_or($crate::FieldErr("type", Some(self.to_string())))
 			}
 		}
 	};
@@ -132,7 +132,7 @@ macro_rules! getter {
 			fn [< $name:snake >](&self) -> $crate::Field<bool> {
 				self.get(stringify!($name))
 					.and_then(|x| x.as_bool())
-					.ok_or($crate::FieldErr(stringify!($name)))
+					.ok_or($crate::FieldErr(stringify!($name), Some(self.to_string())))
 			}
 		}
 	};
@@ -143,7 +143,7 @@ macro_rules! getter {
 				self.get(stringify!($name))
 					.and_then(|x| x.as_str())
 					.map(|x| x.to_string())
-					.ok_or($crate::FieldErr(stringify!($name)))
+					.ok_or($crate::FieldErr(stringify!($name), Some(self.to_string())))
 			}
 		}
 	};
@@ -153,7 +153,7 @@ macro_rules! getter {
 			fn [< $name:snake >](&self) -> $crate::Field<f64> {
 				self.get(stringify!($name))
 					.and_then(|x| x.as_f64())
-					.ok_or($crate::FieldErr(stringify!($name)))
+					.ok_or($crate::FieldErr(stringify!($name), Some(self.to_string())))
 			}
 		}
 	};
@@ -163,7 +163,7 @@ macro_rules! getter {
 			fn [< $name:snake >](&self) -> $crate::Field<u64> {
 				self.get(stringify!($name))
 					.and_then(|x| x.as_u64())
-					.ok_or($crate::FieldErr(stringify!($name)))
+					.ok_or($crate::FieldErr(stringify!($name), Some(self.to_string())))
 			}
 		}
 	};
@@ -173,7 +173,7 @@ macro_rules! getter {
 			fn [< $name:snake >](&self) -> $crate::Field<i64> {
 				self.get(stringify!($name))
 					.and_then(|x| x.as_i64())
-					.ok_or($crate::FieldErr(stringify!($name)))
+					.ok_or($crate::FieldErr(stringify!($name), Some(self.to_string())))
 			}
 		}
 	};
@@ -186,11 +186,11 @@ macro_rules! getter {
 							self
 								.get(stringify!($name))
 								.and_then(|x| x.as_str())
-								.ok_or($crate::FieldErr(stringify!($name)))?
+								.ok_or($crate::FieldErr(stringify!($name), Some(self.to_string())))?
 						)
 						.map_err(|e| {
 							tracing::warn!("invalid time string ({e}), ignoring");
-							$crate::FieldErr(stringify!($name))
+							$crate::FieldErr(stringify!($name), Some(self.to_string()))
 						})?
 						.with_timezone(&chrono::Utc)
 				)

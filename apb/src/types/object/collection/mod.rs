@@ -15,11 +15,11 @@ crate::strenum! {
 pub trait Collection : Object {
 	type CollectionPage : CollectionPage;
 
-	fn collection_type(&self) -> Field<CollectionType> { Err(FieldErr("type")) }
+	fn collection_type(&self) -> Field<CollectionType> { Err(FieldErr("type", None)) }
 
 	/// A non-negative integer specifying the total number of objects contained by the logical view of the collection.
 	/// This number might not reflect the actual number of items serialized within the Collection object instance. 
-	fn total_items(&self) -> Field<u64> { Err(FieldErr("totalItems")) }
+	fn total_items(&self) -> Field<u64> { Err(FieldErr("totalItems", None)) }
 	/// In a paged Collection, indicates the page that contains the most recently updated member items. 
 	fn current(&self) -> Node<Self::CollectionPage> { Node::Empty }
 	/// In a paged Collection, indicates the furthest preceeding page of items in the collection. 
