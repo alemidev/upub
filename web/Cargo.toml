@@ -8,7 +8,7 @@ authors = [ "alemi <me@alemi.dev>" ]
 description = "web frontend for upub"
 license = "AGPL-3.0"
 keywords = ["activitypub", "upub", "json", "web", "wasm"]
-repository = "https://git.alemi.dev/upub.git"
+repository = "https://github.com/alemidev/upub"
 #readme = "README.md"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html

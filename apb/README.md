@@ -9,7 +9,7 @@ read more in this crate's docs
 
 
 ## why
-[upub](https://git.alemi.dev/upub.git) uses these types to implement its federation, but I wanted to modularize apb types
+[upub](https://github.com/alemidev/upub) uses these types to implement its federation, but I wanted to modularize apb types
 
 ## state
 this crate is still work in progress and favors upub's needs, get in touch if you'd like to help or tune apb to your project!

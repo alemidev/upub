@@ -5,7 +5,7 @@ edition = "2024"
 authors = [ "alemi <me@alemi.dev>" ]
 description = "database migrations for upub"
 license = "AGPL-3.0"
-repository = "https://git.alemi.dev/upub.git"
+repository = "https://github.com/alemidev/upub.git"
 readme = "README.md"
 
 [lib]

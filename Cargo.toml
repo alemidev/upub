@@ -19,7 +19,7 @@ authors = [ "alemi <me@alemi.dev>" ]
 description = "micro social network, federated"
 license = "AGPL-3.0"
 keywords = ["activitypub", "activitystreams", "json"]
-repository = "https://git.alemi.dev/upub.git"
+repository = "https://github.com/alemidev/upub"
 readme = "README.md"
 
 [[bin]]
