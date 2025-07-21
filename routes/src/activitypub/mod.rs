@@ -21,6 +21,7 @@ pub fn ap_routes(ctx: upub::Context) -> Router {
 
 	Router::new()
 		.route("/", get(ap::application::view))
+		.route("/robots.txt", get(ap::application::robots_txt))
 		.route("/search/objects", get(ap::search::objects))
 		.route("/search/actors", get(ap::search::actors))
 		.route("/search/tags", get(ap::search::tags))

@@ -19,6 +19,9 @@ pub struct Config {
 	#[serde(default)]
 	pub reject: RejectConfig,
 
+	#[serde(default)]
+	pub robots: RobotsConfig,
+
 	// TODO should i move app keys here?
 }
 
@@ -213,6 +216,18 @@ pub struct RejectConfig {
 	#[serde(default)]
 	/// reject any request from these instances (ineffective as they can still fetch anonymously)
 	pub requests: Vec<String>,
+}
+
+#[serde_inline_default::serde_inline_default]
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize, serde_default::DefaultFromSerde)]
+pub struct RobotsConfig {
+	#[serde(default)]
+	/// user-agents allowed to access this instance
+	pub allow: Vec<String>,
+
+	#[serde_inline_default(vec!["*".to_string()])]
+	/// user-agents disallowed from accessing this instance
+	pub disallow: Vec<String>,
 }
 
 impl Config {

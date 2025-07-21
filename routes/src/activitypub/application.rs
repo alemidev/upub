@@ -28,3 +28,16 @@ pub async fn view(State(ctx): State<Context>) -> crate::ApiResult<Response> {
 	).into_response())
 }
 
+pub async fn robots_txt(State(ctx): State<Context>) -> String {
+	let mut robots_txt = String::new();
+
+	for allowed in ctx.cfg().robots.allow.iter() {
+		robots_txt.push_str(&format!("User-agent: {allowed}\nAllow: /\n\n"));
+	}
+
+	for disallowed in ctx.cfg().robots.disallow.iter() {
+		robots_txt.push_str(&format!("User-agent: {disallowed}\nDisallow: /\n\n"));
+	}
+
+	robots_txt
+}
