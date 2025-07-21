@@ -73,6 +73,7 @@ article.tl {
 	margin-right: 1em;
 	margin-top: 0;
 	margin-bottom: 0;
+	overflow-y: auto;
 }
 article.tl h1,
 article.tl h2,
