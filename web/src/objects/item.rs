@@ -182,6 +182,7 @@ pub fn Object(object: crate::Doc, #[prop(default = true)] controls: bool) -> imp
 	let post_inner = view! {
 		<Summary summary=object.summary().ok().map(|x| x.to_string()) >
 			{quote_block}
+			{post_image}
 			<p inner_html={content}></p>
 			{post_poll}
 			{attachments_padding}
@@ -201,13 +202,10 @@ pub fn Object(object: crate::Doc, #[prop(default = true)] controls: bool) -> imp
 		// lemmy with Page, peertube with Video
 		Ok(apb::ObjectType::Document(t)) => view! {
 			<article class="float-container ml-1 mr-1" >
-				{post_image}
-				<div>
-					<h4 class="mt-s mb-1" title={t.as_ref().to_string()}>
-						<b>{object.name().unwrap_or_default().to_string()}</b>
-					</h4>
-					{post_inner}
-				</div>
+				<h4 class="mt-s mb-1" title={t.as_ref().to_string()}>
+					<b>{object.name().unwrap_or_default().to_string()}</b>
+				</h4>
+				{post_inner}
 			</article>
 		}.into_any(),
 		// wordpress, ... ?
