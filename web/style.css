@@ -65,15 +65,22 @@ blockquote {
 }
 article {
 	word-break: break-word;
-}
-article.tl {
 	color: var(--text);
-	border-left: solid 3px var(--accent);
 	margin-left: 1.25em;
 	margin-right: 1em;
 	margin-top: 0;
 	margin-bottom: 0;
 	overflow-y: auto;
+}
+article.long {
+	border: solid 3px var(--background-dim);
+}
+article.document {
+	border-left: solid 3px var(--background-dim);
+}
+article.note {
+	border-left: solid 3px var(--accent);
+	padding-left: .25em;
 }
 article.tl h1,
 article.tl h2,
@@ -83,9 +90,6 @@ article.tl h3 {
 }
 article p {
 	margin: .5em 0 .5em .5em;
-}
-article.float-container {
-	overflow-y: auto;
 }
 b.displayname {
 	overflow-wrap: break-word;
@@ -340,6 +344,10 @@ details.thread[open]>summary::before {
 }
 code.cw {
 	display: block;
+}
+code.summary {
+	text-decoration: underline;
+	text-decoration-style: dashed;
 }
 input[type=button]:hover,
 input[type=submit].active {

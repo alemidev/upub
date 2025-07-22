@@ -179,51 +179,42 @@ pub fn Object(object: crate::Doc, #[prop(default = true)] controls: bool) -> imp
 		}
 	});
 
-	let post_inner = view! {
-		<Summary summary=object.summary().ok().map(|x| x.to_string()) >
-			{quote_block}
+	let object_type = object.object_type().unwrap_or(apb::ObjectType::Object);
+
+	let object_title = object.name().ok().map(|x| view! {
+		<h3 class="mt-s mb-1 ml-1" title={object_type.as_ref().to_string()}>{x}</h3>
+	});
+
+	let sep = if matches!(object.object_type(), Ok(apb::ObjectType::Article)) {
+		Some(view! { <hr /> })
+	} else {
+		None
+	};
+
+	let article_class = match object_type {
+		apb::ObjectType::Note
+		| apb::ObjectType::Activity(apb::ActivityType::IntransitiveActivity(apb::IntransitiveActivityType::Question))
+		=> "note",
+		apb::ObjectType::Document(_) => "document",
+		apb::ObjectType::Article => "long",
+		_ => "",
+	};
+
+	let post = view! {
+		<article class={article_class}>
 			{post_image}
-			<p inner_html={content}></p>
-			{post_poll}
-			{attachments_padding}
-			{attachments}
-		</Summary>
+			{object_title}
+			{sep}
+			<Summary summary=object.summary().ok().map(|x| x.to_string()) before=matches!(object_type, apb::ObjectType::Article)>
+				{quote_block}
+				<p inner_html={content}></p>
+				{post_poll}
+				{attachments_padding}
+				{attachments}
+			</Summary>
+		</article>
 	};
-	let post = match object.object_type() {
-		// mastodon, pleroma, misskey
-		Ok(
-			apb::ObjectType::Note
-			| apb::ObjectType::Activity(apb::ActivityType::IntransitiveActivity(apb::IntransitiveActivityType::Question))
-		) => view! {
-			<article class="tl">
-				{post_inner}
-			</article>
-		}.into_any(),
-		// lemmy with Page, peertube with Video
-		Ok(apb::ObjectType::Document(t)) => view! {
-			<article class="float-container ml-1 mr-1" >
-				<h4 class="mt-s mb-1" title={t.as_ref().to_string()}>
-					<b>{object.name().unwrap_or_default().to_string()}</b>
-				</h4>
-				{post_inner}
-			</article>
-		}.into_any(),
-		// wordpress, ... ?
-		Ok(apb::ObjectType::Article) => view! {
-			<article>
-				<h3>{object.name().unwrap_or_default().to_string()}</h3>
-				<hr />
-				{post_inner}
-			</article>
-		}.into_any(),
-		// everything else
-		Ok(t) => view! {
-			<h3>{t.as_ref().to_string()}</h3>
-			{post_inner}
-		}.into_any(),
-		// object without type?
-		Err(_) => view! { <code>missing object type</code> }.into_any(),
-	};
+
 	view! {
 		<table class="align w-100 ml-s mr-s">
 			<tr>
@@ -261,14 +252,26 @@ pub fn Object(object: crate::Doc, #[prop(default = true)] controls: bool) -> imp
 }
 
 #[component]
-pub fn Summary(summary: Option<String>, children: Children) -> impl IntoView {
+pub fn Summary(
+	summary: Option<String>,
+	#[prop(optional)]
+	before: bool,
+	children: Children
+) -> impl IntoView {
 	let config = use_context::<Signal<crate::Config>>().expect("missing config context");
 	match summary.filter(|x| !x.is_empty()) {
 		None => Either::Left(children()),
 		Some(summary) => Either::Right(view! {
+			{if before { Some(view! {
+				<p><i class="dim">{summary.clone()}</i></p>
+			})} else {
+				None
+			}}
 			<details class="cw pa-s" prop:open=move || !config.get().collapse_content_warnings>
 				<summary>
-					<code class="cw center color ml-s w-100 bb">{summary}</code>
+					<code class="cw center color w-100 bb">
+						{if before { "[ more ]".to_string() } else { summary }}
+					</code>
 				</summary>
 				{children()}
 			</details>
