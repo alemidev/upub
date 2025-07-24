@@ -13,7 +13,7 @@ members = [
 
 [package]
 name = "upub-bin"
-version = "0.7.2"
+version = "0.7.3"
 edition = "2024"
 authors = [ "alemi <me@alemi.dev>" ]
 description = "micro social network, federated"
