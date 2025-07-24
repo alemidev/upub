@@ -18,3 +18,6 @@ pub use threads::ThreadsPage;
 
 mod lists;
 pub use lists::ListsPage;
+
+pub mod articles;
+pub use articles::ArticlesPage;

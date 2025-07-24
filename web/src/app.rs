@@ -173,6 +173,7 @@ pub fn App() -> impl IntoView {
 										} />
 
 										<Route path=path!("threads") view=ThreadsPage />
+										<Route path=path!("articles") view=ArticlesPage />
 
 										<Route path=path!("lists") view=ListsPage />
 										<ParentRoute path=path!("lists/:id") view=ListView >
