@@ -124,10 +124,13 @@ pub fn ActorHeader() -> impl IntoView {
 							})}
 						</div>
 					</div>
-					<p class="mb-2 mt-0 center bio" inner_html=actor_summary ></p>
-					<p class="center">
-						<table class="fields center w-100 pa-s" style="margin: auto; table-layout: fixed;">{fields}</table>
-					</p>
+					<details class="thread depth-r" open>
+						<summary></summary>
+						<p class="mb-2 mt-1 center bio" inner_html=actor_summary ></p>
+						<p class="center">
+							<table class="fields center w-100 pa-s" style="margin: auto; table-layout: fixed;">{fields}</table>
+						</p>
+					</details>
 				</div>
 				<p class="mt-2">
 					<span class:tab-active=move || matches!(matched_route.get(), FeedRoute::User)>
