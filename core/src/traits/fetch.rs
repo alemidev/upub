@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use apb::{Activity, Actor, ActorMut, Base, Collection, CollectionPage, Object, Question, Shortcuts};
 use reqwest::{header::{ACCEPT, CONTENT_TYPE, USER_AGENT}, Method, Response};
-use sea_orm::{prelude::Expr, ActiveModelTrait, ActiveValue::Set, ColumnTrait, ConnectionTrait, DbErr, EntityTrait, IntoActiveModel, NotSet, QueryFilter};
+use sea_orm::{prelude::Expr, ActiveModelTrait, ActiveValue::{Unchanged, Set}, ColumnTrait, ConnectionTrait, DbErr, EntityTrait, IntoActiveModel, NotSet, QueryFilter};
 
 use super::{Addresser, Cloaker, Normalizer};
 use httpsign::HttpSignature;
@@ -551,6 +551,14 @@ impl Fetcher for crate::Context {
 					}
 				}
 			}
+		}
+
+		// TODO doing this in a "fetch_outbox" is silly but somewhat nice UX
+		if let Some(internal) = crate::model::actor::Entity::ap_to_internal(id, tx).await? {
+			let mut u = self.resolve_user(actor, tx).await?;
+			u.internal = Unchanged(internal);
+			u.updated = Set(chrono::Utc::now());
+			u.update(tx).await?;
 		}
 
 		Ok(())
