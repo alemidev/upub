@@ -172,8 +172,14 @@ pub fn App() -> impl IntoView {
 											/>
 										} />
 
+										<Route path=path!("articles") view=move || view! {
+											<Loadable
+												base=format!("{URL_BASE}/articles/page")
+												element=move |obj| view! { <Item item=obj sep=true /> }
+											/>
+										} />
+
 										<Route path=path!("threads") view=ThreadsPage />
-										<Route path=path!("articles") view=ArticlesPage />
 
 										<Route path=path!("lists") view=ListsPage />
 										<ParentRoute path=path!("lists/:id") view=ListView >
