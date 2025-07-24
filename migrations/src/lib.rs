@@ -30,6 +30,7 @@ mod m20250712_000001_add_question_tables;
 mod m20250712_000002_fix_full_text_index;
 mod m20250712_000003_add_count_inside_poll_options;
 mod m20250713_000001_add_custom_emoji_table;
+mod m20250724_000001_add_object_type_index;
 
 pub struct Migrator;
 
@@ -67,6 +68,7 @@ impl MigratorTrait for Migrator {
 			// Box::new(m20250712_000002_fix_full_text_index::Migration),
 			Box::new(m20250712_000003_add_count_inside_poll_options::Migration),
 			Box::new(m20250713_000001_add_custom_emoji_table::Migration),
+			Box::new(m20250724_000001_add_object_type_index::Migration),
 		]
 	}
 }

@@ -5,6 +5,7 @@ pub mod object;
 pub mod groups;
 pub mod lists;
 pub mod threads;
+pub mod articles;
 pub mod activity;
 pub mod application;
 pub mod auth;
@@ -36,6 +37,8 @@ pub fn ap_routes(ctx: upub::Context) -> Router {
 		.route("/outbox/page", get(ap::outbox::page))
 		.route("/threads", get(ap::threads::get))
 		.route("/threads/page", get(ap::threads::page))
+		.route("/articles", get(ap::articles::get))
+		.route("/articles/page", get(ap::articles::page))
 		.route("/auth", put(ap::auth::register))
 		.route("/auth", post(ap::auth::login))
 		.route("/auth", patch(ap::auth::refresh))
