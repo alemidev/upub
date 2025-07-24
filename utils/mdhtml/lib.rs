@@ -72,6 +72,10 @@ pub fn safe_markdown(text: String) -> String {
 	Sanitizer::default().markdown(text)
 }
 
+pub fn strip_html(text: String) -> String {
+	Stripper::default().strip_html(text)
+}
+
 impl Sanitizer {
 	pub fn new(cloak: Cloaker) -> Self {
 		Self {
@@ -174,6 +178,44 @@ impl TokenSink for Sanitizer {
 				self.buffer.push('>');
 			},
 			Token::CharacterTokens(txt) => self.buffer.push_str(txt.as_ref()),
+			Token::CommentToken(_) => {},
+			Token::DoctypeToken(_) => {},
+			Token::NullCharacterToken => {},
+			Token::EOFToken => {},
+			Token::ParseError(e) => tracing::error!("error parsing html: {e}"),
+		}
+		TokenSinkResult::Continue
+	}
+}
+
+#[derive(Default)]
+pub struct Stripper(pub String);
+
+impl Stripper {
+	pub fn strip_html(self, text: String) -> String {
+		let mut input = BufferQueue::default();
+		input.push_back(text.to_tendril().try_reinterpret().unwrap());
+	
+		let mut tok = Tokenizer::new(self, Default::default());
+		let _ = tok.feed(&mut input);
+	
+		if !input.is_empty() {
+			tracing::warn!("buffer input not empty after processing html");
+		}
+		tok.end();
+	
+		tok.sink.0
+	}
+}
+
+impl TokenSink for Stripper {
+	type Handle = ();
+
+	/// Each processed token will be handled by this method
+	fn process_token(&mut self, token: Token, _line_number: u64) -> TokenSinkResult<()> {
+		match token {
+			Token::TagToken(_) => {},
+			Token::CharacterTokens(txt) => self.0.push_str(txt.as_ref()),
 			Token::CommentToken(_) => {},
 			Token::DoctypeToken(_) => {},
 			Token::NullCharacterToken => {},
