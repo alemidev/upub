@@ -205,7 +205,7 @@ pub fn Object(object: crate::Doc, #[prop(default = true)] controls: bool) -> imp
 			{post_image}
 			{object_title}
 			{sep}
-			<Summary summary=object.summary().ok().map(|x| x.to_string()) before=matches!(object_type, apb::ObjectType::Article)>
+			<Summary summary=object.summary().ok().map(|x| mdhtml::strip_html(x.to_string())) before=matches!(object_type, apb::ObjectType::Article)>
 				{quote_block}
 				<p inner_html={content}></p>
 				{post_poll}
