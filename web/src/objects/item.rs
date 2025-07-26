@@ -238,6 +238,7 @@ pub fn Object(object: crate::Doc, #[prop(default = true)] controls: bool) -> imp
 			{audience_badge}
 			{if controls {
 				Some(view! {
+					<br class="only-on-mobile" />
 					<span style="white-space:nowrap">
 						<AddToListButton oid=oid.clone() />
 						{if privacy.is_public() { Some(view! { <QuoteButton target=oid.clone() /> }) } else { None }}
