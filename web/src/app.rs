@@ -295,7 +295,7 @@ pub fn App() -> impl IntoView {
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum FeedRoute {
-	Unknown, Home, Global, Server, Threads, Lists, ListFeed, ListMembers, Notifications, User, Following, Followers, ActorLikes, ObjectLikes, Replies, Context
+	Unknown, Home, Global, Server, Threads, Articles, Lists, ListFeed, ListMembers, Notifications, User, Following, Followers, ActorLikes, ObjectLikes, Replies, Context
 }
 
 impl FeedRoute {
@@ -325,6 +325,8 @@ fn Scrollable() -> impl IntoView {
 				set_route.set(FeedRoute::Server);
 			} else if path.contains("/web/threads") {
 				set_route.set(FeedRoute::Threads);
+			} else if path.contains("/web/articles") {
+				set_route.set(FeedRoute::Articles);
 			} else if path.starts_with("/web/lists") {
 				if let Some("feed") = path.split('/').nth(4) {
 						set_route.set(FeedRoute::ListFeed);
