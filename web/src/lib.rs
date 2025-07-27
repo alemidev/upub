@@ -387,7 +387,7 @@ fn string_to_hex(inpt: &str) -> (String, String) {
 }
 
 lazy_static::lazy_static! {
-	pub static ref CUSTOM_EMOJI_REGEX: regex::Regex = regex::Regex::new(r":(\w+?):").expect("failed compiling custom emoji regex");
+	pub static ref CUSTOM_EMOJI_REGEX: regex::Regex = regex::Regex::new(r":([0-9a-zA-Z_\-]+?):").expect("failed compiling custom emoji regex");
 }
 
 pub fn replace_custom_emoji(mut text: String, domain: &str, sanitize_first: bool) -> String {
