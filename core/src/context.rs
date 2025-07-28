@@ -18,10 +18,9 @@ struct ContextInner {
 	instance: model::instance::Model,
 	pkey: String,
 	waker: Option<Box<dyn WakerToken>>,
-	#[allow(unused)] relay: Relays,
+	relay: Relays,
 }
 
-#[allow(unused)]
 pub struct Relays {
 	sources: BTreeSet<String>,
 	sinks: BTreeSet<String>,
