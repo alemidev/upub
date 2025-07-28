@@ -11,6 +11,9 @@ pub struct Config {
 	pub security: SecurityConfig,
 
 	#[serde(default)]
+	pub behavior: BehaviorConfig,
+
+	#[serde(default)]
 	pub compat: CompatibilityConfig,
 
 	#[serde(default)]
@@ -95,10 +98,6 @@ pub struct SecurityConfig {
 	/// allow anonymous users to perform full-text searches
 	pub allow_public_search: bool,
 
-	#[serde_inline_default(30)]
-	/// max time, in seconds, before requests fail with timeout
-	pub request_timeout: u64,
-
 	#[serde_inline_default("definitely-change-this-in-prod".to_string())]
 	/// secret for media proxy, set this to something random
 	pub proxy_secret: String,
@@ -110,22 +109,30 @@ pub struct SecurityConfig {
 	#[serde_inline_default(7 * 24)]
 	/// how long do login sessions last
 	pub session_duration_hours: i64,
+}
+
+#[serde_inline_default::serde_inline_default]
+#[derive(Debug, Clone, serde::Deserialize, serde::Serialize, serde_default::DefaultFromSerde)]
+pub struct BehaviorConfig {
+	#[serde_inline_default(30)]
+	/// max time, in seconds, before requests fail with timeout
+	pub request_timeout: u64,
 
 	#[serde_inline_default(2)]
 	/// how many times we allow an object to redirect
-	pub max_id_redirects: u32, // TODO not sure it fits here
+	pub max_id_redirects: u32,
 
 	#[serde_inline_default(20)]
 	/// how deep should threads be crawled for fetching replies
-	pub thread_crawl_depth: u32, // TODO doesn't really fit here
+	pub thread_crawl_depth: u32,
 
 	#[serde_inline_default(30)]
 	/// how long before a job is considered stale and dropped
-	pub job_expiration_days: u32, // TODO doesn't really fit here
+	pub job_expiration_days: u32,
 
 	#[serde_inline_default(100)]
 	/// how many times to attempt inserting back incomplete jobs
-	pub reinsertion_attempt_limit: u32, // TODO doesn't really fit here
+	pub reinsertion_attempt_limit: u32,
 }
 
 #[serde_inline_default::serde_inline_default]

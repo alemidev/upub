@@ -108,7 +108,7 @@ impl JobDispatcher for Context {
 				},
 			}
 	
-			if chrono::Utc::now() > job.published + chrono::Duration::days(self.cfg().security.job_expiration_days as i64) {
+			if chrono::Utc::now() > job.published + chrono::Duration::days(self.cfg().behavior.job_expiration_days as i64) {
 				tracing::info!("dropping expired job {job:?}");
 				restart!(now);
 			}
@@ -174,7 +174,7 @@ impl JobDispatcher for Context {
 								Ok(_) => break,
 							}
 							count += 1;
-							if count > _ctx.cfg().security.reinsertion_attempt_limit {
+							if count > _ctx.cfg().behavior.reinsertion_attempt_limit {
 								tracing::error!("reached job reinsertion limit, dropping {job:#?}");
 								break;
 							}

@@ -202,7 +202,7 @@ impl Fetcher for crate::Context {
 
 		let doc_id = document.id()?;
 		if id != doc_id {
-			if depth >= self.cfg().security.max_id_redirects {
+			if depth >= self.cfg().behavior.max_id_redirects {
 				return Err(RequestError::TooManyRedirects);
 			}
 			return self.pull(&doc_id).await;
@@ -610,10 +610,10 @@ async fn resolve_object_r(ctx: &crate::Context, object: serde_json::Value, depth
 	}
 
 	if let Ok(reply) = object.in_reply_to().id() {
-		if depth <= ctx.cfg().security.thread_crawl_depth {
+		if depth <= ctx.cfg().behavior.thread_crawl_depth {
 			fetch_object_r(ctx, &reply, depth + 1, tx).await?;
 		} else {
-			tracing::warn!("thread deeper than {}, giving up fetching more replies", ctx.cfg().security.thread_crawl_depth);
+			tracing::warn!("thread deeper than {}, giving up fetching more replies", ctx.cfg().behavior.thread_crawl_depth);
 		}
 	}
 
