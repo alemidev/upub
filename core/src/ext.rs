@@ -152,15 +152,38 @@ impl TypeName for String {
 	}
 }
 
-pub fn strip_proto(url: &str) -> &str {
+
+pub enum BlacklistKind {
+	Incoming, Fetch, Public, Media, Delivery, Access, Requests,
+}
+
+impl BlacklistKind {
+	pub fn hit(&self, id: &str, rules: &crate::config::RejectConfig) -> bool {
+		let stripped = bare_domain(id);
+		if blacklist_hit(stripped, &rules.everything) { return true };
+		match self {
+			BlacklistKind::Incoming => blacklist_hit(stripped, &rules.incoming),
+			BlacklistKind::Fetch => blacklist_hit(stripped, &rules.fetch),
+			BlacklistKind::Public => blacklist_hit(stripped, &rules.public),
+			BlacklistKind::Media => blacklist_hit(stripped, &rules.media),
+			BlacklistKind::Delivery => blacklist_hit(stripped, &rules.delivery),
+			BlacklistKind::Access => blacklist_hit(stripped, &rules.access),
+			BlacklistKind::Requests => blacklist_hit(stripped, &rules.requests),
+		}
+	}
+}
+
+fn bare_domain(url: &str) -> &str {
 	url
 		.strip_prefix("https://")
 		.unwrap_or(url)
 		.strip_prefix("http://")
 		.unwrap_or(url)
+		.split('/')
+		.next()
+		.unwrap_or_default()
 }
 
-pub fn is_blacklisted(id: &str, blacklist: &[String]) -> bool {
-	let stripped = strip_proto(id);
-	blacklist.iter().any(|x| stripped.starts_with(x))
+fn blacklist_hit(id: &str, blacklist: &[String]) -> bool {
+	blacklist.iter().any(|x| id.ends_with(x))
 }

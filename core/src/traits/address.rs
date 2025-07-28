@@ -60,22 +60,22 @@ impl Addresser for crate::Context {
 			(None, None) => Ok(()),
 			(Some(activity), None) => {
 				let to = expand_addressing_with_blacklist(
-					&activity.id, &self.cfg().reject.public, activity.addressed(), None, tx
+					&activity.id, &self.cfg().reject, activity.addressed(), None, tx
 				).await?;
 				address_to(self, to, Some(activity.internal), None, self.is_local(&activity.id), activity.published, tx).await
 			},
 			(None, Some(object)) => {
 				let to = expand_addressing_with_blacklist(
-					&object.id, &self.cfg().reject.public, object.addressed(), object.audience.clone(), tx
+					&object.id, &self.cfg().reject, object.addressed(), object.audience.clone(), tx
 				).await?;
 				address_to(self, to, None, Some(object.internal), self.is_local(&object.id), object.published, tx).await
 			},
 			(Some(activity), Some(object)) => {
 				let to_activity = BTreeSet::from_iter(expand_addressing_with_blacklist(
-					&activity.id, &self.cfg().reject.public, activity.addressed(), object.audience.clone(), tx
+					&activity.id, &self.cfg().reject, activity.addressed(), object.audience.clone(), tx
 				).await?);
 				let to_object = BTreeSet::from_iter(expand_addressing_with_blacklist(
-					&object.id, &self.cfg().reject.public, object.addressed(), object.audience.clone(), tx
+					&object.id, &self.cfg().reject, object.addressed(), object.audience.clone(), tx
 				).await?);
 
 				let to_common = to_activity.intersection(&to_object).cloned().collect();
@@ -198,8 +198,8 @@ async fn expand_addressing(targets: Vec<String>, audience: Option<String>, tx: &
 	Ok(out)
 }
 
-async fn expand_addressing_with_blacklist(id: &str, blacklist: &[String], mut targets: Vec<String>, audience: Option<String>, tx: &impl ConnectionTrait) -> Result<Vec<String>, DbErr> {
-	if crate::ext::is_blacklisted(id, blacklist) {
+async fn expand_addressing_with_blacklist(id: &str, blacklist: &crate::config::RejectConfig, mut targets: Vec<String>, audience: Option<String>, tx: &impl ConnectionTrait) -> Result<Vec<String>, DbErr> {
+	if crate::ext::BlacklistKind::Public.hit(id, blacklist) {
 		targets.retain(|x| !apb::target::is_public(x));
 	}
 	expand_addressing(targets, audience, tx).await

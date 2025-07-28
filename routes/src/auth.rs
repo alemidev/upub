@@ -170,11 +170,11 @@ where
 						return Err(ApiError::unauthorized());
 					}
 
-					if ctx.cfg().reject.requests.contains(&user.domain) {
+					if upub::ext::BlacklistKind::Requests.hit(&user.domain, &ctx.cfg().reject) {
 						return Err(ApiError::Status(axum::http::StatusCode::UNAVAILABLE_FOR_LEGAL_REASONS));
 					}
 
-					if !ctx.cfg().reject.access.contains(&user.domain) {
+					if !upub::ext::BlacklistKind::Access.hit(&user.domain, &ctx.cfg().reject) {
 						let internal = upub::model::instance::Entity::domain_to_internal(&user.domain, ctx.db())
 							.await?
 							.ok_or_else(ApiError::internal_server_error)?; // user but not their domain???

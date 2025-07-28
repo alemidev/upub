@@ -296,7 +296,7 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 
 	targets
 		.retain(|target| {
-			if upub::ext::is_blacklisted(target, &ctx.cfg().reject.delivery) {
+			if upub::ext::BlacklistKind::Delivery.hit(target, &ctx.cfg().reject) {
 				tracing::warn!("rejecting delivery of {} to {target}", job.activity);
 				false
 			} else {

@@ -64,7 +64,7 @@ pub async fn post(
 		}
 	};
 
-	if ctx.cfg().reject.incoming.contains(&domain) {
+	if upub::ext::BlacklistKind::Incoming.hit(&domain, &ctx.cfg().reject) {
 		return Err(crate::ApiError::Status(StatusCode::UNAVAILABLE_FOR_LEGAL_REASONS));
 	}
 

@@ -40,7 +40,7 @@ pub async fn activitypub(
 		},
 	};
 
-	if upub::ext::is_blacklisted(&query.uri, &ctx.cfg().reject.fetch) {
+	if upub::ext::BlacklistKind::Fetch.hit(&query.uri, &ctx.cfg().reject) {
 		return Err(crate::ApiError::FetchError(upub::traits::fetch::RequestError::AbortedForPolicy));
 	}
 
@@ -66,7 +66,7 @@ pub async fn cloak(
 	let uri = ctx.uncloak(&hmac, &uri)
 		.ok_or_else(ApiError::unauthorized)?;
 
-	if upub::ext::is_blacklisted(&uri, &ctx.cfg().reject.media) {
+	if upub::ext::BlacklistKind::Media.hit(&uri, &ctx.cfg().reject) {
 		return Err(ApiError::Status(axum::http::StatusCode::UNAVAILABLE_FOR_LEGAL_REASONS));
 	}
 
@@ -87,7 +87,7 @@ pub async fn emoji(
 		.await?
 		.ok_or(crate::ApiError::not_found())?;
 
-	if upub::ext::is_blacklisted(&uri, &ctx.cfg().reject.media) {
+	if upub::ext::BlacklistKind::Media.hit(&uri, &ctx.cfg().reject) {
 		return Err(ApiError::Status(axum::http::StatusCode::UNAVAILABLE_FOR_LEGAL_REASONS));
 	}
 

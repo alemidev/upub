@@ -185,7 +185,7 @@ pub trait Fetcher {
 #[async_trait::async_trait]
 impl Fetcher for crate::Context {
 	async fn pull_r(&self, id: &str, depth: u32) -> Result<Pull<serde_json::Value>, RequestError> {
-		if crate::ext::is_blacklisted(id, &self.cfg().reject.fetch) {
+		if crate::ext::BlacklistKind::Fetch.hit(id, &self.cfg().reject) {
 			return Err(RequestError::AbortedForPolicy);
 		}
 
@@ -633,7 +633,7 @@ impl Dereferenceable<serde_json::Value> for apb::Node<serde_json::Value> {
 		match self {
 			apb::Node::Link(uri) => {
 				let href = uri.href()?;
-				if crate::ext::is_blacklisted(&href, &ctx.cfg().reject.fetch) {
+				if crate::ext::BlacklistKind::Fetch.hit(&href, &ctx.cfg().reject) {
 					return Err(RequestError::AbortedForPolicy);
 				}
 				tracing::debug!("dereferencing {href}");

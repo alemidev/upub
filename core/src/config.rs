@@ -199,6 +199,10 @@ pub struct FileStorageConfig {
 #[derive(Debug, Clone, serde::Deserialize, serde::Serialize, serde_default::DefaultFromSerde)]
 pub struct RejectConfig {
 	#[serde(default)]
+	/// instances for which all below rules apply
+	pub everything: Vec<String>,
+
+	#[serde(default)]
 	/// discard incoming activities from these instances
 	pub incoming: Vec<String>,
 
@@ -221,7 +225,8 @@ pub struct RejectConfig {
 	pub delivery: Vec<String>,
 
 	#[serde(default)]
-	/// prevent fetching private content from these instances
+	/// prevent fetching private content from these instances. effectively downgrades all requests
+	/// from these instance as anonymous requests.
 	pub access: Vec<String>,
 
 	#[serde(default)]

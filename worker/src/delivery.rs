@@ -8,7 +8,7 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 		return Err(crate::JobError::Malformed(apb::FieldErr("target"))); // TODO not best error to use..
 	};
 
-	if upub::ext::is_blacklisted(target, &ctx.cfg().reject.delivery) {
+	if upub::ext::BlacklistKind::Delivery.hit(target, &ctx.cfg().reject) {
 		tracing::warn!("aborting delivery to {target} due to rejection policies: {:?}", job.payload);
 		return Ok(());
 	}
