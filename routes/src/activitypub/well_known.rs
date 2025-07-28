@@ -1,5 +1,3 @@
-use std::sync::atomic::AtomicI64;
-
 use axum::{extract::{Path, Query, State}, http::StatusCode, response::{IntoResponse, Response}, Json};
 use jrd::{JsonResourceDescriptor, JsonResourceDescriptorLink};
 use sea_orm::{ColumnTrait, EntityTrait, PaginatorTrait, QueryFilter, QuerySelect, SelectColumns};
@@ -31,82 +29,87 @@ pub async fn nodeinfo_discovery(State(ctx): State<Context>) -> Json<NodeInfoDisc
 	})
 }
 
+#[derive(Default, Clone)]
+struct NodeInfoStats {
+	last_update: chrono::DateTime<chrono::Utc>,
+	total_users: u64,
+	total_posts: u64,
+	total_comments: u64,
+	total_active_users_month: u64,
+	total_active_users_halfyear: u64,
+}
+
+struct NodeInfoStatsLock(std::sync::OnceLock<tokio::sync::Mutex<NodeInfoStats>>);
+
+impl NodeInfoStatsLock {
+	const fn new() -> Self {
+		Self(std::sync::OnceLock::new())
+	}
+
+	async fn lock(&self) -> tokio::sync::MutexGuard<NodeInfoStats> {
+		self.0
+			.get_or_init(|| tokio::sync::Mutex::new(NodeInfoStats::default()))
+			.lock()
+			.await
+	}
+}
+
 // TODO either vendor or fork nodeinfo-rs because it still represents "repository" and "homepage"
 // even if None! technically leads to invalid nodeinfo 2.0
 pub async fn nodeinfo(State(ctx): State<Context>, Path(version): Path<String>) -> crate::ApiResult<Json<nodeinfo_upub::NodeInfoOwned>> {
-	// keep these as statics so they get calculated once and then stay cached
-	// TODO this will cache them just once per runtime, maybe re-calculate them after some time?
-	static TOTAL_USERS: AtomicI64 = AtomicI64::new(i64::MIN);
-	static TOTAL_POSTS: AtomicI64 = AtomicI64::new(i64::MIN);
-	static TOTAL_COMMENTS: AtomicI64 = AtomicI64::new(i64::MIN);
-	static TOTAL_ACTIVE_USERS_MONTH: AtomicI64 = AtomicI64::new(i64::MIN);
-	static TOTAL_ACTIVE_USERS_HALFYEAR: AtomicI64 = AtomicI64::new(i64::MIN);
 
-	// TODO because we need to get the actual numbers with async operations we can't use OnceLocks...
-	//      can we make the following lines way more compact?? this is hell to maintain
-	let mut total_users = TOTAL_USERS.load(std::sync::atomic::Ordering::Relaxed);
-	if total_users == i64::MIN {
-		let actual_total_users = model::actor::Entity::find()
-			.filter(model::actor::Column::Domain.eq(ctx.domain()))
-			.count(ctx.db())
-			.await? as i64; // TODO safe cast
-		TOTAL_USERS.store(actual_total_users, std::sync::atomic::Ordering::Relaxed);
-		total_users = actual_total_users;
-	}
+	static STATS: NodeInfoStatsLock = NodeInfoStatsLock::new();
 
-	let mut total_posts = TOTAL_POSTS.load(std::sync::atomic::Ordering::Relaxed);
-	if total_posts == i64::MIN {
-		let actual_total_posts = model::object::Entity::find()
-			.inner_join(model::actor::Entity)
-			.filter(model::actor::Column::Domain.eq(ctx.domain()))
-			.filter(model::object::Column::InReplyTo.is_null())
-			.count(ctx.db())
-			.await? as i64; // TODO safe cast
-		TOTAL_POSTS.store(actual_total_posts, std::sync::atomic::Ordering::Relaxed);
-		total_posts = actual_total_posts;
-	}
+	let max_age = chrono::TimeDelta::seconds(ctx.cfg().behavior.stats_max_age);
 
-	let mut total_comments = TOTAL_COMMENTS.load(std::sync::atomic::Ordering::Relaxed);
-	if total_comments == i64::MIN {
-		let actual_total_comments = model::object::Entity::find()
-			.inner_join(model::actor::Entity)
-			.filter(model::actor::Column::Domain.eq(ctx.domain()))
-			.filter(model::object::Column::InReplyTo.is_not_null())
-			.count(ctx.db())
-			.await? as i64; // TODO safe cast
-		TOTAL_COMMENTS.store(actual_total_comments, std::sync::atomic::Ordering::Relaxed);
-		total_comments = actual_total_comments;
-	}
+	let updated_stats = {
+		let mut lock = STATS.lock().await;
+		if chrono::Utc::now() - lock.last_update > max_age {
+			tracing::info!("re-calculating nodeinfo stats");
+			lock.total_users = model::actor::Entity::find()
+				.filter(model::actor::Column::Domain.eq(ctx.domain()))
+				.filter(model::actor::Column::Id.ne(ctx.base()))
+				.count(ctx.db())
+				.await?;
+			lock.total_posts = model::object::Entity::find()
+				.inner_join(model::actor::Entity)
+				.filter(model::actor::Column::Domain.eq(ctx.domain()))
+				.filter(model::actor::Column::Id.ne(ctx.base()))
+				.filter(model::object::Column::InReplyTo.is_null())
+				.count(ctx.db())
+				.await?;
+			lock.total_comments = model::object::Entity::find()
+				.inner_join(model::actor::Entity)
+				.filter(model::actor::Column::Domain.eq(ctx.domain()))
+				.filter(model::actor::Column::Id.ne(ctx.base()))
+				.filter(model::object::Column::InReplyTo.is_not_null())
+				.count(ctx.db())
+				.await?;
+			lock.total_active_users_month = model::actor::Entity::find()
+				.distinct()
+				.inner_join(model::object::Entity)
+				.select_only()
+				.select_column(model::actor::Column::Id)
+				.filter(model::actor::Column::Domain.eq(ctx.domain()))
+				.filter(model::actor::Column::Id.ne(ctx.base()))
+				.filter(model::object::Column::Published.gte(chrono::Utc::now() - std::time::Duration::from_secs(60 * 60 * 24 * 30)))
+				.count(ctx.db())
+				.await?;
+			lock.total_active_users_halfyear = model::actor::Entity::find()
+				.distinct()
+				.inner_join(model::object::Entity)
+				.select_only()
+				.select_column(model::actor::Column::Id)
+				.filter(model::actor::Column::Domain.eq(ctx.domain()))
+				.filter(model::actor::Column::Id.ne(ctx.base()))
+				.filter(model::object::Column::Published.gte(chrono::Utc::now() - std::time::Duration::from_secs(60 * 60 * 24 * 30 * 6)))
+				.count(ctx.db())
+				.await?;
+			lock.last_update = chrono::Utc::now();
+		}
 
-	let mut total_active_users_month = TOTAL_ACTIVE_USERS_MONTH.load(std::sync::atomic::Ordering::Relaxed);
-	if total_active_users_month == i64::MIN {
-		let actual_total_active_users_month = model::actor::Entity::find()
-			.distinct()
-			.inner_join(model::object::Entity)
-			.select_only()
-			.select_column(model::actor::Column::Id)
-			.filter(model::actor::Column::Domain.eq(ctx.domain()))
-			.filter(model::object::Column::Published.gte(chrono::Utc::now() - std::time::Duration::from_secs(60 * 60 * 24 * 30)))
-			.count(ctx.db())
-			.await? as i64; // TODO safe cast
-		TOTAL_ACTIVE_USERS_MONTH.store(actual_total_active_users_month, std::sync::atomic::Ordering::Relaxed);
-		total_active_users_month = actual_total_active_users_month;
-	}
-
-	let mut total_active_users_halfyear = TOTAL_ACTIVE_USERS_HALFYEAR.load(std::sync::atomic::Ordering::Relaxed);
-	if total_active_users_halfyear == i64::MIN {
-		let actual_total_active_users_halfyear = model::actor::Entity::find()
-			.distinct()
-			.inner_join(model::object::Entity)
-			.select_only()
-			.select_column(model::actor::Column::Id)
-			.filter(model::actor::Column::Domain.eq(ctx.domain()))
-			.filter(model::object::Column::Published.gte(chrono::Utc::now() - std::time::Duration::from_secs(60 * 60 * 24 * 30 * 6)))
-			.count(ctx.db())
-			.await? as i64; // TODO safe cast
-		TOTAL_ACTIVE_USERS_HALFYEAR.store(actual_total_active_users_halfyear, std::sync::atomic::Ordering::Relaxed);
-		total_active_users_halfyear = actual_total_active_users_halfyear;
-	}
+		lock.clone()
+	};
 
 	let (software, version) = match version.as_str() {
 		"2.0.json" | "2.0" => (
@@ -140,12 +143,12 @@ pub async fn nodeinfo(State(ctx): State<Context>, Path(version): Path<String>) -
 				outbound: vec![],
 			},
 			usage: nodeinfo_upub::types::Usage {
-				local_posts: Some(total_posts),
-				local_comments: Some(total_comments),
+				local_posts: Some(updated_stats.total_posts.try_into().unwrap_or(i64::MAX)),
+				local_comments: Some(updated_stats.total_comments.try_into().unwrap_or(i64::MAX)),
 				users: Some(nodeinfo_upub::types::Users {
-					active_month: Some(total_active_users_month),
-					active_halfyear: Some(total_active_users_halfyear),
-					total: Some(total_users),
+					active_month: Some(updated_stats.total_active_users_month.try_into().unwrap_or(i64::MAX)),
+					active_halfyear: Some(updated_stats.total_active_users_halfyear.try_into().unwrap_or(i64::MAX)),
+					total: Some(updated_stats.total_users.try_into().unwrap_or(i64::MAX)),
 				}),
 			},
 			metadata: serde_json::Map::default(),

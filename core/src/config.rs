@@ -133,6 +133,10 @@ pub struct BehaviorConfig {
 	#[serde_inline_default(100)]
 	/// how many times to attempt inserting back incomplete jobs
 	pub reinsertion_attempt_limit: u32,
+
+	#[serde_inline_default(3600)]
+	/// recalculate instance stats when they're older than this (in seconds)
+	pub stats_max_age: i64,
 }
 
 #[serde_inline_default::serde_inline_default]
