@@ -111,6 +111,14 @@ pub async fn nodeinfo(State(ctx): State<Context>, Path(version): Path<String>) -
 		lock.clone()
 	};
 
+	let serde_json::Value::Object(metadata) = serde_json::json!({
+		"last_update": updated_stats.last_update,
+		"contact": ctx.cfg().instance.contact,
+		"frontend": ctx.cfg().instance.frontend,
+		"compatibility": if ctx.cfg().behavior.hide_compat_rules { None } else { Some(&ctx.cfg().compat) },
+		"reject": if ctx.cfg().behavior.hide_reject_rules { None } else { Some(&ctx.cfg().reject) },
+	}) else { unreachable!("literal json map is not a map") };
+
 	let (software, version) = match version.as_str() {
 		"2.0.json" | "2.0" => (
 			nodeinfo_upub::types::Software {
@@ -136,7 +144,8 @@ pub async fn nodeinfo(State(ctx): State<Context>, Path(version): Path<String>) -
 		nodeinfo_upub::NodeInfoOwned {
 			version,
 			software,
-			open_registrations: ctx.cfg().security.allow_registration,
+			metadata,
+			open_registrations: ctx.cfg().security.allow_registration && !ctx.cfg().security.require_user_approval,
 			protocols: vec!["activitypub".into()],
 			services: nodeinfo_upub::types::Services {
 				inbound: vec![],
@@ -151,7 +160,6 @@ pub async fn nodeinfo(State(ctx): State<Context>, Path(version): Path<String>) -
 					total: Some(updated_stats.total_users.try_into().unwrap_or(i64::MAX)),
 				}),
 			},
-			metadata: serde_json::Map::default(),
 		}
 	))
 }

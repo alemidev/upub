@@ -44,7 +44,7 @@ pub struct InstanceConfig {
 	pub domain: String,
 
 	#[serde(default)]
-	/// contact information for an administrator, currently unused
+	/// contact information for an administrator, shown in nodeinfo metadata
 	pub contact: String,
 
 	#[serde(default)]
@@ -137,6 +137,14 @@ pub struct BehaviorConfig {
 	#[serde_inline_default(3600)]
 	/// recalculate instance stats when they're older than this (in seconds)
 	pub stats_max_age: i64,
+
+	#[serde(default)]
+	/// hide compatibility rules from nodeinfo metadata
+	pub hide_compat_rules: bool,
+
+	#[serde(default)]
+	/// hide reject rules from nodeinfo metadata
+	pub hide_reject_rules: bool,
 }
 
 #[serde_inline_default::serde_inline_default]
