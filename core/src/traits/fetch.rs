@@ -111,7 +111,7 @@ pub trait Fetcher {
 
 	fn client(domain: &str) -> reqwest::Client {
 		reqwest::Client::builder()
-			.user_agent(format!("upub+{} ({domain})", crate::VERSION))
+			.user_agent(format!("upub/{} +{domain}", crate::VERSION))
 			.connect_timeout(std::time::Duration::from_secs(30)) // TODO may be cool to configure these
 			.read_timeout(std::time::Duration::from_secs(30)) // TODO may be cool to configure these
 			.timeout(std::time::Duration::from_secs(300)) // TODO may be cool to configure these
@@ -235,10 +235,9 @@ impl Fetcher for crate::Context {
 
 		let subject = format!("acct:{user}@{host}");
 		let webfinger_uri = format!("https://{host}/.well-known/webfinger?resource={subject}");
-		let resource = reqwest::Client::new()
+		let resource = crate::Context::client(self.domain())
 			.get(webfinger_uri)
 			.header(ACCEPT, "application/jrd+json")
-			.header(USER_AGENT, format!("upub+{} ({})", crate::VERSION, self.domain()))
 			.send()
 			.await?
 			.json::<jrd::JsonResourceDescriptor>()
