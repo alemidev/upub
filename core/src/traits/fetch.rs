@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use apb::{Activity, Actor, ActorMut, Base, Collection, CollectionPage, Object, Question, Shortcuts};
-use reqwest::{header::{ACCEPT, CONTENT_TYPE, USER_AGENT}, Method, Response};
+use reqwest::{header::{ACCEPT, CONTENT_TYPE}, Method, Response};
 use sea_orm::{prelude::Expr, ActiveModelTrait, ActiveValue::{Unchanged, Set}, ColumnTrait, ConnectionTrait, DbErr, EntityTrait, IntoActiveModel, NotSet, QueryFilter};
 
 use super::{Addresser, Cloaker, Normalizer};
