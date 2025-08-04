@@ -236,7 +236,7 @@ impl Normalizer for crate::Context {
 								if let Ok(user) = self.fetch_user(&href, tx).await {
 									if !crate::model::mention::Entity::find()
 										.filter(crate::model::mention::Column::Object.eq(internal))
-										.filter(crate::model::mention::Column::Actor.eq(internal))
+										.filter(crate::model::mention::Column::Actor.eq(user.internal))
 										.any(tx)
 										.await?
 									{
