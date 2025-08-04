@@ -157,6 +157,8 @@ pub trait Fetcher {
 			.build_manually(&method.to_string().to_lowercase(), path, headers_map)
 			.sign(key)?;
 
+		// TODO when following redirects, we need to update our http signature!
+
 		let response = Self::client(domain)
 			.request(method, url)
 			.header(ACCEPT, apb::jsonld::CONTENT_TYPE_LD_JSON_ACTIVITYPUB)
