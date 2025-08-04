@@ -18,6 +18,10 @@ pub async fn activitypub(
 ) -> crate::ApiResult<axum::Json<serde_json::Value>> {
 	let _user; // need this for lifetimes
 
+	if upub::ext::BlacklistKind::Fetch.hit(&query.uri, &ctx.cfg().reject) {
+		return Err(crate::ApiError::FetchError(upub::traits::fetch::RequestError::AbortedForPolicy));
+	}
+
 	let (from, key) = match auth {
 		crate::Identity::Anonymous => {
 			if !ctx.cfg().security.allow_public_debugger {
@@ -39,10 +43,6 @@ pub async fn activitypub(
 			}
 		},
 	};
-
-	if upub::ext::BlacklistKind::Fetch.hit(&query.uri, &ctx.cfg().reject) {
-		return Err(crate::ApiError::FetchError(upub::traits::fetch::RequestError::AbortedForPolicy));
-	}
 
 	let resp = Context::request(
 			Method::GET,
