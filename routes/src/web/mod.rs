@@ -27,7 +27,7 @@ async fn redirect_to_ap(
 	#[cfg(any(feature = "activitypub", feature = "activitypub-redirect"))]
 	{
 		let (accepts_activity_pub, accepts_html) = crate::builders::accepts_activitypub_html(request.headers());
-		if !accepts_html && accepts_activity_pub {
+		if accepts_activity_pub || !accepts_html {
 			let uri = request.uri().clone();
 			let path_and_query = uri.path_and_query().map(|x| x.as_str()).unwrap_or_default();
 			if path_and_query == "/web"
