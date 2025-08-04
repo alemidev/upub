@@ -148,18 +148,83 @@ mod test {
 				"(request-target)".to_string(),
 				"host".to_string(),
 				"date".to_string(),
+				"digest".to_string(),
 			],
 			signature: String::new(),
 			control: String::new(),
 		};
 
 		signer
-			.build_manually("get", "/actor/inbox", [("host".into(), "example.net".into()), ("date".into(), "Sat, 13 Apr 2024 13:36:23 GMT".into())].into())
+			.build_manually(
+				"get",
+				"/actor/inbox",
+				[
+					("host".into(), "example.net".into()),
+					("date".into(), "Sat, 13 Apr 2024 13:36:23 GMT".into()),
+					("digest".into(), super::digest("")),
+				].into()
+			)
 			.sign(&private_key)
 			.unwrap();
 
 		let mut verifier = super::HttpSignature::parse(&signer.header());
-		verifier.build_manually("get", "/actor/inbox", [("host".into(), "example.net".into()), ("date".into(), "Sat, 13 Apr 2024 13:36:23 GMT".into())].into());
+		verifier.build_manually(
+			"get",
+			"/actor/inbox",
+			[
+				("host".into(), "example.net".into()),
+				("date".into(), "Sat, 13 Apr 2024 13:36:23 GMT".into()),
+				("digest".into(), super::digest("")),
+			].into()
+		);
+
+		assert!(verifier.verify(&public_key).unwrap());
+	}
+
+	#[cfg(feature = "axum")]
+	#[test]
+	fn http_signature_from_parts_verifies() {
+		let key = openssl::rsa::Rsa::generate(2048).unwrap();
+		let private_key = std::str::from_utf8(&key.private_key_to_pem().unwrap()).unwrap().to_string();
+		let public_key = std::str::from_utf8(&key.public_key_to_pem().unwrap()).unwrap().to_string();
+		let mut signer = super::HttpSignature {
+			key_id: "test".to_string(),
+			algorithm: "rsa-sha256".to_string(),
+			headers: vec![
+				"(request-target)".to_string(),
+				"host".to_string(),
+				"date".to_string(),
+				"digest".to_string(),
+			],
+			signature: String::new(),
+			control: String::new(),
+		};
+
+		signer
+			.build_manually(
+				"get",
+				"/actor/inbox",
+				[
+					("host".into(), "example.net".into()),
+					("date".into(), "Sat, 13 Apr 2024 13:36:23 GMT".into()),
+					("digest".into(), super::digest("")),
+				].into()
+			)
+			.sign(&private_key)
+			.unwrap();
+
+		let (parts, _body) = axum::http::request::Builder::default()
+			.uri("https://example.net/actor/inbox")
+			.method(axum::http::Method::GET)
+			.header("host", "example.net")
+			.header("date", "Sat, 13 Apr 2024 13:36:23 GMT")
+			.header("digest", super::digest(""))
+			.body("")
+			.unwrap()
+			.into_parts();
+
+		let mut verifier = super::HttpSignature::parse(&signer.header());
+		verifier.build_from_parts(&parts);
 
 		assert!(verifier.verify(&public_key).unwrap());
 	}
