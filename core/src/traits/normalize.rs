@@ -564,7 +564,11 @@ fn process_and_normalize_image(
 		is_image = true;
 		if ctx.cfg().compat.fix_attachment_media_type {
 			model.document_type = Set(apb::DocumentType::Image);
-			model.media_type = Set(format!("image/{}", url.split('.').next_back().unwrap_or_default()));
+			let mut ext = url.split('.').next_back().unwrap_or_default();
+			if ext == "jpg" {
+				ext = "jpeg";
+			}
+			model.media_type = Set(format!("image/{ext}"));
 		}
 
 	}
