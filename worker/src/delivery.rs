@@ -88,7 +88,7 @@ pub async fn process(ctx: Context, job: &model::job::Model) -> crate::JobResult<
 
 	Context::request(
 		reqwest::Method::POST, target,
-		Some(&serde_json::to_string(&payload.ld_context()).unwrap()),
+		Some(&serde_json::to_string(&payload.ld_context())?),
 		&job.actor, &key, ctx.domain()
 	).await?;
 

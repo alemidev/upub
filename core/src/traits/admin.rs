@@ -25,10 +25,42 @@ impl Administrable for crate::Context {
 		avatar_url: Option<String>,
 		banner_url: Option<String>,
 	) -> Result<(), DbErr> {
-		let key = openssl::rsa::Rsa::generate(2048).unwrap();
+		let key = match openssl::rsa::Rsa::generate(2048) {
+			Ok(k) => k,
+			Err(e) => {
+				tracing::error!("error generating key pair for new user: {e}");
+				return Err(DbErr::RecordNotInserted);
+			},
+		};
 		let ap_id = self.uid(&username);
 		let db = self.db();
 		let domain = self.domain().to_string();
+		let pubkey = match key.public_key_to_pem() {
+			Ok(raw) => match std::str::from_utf8(&raw) {
+				Ok(s) => s.to_string(),
+				Err(e) => {
+					tracing::error!("failed encoding PEM key to UTF8: {e}");
+					return Err(DbErr::RecordNotInserted);
+				}
+			},
+			Err(e) => {
+				tracing::error!("failed converting pubkey to PEM: {e}");
+				return Err(DbErr::RecordNotInserted);
+			},
+		};
+		let privkey = match key.private_key_to_pem() {
+			Ok(raw) => match std::str::from_utf8(&raw) {
+				Ok(s) => s.to_string(),
+				Err(e) => {
+					tracing::error!("failed encoding PEM key to UTF8: {e}");
+					return Err(DbErr::RecordNotInserted);
+				}
+			},
+			Err(e) => {
+				tracing::error!("failed converting privkey to PEM: {e}");
+				return Err(DbErr::RecordNotInserted);
+			},
+		};
 		let user_model = crate::model::actor::ActiveModel {
 			internal: NotSet,
 			id: Set(ap_id.clone()),
@@ -52,8 +84,8 @@ impl Administrable for crate::Context {
 			actor_type: Set(apb::ActorType::Person),
 			published: Set(chrono::Utc::now()),
 			updated: Set(chrono::Utc::now()),
-			private_key: Set(Some(std::str::from_utf8(&key.private_key_to_pem().unwrap()).unwrap().to_string())),
-			public_key: Set(std::str::from_utf8(&key.public_key_to_pem().unwrap()).unwrap().to_string()),
+			private_key: Set(Some(privkey)),
+			public_key: Set(pubkey),
 		};
 
 		crate::model::actor::Entity::insert(user_model)

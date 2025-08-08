@@ -90,7 +90,8 @@ impl Sanitizer {
 	
 	pub fn html(self, text: String) -> String {
 		let mut input = BufferQueue::default();
-		input.push_back(text.to_tendril().try_reinterpret().unwrap());
+		let tendril = text.to_tendril();
+		input.push_back(tendril);
 	
 		let mut tok = Tokenizer::new(self, Default::default());
 		let _ = tok.feed(&mut input);
@@ -194,7 +195,8 @@ pub struct Stripper(pub String);
 impl Stripper {
 	pub fn strip_html(self, text: String) -> String {
 		let mut input = BufferQueue::default();
-		input.push_back(text.to_tendril().try_reinterpret().unwrap());
+		let tendril = text.to_tendril();
+		input.push_back(tendril);
 	
 		let mut tok = Tokenizer::new(self, Default::default());
 		let _ = tok.feed(&mut input);

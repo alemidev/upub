@@ -24,10 +24,14 @@ impl PublicKeyMut for serde_json::Value {
 	crate::setter! { owner -> String }
 
 	fn set_public_key_pem(mut self, val: String) -> Self {
-		self.as_object_mut().unwrap().insert(
-			"publicKeyPem".to_string(),
-			serde_json::Value::String(val),
-		);
+		if let Some(obj) = self.as_object_mut() {
+			obj.insert(
+				"publicKeyPem".to_string(),
+				serde_json::Value::String(val),
+			);
+		} else {
+			tracing::error!("error setting 'publicKeyPem' on json Value: not an object");
+		}
 		self
 	}
 }
