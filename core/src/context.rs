@@ -49,7 +49,7 @@ impl Context {
 		if domain.starts_with("http") {
 			domain = domain.replace("https://", "").replace("http://", "");
 		}
-		let base_url = format!("{}{}", protocol, domain);
+		let base_url = format!("{protocol}{domain}");
 
 		let (actor, instance) = super::init::application(domain.clone(), base_url.clone(), &db).await?;
 

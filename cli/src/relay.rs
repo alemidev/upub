@@ -137,7 +137,7 @@ pub async fn relay(ctx: upub::Context, action: RelayCommand) -> Result<(), Reque
 			let activity = upub::model::activity::Entity::find_by_id(accept_activity_id)
 				.one(ctx.db())
 				.await?
-				.ok_or_else(|| DbErr::RecordNotFound(format!("activity#{}", accept_activity_id)))?;
+				.ok_or_else(|| DbErr::RecordNotFound(format!("activity#{accept_activity_id}")))?;
 			let aid = ctx.aid(&upub::Context::new_id());
 			let payload = apb::new()
 				.set_id(Some(aid.clone()))
