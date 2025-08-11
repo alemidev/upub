@@ -129,6 +129,7 @@ pub trait Fetcher {
 	) -> Result<Response, RequestError> {
 		let host = crate::Context::server(url);
 		let date = chrono::Utc::now().format("%a, %d %b %Y %H:%M:%S GMT").to_string(); // lmao @ "GMT"
+		let digest = httpsign::digest(payload.unwrap_or_default());
 		let path_with_possible_fragment = url
 			.replace("https://", "")
 			.replace("http://", "")
@@ -144,9 +145,8 @@ pub trait Fetcher {
 			("date".to_string(), date.clone()),
 		].into();
 
-		if let Some(ref pl) = payload {
-			let digest = httpsign::digest(pl);
-			headers_map.insert("digest".to_string(), digest);
+		if payload.is_some() {
+			headers_map.insert("digest".to_string(), digest.clone());
 			headers.push("digest");
 		}
 
