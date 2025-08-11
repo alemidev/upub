@@ -161,7 +161,7 @@ pub trait Fetcher {
 
 		let response = Self::client(domain)
 			.request(method, url)
-			.header(ACCEPT, apb::jsonld::CONTENT_TYPE_LD_JSON_ACTIVITYPUB)
+			.header(ACCEPT, apb::jsonld::ACCEPT_HEADER_ACTIVITY_JSON_LD_JSON)
 			.header(CONTENT_TYPE, apb::jsonld::CONTENT_TYPE_LD_JSON_ACTIVITYPUB)
 			.header("Host", host.clone())
 			.header("Date", date.clone())

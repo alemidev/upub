@@ -8,6 +8,10 @@ pub const CONTENT_TYPE_ACTIVITY_JSON: &str = "application/activity+json";
 #[deprecated = "use CONTENT_TYPE_LD_JSON_ACTIVITYPUB: 'application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"'"]
 pub const CONTENT_TYPE_LD_JSON: &str = "application/ld+json";
 
+/// "Accept:" header value concatenating activity+json and ld+json
+// TODO may be cool to generate this with const_format! but i don't really want another crate...
+pub const ACCEPT_HEADER_ACTIVITY_JSON_LD_JSON: &str = "application/activity+json, application/ld+json; profile=\"https://www.w3.org/ns/activitystreams\"";
+
 #[allow(deprecated)]
 pub fn is_activity_pub_content_type<T: AsRef<str>>(txt: T) -> bool {
 	let r = txt.as_ref();
