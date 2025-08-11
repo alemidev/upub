@@ -129,7 +129,6 @@ pub trait Fetcher {
 	) -> Result<Response, RequestError> {
 		let host = crate::Context::server(url);
 		let date = chrono::Utc::now().format("%a, %d %b %Y %H:%M:%S GMT").to_string(); // lmao @ "GMT"
-		let digest = httpsign::digest(payload.unwrap_or_default());
 		let path_with_possible_fragment = url
 			.replace("https://", "")
 			.replace("http://", "")
@@ -139,12 +138,17 @@ pub trait Fetcher {
 			.next()
 			.unwrap_or(&path_with_possible_fragment);
 
-		let headers = vec!["(request-target)", "host", "date", "digest"];
-		let headers_map : BTreeMap<String, String> = [
+		let mut headers = vec!["(request-target)", "host", "date"];
+		let mut headers_map : BTreeMap<String, String> = [
 			("host".to_string(), host.clone()),
 			("date".to_string(), date.clone()),
-			("digest".to_string(), digest.clone()),
 		].into();
+
+		if let Some(ref pl) = payload {
+			let digest = httpsign::digest(pl);
+			headers_map.insert("digest".to_string(), digest);
+			headers.push("digest");
+		}
 
 		let mut signer = HttpSignature::new(
 			format!("{from}#main-key"), // TODO don't hardcode #main-key
