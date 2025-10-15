@@ -349,6 +349,9 @@ code.summary {
 	text-decoration: underline;
 	text-decoration-style: dashed;
 }
+input.thread-input {
+	max-width: 3em;
+}
 input[type=button]:hover,
 input[type=submit].active {
 	background-color: var(--accent);

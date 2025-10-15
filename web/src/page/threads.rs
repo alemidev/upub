@@ -33,7 +33,7 @@ pub fn ThreadsPage() -> impl IntoView {
 				<tr>
 					<td class="pa-1">
 						"in last "
-						<input type="number" size="4" placeholder="1"
+						<input class="thread-input" type="number" size="4" placeholder="1"
 							prop:value=move || days.get()
 							on:input=move |ev| {
 								ev.prevent_default();
@@ -44,7 +44,7 @@ pub fn ThreadsPage() -> impl IntoView {
 					</td>
 					<td class="pa-1">
 						"skip "
-						<input type="number" size="4" placeholder="0"
+						<input class="thread-input" type="number" size="4" placeholder="0"
 							prop:value=move || skip.get()
 							on:input=move |ev| {
 								ev.prevent_default();
