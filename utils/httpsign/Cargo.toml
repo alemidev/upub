@@ -25,3 +25,4 @@ axum = { version = "0.8", optional = true }
 default = []
 axum = ["dep:axum"]
 openssl-vendored = ["openssl/vendored"]
+query-compat = []

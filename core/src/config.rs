@@ -180,6 +180,13 @@ pub struct CompatibilityConfig {
 	/// this if you trust ALL relays sending you data
 	pub trust_relayed_activities_by_registered_relays: bool,
 
+	#[serde_inline_default(true)]
+	/// compatibility with mastodon http signature implementation (and possibly more AP servers)
+	/// basically mastodon doesn't properly respect the spec and only checks the base path, not query
+	/// params, when validating http signatures. if this setting is enabled, http signatures will be
+	/// checked against query-less paths too
+	pub retry_http_signature_verification_without_query: bool,
+
 	#[serde_inline_default(false)]
 	/// compatibility with mastodon http signature implementation (and possibly more AP servers)
 	/// basically mastodon doesn't properly respect the spec and only checks the base path, not query

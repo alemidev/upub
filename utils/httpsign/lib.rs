@@ -82,12 +82,20 @@ impl HttpSignature {
 		self
 	}
 
+	#[cfg(all(feature = "axum", feature = "query-compat"))]
+	pub fn build_from_parts_without_query(&mut self, parts: &axum::http::request::Parts) -> &mut Self {
+		// since we're using nested routes, the request uri gets trimmed at each nesting
+		// this breaks http signatures! we need to maintain the original uri, so we try extracting it
+		let uri = match parts.extensions.get::<axum::extract::OriginalUri>() {
+			Some(original) => original.path(),
+			None =>  parts.uri.path(),
+		};
+
+		self.build_from_parts_inner(parts, uri)
+	}
+
 	#[cfg(feature = "axum")]
 	pub fn build_from_parts(&mut self, parts: &axum::http::request::Parts) -> &mut Self {
-		let mut out = Vec::new();
-
-		let method = parts.method.to_string().to_lowercase();
-
 		// since we're using nested routes, the request uri gets trimmed at each nesting
 		// this breaks http signatures! we need to maintain the original uri, so we try extracting it
 		let uri = match parts.extensions.get::<axum::extract::OriginalUri>() {
@@ -96,6 +104,15 @@ impl HttpSignature {
 		}
 			.map(|x| x.as_str())
 			.unwrap_or("/");
+
+		self.build_from_parts_inner(parts, uri)
+	}
+
+	#[cfg(feature = "axum")]
+	fn build_from_parts_inner(&mut self, parts: &axum::http::request::Parts, uri: &str) -> &mut Self {
+		let mut out = Vec::new();
+
+		let method = parts.method.to_string().to_lowercase();
 
 		for header in self.headers.iter() {
 			match header.as_str() {

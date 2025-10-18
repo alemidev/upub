@@ -25,7 +25,7 @@ reqwest = { version = "0.12", features = ["json"] }
 axum = { version = "0.8", features = ["multipart"] }
 tower = "0.5"
 tower-http = { version = "0.6", features = ["cors", "trace", "timeout"] }
-httpsign = { path = "../utils/httpsign/", version = "0.1", features = ["axum"] }
+httpsign = { path = "../utils/httpsign/", version = "0.1", features = ["axum", "query-compat"] }
 apb = { path = "../apb/", version = "0.3", features = ["unstructured", "orm", "activitypub-fe", "activitypub-counters", "litepub", "ostatus", "toot", "jsonld"] }
 sea-orm = "1.1"
 nodeinfo-upub = "0.0.3"

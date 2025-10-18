@@ -163,7 +163,13 @@ where
 				Ok(user) => {
 					let signature = http_signature.build_from_parts(parts);
 					tracing::debug!("constructed http signature {signature:?}");
-					let valid = signature.verify(&user.public_key)?;
+					let mut valid = signature.verify(&user.public_key)?;
+
+					if !valid && ctx.cfg().compat.retry_http_signature_verification_without_query {
+						let signature = http_signature.build_from_parts_without_query(parts);
+						tracing::debug!("constructed http signature without query {signature:?}");
+						valid = signature.verify(&user.public_key)?;
+					}
 
 					if !valid {
 						tracing::warn!("refusing mismatching http signature");
