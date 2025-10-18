@@ -42,12 +42,12 @@ const precachedResources = [
 ];
 
 async function precache() {
-  const cache = await caches.open('upub-assets-cache');
-  return cache.addAll(precachedResources);
+	const cache = await caches.open('upub-assets-cache');
+	return cache.addAll(precachedResources);
 }
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(precache());
+	event.waitUntil(precache());
 });
 </script>
 </html>
