@@ -89,6 +89,16 @@ impl Pull<serde_json::Value> {
 
 #[async_trait::async_trait]
 pub trait Fetcher {
+	async fn request(
+		&self,
+		method: reqwest::Method,
+		url: &str,
+		payload: Option<&str>,
+		from: &str,
+		key: &str,
+		domain: &str,
+	) -> Result<Response, RequestError>;
+
 	async fn pull(&self, id: &str) -> Result<Pull<serde_json::Value>, RequestError> { self.pull_r(id, 0).await }
 	async fn pull_r(&self, id: &str, depth: u32) -> Result<Pull<serde_json::Value>, RequestError>;
 
@@ -118,8 +128,13 @@ pub trait Fetcher {
 			.build()
 			.expect("failed building http client, check system tls or resolver")
 	}
+}
 
+
+#[async_trait::async_trait]
+impl Fetcher for crate::Context {
 	async fn request(
+		&self,
 		method: reqwest::Method,
 		url: &str,
 		payload: Option<&str>,
@@ -134,10 +149,14 @@ pub trait Fetcher {
 			.replace("https://", "")
 			.replace("http://", "")
 			.replace(&host, "");
-		let path = path_with_possible_fragment
+		let mut path = path_with_possible_fragment
 			.split('#')
 			.next()
 			.unwrap_or(&path_with_possible_fragment);
+
+		if self.cfg().compat.exclude_query_in_outgoing_http_signatures {
+			path = path.split('?').next().unwrap_or(path);
+		}
 
 		let mut headers = vec!["(request-target)", "host", "date"];
 		let mut headers_map : BTreeMap<String, String> = [
@@ -184,12 +203,9 @@ pub trait Fetcher {
 					response.text().await?,
 				)),
 		}
+
 	}
-}
 
-
-#[async_trait::async_trait]
-impl Fetcher for crate::Context {
 	async fn pull_r(&self, id: &str, depth: u32) -> Result<Pull<serde_json::Value>, RequestError> {
 		if crate::ext::BlacklistKind::Fetch.hit(id, &self.cfg().reject) {
 			return Err(RequestError::AbortedForPolicy);
@@ -198,7 +214,7 @@ impl Fetcher for crate::Context {
 		tracing::debug!("fetching {id}");
 		// let _domain = self.fetch_domain(&crate::Context::server(id)).await?;
 
-		let document = Self::request(
+		let document = self.request(
 			Method::GET, id, None,
 			self.base(), self.pkey(), self.domain(),
 		)
@@ -288,7 +304,7 @@ impl Fetcher for crate::Context {
 			updated: chrono::Utc::now(),
 		};
 
-		if let Ok(res) = Self::request(
+		if let Ok(res) = self.request(
 			Method::GET, &format!("https://{domain}"), None,
 			self.base(), self.pkey(), self.domain(),
 		).await {
@@ -642,7 +658,7 @@ impl Dereferenceable<serde_json::Value> for apb::Node<serde_json::Value> {
 					return Err(RequestError::AbortedForPolicy);
 				}
 				tracing::debug!("dereferencing {href}");
-				let res = crate::Context::request(Method::GET, &href, None, ctx.base(), ctx.pkey(), ctx.domain())
+				let res = ctx.request(Method::GET, &href, None, ctx.base(), ctx.pkey(), ctx.domain())
 					.await?
 					.json::<serde_json::Value>()
 					.await?;

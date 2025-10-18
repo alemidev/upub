@@ -44,7 +44,7 @@ pub async fn activitypub(
 		},
 	};
 
-	let resp = Context::request(
+	let resp = ctx.request(
 			Method::GET,
 			&query.uri,
 			None,
