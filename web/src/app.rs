@@ -14,14 +14,14 @@ pub fn App() -> impl IntoView {
 		"token",
 		UseCookieOptions::default()
 			.same_site(cookie::SameSite::Strict)
-			// .secure(true)
+			.secure(!cfg!(debug_assertions))
 			.path("/")
+			.max_age((chrono::Utc::now() + chrono::TimeDelta::weeks(12)).timestamp())
 	);
 	let (userid, set_userid) = use_cookie_with_options::<String, codee::string::FromToStringCodec>(
 		"user_id",
 		UseCookieOptions::default()
 			.same_site(cookie::SameSite::Strict)
-			// .secure(true)
 			.path("/")
 	);
 	let (config, set_config, _) = use_local_storage::<crate::Config, codee::string::JsonSerdeCodec>("config");
