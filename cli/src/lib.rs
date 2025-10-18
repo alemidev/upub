@@ -43,6 +43,9 @@ pub use attachments::*;
 mod emoji;
 pub use emoji::*;
 
+mod prune;
+pub use prune::*;
+
 // TODO naming is going kind of all over the place, should probably rename lot of these...
 
 #[derive(Debug, Clone, clap::Subcommand)]
@@ -222,6 +225,20 @@ pub enum CliCommand {
 		/// target document: actor, object or activity doesn't matter
 		document: String
 	},
+
+	/// remove old statuses
+	Prune {
+		/// delete statuses older than X days
+		days: i64,
+
+		/// also delete activities operating on deleted objects
+		#[arg(long, default_value_t = false)]
+		also_activities: bool,
+
+		/// actually delete data, if not given will only be a dry run
+		#[arg(long, default_value_t = false)]
+		for_real: bool,
+	},
 }
 
 pub async fn run(ctx: upub::Context, command: CliCommand) -> Result<(), Box<dyn std::error::Error>> {
@@ -257,5 +274,7 @@ pub async fn run(ctx: upub::Context, command: CliCommand) -> Result<(), Box<dyn 
 			Ok(fix_attachments_types(ctx).await?),
 		CliCommand::Emoji { document } =>
 			Ok(fetch_custom_emojis(ctx, document).await?),
+		CliCommand::Prune { days, also_activities, for_real } =>
+			Ok(prune_database(ctx, days, also_activities, for_real).await?),
 	}
 }
