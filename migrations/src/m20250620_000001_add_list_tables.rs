@@ -50,6 +50,7 @@ impl MigrationTrait for Migration {
 							.from(Lists::Table, Lists::AttributedTo)
 							.to(Actors::Table, Actors::Id)
 							.on_update(ForeignKeyAction::Cascade)
+							.on_delete(ForeignKeyAction::Cascade)
 					)
 					.col(ColumnDef::new(Lists::Name).string().not_null())
 					.col(ColumnDef::new(Lists::Summary).string().null())
@@ -86,6 +87,7 @@ impl MigrationTrait for Migration {
 							.from(ListElements::Table, ListElements::List)
 							.to(Lists::Table, Lists::Internal)
 							.on_update(ForeignKeyAction::Cascade)
+							.on_delete(ForeignKeyAction::Cascade)
 					)
 					.col(ColumnDef::new(ListElements::Object).big_integer().null())
 					.foreign_key(
@@ -94,6 +96,7 @@ impl MigrationTrait for Migration {
 							.from(ListElements::Table, ListElements::Object)
 							.to(Objects::Table, Objects::Internal)
 							.on_update(ForeignKeyAction::Cascade)
+							.on_delete(ForeignKeyAction::Cascade)
 					)
 					.col(ColumnDef::new(ListElements::Actor).big_integer().null())
 					.foreign_key(
@@ -102,6 +105,7 @@ impl MigrationTrait for Migration {
 							.from(ListElements::Table, ListElements::Actor)
 							.to(Actors::Table, Actors::Internal)
 							.on_update(ForeignKeyAction::Cascade)
+							.on_delete(ForeignKeyAction::Cascade)
 					)
 					.to_owned()
 			)
