@@ -52,7 +52,7 @@ pub async fn serve(ctx: upub::Context, bind: String, shutdown: impl ShutdownToke
 						})
 				)
 				.layer(CorsLayer::permissive())
-				.layer(TimeoutLayer::new(std::time::Duration::from_secs(ctx.cfg().behavior.request_timeout)))
+				.layer(TimeoutLayer::with_status_code(axum::http::status::StatusCode::REQUEST_TIMEOUT, std::time::Duration::from_secs(ctx.cfg().behavior.request_timeout)))
 		);
 
 	tracing::info!("serving api routes on {bind}");

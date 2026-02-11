@@ -5,11 +5,87 @@ members = [
 	"cli",
 	"migrations",
 	"routes",
+	"web",
 	"worker",
 	"utils/httpsign",
 	"utils/mdhtml",
 	"utils/uriproxy",
 ]
+
+[workspace.dependencies]
+# core
+clap = { version = "4.5", features = ["derive"] }
+tracing = "0.1"
+tracing-subscriber = "0.3"
+thiserror = "2.0"
+base64 = "0.22"
+hmac = "0.12"
+sha2 = "0.10"
+sha256 = "1.6" # TODO can we do it with just sha2?
+openssl = "0.10" # TODO handle pubkeys with a smaller crate
+rand = "0.10"
+lazy_static = "1.5"
+regex = "1.12"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1.20", features = ["v4"] }
+paste = "1.0"
+
+# ser/de
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_default =  "0.2"
+serde-inline-default = "1.0"
+toml = "0.9"
+jrd = "0.1"
+
+# async
+tokio = "1.49"
+async-recursion = "1.1"
+async-trait = "0.1"
+futures = "0.3"
+
+# http
+axum = "0.8"
+tower = "0.5"
+tower-http = { version = "0.6", features = ["cors", "trace", "timeout"] }
+reqwest = { version = "0.13", features = ["json"] }
+
+# orm
+sea-orm = "1.1"
+sea-orm-migration = "1.1"
+
+# wasm
+dashmap = "6.1"
+cookie = "0.18"
+tracing-subscriber-wasm = "0.1"
+console_error_panic_hook = "0.1"
+leptos = { version = "0.8", features = ["csr", "tracing"] }
+leptos_router = { version = "0.8", features = ["tracing"] }
+leptos-use = "0.18"
+codee = { version = "0.3", features = ["json_serde"] } # WHYYY LEPTOS-USE AKSJFOASHGOAEG
+tld = "2.36"
+web-sys = { version = "0.3", features = ["Screen"] }
+
+# upub components
+apb = { version = "0.3", path = "apb", features = ["unstructured", "activitypub-fe", "activitypub-counters", "litepub", "did-core"] }
+upub = { version = "0.7", path = "core" }
+upub-cli = { version = "0.3", path = "cli" }
+upub-migrations = { version = "0.4", path = "migrations" }
+upub-routes = { version = "0.5", path = "routes" }
+upub-worker = { version = "0.3", path = "worker" }
+httpsign = { version = "0.1", path = "utils/httpsign", features = ["axum", "query-compat"] }
+mdhtml = { version = "0.1", path = "utils/mdhtml" }
+uriproxy = { version = "0.1", path = "utils/uriproxy" }
+nodeinfo-upub = "0.0.3"
+
+# extras
+html5ever = "0.27" # have to lock this because newer versions don't get &mut self anymore
+comrak = "0.50"
+
+[workspace.lints]
+rust.unsafe_code = "deny"
+clippy.unwrap_used = "deny"
+clippy.collapsible_if = "allow" # if let() chaining is now allowed, will eventually update all of them
 
 [package]
 name = "upub-bin"
@@ -27,19 +103,19 @@ name = "upub"
 path = "main.rs"
 
 [dependencies]
-toml = "0.9"
-tracing = "0.1"
-tracing-subscriber = "0.3"
-clap = { version = "4.5", features = ["derive"] }
-tokio = { version = "1.45", features = ["rt-multi-thread", "macros", "signal"] }
-sea-orm = { version = "1.1", features = ["sqlx-sqlite", "sqlx-postgres", "runtime-tokio-rustls"] }
-futures = "0.3"
+toml.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+clap.workspace = true
+futures.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal"] }
+sea-orm = { workspace = true, features = ["sqlx-sqlite", "sqlx-postgres", "runtime-tokio-rustls"] }
 
-upub = { path = "core", version = "0.7" }
-upub-cli = { path = "cli", version = "0.3", optional = true }
-upub-migrations = { path = "migrations", version = "0.4", optional = true }
-upub-routes = { path = "routes", version = "0.5", optional = true }
-upub-worker = { path = "worker", version = "0.3", optional = true }
+upub.workspace = true
+upub-cli = { workspace = true, optional = true }
+upub-migrations = { workspace = true, optional = true }
+upub-routes = { workspace = true, optional = true }
+upub-worker = { workspace = true, optional = true }
 
 [features]
 default = ["serve", "migrate", "cli", "worker"]

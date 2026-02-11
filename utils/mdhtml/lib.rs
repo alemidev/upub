@@ -1,7 +1,7 @@
 use html5ever::{tendril::SliceExt, tokenizer::{BufferQueue, TagKind, Token, TokenSink, TokenSinkResult, Tokenizer}};
 
 const OPTIONS: comrak::Options<'static> = comrak::Options {
-	extension: comrak::ExtensionOptions {
+	extension: comrak::options::Extension {
 		strikethrough: true,
 		tagfilter: true,
 		table: true,
@@ -25,34 +25,43 @@ const OPTIONS: comrak::Options<'static> = comrak::Options {
 		// TODO use these two for cloaking?
 		image_url_rewriter: None,
 		link_url_rewriter: None,
+		cjk_friendly_emphasis: true,
+    inline_footnotes: false,
+    shortcodes: false,
+    subtext: true,
+    highlight: true,
+    phoenix_heex: false,
 	},
 
-	parse: comrak::ParseOptions {
+	parse: comrak::options::Parse {
 		smart: false,
 		default_info_string: None,
 		relaxed_tasklist_matching: true,
 		relaxed_autolinks: false,
 		broken_link_callback: None,
+    tasklist_in_table: false,
+    ignore_setext: true,
+    leave_footnote_definitions: true,
+    escaped_char_spans: true,
 	},
 
-	render: comrak::RenderOptions {
+	render: comrak::options::Render {
 		hardbreaks: true,
 		github_pre_lang: true,
 		full_info_string: false,
 		width: 120,
-		unsafe_: false,
 		escape: true,
-		list_style: comrak::ListStyleType::Dash,
+		list_style: comrak::options::ListStyleType::Dash,
 		sourcepos: false,
 		escaped_char_spans: true,
 		experimental_minimize_commonmark: false,
-		ignore_setext: true,
 		ignore_empty_links: false,
 		gfm_quirks: false,
 		prefer_fenced: true,
 		figure_with_caption: false,
 		tasklist_classes: false,
 		ol_width: 3,
+    r#unsafe: false,
 	},
 };
 

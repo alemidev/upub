@@ -11,8 +11,11 @@ readme = "README.md"
 [lib]
 
 [dependencies]
-sea-orm-migration = "1.1"
+sea-orm-migration.workspace = true
 
 [features]
 default = []
 not-simplified = []
+
+[lints]
+workspace = true

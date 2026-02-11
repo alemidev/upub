@@ -1,5 +1,3 @@
-[workspace]
-
 [package]
 name = "upub-web"
 version = "0.7.3"
@@ -9,46 +7,40 @@ description = "web frontend for upub"
 license = "AGPL-3.0"
 keywords = ["activitypub", "upub", "json", "web", "wasm"]
 repository = "https://github.com/alemidev/upub"
-#readme = "README.md"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+readme = "README.md"
 
 [dependencies]
-lazy_static = "1.5"
-cookie = "0.18"
-base64 = "0.22"
-tracing = "0.1"
-tracing-subscriber = "0.3"
-tracing-subscriber-wasm = "0.1"
-console_error_panic_hook = "0.1"
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-serde_default = "0.2"
-serde-inline-default = "0.2"
-dashmap = "6.1"
-leptos = { version = "0.8", features = ["csr", "tracing"] }
-leptos_router = { version = "0.8", features = ["tracing"] }
-leptos-use = "0.16"
-codee = { version = "0.3", features = ["json_serde"] } # WHYYY LEPTOS-USE AKSJFOASHGOAEG
-reqwest = { version = "0.12", features = ["json"] }
-apb = { path = "../apb", version = "0.3", features = ["unstructured", "activitypub-fe", "activitypub-counters", "litepub", "did-core"] }
-uriproxy = { path = "../utils/uriproxy/", version = "0.1" }
-mdhtml = { path = "../utils/mdhtml/", version = "0.1" }
-futures = "0.3"
-chrono = { version = "0.4", features = ["serde"] }
-jrd = "0.1"
-tld = "2.36"
-web-sys = { version = "0.3", features = ["Screen"] }
-regex = "1.11"
+tracing.workspace = true
+base64.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+serde_default.workspace = true
+serde-inline-default.workspace = true
+lazy_static.workspace = true
+cookie.workspace = true
+tracing-subscriber.workspace = true
+tracing-subscriber-wasm.workspace = true
+console_error_panic_hook.workspace = true
+dashmap.workspace = true
+leptos.workspace = true
+leptos_router.workspace = true
+leptos-use.workspace = true
+codee.workspace = true
+reqwest.workspace = true
+apb.workspace = true
+uriproxy.workspace = true
+mdhtml.workspace = true
+futures.workspace = true
+chrono.workspace = true
+jrd.workspace = true
+tld.workspace = true
+web-sys.workspace = true
+regex.workspace = true
 
 [package.metadata.trunk.build]
 public_url = "/web/assets/"
 filehash = false
 #offline = true # if you're looking in here, you may want to uncomment this and download wasm-bindgen-cli yourself
 
-[profile.release]
-opt-level = 'z'
-lto = true
-codegen-units = 1
-panic = "abort"
-strip = "symbols"
+[lints]
+workspace = true

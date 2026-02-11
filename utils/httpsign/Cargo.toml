@@ -15,14 +15,17 @@ path = "lib.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-thiserror = "2.0"
-tracing = "0.1"
-base64 = "0.22"
-openssl = "0.10" # TODO handle pubkeys with a smaller crate
-axum = { version = "0.8", optional = true }
+thiserror.workspace = true
+tracing.workspace = true
+base64.workspace = true
+openssl.workspace = true
+axum = { workspace = true, optional = true }
 
 [features]
 default = []
 axum = ["dep:axum"]
 openssl-vendored = ["openssl/vendored"]
 query-compat = []
+
+[lints]
+workspace = true

@@ -46,7 +46,7 @@ impl NodeInfoStatsLock {
 		Self(std::sync::OnceLock::new())
 	}
 
-	async fn lock(&self) -> tokio::sync::MutexGuard<NodeInfoStats> {
+	async fn lock(&'_ self) -> tokio::sync::MutexGuard<'_, NodeInfoStats> {
 		self.0
 			.get_or_init(|| tokio::sync::Mutex::new(NodeInfoStats::default()))
 			.lock()

@@ -1,5 +1,5 @@
 use axum::{http::StatusCode, extract::State, Json};
-use rand::Rng;
+use rand::RngExt;
 use sea_orm::{ActiveValue::{Set, NotSet}, ColumnTrait, Condition, EntityTrait, QueryFilter};
 use upub::{traits::Administrable, Context};
 

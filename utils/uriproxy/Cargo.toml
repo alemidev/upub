@@ -12,4 +12,7 @@ repository = "https://github.com/alemidev/upub"
 path = "lib.rs"
 
 [dependencies]
-base64 = "0.22"
+base64.workspace = true
+
+[lints]
+workspace = true

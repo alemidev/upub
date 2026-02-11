@@ -11,31 +11,34 @@ readme = "README.md"
 [lib]
 
 [dependencies]
-thiserror = "2.0"
-async-recursion = "1.1"
-async-trait = "0.1"
-sha256 = "1.6" # TODO get rid of this and use directly sha2!!
-sha2 = "0.10"
-hmac = "0.12"
-openssl = "0.10" # TODO handle pubkeys with a smaller crate
-base64 = "0.22"
-chrono = { version = "0.4", features = ["serde"] }
-uuid = { version = "1.17", features = ["v4"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-serde_default = "0.2"
-serde-inline-default = "0.2"
-toml = "0.8"
-uriproxy = { path = "../utils/uriproxy/", version = "0.1" }
-httpsign = { path = "../utils/httpsign/", version = "0.1" }
-mdhtml = { path = "../utils/mdhtml/", version = "0.1" }
-jrd = "0.1"
-tracing = "0.1"
-sea-orm = { version = "1.1", features = ["macros"] }
-reqwest = { version = "0.12", features = ["json"] }
-apb = { path = "../apb/", version = "0.3", features = ["unstructured", "orm", "did-core", "activitypub-miscellaneous-terms", "activitypub-fe", "activitypub-counters", "litepub", "ostatus", "toot", "jsonld"] }
-nodeinfo-upub = "0.0.3"
+tracing.workspace = true
+thiserror.workspace = true
+async-recursion.workspace = true
+async-trait.workspace = true
+sha256.workspace = true
+sha2.workspace = true
+hmac.workspace = true
+openssl.workspace = true
+base64.workspace = true
+chrono.workspace = true
+uuid.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+serde_default.workspace = true
+serde-inline-default.workspace = true
+toml.workspace = true
+uriproxy.workspace = true
+httpsign.workspace = true
+mdhtml.workspace = true
+jrd.workspace = true
+sea-orm = { workspace = true, features = ["macros"] }
+reqwest.workspace = true
+nodeinfo-upub.workspace = true
+apb = { workspace = true, features = ["orm", "activitypub-miscellaneous-terms", "ostatus", "toot", "jsonld"] }
 
 [features]
 default = []
 openssl-vendored = ["openssl/vendored", "httpsign/openssl-vendored"]
+
+[lints]
+workspace = true

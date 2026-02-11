@@ -36,7 +36,7 @@ pub async fn fetch(ctx: upub::Context, uri: String, save: bool, actor: Option<St
 
 	let obj = node.into_inner().expect("node still empty after fetch?");
 
-	println!("{}", serde_json::to_string_pretty(&obj).unwrap());
+	println!("{}", serde_json::to_string_pretty(&obj).expect("could not serialize json object?"));
 
 	if save {
 		let tx = ctx.db().begin().await?;

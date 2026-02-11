@@ -16,10 +16,10 @@ pub async fn upload(
 	let mut uploaded_urls = Vec::new();
 
 	let mut uploaded_something = false;
-	while let Some(field) = multipart
+	// TODO handle Ok(None) and Err(e)
+	while let Ok(Some(field)) = multipart
 		.next_field()
 		.await
-		.unwrap() // TODO OOOPS THIS SLIPPED GET RID OF IT
 	{
 		let _ = if let Some(filename) = field.file_name() {
 			filename.to_string()

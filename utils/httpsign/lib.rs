@@ -154,6 +154,7 @@ mod test {
 	// TODO more tests!!!
 
 	#[test]
+	#[allow(clippy::unwrap_used)]
 	fn http_signature_signs_and_verifies() {
 		let key = openssl::rsa::Rsa::generate(2048).unwrap();
 		let private_key = std::str::from_utf8(&key.private_key_to_pem().unwrap()).unwrap().to_string();
@@ -198,8 +199,9 @@ mod test {
 		assert!(verifier.verify(&public_key).unwrap());
 	}
 
-	#[cfg(feature = "axum")]
 	#[test]
+	#[cfg(feature = "axum")]
+	#[allow(clippy::unwrap_used)]
 	fn http_signature_from_parts_verifies() {
 		let key = openssl::rsa::Rsa::generate(2048).unwrap();
 		let private_key = std::str::from_utf8(&key.private_key_to_pem().unwrap()).unwrap().to_string();

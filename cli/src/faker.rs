@@ -2,6 +2,8 @@ use upub::{ext::JsonVec, model::{activity, actor, addressing, config, credential
 use openssl::rsa::Rsa;
 use sea_orm::{ActiveValue::NotSet, IntoActiveModel};
 
+// TODO proper error propagation so no unwraps happen???
+#[allow(clippy::unwrap_used)]
 pub async fn faker(ctx: upub::Context, count: i64) -> Result<(), sea_orm::DbErr> {
 	use sea_orm::{EntityTrait, Set};
 
