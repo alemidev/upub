@@ -4,7 +4,7 @@ use sea_orm::{ColumnTrait, EntityTrait, QueryFilter, QuerySelect, SelectColumns,
 pub async fn prune_database(
 	ctx: upub::Context,
 	days: i64,
-	also_activities: bool,
+	delete_activities: bool,
 	for_real: bool,
 ) -> Result<(), sea_orm::DbErr> {
 
@@ -22,32 +22,21 @@ pub async fn prune_database(
 
 	tracing::debug!("local actor ids: {local_actor_ids:?}");
 
-	let object_ids_to_delete = upub::model::object::Entity::find()
-		.filter(upub::model::object::Column::Published.lt(limit))
-		.filter(upub::model::object::Column::AttributedTo.is_not_in(&local_actor_ids))
-		.filter(upub::model::object::Column::Audience.is_not_in(&local_actor_ids))
-		.select_only()
-		.select_column(upub::model::object::Column::Id)
-		.into_tuple::<String>()
-		.all(&tx)
-		.await?;
-
-	let res = upub::model::object::Entity::delete_many()
-		.filter(upub::model::object::Column::Published.lt(limit))
-		.filter(upub::model::object::Column::AttributedTo.is_not_in(&local_actor_ids))
-		.filter(upub::model::object::Column::Audience.is_not_in(local_actor_ids))
-		.exec(&tx)
-		.await?;
-
-	tracing::info!("deleted {} objects", res.rows_affected);
-
-	if also_activities {
+	if delete_activities {
 		let res = upub::model::activity::Entity::delete_many()
-			.filter(upub::model::activity::Column::Object.is_in(object_ids_to_delete))
+			.filter(upub::model::activity::Column::Published.lt(limit))
+			.filter(upub::model::activity::Column::Actor.is_not_in(&local_actor_ids))
 			.exec(&tx)
 			.await?;
-
 		tracing::info!("deleted {} activities", res.rows_affected);
+	} else {
+		let res = upub::model::object::Entity::delete_many()
+			.filter(upub::model::object::Column::Published.lt(limit))
+			.filter(upub::model::object::Column::AttributedTo.is_not_in(&local_actor_ids))
+			.filter(upub::model::object::Column::Audience.is_not_in(local_actor_ids))
+			.exec(&tx)
+			.await?;
+		tracing::info!("deleted {} objects", res.rows_affected);
 	}
 
 	if for_real {
