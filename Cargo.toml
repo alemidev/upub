@@ -62,9 +62,9 @@ console_error_panic_hook = "0.1"
 leptos = { version = "0.8", features = ["csr", "tracing"] }
 leptos_router = { version = "0.8", features = ["tracing"] }
 leptos-use = "0.18"
-codee = { version = "0.3", features = ["json_serde"] } # WHYYY LEPTOS-USE AKSJFOASHGOAEG
+codee = { version = "0.3", features = ["json_serde"] }
 tld = "2.36"
-web-sys = { version = "0.3", features = ["Screen"] }
+web-sys = { version = "=0.3.77", features = ["Screen"] } # this is locked because trunk can't build wasm-bindgen 0.2.108
 
 # upub components
 apb = { version = "0.3", path = "apb", features = ["unstructured", "activitypub-fe", "activitypub-counters", "litepub", "did-core"] }
