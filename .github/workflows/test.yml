@@ -13,6 +13,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: rustup target add wasm32-unknown-unknown
       - run: cargo install trunk
+      - run: cargo install wasm-bindgen-cli # github may use a cached version
       - uses: actions/checkout@v4
       - run: trunk build --release
         working-directory: web/
