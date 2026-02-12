@@ -37,7 +37,11 @@ pub async fn prune_database(
 		let res = upub::model::object::Entity::delete_many()
 			.filter(upub::model::object::Column::Published.lt(limit))
 			.filter(upub::model::object::Column::AttributedTo.is_not_in(&local_actor_ids))
-			.filter(upub::model::object::Column::Audience.is_not_in(&local_actor_ids))
+			.filter(
+				Condition::any()
+					.add(upub::model::object::Column::Audience.is_null())
+					.add(upub::model::object::Column::Audience.is_not_in(&local_actor_ids))
+			)
 			.exec(&tx)
 			.await?;
 		tracing::info!("deleted {} objects", res.rows_affected);
