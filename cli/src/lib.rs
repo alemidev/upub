@@ -226,14 +226,22 @@ pub enum CliCommand {
 		document: String
 	},
 
-	/// remove old objects
+	/// remove old database rows
 	Prune {
 		/// delete objects older than X days
 		days: i64,
 
-		/// delete activities instead of objects, effectively permanently deleting logs
+		/// delete objects older than given days
 		#[arg(long, default_value_t = false)]
-		delete_activities: bool,
+		objects: bool,
+
+		/// delete activities older than given days, effectively permanently deleting logs
+		#[arg(long, default_value_t = false)]
+		activities: bool,
+
+		/// delete addressing rows, effectively permanently deleting permissions
+		#[arg(long, default_value_t = false)]
+		addressing: bool,
 
 		/// actually delete data, if not given will only be a dry run
 		#[arg(long, default_value_t = false)]
@@ -274,7 +282,7 @@ pub async fn run(ctx: upub::Context, command: CliCommand) -> Result<(), Box<dyn 
 			Ok(fix_attachments_types(ctx).await?),
 		CliCommand::Emoji { document } =>
 			Ok(fetch_custom_emojis(ctx, document).await?),
-		CliCommand::Prune { days, delete_activities, for_real } =>
-			Ok(prune_database(ctx, days, delete_activities, for_real).await?),
+		CliCommand::Prune { days, objects, activities, addressing, for_real } =>
+			Ok(prune_database(ctx, days, objects, activities, addressing, for_real).await?),
 	}
 }
