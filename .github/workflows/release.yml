@@ -15,7 +15,6 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: rustup target add wasm32-unknown-unknown
       - run: cargo install trunk
-      - run: cargo install -f wasm-bindgen-cli --version 0.2.108 # github CI issue? builds locally...
       - uses: actions/checkout@v4
       - run: trunk build --release
         working-directory: web/
@@ -42,7 +41,6 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - run: rustup target add wasm32-unknown-unknown
       - run: cargo install trunk
-      - run: cargo install -f wasm-bindgen-cli --version 0.2.108 # github CI issue? builds locally...
       - uses: actions/checkout@v4
       - run: trunk build --release --public-url=/web/assets --filehash=false
         working-directory: web/
