@@ -5,7 +5,6 @@ members = [
 	"cli",
 	"migrations",
 	"routes",
-	"web",
 	"worker",
 	"utils/httpsign",
 	"utils/mdhtml",
