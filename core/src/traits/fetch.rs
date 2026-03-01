@@ -158,9 +158,9 @@ impl Fetcher for crate::Context {
 			path = path.split('?').next().unwrap_or(path);
 		}
 
-		let mut headers = vec!["(request-target)", "instance", "date"];
+		let mut headers = vec!["(request-target)", "host", "date"];
 		let mut headers_map : BTreeMap<String, String> = [
-			("instance".to_string(), host.clone()),
+			("host".to_string(), host.clone()),
 			("date".to_string(), date.clone()),
 		].into();
 
@@ -186,7 +186,7 @@ impl Fetcher for crate::Context {
 			.request(method, url)
 			.header(ACCEPT, apb::jsonld::ACCEPT_HEADER_ACTIVITY_JSON_LD_JSON)
 			.header(CONTENT_TYPE, apb::jsonld::CONTENT_TYPE_LD_JSON_ACTIVITYPUB)
-			.header("Instance", host.clone())
+			//.header(HOST, host.clone()) // FIXME reqwest/hyper add another HOST header regardless???
 			.header("Date", date.clone())
 			.header("Digest", digest)
 			.header("Signature", signer.header())
