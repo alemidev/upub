@@ -11,22 +11,7 @@ pub struct Model {
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
-pub enum Relation {
-	#[sea_orm(
-		belongs_to = "super::job::Entity",
-		from = "Column::Job",
-		to = "super::job::Column::Internal",
-		on_update = "Cascade",
-		on_delete = "NoAction"
-	)]
-	Jobs,
-}
-
-impl Related<super::job::Entity> for Entity {
-	fn to() -> RelationDef {
-		Relation::Jobs.def()
-	}
-}
+pub enum Relation {}
 
 impl ActiveModelBehavior for ActiveModel {}
 
