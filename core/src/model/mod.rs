@@ -8,6 +8,7 @@ pub mod session;
 
 pub mod instance;
 pub mod job;
+pub mod job_completion;
 pub mod addressing;
 pub mod notification;
 pub mod relation;

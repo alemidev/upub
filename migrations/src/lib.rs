@@ -32,6 +32,7 @@ mod m20250712_000003_add_count_inside_poll_options;
 mod m20250713_000001_add_custom_emoji_table;
 mod m20250724_000001_add_object_type_index;
 mod m20250902_000001_separate_addressing_indexes;
+mod m20260315_000001_add_job_completion;
 
 pub struct Migrator;
 
@@ -71,6 +72,7 @@ impl MigratorTrait for Migrator {
 			Box::new(m20250713_000001_add_custom_emoji_table::Migration),
 			Box::new(m20250724_000001_add_object_type_index::Migration),
 			Box::new(m20250902_000001_separate_addressing_indexes::Migration),
+			Box::new(m20260315_000001_add_job_completion::Migration),
 		]
 	}
 }

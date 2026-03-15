@@ -145,6 +145,10 @@ pub struct BehaviorConfig {
 	#[serde(default)]
 	/// hide reject rules from nodeinfo metadata
 	pub hide_reject_rules: bool,
+
+	#[serde(default)]
+	/// when completing jobs, track duration in a separate table
+	pub track_job_completions: bool,
 }
 
 #[serde_inline_default::serde_inline_default]
