@@ -137,7 +137,7 @@ impl JobDispatcher for Context {
 					Ok(()) => {
 						tracing::debug!("job {} completed", job.activity);
 						if _ctx.cfg().behavior.track_job_completions {
-							if let Err(e) = job.track_completion(&_ctx).await {
+							if let Err(e) = job.track_completion(_ctx.db()).await {
 								tracing::error!("could not track job completion: {e} - {e:?}");
 							}
 						}

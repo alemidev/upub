@@ -31,7 +31,7 @@ impl Related<super::job::Entity> for Entity {
 impl ActiveModelBehavior for ActiveModel {}
 
 impl super::job::Model {
-	pub async fn track_completion(&self, db: impl sea_orm::ConnectionTrait) -> Result<(), sea_orm::DbErr> {
+	pub async fn track_completion(&self, db: &impl sea_orm::ConnectionTrait) -> Result<(), sea_orm::DbErr> {
 		use sea_orm::ActiveModelTrait;
 		let model = ActiveModel {
 			internal: sea_orm::ActiveValue::NotSet,
@@ -40,7 +40,7 @@ impl super::job::Model {
 			duration: sea_orm::ActiveValue::Set((chrono::Utc::now() - self.published).num_milliseconds()),
 		};
 
-		model.insert(&db).await?;
+		model.insert(db).await?;
 
 		Ok(())
 	}
